@@ -1,0 +1,38 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.matplotlib/
+
+# Runtime outputs are ignored by default. Curated, aggregate-only portfolio
+# evidence is explicitly allowlisted below; SQLite ledgers and row-like JSONL
+# outputs are never committed.
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/profile.json
+!artifacts/method_recommendation.json
+
+!artifacts/phase3/
+artifacts/phase3/*
+!artifacts/phase3/analysis_bundle.json
+!artifacts/phase3/effect_estimates.png
+
+!artifacts/phase4/
+artifacts/phase4/*
+!artifacts/phase4/audit_export.json
+!artifacts/phase4/releases/
+artifacts/phase4/releases/*
+!artifacts/phase4/releases/demo-release/
+artifacts/phase4/releases/demo-release/*
+!artifacts/phase4/releases/demo-release/release_manifest.json
+
+!artifacts/portfolio_baseline/
+artifacts/portfolio_baseline/*
+!artifacts/portfolio_baseline/eval_manifest.json
+!artifacts/portfolio_baseline/eval_report.json
+!artifacts/portfolio_baseline/eval_summary.md
+!artifacts/portfolio_baseline/eval_audit_index.json
+
+!artifacts/phase6_dev_smoke_03/
+artifacts/phase6_dev_smoke_03/*
+!artifacts/phase6_dev_smoke_03/phase6_summary.md

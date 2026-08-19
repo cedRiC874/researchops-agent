@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "corpus": "phase6_agent_tasks.jsonl",
+  "task_count": 20,
+  "splits": {
+    "development": {
+      "task_count": 16,
+      "task_ids": [
+        "P6-DEV-001",
+        "P6-DEV-002",
+        "P6-DEV-003",
+        "P6-DEV-004",
+        "P6-DEV-005",
+        "P6-DEV-006",
+        "P6-DEV-007",
+        "P6-DEV-008",
+        "P6-DEV-009",
+        "P6-DEV-010",
+        "P6-DEV-011",
+        "P6-DEV-012",
+        "P6-DEV-013",
+        "P6-DEV-014",
+        "P6-DEV-015",
+        "P6-DEV-016"
+      ]
+    },
+    "holdout": {
+      "task_count": 4,
+      "visibility": "repo_local_non_secret",
+      "contamination_resistant": false,
+      "task_ids": [
+        "P6-HOLD-001",
+        "P6-HOLD-002",
+        "P6-HOLD-003",
+        "P6-HOLD-004"
+      ]
+    }
+  },
+  "notes": [
+    "The repository-local holdout is intentionally non-secret and supports regression checks only.",
+    "Do not tune prompts against the holdout during an evaluation run.",
+    "Use an externally stored unseen set for a contamination-resistant benchmark."
+  ]
+}

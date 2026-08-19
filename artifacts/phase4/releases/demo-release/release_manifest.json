@@ -1,0 +1,11 @@
+{
+  "files": {
+    "analysis_bundle.json": "2a654e379e9876f90331850666e9c462ff66349b48ad53cb2df1898e73a3cf41",
+    "effect_estimates.png": "d4e061cde8f080dd4d053d746b13448b6d1e07d786441aa51585c5cd95ee523c"
+  },
+  "raw_data_embedded": false,
+  "release_id": "phase4-release:demo-release",
+  "schema_version": "1.0",
+  "source_bundle_id": "phase3",
+  "tool_call_id": "CALL-7BD593DAF1994FD2"
+}

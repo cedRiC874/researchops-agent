@@ -1,0 +1,65 @@
+name: offline-quality-gate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-evaluation:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Install locked dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock
+
+      - name: Validate evaluation contracts
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          python -m researchops.cli eval-validate
+          python -m researchops.cli phase6-validate
+          python -m researchops.cli phase6-status
+
+      - name: Run unit and integration tests
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild the 50-task offline evaluation
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          python -m researchops.cli eval-run --output-dir artifacts/ci_phase5
+          python scripts/verify_phase5_artifacts.py artifacts/ci_phase5
+
+      - name: Upload sanitized evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase5-offline-evidence
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            artifacts/ci_phase5/eval_manifest.json
+            artifacts/ci_phase5/eval_report.json
+            artifacts/ci_phase5/eval_summary.md
+            artifacts/ci_phase5/eval_audit_index.json

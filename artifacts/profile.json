@@ -1,0 +1,183 @@
+{
+  "source_name": "synthetic_trial.csv",
+  "file_size_bytes": 15488,
+  "sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+  "row_count": 240,
+  "column_count": 10,
+  "duplicate_row_count": 0,
+  "rows_with_missing": 38,
+  "complete_row_count": 202,
+  "columns": [
+    {
+      "name": "participant_id",
+      "pandas_dtype": "str",
+      "semantic_type": "text",
+      "non_null_count": 240,
+      "null_count": 0,
+      "missing_rate": 0.0,
+      "unique_count": 240,
+      "unique_rate": 1.0,
+      "sample_values": [
+        "[REDACTED]"
+      ]
+    },
+    {
+      "name": "group",
+      "pandas_dtype": "str",
+      "semantic_type": "categorical",
+      "non_null_count": 240,
+      "null_count": 0,
+      "missing_rate": 0.0,
+      "unique_count": 2,
+      "unique_rate": 0.008333,
+      "sample_values": [
+        "treatment",
+        "control"
+      ]
+    },
+    {
+      "name": "age",
+      "pandas_dtype": "int64",
+      "semantic_type": "continuous_numeric",
+      "non_null_count": 240,
+      "null_count": 0,
+      "missing_rate": 0.0,
+      "unique_count": 50,
+      "unique_rate": 0.208333,
+      "sample_values": [
+        69,
+        50,
+        55
+      ]
+    },
+    {
+      "name": "sex",
+      "pandas_dtype": "str",
+      "semantic_type": "categorical",
+      "non_null_count": 240,
+      "null_count": 0,
+      "missing_rate": 0.0,
+      "unique_count": 2,
+      "unique_rate": 0.008333,
+      "sample_values": [
+        "male",
+        "female"
+      ]
+    },
+    {
+      "name": "site",
+      "pandas_dtype": "str",
+      "semantic_type": "categorical",
+      "non_null_count": 240,
+      "null_count": 0,
+      "missing_rate": 0.0,
+      "unique_count": 3,
+      "unique_rate": 0.0125,
+      "sample_values": [
+        "central",
+        "south",
+        "north"
+      ]
+    },
+    {
+      "name": "enrolled_on",
+      "pandas_dtype": "str",
+      "semantic_type": "datetime",
+      "non_null_count": 240,
+      "null_count": 0,
+      "missing_rate": 0.0,
+      "unique_count": 127,
+      "unique_rate": 0.529167,
+      "sample_values": [
+        "2025-05-26",
+        "2025-01-12",
+        "2025-05-08"
+      ]
+    },
+    {
+      "name": "baseline_sbp",
+      "pandas_dtype": "float64",
+      "semantic_type": "continuous_numeric",
+      "non_null_count": 240,
+      "null_count": 0,
+      "missing_rate": 0.0,
+      "unique_count": 190,
+      "unique_rate": 0.791667,
+      "sample_values": [
+        145.5,
+        116.6,
+        106.8
+      ]
+    },
+    {
+      "name": "followup_sbp",
+      "pandas_dtype": "float64",
+      "semantic_type": "continuous_numeric",
+      "non_null_count": 212,
+      "null_count": 28,
+      "missing_rate": 0.116667,
+      "unique_count": 175,
+      "unique_rate": 0.825472,
+      "sample_values": [
+        146.7,
+        99.8,
+        108.5
+      ]
+    },
+    {
+      "name": "biomarker_pre",
+      "pandas_dtype": "float64",
+      "semantic_type": "continuous_numeric",
+      "non_null_count": 240,
+      "null_count": 0,
+      "missing_rate": 0.0,
+      "unique_count": 216,
+      "unique_rate": 0.9,
+      "sample_values": [
+        14.81,
+        12.16,
+        9.62
+      ]
+    },
+    {
+      "name": "biomarker_post",
+      "pandas_dtype": "float64",
+      "semantic_type": "continuous_numeric",
+      "non_null_count": 202,
+      "null_count": 38,
+      "missing_rate": 0.158333,
+      "unique_count": 180,
+      "unique_rate": 0.891089,
+      "sample_values": [
+        7.67,
+        17.23,
+        16.7
+      ]
+    }
+  ],
+  "missing_patterns": [
+    {
+      "missing_columns": [
+        "followup_sbp",
+        "biomarker_post"
+      ],
+      "row_count": 28,
+      "row_rate": 0.116667
+    },
+    {
+      "missing_columns": [
+        "biomarker_post"
+      ],
+      "row_count": 10,
+      "row_rate": 0.041667
+    }
+  ],
+  "warnings": [
+    {
+      "code": "possible_identifier",
+      "severity": "warning",
+      "message": "列 participant_id 的名称类似行级标识符，不应发送给模型或出现在报告中。",
+      "column": "participant_id"
+    }
+  ]
+}

@@ -1,0 +1,367 @@
+{
+  "artifacts": [
+    {
+      "alt_text": "聚合效应图：treatment - control 方向的 ANCOVA 校正差与 Welch 未校正差，均带 95% 置信区间和零效应参考线，不包含行级数据点。",
+      "byte_size": 47882,
+      "chart_id": "CH-F675F0E546C6",
+      "evidence_ids": [
+        "E-7C87BB6C88EB",
+        "E-B93CD9DC7751"
+      ],
+      "file_name": "effect_estimates.png",
+      "height_px": 692,
+      "mime_type": "image/png",
+      "plot_spec_sha256": "bcb85b1a1aa4dd3da530caaef00319e13d15d2de52ec3c1fff42e1f34c0307d1",
+      "schema_version": "1.0",
+      "sha256": "d4e061cde8f080dd4d053d746b13448b6d1e07d786441aa51585c5cd95ee523c",
+      "width_px": 1195
+    }
+  ],
+  "created_at_utc": "2026-08-15T12:19:05.354913+00:00",
+  "dataset": {
+    "raw_data_embedded": false,
+    "sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+    "source_columns": 10,
+    "source_name": "synthetic_trial.csv",
+    "source_rows": 240
+  },
+  "design": {
+    "analysis_population": "intention_to_treat",
+    "confidence_level": 0.95,
+    "contrast_level": "treatment",
+    "covariate_timing": {
+      "baseline_sbp": "pre_treatment"
+    },
+    "covariates": [
+      "baseline_sbp"
+    ],
+    "expected_cell_count": "unknown",
+    "group_count": 2,
+    "normality": "unknown",
+    "objective": "group_difference",
+    "outcome": "followup_sbp",
+    "outcome_type": "continuous",
+    "overdispersion": "unknown",
+    "paired": false,
+    "predictor": "group",
+    "predictor_type": "categorical",
+    "question": "在该模拟随机对照试验中，治疗组与对照组的随访收缩压是否存在差异？在考虑基线收缩压后，结论是否仍然成立？",
+    "randomized": true,
+    "reference_level": "control",
+    "repeated_measures": false,
+    "subject_id": null,
+    "time_variable": null
+  },
+  "evidence": [
+    {
+      "dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+      "diagnostics": {
+        "adjusted_r_squared": 0.6933977353949026,
+        "automatic_normality_switch_used": false,
+        "automatic_outlier_removal_used": false,
+        "breusch_pagan": {
+          "automatic_method_switch_used": false,
+          "f_p_value": 0.39180358417871386,
+          "f_statistic": 0.9412079694610557,
+          "lm_p_value": 0.38821500440602497,
+          "lm_statistic": 1.89239191553586
+        },
+        "condition_number": 27.686553261957215,
+        "max_leverage": 0.06351876305511386,
+        "model_rank": 3,
+        "parameter_count": 3,
+        "r_squared": 0.6963039179977945,
+        "residual_degrees_of_freedom": 209.0,
+        "residual_skewness": 0.020964670092000866,
+        "slope_homogeneity": [
+          {
+            "confidence_interval": {
+              "lower": -0.20076188411191448,
+              "upper": 0.17214619533110626
+            },
+            "confidence_level": 0.95,
+            "covariate": "baseline_sbp",
+            "degrees_of_freedom": 208.0,
+            "interpretation_guardrail": "Do not treat a non-significant interaction as proof of equal slopes.",
+            "p_value": 0.8799005631673987,
+            "slope_difference": -0.014307844390404112,
+            "standard_error": 0.09457784406684967,
+            "status": "estimated"
+          }
+        ]
+      },
+      "estimates": {
+        "coefficients": {
+          "baseline_sbp": 1.022568557455116,
+          "intercept": 131.25642610197872,
+          "treatment_vs_control": -5.6069303056318915
+        },
+        "contrast": {
+          "adjusted_mean_difference": -5.6069303056318915,
+          "confidence_interval": {
+            "lower": -7.935143502095155,
+            "upper": -3.278717109168628
+          },
+          "confidence_level": 0.95,
+          "direction": "treatment - control",
+          "standard_error_hc3": 1.1810071281941852
+        },
+        "contrast_group": {
+          "adjusted_mean": {
+            "confidence_interval": {
+              "lower": 124.15459595973232,
+              "upper": 127.14439563296133
+            },
+            "estimate": 125.64949579634683,
+            "standard_error_hc3": 0.758301415720852
+          },
+          "level": "treatment"
+        },
+        "reference_group": {
+          "adjusted_mean": {
+            "confidence_interval": {
+              "lower": 129.47996138363294,
+              "upper": 133.0328908203245
+            },
+            "estimate": 131.25642610197872,
+            "standard_error_hc3": 0.9011277397357316
+          },
+          "level": "control"
+        }
+      },
+      "evidence_id": "E-7C87BB6C88EB",
+      "input_spec": {
+        "confidence_level": 0.95,
+        "contrast_direction": "treatment - control",
+        "contrast_level": "treatment",
+        "covariance_estimator": "HC3",
+        "covariate_center_values": {
+          "baseline_sbp": 132.06603773584905
+        },
+        "covariate_timing": {
+          "baseline_sbp": "pre_treatment"
+        },
+        "covariates": [
+          "baseline_sbp"
+        ],
+        "group": "group",
+        "missing_data_policy": "available_case_for_required_columns",
+        "outcome": "followup_sbp",
+        "outlier_policy": "no_automatic_removal",
+        "reference_level": "control",
+        "use_t_distribution": true
+      },
+      "method_code": "ancova_linear_model",
+      "role": "primary",
+      "sample_flow": {
+        "by_group": {
+          "control": {
+            "excluded_rows": 18,
+            "included_rows": 102,
+            "source_rows": 120
+          },
+          "treatment": {
+            "excluded_rows": 10,
+            "included_rows": 110,
+            "source_rows": 120
+          }
+        },
+        "excluded_rows": 28,
+        "included_rows": 212,
+        "missing_by_column": {
+          "baseline_sbp": 0,
+          "followup_sbp": 28,
+          "group": 0
+        },
+        "required_columns": [
+          "group",
+          "followup_sbp",
+          "baseline_sbp"
+        ],
+        "source_rows": 240
+      },
+      "schema_version": "1.0",
+      "test": {
+        "alternative": "two-sided",
+        "covariance_estimator": "HC3",
+        "degrees_of_freedom": 209.0,
+        "p_value": 3.817575932819937e-06,
+        "statistic": -4.747583796725384,
+        "statistic_name": "t"
+      },
+      "tool_name": "run_ancova",
+      "tool_version": "1.0.0",
+      "warnings": [
+        "未自动插补缺失值，也未自动删除异常值。",
+        "该方法按所需字段执行可用病例分析：240 行中纳入 212 行，排除 28 行。",
+        "requested_population=intention_to_treat，但 realized_population=available_case；当前结果不得声称已完整实现 ITT。",
+        "组间排除率相差 6.7%，需评估差异性失访偏倚。"
+      ]
+    },
+    {
+      "dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+      "diagnostics": {
+        "automatic_normality_switch_used": false,
+        "automatic_outlier_removal_used": false,
+        "group_variance_ratio_max_over_min": 1.228318838550478
+      },
+      "estimates": {
+        "contrast": {
+          "cohen_d_pooled_sd": -0.45564343307939037,
+          "confidence_interval": {
+            "lower": -10.842458427218284,
+            "upper": -2.734939077238087
+          },
+          "confidence_level": 0.95,
+          "direction": "treatment - control",
+          "hedges_g_pooled_sd": -0.4540138715154302,
+          "mean_difference": -6.788698752228186,
+          "standard_error": 2.055986039092505
+        },
+        "contrast_group": {
+          "level": "treatment",
+          "mean": 125.08090909090907,
+          "mean_confidence_interval": {
+            "confidence_level": 0.95,
+            "lower": 122.4082892188539,
+            "upper": 127.75352896296425
+          },
+          "n": 110,
+          "standard_deviation": 14.142852413686903
+        },
+        "reference_group": {
+          "level": "control",
+          "mean": 131.86960784313726,
+          "mean_confidence_interval": {
+            "confidence_level": 0.95,
+            "lower": 128.7908519185382,
+            "upper": 134.9483637677363
+          },
+          "n": 102,
+          "standard_deviation": 15.674459197427483
+        }
+      },
+      "evidence_id": "E-B93CD9DC7751",
+      "input_spec": {
+        "alternative": "two-sided",
+        "confidence_level": 0.95,
+        "contrast_direction": "treatment - control",
+        "contrast_level": "treatment",
+        "group": "group",
+        "missing_data_policy": "available_case_for_required_columns",
+        "outcome": "followup_sbp",
+        "outlier_policy": "no_automatic_removal",
+        "reference_level": "control"
+      },
+      "method_code": "welch_t_test",
+      "role": "sensitivity",
+      "sample_flow": {
+        "by_group": {
+          "control": {
+            "excluded_rows": 18,
+            "included_rows": 102,
+            "source_rows": 120
+          },
+          "treatment": {
+            "excluded_rows": 10,
+            "included_rows": 110,
+            "source_rows": 120
+          }
+        },
+        "excluded_rows": 28,
+        "included_rows": 212,
+        "missing_by_column": {
+          "followup_sbp": 28,
+          "group": 0
+        },
+        "required_columns": [
+          "group",
+          "followup_sbp"
+        ],
+        "source_rows": 240
+      },
+      "schema_version": "1.0",
+      "test": {
+        "alternative": "two-sided",
+        "degrees_of_freedom": 203.5589436285064,
+        "equal_variance_assumed": false,
+        "p_value": 0.001134077491786515,
+        "statistic": -3.301918701366601,
+        "statistic_name": "t"
+      },
+      "tool_name": "run_welch_t_test",
+      "tool_version": "1.0.0",
+      "warnings": [
+        "未自动插补缺失值，也未自动删除异常值。",
+        "该方法按所需字段执行可用病例分析：240 行中纳入 212 行，排除 28 行。",
+        "requested_population=intention_to_treat，但 realized_population=available_case；当前结果不得声称已完整实现 ITT。",
+        "组间排除率相差 6.7%，需评估差异性失访偏倚。",
+        "Hedges g 使用合并样本标准差进行标准化，它不是 Welch 检验统计量。"
+      ]
+    }
+  ],
+  "question": "在该模拟随机对照试验中，治疗组与对照组的随访收缩压是否存在差异？在考虑基线收缩压后，结论是否仍然成立？",
+  "recommendation": {
+    "assumptions_to_check": [
+      "观测单位之间独立，或已在模型中正确表示相关结构。",
+      "结局与连续协变量的关系在所设定的函数尺度上合理。",
+      "组别与基线协变量的斜率齐性假设成立，或已显式建模交互项。",
+      "模型残差均值、方差和分布假设足以支持所选推断。"
+    ],
+    "dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+    "primary_method": {
+      "code": "ancova_linear_model",
+      "label": "ANCOVA（协方差分析）",
+      "purpose": "在校正预指定协变量后估计组间平均结局差异。"
+    },
+    "question": "在该模拟随机对照试验中，治疗组与对照组的随访收缩压是否存在差异？在考虑基线收缩压后，结论是否仍然成立？",
+    "rationale": [
+      "研究设计预指定了 1 个协变量：baseline_sbp。",
+      "线性模型可同时给出校正组间效应、置信区间和模型诊断。",
+      "研究设计已显式声明为随机分组；选择器不会仅根据列名推断这一事实。"
+    ],
+    "required_diagnostics": [
+      "检查结局分布、异常值和各组有效样本量。",
+      "检查残差图、异方差、强影响点和非线性。",
+      "检查组别×基线协变量交互，并根据研究方案决定是否保留。",
+      "报告各组缺失比例，比较完整与缺失个体的基线特征，并预指定缺失数据策略。",
+      "normality=unknown：使用图形和模型残差诊断，不要仅根据正态性检验 p 值自动切换方法。"
+    ],
+    "rule_version": "2026-08-15.1",
+    "sensitivity_methods": [
+      {
+        "code": "welch_t_test",
+        "label": "Welch 独立样本 t 检验",
+        "purpose": "提供两组未校正平均差。"
+      }
+    ],
+    "status": "ready",
+    "warnings": [
+      "分析变量存在缺失：followup_sbp=11.7%。",
+      "声明了意向性治疗分析，但结局存在缺失；仅删除缺失行不足以自动实现 ITT。"
+    ]
+  },
+  "run_id": "RUN-C5D58104E492",
+  "runtime": {
+    "analysis_tool": "1.0.0",
+    "chart_tool": "1.0.0",
+    "matplotlib": "3.11.1",
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.13",
+    "scipy": "1.18.0",
+    "statsmodels": "0.14.6"
+  },
+  "schema_version": "1.0",
+  "status": "completed",
+  "warnings": [
+    "分析变量存在缺失：followup_sbp=11.7%。",
+    "声明了意向性治疗分析，但结局存在缺失；仅删除缺失行不足以自动实现 ITT。",
+    "未自动插补缺失值，也未自动删除异常值。",
+    "该方法按所需字段执行可用病例分析：240 行中纳入 212 行，排除 28 行。",
+    "requested_population=intention_to_treat，但 realized_population=available_case；当前结果不得声称已完整实现 ITT。",
+    "组间排除率相差 6.7%，需评估差异性失访偏倚。",
+    "Hedges g 使用合并样本标准差进行标准化，它不是 Welch 检验统计量。"
+  ]
+}

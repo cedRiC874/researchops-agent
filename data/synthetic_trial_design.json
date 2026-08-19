@@ -1,0 +1,25 @@
+{
+  "question": "在该模拟随机对照试验中，治疗组与对照组的随访收缩压是否存在差异？在考虑基线收缩压后，结论是否仍然成立？",
+  "objective": "group_difference",
+  "outcome": "followup_sbp",
+  "outcome_type": "continuous",
+  "predictor": "group",
+  "predictor_type": "categorical",
+  "group_count": 2,
+  "paired": false,
+  "repeated_measures": false,
+  "covariates": [
+    "baseline_sbp"
+  ],
+  "normality": "unknown",
+  "expected_cell_count": "unknown",
+  "overdispersion": "unknown",
+  "analysis_population": "intention_to_treat",
+  "randomized": true,
+  "covariate_timing": {
+    "baseline_sbp": "pre_treatment"
+  },
+  "reference_level": "control",
+  "contrast_level": "treatment",
+  "confidence_level": 0.95
+}

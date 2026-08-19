@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "researchops-agent"
+version = "0.1.0"
+description = "A controlled scientific data analysis agent, built incrementally."
+requires-python = ">=3.11"
+dependencies = [
+  "matplotlib>=3.8,<4.0",
+  "openai-agents>=0.21,<0.22",
+  "pandas>=2.0,<4.0",
+  "scipy>=1.11,<2.0",
+  "statsmodels>=0.14,<1.0",
+]
+
+[project.scripts]
+researchops = "researchops.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

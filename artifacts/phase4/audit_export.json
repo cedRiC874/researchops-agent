@@ -1,0 +1,413 @@
+{
+  "approval_decisions": [
+    {
+      "approval_id": "APR-C27DD867D8D5480C",
+      "approval_scope_hash": "81b73919beb276f8c2ae9a29b38b49f3011b66d9b030603c5c750f32ef6251fb",
+      "approver_subject_hash": "8f9822cfb85679e98df8540aff8ff23c0d021a4c1f0745357db718fde7ad8f2f",
+      "call_id": "CALL-7BD593DAF1994FD2",
+      "decided_at_utc": "2026-08-17T08:45:46.860149+00:00",
+      "decision": "approve",
+      "expires_at_utc": "2026-08-17T09:00:46.860149+00:00",
+      "requested_at_utc": "2026-08-15T12:47:15.074242+00:00",
+      "safe_reason": "已确认只发布聚合分析结果"
+    }
+  ],
+  "chain_verification": {
+    "chain_head": "71642e311f60715a3a30a0cf315767cc9c57a6689eafcee358fc766eb891e3e6",
+    "error_code": null,
+    "error_sequence": null,
+    "event_count": 15,
+    "run_id": "RUN-AUDIT-1F21418E7709405F",
+    "valid": true
+  },
+  "events": [
+    {
+      "actor_kind": "system",
+      "event_hash": "4f0e2bbda267cc456083266ab168677ab947beee148221fb40851f9e0a258926",
+      "event_id": 1,
+      "event_type": "run_started",
+      "occurred_at_utc": "2026-08-15T12:47:14.950282+00:00",
+      "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+        "mode": "offline_agent_demo",
+        "request_sha256": "d461e7c25bb14b642f78773a0c6b197d053b111e2a117aacf018bbec4b456214"
+      },
+      "sequence": 1
+    },
+    {
+      "actor_kind": "agent",
+      "event_hash": "e89e36263752a0639d0e74b47cc0008545613fc0f70eadc8e08d7f2744e69d80",
+      "event_id": 2,
+      "event_type": "tool_call_proposed",
+      "occurred_at_utc": "2026-08-15T12:47:14.973493+00:00",
+      "prev_hash": "4f0e2bbda267cc456083266ab168677ab947beee148221fb40851f9e0a258926",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "approval_scope_hash": "b747efb97a78b711d6fb5a835a0a40bd49a883def58dbc120a7f6bba68c1f45a",
+        "args_hash": "9daecf7a70c64ab07254c3a1d3574e2530194377ca08d652c694f912f96f3f56",
+        "call_id": "CALL-852F2A2C74CE4536",
+        "policy_version": "1.0.0",
+        "risk_class": "read_only",
+        "status": "ready",
+        "tool_name": "read_aggregate_evidence",
+        "tool_version": "1.0.0"
+      },
+      "sequence": 2
+    },
+    {
+      "actor_kind": "tool_runtime",
+      "event_hash": "2654687e130711335275581ce1c3cc334cb47057e413c51d8dce0b7254f0b806",
+      "event_id": 3,
+      "event_type": "tool_attempt_started",
+      "occurred_at_utc": "2026-08-15T12:47:15.010242+00:00",
+      "prev_hash": "e89e36263752a0639d0e74b47cc0008545613fc0f70eadc8e08d7f2744e69d80",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "attempt_no": 1,
+        "call_id": "CALL-852F2A2C74CE4536"
+      },
+      "sequence": 3
+    },
+    {
+      "actor_kind": "tool_runtime",
+      "event_hash": "e4585c2cc1de273a91a73b3757d6b921bd237d577292d1caf9ef1a613128a370",
+      "event_id": 4,
+      "event_type": "tool_attempt_failed",
+      "occurred_at_utc": "2026-08-15T12:47:15.017889+00:00",
+      "prev_hash": "2654687e130711335275581ce1c3cc334cb47057e413c51d8dce0b7254f0b806",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "attempt_no": 1,
+        "call_id": "CALL-852F2A2C74CE4536",
+        "duration_ms": 0.043899985030293465,
+        "error_code": "artifact_temporarily_locked",
+        "outcome_unknown": false,
+        "retryable": true,
+        "will_retry": true
+      },
+      "sequence": 4
+    },
+    {
+      "actor_kind": "tool_runtime",
+      "event_hash": "fe1515308864f11a9b44f526dfccffb8fcb2ed80c5667e38c44c6f9d3d613ebe",
+      "event_id": 5,
+      "event_type": "tool_retry_scheduled",
+      "occurred_at_utc": "2026-08-15T12:47:15.017889+00:00",
+      "prev_hash": "e4585c2cc1de273a91a73b3757d6b921bd237d577292d1caf9ef1a613128a370",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "after_attempt": 1,
+        "backoff_ms": 100,
+        "call_id": "CALL-852F2A2C74CE4536"
+      },
+      "sequence": 5
+    },
+    {
+      "actor_kind": "tool_runtime",
+      "event_hash": "d098720875e37369837c9ff2cf0585d75e81cd23b2a0dd02de1174fc8e5f1c4d",
+      "event_id": 6,
+      "event_type": "tool_attempt_started",
+      "occurred_at_utc": "2026-08-15T12:47:15.041572+00:00",
+      "prev_hash": "fe1515308864f11a9b44f526dfccffb8fcb2ed80c5667e38c44c6f9d3d613ebe",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "attempt_no": 2,
+        "call_id": "CALL-852F2A2C74CE4536"
+      },
+      "sequence": 6
+    },
+    {
+      "actor_kind": "tool_runtime",
+      "event_hash": "a408c47408d0a40d0df1ab398594029d2e8ad8de7db39c115078ed9cb878954f",
+      "event_id": 7,
+      "event_type": "tool_attempt_succeeded",
+      "occurred_at_utc": "2026-08-15T12:47:15.053545+00:00",
+      "prev_hash": "d098720875e37369837c9ff2cf0585d75e81cd23b2a0dd02de1174fc8e5f1c4d",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "attempt_no": 2,
+        "call_id": "CALL-852F2A2C74CE4536",
+        "duration_ms": 4.965899977833033,
+        "result_hash": "2115ce1d6c5c7eb5115dcb812bb5ae2c44e7e6a451c185c97e7ccaf1865a2bd0"
+      },
+      "sequence": 7
+    },
+    {
+      "actor_kind": "agent",
+      "event_hash": "b471be0c20d45931a09118ec68b3004f6e1001c9c4e846a082cd953dc2184914",
+      "event_id": 8,
+      "event_type": "tool_call_proposed",
+      "occurred_at_utc": "2026-08-15T12:47:15.074242+00:00",
+      "prev_hash": "a408c47408d0a40d0df1ab398594029d2e8ad8de7db39c115078ed9cb878954f",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "approval_scope_hash": "81b73919beb276f8c2ae9a29b38b49f3011b66d9b030603c5c750f32ef6251fb",
+        "args_hash": "2924f3909ea2cf0d64afabdd5467680c80aeaad270cf2036cdf3175ef335fc08",
+        "call_id": "CALL-7BD593DAF1994FD2",
+        "policy_version": "1.0.0",
+        "risk_class": "controlled_write",
+        "status": "awaiting_approval",
+        "tool_name": "publish_aggregate_results",
+        "tool_version": "1.0.0"
+      },
+      "sequence": 8
+    },
+    {
+      "actor_kind": "system",
+      "event_hash": "ffddc1bca5c87711f85aa2104445dc28908a2bd50d3300253d6e88d51814e8ca",
+      "event_id": 9,
+      "event_type": "tool_approval_requested",
+      "occurred_at_utc": "2026-08-15T12:47:15.074242+00:00",
+      "prev_hash": "b471be0c20d45931a09118ec68b3004f6e1001c9c4e846a082cd953dc2184914",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "approval_scope_hash": "81b73919beb276f8c2ae9a29b38b49f3011b66d9b030603c5c750f32ef6251fb",
+        "call_id": "CALL-7BD593DAF1994FD2",
+        "tool_name": "publish_aggregate_results"
+      },
+      "sequence": 9
+    },
+    {
+      "actor_kind": "system",
+      "event_hash": "83da47ca4d867ae9b31782071d2751f653d6aa70898ce1a866297c153801d372",
+      "event_id": 10,
+      "event_type": "run_status_changed",
+      "occurred_at_utc": "2026-08-15T12:47:15.096672+00:00",
+      "prev_hash": "ffddc1bca5c87711f85aa2104445dc28908a2bd50d3300253d6e88d51814e8ca",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "error_code": null,
+        "from": "running",
+        "to": "waiting_approval"
+      },
+      "sequence": 10
+    },
+    {
+      "actor_kind": "human",
+      "event_hash": "d07214e35c64d2adb3ac80c6d62b24b17aaa951c3dd72771279d8736c30013f0",
+      "event_id": 11,
+      "event_type": "tool_approval_decided",
+      "occurred_at_utc": "2026-08-17T08:45:46.860149+00:00",
+      "prev_hash": "83da47ca4d867ae9b31782071d2751f653d6aa70898ce1a866297c153801d372",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "approval_scope_hash": "81b73919beb276f8c2ae9a29b38b49f3011b66d9b030603c5c750f32ef6251fb",
+        "approver_subject_hash": "8f9822cfb85679e98df8540aff8ff23c0d021a4c1f0745357db718fde7ad8f2f",
+        "call_id": "CALL-7BD593DAF1994FD2",
+        "decision": "approve",
+        "expires_at_utc": "2026-08-17T09:00:46.860149+00:00"
+      },
+      "sequence": 11
+    },
+    {
+      "actor_kind": "system",
+      "event_hash": "8791fb03dcc42af1edfcc1a5e6663ab23f233d3e51af741a2159c64a1feb6cb0",
+      "event_id": 12,
+      "event_type": "run_status_changed",
+      "occurred_at_utc": "2026-08-17T08:45:46.875557+00:00",
+      "prev_hash": "d07214e35c64d2adb3ac80c6d62b24b17aaa951c3dd72771279d8736c30013f0",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "error_code": null,
+        "from": "waiting_approval",
+        "to": "running"
+      },
+      "sequence": 12
+    },
+    {
+      "actor_kind": "tool_runtime",
+      "event_hash": "4b0aa544b06f38d94d2ba85593a61e1939e0062cf6e1a854674ba15bc456a430",
+      "event_id": 13,
+      "event_type": "tool_attempt_started",
+      "occurred_at_utc": "2026-08-17T08:46:02.595951+00:00",
+      "prev_hash": "8791fb03dcc42af1edfcc1a5e6663ab23f233d3e51af741a2159c64a1feb6cb0",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "attempt_no": 1,
+        "call_id": "CALL-7BD593DAF1994FD2"
+      },
+      "sequence": 13
+    },
+    {
+      "actor_kind": "tool_runtime",
+      "event_hash": "5f2a778b856b8f634bcc0415313e811deca5f9c5d0d7d549e92c1d24dfb73a6d",
+      "event_id": 14,
+      "event_type": "tool_attempt_succeeded",
+      "occurred_at_utc": "2026-08-17T08:46:02.645394+00:00",
+      "prev_hash": "4b0aa544b06f38d94d2ba85593a61e1939e0062cf6e1a854674ba15bc456a430",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "attempt_no": 1,
+        "call_id": "CALL-7BD593DAF1994FD2",
+        "duration_ms": 45.22439999891503,
+        "result_hash": "4ab9d2e55fd912e97bab453fdee65f5c66d1bf09ee08472c91d0da647af8667f"
+      },
+      "sequence": 14
+    },
+    {
+      "actor_kind": "system",
+      "event_hash": "71642e311f60715a3a30a0cf315767cc9c57a6689eafcee358fc766eb891e3e6",
+      "event_id": 15,
+      "event_type": "run_status_changed",
+      "occurred_at_utc": "2026-08-17T08:46:02.655436+00:00",
+      "prev_hash": "5f2a778b856b8f634bcc0415313e811deca5f9c5d0d7d549e92c1d24dfb73a6d",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_payload": {
+        "error_code": null,
+        "from": "running",
+        "to": "completed"
+      },
+      "sequence": 15
+    }
+  ],
+  "model_calls": [],
+  "run": {
+    "created_at_utc": "2026-08-15T12:47:14.950282+00:00",
+    "dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+    "mode": "offline_agent_demo",
+    "request_sha256": "d461e7c25bb14b642f78773a0c6b197d053b111e2a117aacf018bbec4b456214",
+    "run_id": "RUN-AUDIT-1F21418E7709405F",
+    "status": "completed",
+    "terminal_error_code": null,
+    "updated_at_utc": "2026-08-17T08:46:02.655436+00:00"
+  },
+  "schema_version": "1.0",
+  "tool_attempts": [
+    {
+      "attempt_no": 1,
+      "backoff_ms": 100,
+      "call_id": "CALL-852F2A2C74CE4536",
+      "duration_ms": 0.043899985030293465,
+      "ended_at_utc": "2026-08-15T12:47:15.017889+00:00",
+      "error_code": "artifact_temporarily_locked",
+      "outcome": "failed",
+      "result_hash": null,
+      "retryable": 1,
+      "safe_error_message": "聚合证据暂时被占用；允许按重试策略再次读取。",
+      "started_at_utc": "2026-08-15T12:47:15.010242+00:00"
+    },
+    {
+      "attempt_no": 2,
+      "backoff_ms": null,
+      "call_id": "CALL-852F2A2C74CE4536",
+      "duration_ms": 4.965899977833033,
+      "ended_at_utc": "2026-08-15T12:47:15.053545+00:00",
+      "error_code": null,
+      "outcome": "succeeded",
+      "result_hash": "2115ce1d6c5c7eb5115dcb812bb5ae2c44e7e6a451c185c97e7ccaf1865a2bd0",
+      "retryable": 0,
+      "safe_error_message": null,
+      "started_at_utc": "2026-08-15T12:47:15.041572+00:00"
+    },
+    {
+      "attempt_no": 1,
+      "backoff_ms": null,
+      "call_id": "CALL-7BD593DAF1994FD2",
+      "duration_ms": 45.22439999891503,
+      "ended_at_utc": "2026-08-17T08:46:02.645394+00:00",
+      "error_code": null,
+      "outcome": "succeeded",
+      "result_hash": "4ab9d2e55fd912e97bab453fdee65f5c66d1bf09ee08472c91d0da647af8667f",
+      "retryable": 0,
+      "safe_error_message": null,
+      "started_at_utc": "2026-08-17T08:46:02.595951+00:00"
+    }
+  ],
+  "tool_calls": [
+    {
+      "approval_scope_hash": "b747efb97a78b711d6fb5a835a0a40bd49a883def58dbc120a7f6bba68c1f45a",
+      "args_hash": "9daecf7a70c64ab07254c3a1d3574e2530194377ca08d652c694f912f96f3f56",
+      "attempt_count": 2,
+      "call_id": "CALL-852F2A2C74CE4536",
+      "created_at_utc": "2026-08-15T12:47:14.973493+00:00",
+      "idempotency_key": "CALL-852F2A2C74CE4536",
+      "policy_version": "1.0.0",
+      "result_hash": "2115ce1d6c5c7eb5115dcb812bb5ae2c44e7e6a451c185c97e7ccaf1865a2bd0",
+      "risk_class": "read_only",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_args": {
+        "bundle_id": "phase3"
+      },
+      "safe_result": {
+        "analysis_run_id": "RUN-C5D58104E492",
+        "bundle_id": "phase3",
+        "dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+        "evidence": [
+          {
+            "contrast": {
+              "adjusted_mean_difference": -5.6069303056318915,
+              "confidence_interval": {
+                "lower": -7.935143502095155,
+                "upper": -3.278717109168628
+              },
+              "confidence_level": 0.95,
+              "direction": "treatment - control",
+              "standard_error_hc3": 1.1810071281941852
+            },
+            "evidence_id": "E-7C87BB6C88EB",
+            "included_rows": 212,
+            "method_code": "ancova_linear_model",
+            "p_value": 3.817575932819937e-06,
+            "role": "primary"
+          },
+          {
+            "contrast": {
+              "cohen_d_pooled_sd": -0.45564343307939037,
+              "confidence_interval": {
+                "lower": -10.842458427218284,
+                "upper": -2.734939077238087
+              },
+              "confidence_level": 0.95,
+              "direction": "treatment - control",
+              "hedges_g_pooled_sd": -0.4540138715154302,
+              "mean_difference": -6.788698752228186,
+              "standard_error": 2.055986039092505
+            },
+            "evidence_id": "E-B93CD9DC7751",
+            "included_rows": 212,
+            "method_code": "welch_t_test",
+            "p_value": 0.001134077491786515,
+            "role": "sensitivity"
+          }
+        ],
+        "raw_data_embedded": false
+      },
+      "status": "succeeded",
+      "terminal_error_code": null,
+      "tool_name": "read_aggregate_evidence",
+      "tool_version": "1.0.0",
+      "updated_at_utc": "2026-08-15T12:47:15.053545+00:00"
+    },
+    {
+      "approval_scope_hash": "81b73919beb276f8c2ae9a29b38b49f3011b66d9b030603c5c750f32ef6251fb",
+      "args_hash": "2924f3909ea2cf0d64afabdd5467680c80aeaad270cf2036cdf3175ef335fc08",
+      "attempt_count": 1,
+      "call_id": "CALL-7BD593DAF1994FD2",
+      "created_at_utc": "2026-08-15T12:47:15.074242+00:00",
+      "idempotency_key": "CALL-7BD593DAF1994FD2",
+      "policy_version": "1.0.0",
+      "result_hash": "4ab9d2e55fd912e97bab453fdee65f5c66d1bf09ee08472c91d0da647af8667f",
+      "risk_class": "controlled_write",
+      "run_id": "RUN-AUDIT-1F21418E7709405F",
+      "safe_args": {
+        "bundle_id": "phase3",
+        "release_name": "demo-release"
+      },
+      "safe_result": {
+        "files": {
+          "analysis_bundle.json": "2a654e379e9876f90331850666e9c462ff66349b48ad53cb2df1898e73a3cf41",
+          "effect_estimates.png": "d4e061cde8f080dd4d053d746b13448b6d1e07d786441aa51585c5cd95ee523c"
+        },
+        "idempotent_replay": false,
+        "release_id": "phase4-release:demo-release"
+      },
+      "status": "succeeded",
+      "terminal_error_code": null,
+      "tool_name": "publish_aggregate_results",
+      "tool_version": "1.0.0",
+      "updated_at_utc": "2026-08-17T08:46:02.645394+00:00"
+    }
+  ]
+}
