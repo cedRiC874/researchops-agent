@@ -16,6 +16,9 @@ flowchart LR
     U["研究问题 + 脱敏 CSV + 显式研究设计"]
     R["逻辑资源注册表\ndataset_id / bundle_id / release_name"]
     A["Agent 规划层\nOpenAI Agents SDK 适配器"]
+    B["每次运行独立 Provider\nKey / client / model / transport"]
+    OA["OpenAI Responses"]
+    DS["DeepSeek V4\nOpenAI-compatible Responses"]
 
     subgraph D["确定性分析层"]
         Q["数据质量检查\n结构、缺失、标识符、注入风险"]
@@ -44,6 +47,9 @@ flowchart LR
     E --> V
     E --> P
     R --> A
+    A --> B
+    B --> OA
+    B --> DS
     A -->|"仅逻辑 ID 和受控工具"| G
     G --> X
     G -->|"受控写入"| H --> X
@@ -139,10 +145,15 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | `offline_deterministic` | 数据质量、方法选择、统计工具、报告、重试、审批和审计控制面 | 固定 50 题，50/50 通过 | 真实 LLM 的规划成功率 |
 | Phase 6 scripted/replay | Agent 工具轨迹采集、评分器和审批暂停协议 | 20 题语料校验与无网络 SDK 回归测试 | 真实 provider 的质量、延迟或成本 |
-| `online_openai_agents_sdk` | 真实模型的工具选择、参数、证据回答 | 当前因 API Platform 外部计费条件阻塞 | 在线成功率、真实 token 成本或线上延迟 |
+| `online_agents_sdk` + `provider=openai` | OpenAI 模型的工具选择、参数、证据回答 | adapter 已验证；在线因 OpenAI API 计费条件阻塞 | 在线成功率、真实 token 成本或线上延迟 |
+| `online_agents_sdk` + `provider=deepseek` | DeepSeek V4 的同一 20 题行为合同 | provider/key/client/审批/审计已完成离线测试；真实 smoke 尚未运行 | DeepSeek 的在线成功率、真实延迟或成本 |
+
+Provider 是显式安全边界：OpenAI 与 DeepSeek 使用不同环境变量和独立 client，不允许任意 base URL，也不会修改 SDK 全局 Key。DeepSeek 会忽略 `parallel_tool_calls=False`，因此工具串行、调用预算和每运行单发布提案上限均由本地控制面强制执行，而不是依赖模型服务。
 
 这种拆分遵循 OpenAI 官方关于任务特定评测、典型/边缘/对抗样本、持续评测，以及分别检查最终回答、工具调用和证据的建议：
 
 - [Evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices)
 - [Evaluate agent workflows](https://developers.openai.com/api/docs/guides/agent-evals)
 - [Guardrails and approvals](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals)
+- [Agents SDK model providers](https://openai.github.io/openai-agents-python/models/)
+- [DeepSeek Responses API compatibility](https://api-docs.deepseek.com/guides/responses_api/)

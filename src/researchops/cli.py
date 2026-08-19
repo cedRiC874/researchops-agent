@@ -16,6 +16,7 @@ from .eval_runner import (
     validate_eval_suite,
 )
 from .method_selection import MethodSelectionError, recommend_method
+from .model_providers import ProviderConfigurationError
 from .offline_agent import (
     decide_phase4_call,
     resume_phase4_call,
@@ -131,9 +132,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--output-dir", type=Path, default=Path("artifacts/phase5")
     )
 
-    subparsers.add_parser(
+    phase6_status_parser = subparsers.add_parser(
         "phase6-status",
         help="检查第六阶段在线评测就绪状态（不导入 Runner、不联网）",
+    )
+    phase6_status_parser.add_argument(
+        "--provider", choices=("openai", "deepseek"), default="openai"
     )
 
     phase6_validate_parser = subparsers.add_parser(
@@ -157,6 +161,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--splits", type=Path, default=Path("evals/phase6_splits.json")
     )
     phase6_run_parser.add_argument("--output-dir", type=Path, required=True)
+    phase6_run_parser.add_argument(
+        "--provider", choices=("openai", "deepseek"), required=True
+    )
     phase6_run_parser.add_argument("--model", required=True)
     phase6_run_parser.add_argument(
         "--split", choices=("development", "holdout"), required=True
@@ -250,7 +257,13 @@ def main() -> int:
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if result["report"]["failed_count"] == 0 else 5
         elif args.command == "phase6-status":
-            print(json.dumps(phase6_status(), ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    phase6_status(provider=args.provider),
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             return 0
         elif args.command == "phase6-validate":
             result = validate_phase6_suite(args.tasks, args.splits)
@@ -264,6 +277,7 @@ def main() -> int:
                     tasks_path=args.tasks,
                     split_manifest_path=args.splits,
                     output_directory=args.output_dir,
+                    provider=args.provider,
                     model=args.model,
                     split=args.split,
                     max_cases=args.max_cases,
@@ -288,6 +302,7 @@ def main() -> int:
         AuditError,
         EvalContractError,
         EvaluationRunError,
+        ProviderConfigurationError,
         Phase6AgentError,
         Phase6ContractError,
         Phase6RunError,

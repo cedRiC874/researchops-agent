@@ -20,7 +20,9 @@ from typing import Any
 
 from .artifact_security import ArtifactPermissionError, enable_parent_acl_inheritance
 from .audit import AuditLedger, safe_audit_value, sha256_json
+from .model_providers import ProviderAdapter, get_provider
 from .phase6_agent import (
+    PHASE6_MAX_OUTPUT_TOKENS,
     AgentRunRecord,
     ControlledExecutorBackend,
     LogicalAgentRequest,
@@ -29,6 +31,7 @@ from .phase6_agent import (
     run_phase6_agent,
 )
 from .phase6_eval import (
+    PHASE6_SCHEMA_VERSION,
     Phase6ContractError,
     Phase6Task,
     Phase6TaskScore,
@@ -40,14 +43,26 @@ from .phase6_eval import (
 from .tool_runtime import ControlledToolExecutor, build_project_tool_registry
 
 
-PHASE6_RUNNER_VERSION = "1.0.0"
-PHASE6_EVALUATION_MODE = "online_openai_agents_sdk"
+PHASE6_RUNNER_VERSION = "1.6.0"
+PHASE6_EVALUATION_MODE = "online_agents_sdk"
 PHASE6_SUBJECT_UNDER_TEST = "agent_planning_tool_trace_and_final_answer"
 _SPLITS = {"development", "holdout"}
 _SAFE_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _PATH_TRAVERSAL = re.compile(r"(?:\.\.[/\\])+[^\s\"'<>]*")
+_WINDOWS_ABSOLUTE_PATH = re.compile(
+    r"(?<!\w)(?:"
+    r"[A-Za-z]:[\\/](?:[A-Za-z0-9._-]+[\\/])*[A-Za-z0-9._-]+|"
+    r"\\\\[A-Za-z0-9._-]+\\(?:[A-Za-z0-9._-]+\\)*[A-Za-z0-9._-]+|"
+    r"//(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+"
+    r")"
+)
 _UNIX_ABSOLUTE_PATH = re.compile(
-    r"(?<![A-Za-z0-9])/(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+"
+    # ``\w`` is Unicode-aware, so a slash inside terms such as
+    # ``k-匿名/l-多样性`` is not mistaken for the start of a path.  Blocking a
+    # preceding slash also avoids treating the second slash in ``https://`` as
+    # an absolute path.  Start-of-string, whitespace, quotes, brackets and
+    # assignment punctuation still satisfy this boundary.
+    r"(?<![\w/])/(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+"
 )
 
 AgentRunner = Callable[..., Awaitable[AgentRunRecord] | AgentRunRecord]
@@ -69,12 +84,26 @@ class Phase6RunError(RuntimeError):
         }
 
 
-def phase6_status(*, environment: Mapping[str, str] | None = None) -> dict[str, Any]:
+def phase6_status(
+    *,
+    provider: str = "openai",
+    environment: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
     """Report local readiness without importing a Runner or making a network call."""
 
-    configured = bool((environment or os.environ).get("OPENAI_API_KEY"))
+    adapter = get_provider(provider)
+    environment_source = os.environ if environment is None else environment
+    configured_value = environment_source.get(adapter.api_key_env)
+    configured = isinstance(configured_value, str) and bool(configured_value.strip())
     sdk = phase6_sdk_status()
-    sdk["api_key_configured"] = configured
+    sdk.update(
+        {
+            "api_key_configured": configured,
+            "api_key_environment_variable": adapter.api_key_env,
+            "provider": adapter.provider_id,
+            "transport": adapter.transport_id,
+        }
+    )
     if not sdk["installed"]:
         online_status = "not_run"
         reason = "sdk_not_installed"
@@ -87,6 +116,8 @@ def phase6_status(*, environment: Mapping[str, str] | None = None) -> dict[str, 
     return {
         "status": "ok",
         "evaluation_mode": PHASE6_EVALUATION_MODE,
+        "provider": adapter.provider_id,
+        "transport": adapter.transport_id,
         "online_run_status": online_status,
         "not_run_reason": reason,
         "sdk": sdk,
@@ -106,6 +137,7 @@ def validate_phase6_suite(
     return {
         "status": "valid",
         "schema_version": "1.0",
+        "task_schema_version": PHASE6_SCHEMA_VERSION,
         "task_count": len(tasks),
         "split_counts": dict(sorted(Counter(task.split for task in tasks).items())),
         "task_sha256": _sha256_file(task_source),
@@ -121,6 +153,7 @@ async def run_phase6_online_evaluation(
     tasks_path: str | Path,
     split_manifest_path: str | Path,
     output_directory: str | Path,
+    provider: str = "openai",
     model: str,
     split: str,
     max_cases: int,
@@ -140,8 +173,9 @@ async def run_phase6_online_evaluation(
     """
 
     _require_online_confirmation(confirm_online)
-    api_key = _environment_api_key(environment)
-    normalized_model = _validate_model(model)
+    adapter = get_provider(provider)
+    normalized_model = adapter.validate_model(_validate_model(model))
+    api_key = _environment_api_key(adapter, environment)
     normalized_split = _validate_split(split)
     _require_positive_int("max_cases", max_cases)
     _require_positive_int("max_turns", max_turns)
@@ -151,6 +185,11 @@ async def run_phase6_online_evaluation(
     prices = _validate_price_pair(
         input_price_per_million_usd, output_price_per_million_usd
     )
+    if adapter.provider_id != "openai" and prices is not None:
+        raise Phase6RunError(
+            "phase6_pricing_unsupported_for_provider",
+            "当前 provider 不支持旧式输入/输出两档价格；成本必须保持 unavailable。",
+        )
 
     # All checks above are mutation-free. In particular, missing confirmation/key
     # returns before output directories, databases, Agents, or Runners are created.
@@ -203,6 +242,8 @@ async def run_phase6_online_evaluation(
                     "task_id": task.task_id,
                     "split": task.split,
                     "public_input_sha256": sha256_json(public_input),
+                    "provider": adapter.provider_id,
+                    "transport": adapter.transport_id,
                     "model": normalized_model,
                 },
             )
@@ -228,6 +269,8 @@ async def run_phase6_online_evaluation(
                     "agent_request_dispatched",
                     {
                         "task_id": task.task_id,
+                        "provider": adapter.provider_id,
+                        "transport": adapter.transport_id,
                         "model": normalized_model,
                         "max_turns": max_turns,
                         "tracing_disabled": True,
@@ -240,6 +283,7 @@ async def run_phase6_online_evaluation(
                     request=request,
                     backend=backend,
                     api_key=api_key,
+                    provider=adapter,
                     model=normalized_model,
                     max_turns=max_turns,
                     timeout_seconds=timeout_seconds,
@@ -254,6 +298,16 @@ async def run_phase6_online_evaluation(
                         "phase6_model_trace_mismatch",
                         "Agent 记录的模型与显式 --model 不一致。",
                     )
+                if record.provider != adapter.provider_id:
+                    raise Phase6RunError(
+                        "phase6_provider_trace_mismatch",
+                        "Agent 记录的 provider 与显式 --provider 不一致。",
+                    )
+                if record.transport != adapter.transport_id:
+                    raise Phase6RunError(
+                        "phase6_transport_trace_mismatch",
+                        "Agent 记录的 transport 与 provider 配置不一致。",
+                    )
                 if not record.tracing_disabled:
                     raise Phase6RunError(
                         "phase6_external_tracing_enabled",
@@ -265,6 +319,8 @@ async def run_phase6_online_evaluation(
                     run_id,
                     record,
                     started_at_utc=started_at_utc,
+                    provider=adapter.provider_id,
+                    transport=adapter.transport_id,
                     prices=prices,
                 )
                 safe_record = _safe_record(record)
@@ -274,6 +330,8 @@ async def run_phase6_online_evaluation(
                     {
                         "trace_sha256": sha256_json(record.to_dict()),
                         "status": record.status,
+                        "provider": record.provider,
+                        "transport": record.transport,
                         "tool_calls": safe_record["tool_calls"],
                         "approval_interruptions": safe_record[
                             "approval_interruptions"
@@ -324,9 +382,11 @@ async def run_phase6_online_evaluation(
                 )
                 result_rows.append(
                     {
-                        "schema_version": "1.0",
+                        "schema_version": "1.1",
                         "task_id": task.task_id,
                         "split": task.split,
+                        "provider": adapter.provider_id,
+                        "transport": adapter.transport_id,
                         "execution_status": "executed",
                         "observation": safe_record,
                         "evidence_ids_by_tool_call": evidence_by_call_id,
@@ -350,6 +410,8 @@ async def run_phase6_online_evaluation(
                         "error_code": error_code,
                         "error_class": type(exc).__name__,
                         "latency_ms": latency_ms,
+                        "provider": adapter.provider_id,
+                        "transport": adapter.transport_id,
                     },
                     actor_kind="eval_harness",
                 )
@@ -364,9 +426,11 @@ async def run_phase6_online_evaluation(
                 scores.append(score)
                 result_rows.append(
                     {
-                        "schema_version": "1.0",
+                        "schema_version": "1.1",
                         "task_id": task.task_id,
                         "split": task.split,
+                        "provider": adapter.provider_id,
+                        "transport": adapter.transport_id,
                         "execution_status": "runner_error",
                         "error_code": error_code,
                         "observation": None,
@@ -387,6 +451,8 @@ async def run_phase6_online_evaluation(
                 {
                     "task_id": task.task_id,
                     "run_id": run_id,
+                    "provider": adapter.provider_id,
+                    "transport": adapter.transport_id,
                     "chain_verification": verification.to_dict(),
                 }
             )
@@ -405,10 +471,13 @@ async def run_phase6_online_evaluation(
         )
         report.update(
             {
-                "schema_version": "1.0",
+                "schema_version": "1.1",
                 "evaluation_mode": PHASE6_EVALUATION_MODE,
                 "subject_under_test": PHASE6_SUBJECT_UNDER_TEST,
+                "provider": adapter.provider_id,
+                "transport": adapter.transport_id,
                 "model": normalized_model,
+                "max_output_tokens": PHASE6_MAX_OUTPUT_TOKENS,
                 "selected_split": normalized_split,
                 "selected_case_count": len(selected),
                 "harness_error_count": harness_error_count,
@@ -428,7 +497,7 @@ async def run_phase6_online_evaluation(
                 "sdk_tool_call_failure_rate": (
                     tool_errors / tool_units if tool_units else None
                 ),
-                "pricing": _pricing_manifest(prices),
+                "pricing": _pricing_manifest(prices, provider=adapter.provider_id),
             }
         )
 
@@ -436,7 +505,7 @@ async def run_phase6_online_evaluation(
         _write_json(staging / "phase6_report.json", report)
         _write_json(
             staging / "phase6_audit_index.json",
-            {"schema_version": "1.0", "runs": audit_index},
+            {"schema_version": "1.1", "runs": audit_index},
         )
         (staging / "phase6_summary.md").write_text(
             _summary_markdown(report), encoding="utf-8"
@@ -450,17 +519,20 @@ async def run_phase6_online_evaluation(
             staging / "phase6_summary.md",
         ]
         manifest = {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "evaluation_mode": PHASE6_EVALUATION_MODE,
             "subject_under_test": PHASE6_SUBJECT_UNDER_TEST,
             "runner_version": PHASE6_RUNNER_VERSION,
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "provider": adapter.provider_id,
+            "transport": adapter.transport_id,
             "model": normalized_model,
             "selection": {
                 "split": normalized_split,
                 "max_cases": max_cases,
                 "executed_case_count": len(selected),
                 "max_turns": max_turns,
+                "max_output_tokens": PHASE6_MAX_OUTPUT_TOKENS,
                 "case_timeout_seconds": timeout_seconds,
                 "sequential_execution": True,
             },
@@ -468,9 +540,10 @@ async def run_phase6_online_evaluation(
                 "external_tracing_disabled": True,
                 "publish_boundary": "sdk_interrupt_plus_local_pending_proposal",
                 "approval_resume_supported": False,
-                "raw_prompt_or_api_key_persisted": False,
+                "raw_prompt_or_api_key_locally_persisted": False,
             },
             "task_corpus": {
+                "schema_version": PHASE6_SCHEMA_VERSION,
                 "file_name": task_source.name,
                 "sha256": _sha256_file(task_source),
                 "split_manifest_file_name": split_source.name,
@@ -484,10 +557,12 @@ async def run_phase6_online_evaluation(
                 "python": platform.python_version(),
                 "platform": platform.platform(),
                 "openai_agents": sdk.get("version"),
+                "provider": adapter.provider_id,
+                "transport": adapter.transport_id,
             },
             "usage": report["usage"],
             "cost": report["cost"],
-            "pricing": _pricing_manifest(prices),
+            "pricing": _pricing_manifest(prices, provider=adapter.provider_id),
             "harness_error_count": harness_error_count,
             "execution_failure_count": execution_failure_count,
             "audit": {
@@ -496,7 +571,8 @@ async def run_phase6_online_evaluation(
                 "all_chains_valid": all(
                     item["chain_verification"]["valid"] for item in audit_index
                 ),
-                "sdk_transport_retry_detail": "not_exposed_by_current_adapter",
+                "provider_client_max_retries": 0,
+                "sdk_transport_retry_detail": "provider_client_retries_disabled",
                 "local_tool_attempts_and_retries": "recorded_in_sqlite",
                 "model_call_latency_semantics": (
                     "allocated_estimate_equal_share_of_agent_run_latency"
@@ -533,6 +609,8 @@ async def run_phase6_online_evaluation(
         return {
             "status": "completed",
             "evaluation_mode": PHASE6_EVALUATION_MODE,
+            "provider": adapter.provider_id,
+            "transport": adapter.transport_id,
             "output_directory": str(output_path),
             "manifest": str(output_path / "phase6_manifest.json"),
             "report": report,
@@ -552,12 +630,16 @@ def _require_online_confirmation(value: bool) -> None:
         )
 
 
-def _environment_api_key(environment: Mapping[str, str] | None) -> str:
-    candidate = (environment or os.environ).get("OPENAI_API_KEY")
+def _environment_api_key(
+    provider: ProviderAdapter,
+    environment: Mapping[str, str] | None,
+) -> str:
+    environment_source = os.environ if environment is None else environment
+    candidate = environment_source.get(provider.api_key_env)
     if not isinstance(candidate, str) or not candidate.strip():
         raise Phase6RunError(
             "api_key_missing",
-            "未配置 OPENAI_API_KEY；在线评测未运行，且不会计为 0 分。",
+            f"未配置 {provider.api_key_env}；在线评测未运行，且不会计为 0 分。",
             not_run=True,
         )
     return candidate.strip()
@@ -680,6 +762,7 @@ async def _run_one_agent(
     request: LogicalAgentRequest,
     backend: ControlledExecutorBackend,
     api_key: str,
+    provider: ProviderAdapter,
     model: str,
     max_turns: int,
     timeout_seconds: float,
@@ -692,6 +775,12 @@ async def _run_one_agent(
             "tracing_disabled": True,
         }
         parameters = inspect.signature(runner).parameters
+        supports_var_kwargs = any(
+            item.kind is inspect.Parameter.VAR_KEYWORD
+            for item in parameters.values()
+        )
+        if "provider" in parameters or supports_var_kwargs:
+            keyword_arguments["provider"] = provider
         if "run_timeout_seconds" in parameters or any(
             item.kind is inspect.Parameter.VAR_KEYWORD
             for item in parameters.values()
@@ -765,6 +854,8 @@ def _record_model_usage(
     record: AgentRunRecord,
     *,
     started_at_utc: str,
+    provider: str,
+    transport: str,
     prices: tuple[float, float] | None,
 ) -> None:
     usage_rows: list[dict[str, Any]] = []
@@ -801,6 +892,8 @@ def _record_model_usage(
                 "model_response_usage_recorded",
                 {
                     "response_index": response.response_index,
+                    "provider": provider,
+                    "transport": transport,
                     "response_id_sha256": response.response_id_sha256,
                     "request_id_sha256": response.request_id_sha256,
                     "usage_complete": usage.complete,
@@ -843,7 +936,7 @@ def _record_model_usage(
         row_cost = _estimate_usage_row_cost(item, prices)
         ledger.record_model_call(
             run_id,
-            provider="openai",
+            provider=provider,
             model=record.model,
             started_at_utc=started_at_utc,
             latency_ms=duration_share,
@@ -873,6 +966,8 @@ def _record_model_usage(
             "model_call_rows_recorded": len(usage_rows),
             "latency_allocation": "equal_share_of_agent_segment",
             "model_call_cost_method": "per_row_input_output_token_estimate",
+            "provider": provider,
+            "transport": transport,
         },
         actor_kind="agent_sdk",
     )
@@ -1015,7 +1110,11 @@ def _release_target(root: Path, release_name: str | None) -> Path | None:
 def _safe_record(record: AgentRunRecord) -> dict[str, Any]:
     return {
         "status": record.status,
+        "provider": record.provider,
+        "transport": record.transport,
         "model": record.model,
+        "completion_integrity": record.completion_integrity,
+        "completion_error_code": record.completion_error_code,
         "final_output": _safe_text(record.final_output),
         "tool_calls": [safe_audit_value(call.to_dict()) for call in record.tool_calls],
         "usage": record.usage.to_dict(),
@@ -1040,6 +1139,7 @@ def _safe_text(value: str | None) -> str | None:
     if not isinstance(cleaned, str):
         return "[OUTPUT_OMITTED]"
     cleaned = _PATH_TRAVERSAL.sub("[PATH_REDACTED]", cleaned)
+    cleaned = _WINDOWS_ABSOLUTE_PATH.sub("[PATH_REDACTED]", cleaned)
     cleaned = _UNIX_ABSOLUTE_PATH.sub("[PATH_REDACTED]", cleaned)
     return cleaned[:8192] + ("[TRUNCATED]" if len(cleaned) > 8192 else "")
 
@@ -1065,16 +1165,22 @@ def _is_execution_failure(exc: Exception) -> bool:
     }
 
 
-def _pricing_manifest(prices: tuple[float, float] | None) -> dict[str, Any]:
+def _pricing_manifest(
+    prices: tuple[float, float] | None,
+    *,
+    provider: str,
+) -> dict[str, Any]:
     if prices is None:
         return {
             "status": "not_provided",
+            "provider": provider,
             "input_per_million_usd": None,
             "output_per_million_usd": None,
             "cost_is_estimate": False,
         }
     return {
         "status": "provided_by_operator",
+        "provider": provider,
         "input_per_million_usd": prices[0],
         "output_per_million_usd": prices[1],
         "cost_is_estimate": True,
@@ -1090,8 +1196,12 @@ def _summary_markdown(report: Mapping[str, Any]) -> str:
     cost = report.get("cost", {})
     return (
         "# Phase 6 在线 Agent 评测\n\n"
-        "> 范围：真实 OpenAI Agents SDK 规划、工具轨迹、最终证据回答与审批中断。\n\n"
+        "> 范围：OpenAI Agents SDK 驱动的 provider 模型规划、工具轨迹、"
+        "最终证据回答与审批中断。\n\n"
+        f"- Provider：`{report.get('provider')}`\n"
+        f"- Transport：`{report.get('transport')}`\n"
         f"- 模型：`{report.get('model')}`\n"
+        f"- 单次响应输出上限：{report.get('max_output_tokens')} tokens\n"
         f"- Split：`{report.get('selected_split')}`\n"
         f"- 成功率：{success_text}\n"
         f"- 通过：{report.get('passed')}/{report.get('included')}\n"
@@ -1099,6 +1209,13 @@ def _summary_markdown(report: Mapping[str, Any]) -> str:
         f"Harness 错误：{report.get('harness_error_count')}\n"
         f"- 逻辑工具错误率：{report.get('logical_tool_error_rate')}\n"
         f"- 本地工具 attempt 错误率：{report.get('local_tool_attempt_error_rate')}\n"
+        f"- 回答完整性准确率/覆盖率：{report.get('completion_integrity_accuracy')}/"
+        f"{report.get('completion_integrity_coverage')}；失败数："
+        f"{len(report.get('completion_failures', []))}\n"
+        f"- Evidence 标签完整性准确率："
+        f"{report.get('evidence_label_integrity_accuracy')}\n"
+        f"- Numeric CLAIM 任务准确率：{report.get('numeric_claim_task_accuracy')}\n"
+        f"- Evidence precision：{report.get('evidence_precision')}\n"
         f"- 延迟 P50/P95（ms）：{latency.get('p50_nearest_rank')}/"
         f"{latency.get('p95_nearest_rank')}\n"
         f"- 成本状态：`{cost.get('status')}`；总成本：{cost.get('total_usd')}\n"

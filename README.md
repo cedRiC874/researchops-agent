@@ -16,9 +16,11 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
 | 离线组件与控制面评测 | 已验证 | 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | 110/110 通过 |
+| 自动化测试 | 已验证 | 144/144 通过 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
-| 真实在线 Agent 质量 | 外部阻塞 | API Key 已完成认证，但 API Platform 计费不可用；不发布在线成功率、token、成本或延迟 |
+| Provider 适配 | 已验证 | OpenAI 与 DeepSeek 使用独立 Key/client；DeepSeek V4 模型 allowlist、固定 endpoint、零隐藏重试 |
+| DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
+| OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
 离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率。
 
@@ -45,10 +47,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\portfolio_demo.ps1
 
 当前源码对应的脱敏快照：
 
-- [离线评测摘要](artifacts/portfolio_baseline/eval_summary.md)
-- [完整指标 JSON](artifacts/portfolio_baseline/eval_report.json)
-- [可复现 manifest](artifacts/portfolio_baseline/eval_manifest.json)
-- [50 条审计链索引](artifacts/portfolio_baseline/eval_audit_index.json)
+- [离线评测摘要](artifacts/portfolio_baseline_provider/eval_summary.md)
+- [完整指标 JSON](artifacts/portfolio_baseline_provider/eval_report.json)
+- [可复现 manifest](artifacts/portfolio_baseline_provider/eval_manifest.json)
+- [50 条审计链索引](artifacts/portfolio_baseline_provider/eval_audit_index.json)
 
 ## 最值得展示的分析结果
 
@@ -184,7 +186,7 @@ $callId = "CALL-从输出复制"
 | 审批安全 | 6 | 暂停、批准、拒绝、过期、参数绑定、禁止导出 |
 | 报告证据 | 4 | claim 绑定、局限性、图表引用、表述护栏 |
 
-最新快照：50/50；非预期工具错误 0/45；主动注入的毛工具错误 11/45；安全违规 0/50；证据引用 21/21；P50/P95 为 87.77/288.80 ms。
+最新快照：50/50；非预期工具错误 0/45；主动注入的毛工具错误 11/45；安全违规 0/50；证据引用 21/21；P50/P95 为 100.38/411.03 ms。
 
 黄金答案只在执行结束后加载，系统输入只能来自 `EvalTask.public_input()`。完整指标见 [证据索引](docs/EVIDENCE.md)。
 
@@ -198,7 +200,27 @@ $callId = "CALL-从输出复制"
 - 审批首次暂停和外部副作用 sentinel
 - usage/cost 完整性与失败分母
 
-当前 OpenAI Agents SDK 适配器锁定 `openai-agents==0.21.0`。在线 smoke 已尝试，但在首个模型响应前因外部 API 计费条件失败。因此在线成功率、工具准确率、延迟和成本均保持 `unavailable`；不会用离线成绩替代。
+当前编排层锁定 `openai-agents==0.21.0`，并通过每次运行独立的 provider client 支持 OpenAI Responses 与 DeepSeek OpenAI-compatible Responses。DeepSeek 仅允许 `deepseek-v4-flash` / `deepseek-v4-pro`，只读取 `DEEPSEEK_API_KEY`，不修改 SDK 全局 Key/client，也不启用 OpenAI tracing。
+
+DeepSeek 会忽略 `parallel_tool_calls=False`，所以串行与审批安全由本地执行边界实现：四个工具共享每次运行的锁和调用预算，每个运行最多一个待审批发布提案，发布工具仍只能暂停而不能执行。
+
+### DeepSeek 冻结版在线评测
+
+冻结版 `phase6-deepseek-v1` 的 development 与 holdout 使用完全相同的运行配置：`deepseek-v4-flash`、runner `1.6.0`、单次响应上限 2000 tokens、source `24a28a7a…`、corpus `7c478dd2…`、split `d19bc5a0…`。
+
+| Split | 结果 | Usage | Agent 段延迟 P50/P95 |
+| --- | ---: | --- | ---: |
+| development | 16/16 | 28 requests；57,723 input；13,316 output；71,039 total tokens | 7.65/17.40 s |
+| repo-local non-secret holdout | 4/4 | 6 requests；13,051 input；3,803 output；16,854 total tokens | 5.05/14.59 s |
+
+成本保持 `null / unavailable`：当前 runner 没有完整、版本化的 DeepSeek 缓存命中/未命中价格表，不能把未知成本写成零。Holdout 只有 4 题、任务和金标都位于仓库内，而且不含审批场景；这些结果不是未知分布或抗污染泛化证明，也不能当成生产 SLA。
+
+证据快照：
+
+- Development：[summary](docs/evidence/phase6-deepseek-v1/development/phase6_summary.md)、[report](docs/evidence/phase6-deepseek-v1/development/phase6_report.json)、[manifest](docs/evidence/phase6-deepseek-v1/development/phase6_manifest.json)、[audit index](docs/evidence/phase6-deepseek-v1/development/phase6_audit_index.json)
+- Holdout：[summary](docs/evidence/phase6-deepseek-v1/holdout/phase6_summary.md)、[report](docs/evidence/phase6-deepseek-v1/holdout/phase6_report.json)、[manifest](docs/evidence/phase6-deepseek-v1/holdout/phase6_manifest.json)、[audit index](docs/evidence/phase6-deepseek-v1/holdout/phase6_audit_index.json)
+
+人工复核还记录了两个不影响自动 4/4、但影响作品集解读的 P2：HOLD-002 在 prose 中报告了 CI/p，却没有输出对应 optional CLAIM；HOLD-003 的路径在安全清洗后出现 `[PATH_REDACTED]`，拒绝决定正确但文本可读性受损。
 
 ## 手动运行核心流程
 
@@ -231,8 +253,8 @@ $env:PYTHONPATH = "src"
 researchops-agent/
 ├── data/                         # 脱敏模拟 CSV 与研究设计
 ├── evals/                        # 50 题组件语料 + 20 题 Agent 行为语料
-├── src/researchops/              # 分析、控制面、Agent、评分器与 runner
-├── tests/                        # 110 项单元/集成/故障注入测试
+├── src/researchops/              # 分析、控制面、provider、Agent、评分器与 runner
+├── tests/                        # 144 项单元/集成/故障注入测试
 ├── scripts/
 │   ├── portfolio_demo.ps1        # 一键完全离线作品集演示
 │   └── verify_phase5_artifacts.py
@@ -250,7 +272,7 @@ GitHub Actions 在 `windows-latest + Python 3.12` 上：
 
 - 安装锁定依赖
 - 验证 50 题与 20 题语料契约
-- 运行 110 项测试
+- 运行 144 项测试
 - 从固定模拟数据重建 50 题离线评测
 - 验证哈希、审计链和敏感 canary
 - 上传脱敏的评测摘要、报告、manifest 和审计索引
@@ -262,8 +284,9 @@ CI 不读取 API Key，也不运行付费在线评测。
 - 全部数据为模拟数据，不代表临床或生产验证。
 - 当前主分析是 available-case，不是完整 ITT；缺失机制与差异性失访需要进一步研究。
 - Phase 5 只评测确定性组件和控制面，模型调用为 0。
-- Phase 6 的 4 题 holdout 位于仓库内，不具备抗污染能力。
-- 在线 provider 质量仍因外部计费条件未验证。
+- Phase 6 的 4 题 holdout 位于仓库内、不具备抗污染能力且不含审批场景；4/4 不能外推到未知请求。
+- DeepSeek development/holdout 是小样本顺序评测，不是生产负载或 SLA；成本因缺少完整价格表保持 unavailable。
+- OpenAI 最小 API 请求在 Key 认证成功后返回 HTTP 429，仍受外部 API 计费条件阻塞。
 - 审计链尚无外部签名 checkpoint；完全控制数据库的人仍可重算整条链。
 - 当前同步只读工具使用软超时；未来慢写工具需要合作式 deadline 或进程隔离。
 - CI 当前只覆盖 Windows；尚未做真实科研数据、外部秘密 holdout 和生产负载测试。
@@ -281,6 +304,9 @@ CI 不读取 API Key，也不运行付费在线评测。
 - [OpenAI Evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices)
 - [OpenAI Agent evals](https://developers.openai.com/api/docs/guides/agent-evals)
 - [OpenAI Guardrails and approvals](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals)
+- [OpenAI Agents SDK model providers](https://openai.github.io/openai-agents-python/models/)
+- [DeepSeek Responses API compatibility](https://api-docs.deepseek.com/guides/responses_api/)
+- [DeepSeek models and pricing](https://api-docs.deepseek.com/quick_start/pricing/)
 
 ## License
 

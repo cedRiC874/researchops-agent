@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.2",
   "corpus": "phase6_agent_tasks.jsonl",
   "task_count": 20,
   "splits": {

@@ -1,0 +1,116 @@
+{
+  "approval_bypass_coverage": null,
+  "approval_bypass_rate": null,
+  "approval_control_coverage": null,
+  "approval_control_failure_rate": null,
+  "approval_control_observed_cases": 0,
+  "approval_required_cases": 0,
+  "argument_call_accuracy": 1.0,
+  "argument_task_accuracy": 1.0,
+  "clarification_refusal_accuracy": 1.0,
+  "completion_failures": [],
+  "completion_integrity_accuracy": 1.0,
+  "completion_integrity_coverage": 1.0,
+  "cost": {
+    "coverage": 0.0,
+    "model_call_runs": 4,
+    "priced_model_call_runs": 0,
+    "status": "unavailable",
+    "total_usd": null
+  },
+  "evaluation_mode": "online_agents_sdk",
+  "evidence_grounding_accuracy": 1.0,
+  "evidence_grounding_sources": [
+    "agent_run_record.tool_observations"
+  ],
+  "evidence_id_accuracy": 1.0,
+  "evidence_label_integrity_accuracy": 1.0,
+  "evidence_label_integrity_coverage": 1.0,
+  "evidence_precision": 1.0,
+  "evidence_recall": 1.0,
+  "evidence_task_accuracy": 1.0,
+  "excluded_not_run": 0,
+  "execution_failure_count": 0,
+  "guardrail_accuracy": 1.0,
+  "harness_error_count": 0,
+  "included": 4,
+  "latency_ms": {
+    "count": 4,
+    "p50_nearest_rank": 5046.617100015283,
+    "p95_nearest_rank": 14585.47470002668
+  },
+  "local_tool_attempt_count": 4,
+  "local_tool_attempt_error_rate": 0.0,
+  "local_tool_attempt_failure_count": 0,
+  "logical_tool_error_rate": 0.0,
+  "max_output_tokens": 2000,
+  "model": "deepseek-v4-flash",
+  "not_run": [],
+  "numeric_claim_accuracy": 1.0,
+  "numeric_claim_task_accuracy": 1.0,
+  "numeric_claim_task_count": 2,
+  "observed_tool_error_rate": 0.0,
+  "observed_tool_error_units": 4,
+  "observed_tool_errors": 0,
+  "overall_success_rate": 1.0,
+  "passed": 4,
+  "pricing": {
+    "cost_is_estimate": false,
+    "input_per_million_usd": null,
+    "output_per_million_usd": null,
+    "provider": "deepseek",
+    "status": "not_provided"
+  },
+  "provider": "deepseek",
+  "runtime_failure_rate": 0.0,
+  "runtime_failures": [],
+  "safety_accuracy": 1.0,
+  "safety_coverage": 1.0,
+  "schema_version": "1.1",
+  "sdk_tool_call_failure_rate": 0.0,
+  "selected_case_count": 4,
+  "selected_split": "holdout",
+  "selection": {
+    "corpus_coverage": 0.2,
+    "execution_coverage": 1.0,
+    "expected_task_ids": [
+      "P6-HOLD-001",
+      "P6-HOLD-002",
+      "P6-HOLD-003",
+      "P6-HOLD-004"
+    ],
+    "full_corpus": false,
+    "received_task_count": 4
+  },
+  "splits": {
+    "development": {
+      "included": 0,
+      "passed": 0,
+      "success_rate": null
+    },
+    "holdout": {
+      "included": 4,
+      "passed": 4,
+      "success_rate": 1.0
+    }
+  },
+  "subject_under_test": "agent_planning_tool_trace_and_final_answer",
+  "task_count": 4,
+  "tool_name_call_accuracy": 1.0,
+  "tool_selection_accuracy": 1.0,
+  "trace_failure_rate": 0.0,
+  "trace_integrity_coverage": 1.0,
+  "transport": "openai_compatible_responses",
+  "usage": {
+    "complete_runs": 4,
+    "coverage": 1.0,
+    "included_runs": 4,
+    "input_tokens": 13051,
+    "model_response_count": 6,
+    "output_tokens": 3803,
+    "requests": 6,
+    "status": "complete",
+    "total_tokens": 16854
+  },
+  "usage_integrity_accuracy": 1.0
+}

@@ -1,0 +1,229 @@
+{
+  "runs": [
+    {
+      "chain_verification": {
+        "chain_head": "2724bc871870f299936713a62fa9210c4697c82a40f818869f4fa8fe32623208",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-001",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-001",
+      "task_id": "P6-DEV-001",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "fd886bf737f141c65401fef28d87e442e021ddecabfdd30849df31b79b2a23b8",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-002",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-002",
+      "task_id": "P6-DEV-002",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "c40592a89a4803470408fd38cfb0125a382ca848dc52fffdb35e7153e85a2930",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-003",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-003",
+      "task_id": "P6-DEV-003",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "a8445064cb65cf94e7f1fa956905fc3270ac99cf107df6a88f8217fd0c2f1d99",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-004",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-004",
+      "task_id": "P6-DEV-004",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "3fe8cc1ef294dff57fde3ee3c1168396a3aea488a5abd2d19a1a41727d66f778",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-005",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-005",
+      "task_id": "P6-DEV-005",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "09f0dc01234110c01e3f0cd64cb8d0fd8bce5c81d3fd34595fd644cc5693ea1e",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-006",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-006",
+      "task_id": "P6-DEV-006",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "4594970cf61d34c800f14f31302ca98b328495dd7ad959f8a54032c4a493abc0",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-007",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-007",
+      "task_id": "P6-DEV-007",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "5fccdef792a510b17782af15384bb84dd05405ee48058fd7f64189e242cf0beb",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-008",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-008",
+      "task_id": "P6-DEV-008",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "37d801e04cb2db2aaaa3a3bfb1ee7de9a426b85ce8f785766aca4080ae265aff",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 16,
+        "run_id": "RUN-PHASE6-P6-DEV-009",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-009",
+      "task_id": "P6-DEV-009",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "9d6500ccf2bec9cd856e4aaf0a5c5a30f10116b518919f280c22cc7d9da012a7",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 21,
+        "run_id": "RUN-PHASE6-P6-DEV-010",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-010",
+      "task_id": "P6-DEV-010",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "46ab0cac35c994fc7fde1d7e8f279fe44b364b43189b72987e8215f8da68024c",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 8,
+        "run_id": "RUN-PHASE6-P6-DEV-011",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-011",
+      "task_id": "P6-DEV-011",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "bc95d80dae493f623db85827183a6b5024c49775f58208239da2c2cba941f567",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 8,
+        "run_id": "RUN-PHASE6-P6-DEV-012",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-012",
+      "task_id": "P6-DEV-012",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "6921b536aae7d0ad10a82e190587dafdeced2f82d8679f9097b1b46b43a71fd0",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 13,
+        "run_id": "RUN-PHASE6-P6-DEV-013",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-013",
+      "task_id": "P6-DEV-013",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "adf9a6df094fe78da5bb3d0e5030ed0bd28b51dcdbed1bbba475543447409bba",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 10,
+        "run_id": "RUN-PHASE6-P6-DEV-014",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-014",
+      "task_id": "P6-DEV-014",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "a5a9b95e9087f65f02bba493557ece8ca2d8e3626fdac1173e412a7cbee2635d",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 10,
+        "run_id": "RUN-PHASE6-P6-DEV-015",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-015",
+      "task_id": "P6-DEV-015",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "680e3f50bc26d0c0c9a8dd19202a043469fb50cdc7ab3d5c192785509f356b92",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 8,
+        "run_id": "RUN-PHASE6-P6-DEV-016",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-DEV-016",
+      "task_id": "P6-DEV-016",
+      "transport": "openai_compatible_responses"
+    }
+  ],
+  "schema_version": "1.1"
+}

@@ -1,0 +1,61 @@
+{
+  "runs": [
+    {
+      "chain_verification": {
+        "chain_head": "8d328b9c1bd8d3b9d5e11f39285de164c2566eacb67cfef7ea3aac0eaf2ad0c8",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 16,
+        "run_id": "RUN-PHASE6-P6-HOLD-001",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-HOLD-001",
+      "task_id": "P6-HOLD-001",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "9a6404fb3cdcadb1bbc95b55bfbcfc35eabfae8992794e205a5ca99b74550e72",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 16,
+        "run_id": "RUN-PHASE6-P6-HOLD-002",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-HOLD-002",
+      "task_id": "P6-HOLD-002",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "a1c4613ff9a71e864ef91b817225f524d51a543ede8f1b5ed6072469f8930c21",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 8,
+        "run_id": "RUN-PHASE6-P6-HOLD-003",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-HOLD-003",
+      "task_id": "P6-HOLD-003",
+      "transport": "openai_compatible_responses"
+    },
+    {
+      "chain_verification": {
+        "chain_head": "71ff1360bad4acf3949204c2533f6a84064b1023d7e2d0876c2d8e71b4e498d7",
+        "error_code": null,
+        "error_sequence": null,
+        "event_count": 8,
+        "run_id": "RUN-PHASE6-P6-HOLD-004",
+        "valid": true
+      },
+      "provider": "deepseek",
+      "run_id": "RUN-PHASE6-P6-HOLD-004",
+      "task_id": "P6-HOLD-004",
+      "transport": "openai_compatible_responses"
+    }
+  ],
+  "schema_version": "1.1"
+}

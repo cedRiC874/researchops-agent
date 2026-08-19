@@ -13,3 +13,9 @@
 
 *.png binary
 *.sqlite3 binary
+
+# Commit frozen evidence snapshots byte-for-byte so their manifest hashes remain
+# verifiable after checkout. Normal source and documentation files stay LF above.
+artifacts/portfolio_baseline_provider/* -text -diff
+docs/evidence/phase6-deepseek-v1/development/* -text -diff
+docs/evidence/phase6-deepseek-v1/holdout/* -text -diff
