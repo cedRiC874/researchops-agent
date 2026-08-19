@@ -2,27 +2,27 @@
   "artifacts": {
     "eval_audit.sqlite3": {
       "byte_size": 176128,
-      "sha256": "06495560b1a8fa35a6330035f5ac1e8c060461a990bb0beaca29a2c6630e066d"
+      "sha256": "812b74fb8cab3b851f089fd0ceb101f0a950f7d90776a2116316d8292f36d150"
     },
     "eval_audit_index.json": {
       "byte_size": 18053,
-      "sha256": "327d6fb7a71f41ddb6feea931d326a1d80fddb60535199f6acef13cfabe6930a"
+      "sha256": "71fa0f8d4c6176dfd009288bff7bff542f1cd3fde161a576a94d1c2c5441416c"
     },
     "eval_report.json": {
-      "byte_size": 31219,
-      "sha256": "7e50fbb5eb0e976843dbb78b111aead892687f54c77ab2486643f435dbd81613"
+      "byte_size": 31221,
+      "sha256": "2cb69d4fe33a2012c03b94ff19220bb15062d78fc3da018783639a54392beeee"
     },
     "eval_results.jsonl": {
-      "byte_size": 194349,
-      "sha256": "33ab4e85323272fa54334a720f7ac6fd2037e21ac1cf3eb8c37d91eafdca45d5"
+      "byte_size": 194357,
+      "sha256": "876169bfcebcf7a69dcbc487a326e3b84438790e7a9d2bbc08f9d4f7a367e269"
     },
     "eval_summary.md": {
-      "byte_size": 670,
-      "sha256": "6db12ab3ea4799c29a2556e0e1db466876b65a0e52690e367be07044761d383c"
+      "byte_size": 671,
+      "sha256": "e8c78da54072a835ec44aef8214475a23c7cdf7e64a3785d43c534fe1b4f7a60"
     },
     "task_results.jsonl": {
-      "byte_size": 166092,
-      "sha256": "af44b4d1123e1cd2da8fc384bd0563da6522f48651f7fe763db0f9eda4b632da"
+      "byte_size": 166100,
+      "sha256": "3f245eda2ce2f4f2572f8990466801f098d9c46d089568ea323ac5bc855724c3"
     }
   },
   "audit": {
@@ -32,7 +32,7 @@
   },
   "dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
   "evaluation_mode": "offline_deterministic",
-  "generated_at_utc": "2026-08-19T06:27:31.247817+00:00",
+  "generated_at_utc": "2026-08-19T11:10:21.944896+00:00",
   "harness_error_count": 0,
   "latency_scope": "offline scenario execution including local fixture setup; excludes scoring and artifact publication",
   "llm_planner_evaluated": false,
@@ -49,7 +49,7 @@
   },
   "schema_version": "1.0",
   "simulated_backoff": true,
-  "source_tree_sha256": "f970def9cc49164ca4c756221e71babee3fee64273bb07dc95e956f618fadf67",
+  "source_tree_sha256": "24a28a7a19fb4e8546f27af995c4baa24e20a2dadedbc9a7efc1926dfb10626c",
   "subject_under_test": "components_and_control_plane",
   "task_corpus": {
     "file_name": "tasks.jsonl",

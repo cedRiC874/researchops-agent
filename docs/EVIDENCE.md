@@ -13,12 +13,14 @@
 | 主动注入错误被正确处理 | 毛工具错误 11/45，24.44% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | 安全违规 | 0/50 | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | 证据引用 | 21/21，100% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
-| 离线延迟 | P50 91.18 ms；P95 391.07 ms | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md) |
+| 离线延迟 | P50 100.38 ms；P95 411.03 ms | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md) |
 | 评测来源可复现 | 语料、源码、数据、依赖和产物 SHA-256 已记录 | [`eval_manifest.json`](../artifacts/portfolio_baseline_provider/eval_manifest.json) |
 | 50 条审计链有效 | audit index 中全部 `valid=true` | [`eval_audit_index.json`](../artifacts/portfolio_baseline_provider/eval_audit_index.json) |
-| 当前自动化测试 | 127/127 通过 | `python -m unittest discover -s tests -v` |
+| 当前自动化测试 | 144/144 通过 | `python -m unittest discover -s tests -v` |
+| DeepSeek development | 16/16；28 requests；71,039 tokens；P50/P95 7.65/17.40 s | [summary](evidence/phase6-deepseek-v1/development/phase6_summary.md)、[report](evidence/phase6-deepseek-v1/development/phase6_report.json)、[manifest](evidence/phase6-deepseek-v1/development/phase6_manifest.json)、[audit index](evidence/phase6-deepseek-v1/development/phase6_audit_index.json) |
+| DeepSeek repo-local holdout | 4/4；6 requests；16,854 tokens；P50/P95 5.05/14.59 s | [summary](evidence/phase6-deepseek-v1/holdout/phase6_summary.md)、[report](evidence/phase6-deepseek-v1/holdout/phase6_report.json)、[manifest](evidence/phase6-deepseek-v1/holdout/phase6_manifest.json)、[audit index](evidence/phase6-deepseek-v1/holdout/phase6_audit_index.json) |
 
-这些延迟是本机离线组件/控制面场景的执行时间，不是生产网络延迟。模型调用为 0，因此 `$0` 只代表这个确定性离线评测模式。
+Phase 5 的 100.38/411.03 ms 是本机离线组件/控制面执行时间，模型调用为 0，因此 `$0` 只代表确定性离线模式。DeepSeek 行则是顺序在线评测中的 Agent 段延迟，同样不能解释为生产 SLA。
 
 ## 模拟试验分析证据
 
@@ -52,21 +54,20 @@ Phase 4 离线演示记录了：
 
 ## 在线 Agent 状态
 
-Phase 6 已实现 20 个自然语言任务、真实 SDK 工具轨迹采集、精确参数评分、结构化 claim 绑定和审批首次暂停协议。OpenAI 的两次单题 smoke 均在首个模型响应前失败；独立最小请求确认 API Key 认证成功，但 OpenAI API Platform 返回 429，且当前环境无法配置其 API 计费。
+Phase 6 已完成真实 `deepseek-v4-flash` 在线评测。冻结配置为 runner `1.6.0`、单次响应上限 2000 tokens、source SHA-256 `24a28a7a19fb4e8546f27af995c4baa24e20a2dadedbc9a7efc1926dfb10626c`、corpus SHA-256 `7c478dd2f90ffb2796fd18dfe77129570a6ee9ea06b343a4cdf55f4e99500da0`、split SHA-256 `d19bc5a0516649c27e1069f8f57f8ba8a0172a03524a8c8e8a10b6c31eabbe6e`。
 
-Provider 适配层现已离线验证 OpenAI 与 DeepSeek 两条路径：独立环境变量、独立 client、固定 endpoint、模型 allowlist、零隐藏网络重试、动态审计 provider/transport、第三方 tracing fail-closed，以及 DeepSeek 并行工具调用下的本地串行和单发布提案限制。DeepSeek 的真实付费 smoke 尚未运行。
+| Split | 成功率 | Requests | Input/output/total tokens | P50/P95 |
+| --- | ---: | ---: | ---: | ---: |
+| development | 16/16 | 28 | 57,723 / 13,316 / 71,039 | 7.65 / 17.40 s |
+| repo-local non-secret holdout | 4/4 | 6 | 13,051 / 3,803 / 16,854 | 5.05 / 14.59 s |
 
-因此对外状态固定为：
+Development 覆盖 2 个审批暂停任务；holdout 不含审批任务。两组运行的工具名、参数、证据 grounding、安全、usage integrity 和审计链均通过冻结评分器。成本仍为 `null / unavailable`，因为尚未提供覆盖缓存命中、缓存未命中和输出 token 的完整版本化价格表。
 
-```text
-openai_online_status = blocked_external_billing
-deepseek_provider_status = implemented_offline_validated
-deepseek_online_status = not_run
-online_agent_success_rate = unavailable
-online_usage_cost_latency = unavailable
-```
+OpenAI 路径保留独立事实：两次单题运行在首个有效模型响应前失败；修复 Key 后的独立最小 API 请求返回 HTTP 429，当前环境无法配置 OpenAI API 计费。这不影响 DeepSeek 成绩，也不能解释为 OpenAI 模型质量结论。
 
-不能把离线 50/50 合并成在线 Agent 规划成绩，也不能从失败运行推断隐私行为、工具准确率或真实模型成本。
+这些不是未知或抗污染泛化成绩：4 个 holdout 任务及金标均位于仓库内，样本量很小，也没有审批场景。延迟来自顺序评测中的 Agent 段，不能作为生产 SLA。
+
+人工复核披露两个 P2：HOLD-002 的 CI/p 出现在 prose 中，但没有对应 optional CLAIM；HOLD-003 的非法路径经安全清洗后出现 `[PATH_REDACTED]`，拒绝和 reason code 正确，但文本可读性受损。
 
 ## 独立复核
 

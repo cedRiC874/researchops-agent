@@ -22,6 +22,7 @@ from .artifact_security import ArtifactPermissionError, enable_parent_acl_inheri
 from .audit import AuditLedger, safe_audit_value, sha256_json
 from .model_providers import ProviderAdapter, get_provider
 from .phase6_agent import (
+    PHASE6_MAX_OUTPUT_TOKENS,
     AgentRunRecord,
     ControlledExecutorBackend,
     LogicalAgentRequest,
@@ -30,6 +31,7 @@ from .phase6_agent import (
     run_phase6_agent,
 )
 from .phase6_eval import (
+    PHASE6_SCHEMA_VERSION,
     Phase6ContractError,
     Phase6Task,
     Phase6TaskScore,
@@ -41,14 +43,26 @@ from .phase6_eval import (
 from .tool_runtime import ControlledToolExecutor, build_project_tool_registry
 
 
-PHASE6_RUNNER_VERSION = "1.1.0"
+PHASE6_RUNNER_VERSION = "1.6.0"
 PHASE6_EVALUATION_MODE = "online_agents_sdk"
 PHASE6_SUBJECT_UNDER_TEST = "agent_planning_tool_trace_and_final_answer"
 _SPLITS = {"development", "holdout"}
 _SAFE_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _PATH_TRAVERSAL = re.compile(r"(?:\.\.[/\\])+[^\s\"'<>]*")
+_WINDOWS_ABSOLUTE_PATH = re.compile(
+    r"(?<!\w)(?:"
+    r"[A-Za-z]:[\\/](?:[A-Za-z0-9._-]+[\\/])*[A-Za-z0-9._-]+|"
+    r"\\\\[A-Za-z0-9._-]+\\(?:[A-Za-z0-9._-]+\\)*[A-Za-z0-9._-]+|"
+    r"//(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+"
+    r")"
+)
 _UNIX_ABSOLUTE_PATH = re.compile(
-    r"(?<![A-Za-z0-9])/(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+"
+    # ``\w`` is Unicode-aware, so a slash inside terms such as
+    # ``k-匿名/l-多样性`` is not mistaken for the start of a path.  Blocking a
+    # preceding slash also avoids treating the second slash in ``https://`` as
+    # an absolute path.  Start-of-string, whitespace, quotes, brackets and
+    # assignment punctuation still satisfy this boundary.
+    r"(?<![\w/])/(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+"
 )
 
 AgentRunner = Callable[..., Awaitable[AgentRunRecord] | AgentRunRecord]
@@ -123,6 +137,7 @@ def validate_phase6_suite(
     return {
         "status": "valid",
         "schema_version": "1.0",
+        "task_schema_version": PHASE6_SCHEMA_VERSION,
         "task_count": len(tasks),
         "split_counts": dict(sorted(Counter(task.split for task in tasks).items())),
         "task_sha256": _sha256_file(task_source),
@@ -462,6 +477,7 @@ async def run_phase6_online_evaluation(
                 "provider": adapter.provider_id,
                 "transport": adapter.transport_id,
                 "model": normalized_model,
+                "max_output_tokens": PHASE6_MAX_OUTPUT_TOKENS,
                 "selected_split": normalized_split,
                 "selected_case_count": len(selected),
                 "harness_error_count": harness_error_count,
@@ -516,6 +532,7 @@ async def run_phase6_online_evaluation(
                 "max_cases": max_cases,
                 "executed_case_count": len(selected),
                 "max_turns": max_turns,
+                "max_output_tokens": PHASE6_MAX_OUTPUT_TOKENS,
                 "case_timeout_seconds": timeout_seconds,
                 "sequential_execution": True,
             },
@@ -526,6 +543,7 @@ async def run_phase6_online_evaluation(
                 "raw_prompt_or_api_key_locally_persisted": False,
             },
             "task_corpus": {
+                "schema_version": PHASE6_SCHEMA_VERSION,
                 "file_name": task_source.name,
                 "sha256": _sha256_file(task_source),
                 "split_manifest_file_name": split_source.name,
@@ -1095,6 +1113,8 @@ def _safe_record(record: AgentRunRecord) -> dict[str, Any]:
         "provider": record.provider,
         "transport": record.transport,
         "model": record.model,
+        "completion_integrity": record.completion_integrity,
+        "completion_error_code": record.completion_error_code,
         "final_output": _safe_text(record.final_output),
         "tool_calls": [safe_audit_value(call.to_dict()) for call in record.tool_calls],
         "usage": record.usage.to_dict(),
@@ -1119,6 +1139,7 @@ def _safe_text(value: str | None) -> str | None:
     if not isinstance(cleaned, str):
         return "[OUTPUT_OMITTED]"
     cleaned = _PATH_TRAVERSAL.sub("[PATH_REDACTED]", cleaned)
+    cleaned = _WINDOWS_ABSOLUTE_PATH.sub("[PATH_REDACTED]", cleaned)
     cleaned = _UNIX_ABSOLUTE_PATH.sub("[PATH_REDACTED]", cleaned)
     return cleaned[:8192] + ("[TRUNCATED]" if len(cleaned) > 8192 else "")
 
@@ -1180,6 +1201,7 @@ def _summary_markdown(report: Mapping[str, Any]) -> str:
         f"- Provider：`{report.get('provider')}`\n"
         f"- Transport：`{report.get('transport')}`\n"
         f"- 模型：`{report.get('model')}`\n"
+        f"- 单次响应输出上限：{report.get('max_output_tokens')} tokens\n"
         f"- Split：`{report.get('selected_split')}`\n"
         f"- 成功率：{success_text}\n"
         f"- 通过：{report.get('passed')}/{report.get('included')}\n"
@@ -1187,6 +1209,13 @@ def _summary_markdown(report: Mapping[str, Any]) -> str:
         f"Harness 错误：{report.get('harness_error_count')}\n"
         f"- 逻辑工具错误率：{report.get('logical_tool_error_rate')}\n"
         f"- 本地工具 attempt 错误率：{report.get('local_tool_attempt_error_rate')}\n"
+        f"- 回答完整性准确率/覆盖率：{report.get('completion_integrity_accuracy')}/"
+        f"{report.get('completion_integrity_coverage')}；失败数："
+        f"{len(report.get('completion_failures', []))}\n"
+        f"- Evidence 标签完整性准确率："
+        f"{report.get('evidence_label_integrity_accuracy')}\n"
+        f"- Numeric CLAIM 任务准确率：{report.get('numeric_claim_task_accuracy')}\n"
+        f"- Evidence precision：{report.get('evidence_precision')}\n"
         f"- 延迟 P50/P95（ms）：{latency.get('p50_nearest_rank')}/"
         f"{latency.get('p95_nearest_rank')}\n"
         f"- 成本状态：`{cost.get('status')}`；总成本：{cost.get('total_usd')}\n"

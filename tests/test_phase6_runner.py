@@ -99,9 +99,65 @@ class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
 
         validation = validate_phase6_suite(CORPUS, SPLITS)
         self.assertEqual(validation["status"], "valid")
+        self.assertEqual(validation["task_schema_version"], "1.2")
         self.assertEqual(validation["task_count"], 20)
         self.assertEqual(
             validation["split_counts"], {"development": 16, "holdout": 4}
+        )
+
+    def test_safe_text_preserves_slash_terms_and_redacts_absolute_paths(self) -> None:
+        terminology = (
+            "隐私建议包括 k-匿名/l-多样性，并比较 sensitivity/specificity、"
+            "input/output 与 and/or。"
+        )
+        self.assertEqual(phase6_runner_module._safe_text(terminology), terminology)
+
+        path_cases = (
+            "/tmp/secret.csv",
+            "路径 '/home/user/file' 不应保留",
+            "路径=(/tmp/inside-parentheses.json)",
+            "path=/home/user/after-equals.txt",
+            r"C:\secret\study.csv",
+            "C:/secret/study.csv",
+            r"\\server\share\study.csv",
+            "//server/share/study.csv",
+            "https://example.test/private/report.csv",
+        )
+        for value in path_cases:
+            with self.subTest(value=value):
+                cleaned = phase6_runner_module._safe_text(value)
+                self.assertIsInstance(cleaned, str)
+                self.assertIn("PATH_REDACTED", cleaned)
+                self.assertNotIn("secret", cleaned.casefold())
+                self.assertNotIn("study.csv", cleaned.casefold())
+                self.assertNotIn("inside-parentheses", cleaned.casefold())
+                self.assertNotIn("after-equals", cleaned.casefold())
+                self.assertNotIn("example.test", cleaned.casefold())
+
+        mixed = "保留 k-匿名/l-多样性；路径=\"/tmp/secret.csv\"。"
+        cleaned_mixed = phase6_runner_module._safe_text(mixed)
+        self.assertIn("k-匿名/l-多样性", cleaned_mixed)
+        self.assertIn("PATH_REDACTED", cleaned_mixed)
+        self.assertNotIn("/tmp/secret.csv", cleaned_mixed)
+
+    def test_safe_record_preserves_completion_projection(self) -> None:
+        record = AgentRunRecord(
+            status="completed",
+            model="fixture-model",
+            final_output="partial",
+            tool_calls=(),
+            usage=AgentUsage(1, 1, 1, 2, 0, True),
+            latency_ms=1.0,
+            cost_usd=None,
+            approval_interruptions=(),
+            tracing_disabled=True,
+            completion_integrity=False,
+            completion_error_code="output_limit_suspected",
+        )
+        projected = phase6_runner_module._safe_record(record)
+        self.assertFalse(projected["completion_integrity"])
+        self.assertEqual(
+            projected["completion_error_code"], "output_limit_suspected"
         )
 
     def test_provider_status_is_offline_and_key_scoped(self) -> None:
@@ -379,6 +435,8 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertTrue(manifest["audit"]["all_chains_valid"])
             self.assertEqual(manifest["schema_version"], "1.1")
+            self.assertEqual(manifest["runner_version"], "1.6.0")
+            self.assertEqual(manifest["selection"]["max_output_tokens"], 2000)
             self.assertEqual(manifest["provider"], "openai")
             self.assertEqual(manifest["transport"], "openai_responses")
             self.assertEqual(manifest["runtime"]["provider"], "openai")
@@ -389,6 +447,20 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
                 manifest["task_corpus"]["golden_isolation"],
                 "only Phase6Task.public_input is transformed into LogicalAgentRequest",
             )
+            self.assertEqual(manifest["task_corpus"]["schema_version"], "1.2")
+            summary = (output / "phase6_summary.md").read_text(encoding="utf-8")
+            self.assertIn("单次响应输出上限：2000 tokens", summary)
+            self.assertIn("回答完整性准确率/覆盖率", summary)
+            self.assertIn("Evidence 标签完整性准确率", summary)
+            self.assertIn("Numeric CLAIM 任务准确率", summary)
+            self.assertIn("Evidence precision", summary)
+            result_row = json.loads(
+                (output / "phase6_results.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()[0]
+            )
+            self.assertTrue(result_row["observation"]["completion_integrity"])
+            self.assertIsNone(result_row["observation"]["completion_error_code"])
             database_bytes = (output / "phase6_audit.sqlite3").read_bytes()
             self.assertNotIn(b"test-secret-key", database_bytes)
             connection = sqlite3.connect(output / "phase6_audit.sqlite3")

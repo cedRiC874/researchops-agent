@@ -1,0 +1,102 @@
+{
+  "artifacts": {
+    "phase6_audit.sqlite3": {
+      "byte_size": 229376,
+      "sha256": "d4be16cfa1ba838a3d61cfc8159cf0b80e47447f3846326e86d24164b2bdeb80"
+    },
+    "phase6_audit_index.json": {
+      "byte_size": 7392,
+      "sha256": "f6f54c1ea87865911e43d24d5a2b43d3fa21d5ddd89e66c42b5fa2f5541e7a4f"
+    },
+    "phase6_report.json": {
+      "byte_size": 3500,
+      "sha256": "0c554171433ddb97cb93813f40c143172ff0100d9fae53f1e2fe78f10cc17da9"
+    },
+    "phase6_results.jsonl": {
+      "byte_size": 65842,
+      "sha256": "c4f474b2ed2a70cbc940de6d42abaa2863027e06c83bea023e8a9bf3f948e3c1"
+    },
+    "phase6_summary.md": {
+      "byte_size": 768,
+      "sha256": "77dd8797c7e0ea9b9635cd9a0e063fd3ad1b34a8cb58588664e46c8cf731b3a7"
+    }
+  },
+  "audit": {
+    "all_chains_valid": true,
+    "database": "phase6_audit.sqlite3",
+    "local_tool_attempts_and_retries": "recorded_in_sqlite",
+    "model_call_cost_semantics": "per-row estimate from row input/output tokens when pricing is provided",
+    "model_call_latency_semantics": "allocated_estimate_equal_share_of_agent_run_latency",
+    "model_call_started_at_semantics": "agent_run_start_for_each_row",
+    "provider_client_max_retries": 0,
+    "run_count": 16,
+    "sdk_transport_retry_detail": "provider_client_retries_disabled"
+  },
+  "cost": {
+    "coverage": 0.0,
+    "model_call_runs": 16,
+    "priced_model_call_runs": 0,
+    "status": "unavailable",
+    "total_usd": null
+  },
+  "evaluation_mode": "online_agents_sdk",
+  "execution_failure_count": 0,
+  "generated_at_utc": "2026-08-19T10:43:04.961139+00:00",
+  "harness_error_count": 0,
+  "model": "deepseek-v4-flash",
+  "pricing": {
+    "cost_is_estimate": false,
+    "input_per_million_usd": null,
+    "output_per_million_usd": null,
+    "provider": "deepseek",
+    "status": "not_provided"
+  },
+  "provider": "deepseek",
+  "runner_version": "1.6.0",
+  "runtime": {
+    "openai_agents": "0.21.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "provider": "deepseek",
+    "python": "3.12.13",
+    "transport": "openai_compatible_responses"
+  },
+  "safety": {
+    "approval_resume_supported": false,
+    "external_tracing_disabled": true,
+    "publish_boundary": "sdk_interrupt_plus_local_pending_proposal",
+    "raw_prompt_or_api_key_locally_persisted": false
+  },
+  "schema_version": "1.1",
+  "selection": {
+    "case_timeout_seconds": 120.0,
+    "executed_case_count": 16,
+    "max_cases": 16,
+    "max_output_tokens": 2000,
+    "max_turns": 8,
+    "sequential_execution": true,
+    "split": "development"
+  },
+  "source_tree_sha256": "24a28a7a19fb4e8546f27af995c4baa24e20a2dadedbc9a7efc1926dfb10626c",
+  "subject_under_test": "agent_planning_tool_trace_and_final_answer",
+  "task_corpus": {
+    "closed_task_count": 20,
+    "file_name": "phase6_agent_tasks.jsonl",
+    "golden_isolation": "only Phase6Task.public_input is transformed into LogicalAgentRequest",
+    "schema_version": "1.2",
+    "sha256": "7c478dd2f90ffb2796fd18dfe77129570a6ee9ea06b343a4cdf55f4e99500da0",
+    "split_manifest_file_name": "phase6_splits.json",
+    "split_manifest_sha256": "d19bc5a0516649c27e1069f8f57f8ba8a0172a03524a8c8e8a10b6c31eabbe6e"
+  },
+  "transport": "openai_compatible_responses",
+  "usage": {
+    "complete_runs": 16,
+    "coverage": 1.0,
+    "included_runs": 16,
+    "input_tokens": 57723,
+    "model_response_count": 28,
+    "output_tokens": 13316,
+    "requests": 28,
+    "status": "complete",
+    "total_tokens": 71039
+  }
+}
