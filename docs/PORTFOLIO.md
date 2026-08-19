@@ -1,23 +1,26 @@
 # ResearchOps Agent：作品集展示与面试演示手册
 
-> 状态快照：2026-08-19。本页只陈述仓库内可以核对的实现与测试事实。Phase 5 的成绩来自确定性离线组件评测；Phase 6 的 scripted/replay 只证明 SDK 适配器与评分链路能工作；真实在线模型质量评测因 API 计费不可用并返回 429 而阻塞，因此没有可发布的在线成功率、真实 token 成本或模型延迟。
+> 状态快照：2026-08-19。本页只陈述仓库内可以核对的实现与测试事实。Phase 5 的成绩来自确定性离线组件评测；Phase 6 的 scripted/replay 只证明 SDK 适配器与评分链路能工作。OpenAI 在线调用因其 API 计费不可用返回 429；DeepSeek provider 已完成离线实现与测试但尚未做付费 smoke，因此没有可发布的在线成功率、真实 token 成本或模型延迟。
 
 ## 先说清楚：这个项目现在证明了什么
 
 | 证据层 | 当前状态 | 可以得出的结论 | 不能得出的结论 |
 | --- | --- | --- | --- |
-| 单元与集成测试 | 当前源码 110/110 通过 | 统计计算、策略、审批、审计、评分器及 SDK scripted loop 的代码路径通过回归 | 真实模型在开放请求上的表现 |
+| 单元与集成测试 | 当前源码 127/127 通过 | 统计计算、策略、审批、审计、provider、评分器及 SDK scripted loop 的代码路径通过回归 | 真实模型在开放请求上的表现 |
 | Phase 5 | 当前作品集基线 50/50，独立产物校验有效 | 组件与控制面的可复现正确性、安全性和故障处理 | LLM 规划成功率或生产网络性能 |
 | Phase 6 行为合同 | 20 题：development 16、repo-local holdout 4；语料合同 20/20 有效 | 工具轨迹、精确参数、证据 grounding、澄清/拒绝和审批暂停都有明确评分口径 | 20 题已经由真实模型通过 |
 | Phase 6 scripted/replay | 注入 runner、scripted model 和构造轨迹的离线回归已覆盖 | 真实 Agents SDK 循环、工具调用提取、审批中断、usage/cost 空值处理和产物发布链路可测试 | scripted/replay 的通过率等同于真实模型质量 |
-| Phase 6 在线 | 两次单题 smoke 均在首个有效模型响应前失败；最小 API 诊断最终返回 429 | 评测器能够记录 provider/runtime failure，且不伪造 token 或成本 | 在线 Agent 成功率、工具选择精度、真实延迟和成本 |
+| Provider 层 | OpenAI/DeepSeek 独立 Key、client、transport 与审计；DeepSeek 安全边界离线测试通过 | provider 不会串 Key，全局 client 不被修改，并行 tool calls 不能绕过审批 | DeepSeek 真实模型已经通过 20 题 |
+| Phase 6 在线 | OpenAI 两次单题 smoke 在首个有效响应前失败；DeepSeek smoke 尚未运行 | 评测器能够记录 provider/runtime failure，且不伪造 token 或成本 | 在线 Agent 成功率、工具选择精度、真实延迟和成本 |
 
 对外推荐状态标签：
 
     phase5_status = completed_offline_deterministic
     phase6_contract_status = validated_20_tasks
     phase6_scripted_status = regression_only
-    phase6_online_status = blocked_external_billing
+    openai_online_status = blocked_external_billing
+    deepseek_provider_status = implemented_offline_validated
+    deepseek_online_status = not_run
 
 ## 30 秒电梯陈述
 
@@ -158,13 +161,14 @@ Phase 4 的逻辑资源固定读取已审核的 phase3 聚合证据。先启动�
 ### 4:40–5:00：展示 20 题 Agent 合同，并诚实停在在线边界
 
     .\.venv\Scripts\python.exe -m researchops.cli phase6-validate
-    .\.venv\Scripts\python.exe -m researchops.cli phase6-status
+    .\.venv\Scripts\python.exe -m researchops.cli phase6-status --provider openai
+    .\.venv\Scripts\python.exe -m researchops.cli phase6-status --provider deepseek
 
 收尾讲解词：
 
-> Phase 6 有 20 个自然语言任务，评分真实工具名、顺序、精确参数、证据来源、定量 claim、澄清、拒绝和审批暂停。SDK scripted/replay 回归已经通过，但真实在线 smoke 因独立 API 计费不可用返回 429，首个有效模型响应都没有拿到。因此我不发布在线成功率、token 成本或模型延迟；当前状态是 blocked_external_billing。
+> Phase 6 有 20 个自然语言任务，评分真实工具名、顺序、精确参数、证据来源、定量 claim、澄清、拒绝和审批暂停。SDK scripted/replay 回归已经通过；OpenAI smoke 因其独立 API 计费返回 429。DeepSeek V4 provider 已实现但尚未联网。因此我仍不发布在线成功率、token 成本或模型延迟。
 
-如果只展示静态证据，可打开 [Phase 5 当前作品集基线摘要](../artifacts/portfolio_baseline/eval_summary.md)、[Phase 6 评测合同](../evals/PHASE6.md) 和 [gpt-5.4-mini 单题失败摘要](../artifacts/phase6_dev_smoke_03/phase6_summary.md)。
+如果只展示静态证据，可打开 [Phase 5 当前作品集基线摘要](../artifacts/portfolio_baseline_provider/eval_summary.md)、[Phase 6 评测合同](../evals/PHASE6.md) 和 [gpt-5.4-mini 单题失败摘要](../artifacts/phase6_dev_smoke_03/phase6_summary.md)。
 
 ## 架构解释
 
@@ -175,6 +179,7 @@ flowchart LR
     C --> D["编排层"]
     D --> D1["Phase 5<br/>确定性离线 runner"]
     D --> D2["Phase 6<br/>Agents SDK planner<br/>在线质量尚未验证"]
+    D2 --> PV["每次运行独立 Provider<br/>OpenAI / DeepSeek V4"]
     D1 --> E["受控工具注册表与执行器"]
     D2 --> E
     E --> F1["只读工具<br/>检查、方法建议、聚合证据"]
@@ -198,6 +203,7 @@ flowchart LR
 | 输入层 | 验证 CSV、概要化、识别缺失与敏感字段 | 模型不接收文件路径、原始行或参与者 ID |
 | 研究设计层 | 将研究问题转成显式、可验证的 ResearchDesign | 不从列名推断随机化、配对、重复测量或因果关系 |
 | 编排层 | 选择受控逻辑工具并组织顺序 | LLM 不直接执行任意 Python、SQL 或 shell |
+| Provider 层 | 为每次运行绑定独立 Key、client、model 与 transport | 固定 endpoint、模型 allowlist、无全局 client mutation、第三方 tracing 关闭 |
 | 统计工具层 | 确定性计算估计量、区间、检验和诊断 | 明确对比方向、缺失策略、工具版本和输入哈希 |
 | 控制面 | 风险分级、审批、重试、幂等与发布 | 未知工具默认拒绝；写操作默认暂停 |
 | 证据与报告层 | 用 evidence ID、metric path 和图表哈希绑定结论 | 显示值与证据不一致时 fail closed |
@@ -365,12 +371,12 @@ Phase 6 的额外限制：
 - 注入后毛工具错误率：24.44%。
 - 安全违规率：0%。
 - 证据引用准确率：21/21，100%。
-- 本机离线延迟 P50/P95：87.77/288.80 ms。
+- 本机离线延迟 P50/P95：91.18/391.07 ms。
 - 模型调用：0；成本为 0 是因为没有模型调用，而不是未知成本被写成零。
 
 24.44% 不是“系统故障率”。它的分母是工具 attempts，分子包含评测故意注入且系统正确处理的验证错误、永久错误、瞬时错误和结果未知错误。判断回归应看非预期工具错误率。
 
-当前基线位于 artifacts/portfolio_baseline。独立 verifier 已确认文件哈希、源码与数据 provenance、50 条审计链、审计索引全部匹配，并确认未出现绝对项目路径、P0001 行级 canary、API Key 前缀、Authorization header 或 traceback。任何后续源码变更都应重新生成基线，不能继续沿用旧产物作为当前提交的认证。
+当前基线位于 artifacts/portfolio_baseline_provider。独立 verifier 已确认文件哈希、源码与数据 provenance、50 条审计链、审计索引全部匹配，并确认未出现绝对项目路径、P0001 行级 canary、API Key 前缀、Authorization header 或 traceback。任何后续源码变更都应重新生成基线，不能继续沿用旧产物作为当前提交的认证。
 
 ### Phase 6：20 题 Agent 行为合同与 scripted/replay 回归
 
@@ -399,22 +405,23 @@ scripted/replay 的准确表述：
 
 repo-local holdout 的任务和金标都在仓库中，只适合回归，不具备抗污染能力，不能当成未知生产请求的无偏估计。
 
-### Phase 6 在线：当前没有可发布的模型质量结果
+### Phase 6 在线：Provider 已就绪，仍没有可发布的模型质量结果
 
 已发生的事实：
 
 - gpt-5.6-sol 单题 smoke：runner failure，首个有效模型响应前终止。
 - gpt-5.4-mini 单题 smoke：runner failure，首个有效模型响应前终止。
 - 两次运行均无工具调用、无完整 usage、无可计算成本。
-- 独立最小 API 调用在 API Key 修复后返回 RateLimitError / HTTP 429；用户无法添加 API 付款方式，ChatGPT Pro 额度不能作为 API credits。
+- 独立最小 OpenAI API 调用在 Key 修复后返回 RateLimitError / HTTP 429；ChatGPT Pro 额度不能作为 API credits。
+- DeepSeek V4 provider 已完成 Key 隔离、固定 endpoint、模型 allowlist、provider 审计、工具串行、调用预算和单发布提案测试；尚未使用真实 DeepSeek Key 运行 smoke。
 
 因此正确口径是：
 
-> 在线评测因外部 API 计费条件阻塞。现有 0/1 smoke 只代表一次被纳入分母的 runtime failure，不能解释为模型规划能力为 0%，也不能据此发布工具选择、证据准确率、延迟或成本指标。
+> OpenAI 在线评测因其外部 API 计费条件阻塞；DeepSeek 在线评测尚未运行。现有 0/1 OpenAI smoke 只代表一次被纳入分母的 runtime failure，不能解释为模型规划能力为 0%，也不能据此发布工具选择、证据准确率、延迟或成本指标。
 
 解阻后的顺序：
 
-1. 用一个 development 任务做付费 smoke，确认模型响应、工具调用、usage 和审计链。
+1. 用 `deepseek-v4-flash` 对一个 development 任务做付费 smoke，确认模型响应、工具调用、usage 和审计链；成本先保持 unavailable。
 2. 跑完整 16 题 development，迭代 prompt 与适配器。
 3. 冻结 prompt、模型版本、工具 schema、价格表与评分器。
 4. 一次性运行 4 题 repo-local holdout。
@@ -427,12 +434,12 @@ repo-local holdout 的任务和金标都在仓库中，只适合回归，不具�
 | 只有模拟数据 | 不能代表真实临床数据分布与治理要求 | 引入经过审批的脱敏数据沙箱和数据使用协议 |
 | 执行面只实现 ANCOVA 与 Welch | 选择器覆盖的方法族多于实际执行工具 | 增加广义线性模型、混合模型、生存分析和缺失数据工具 |
 | available-case，不是完整 ITT | 失访可能引入偏倚 | 增加多重插补、敏感性分析与 estimand 级设计合同 |
-| 在线 API 因 429/计费阻塞 | 没有真实 LLM 质量、token、延迟和成本 | 获得独立 API 预算后按 development→冻结→holdout 运行 |
+| OpenAI API 因 429/计费阻塞；DeepSeek 尚未 smoke | 没有真实 LLM 质量、token、延迟和成本 | 用 DeepSeek V4 Flash 按单题→development→冻结→holdout 运行 |
 | Phase 6 只验证首次暂停 | 不能用它证明 SDK 状态恢复链 | 在不放宽本地审批边界的前提下实现可序列化恢复 |
 | 当前工具 timeout 是线程软超时 | 可信只读工具可停止等待，但线程不会被强杀 | 写工具与不可信慢工具改为 deadline-aware handler 或进程隔离 |
 | repo-local holdout 可见 | 容易受开发过程污染 | 建立访问受控的外部未知集 |
 | SHA-256 链未外部签名 | DB 管理员可重建整本账 | 定期把 chain head 写入签名/不可变存储 |
-| provider 异常正文被统一脱敏 | 安全，但诊断粒度不足 | 增加不含秘密的 401/403/429/timeout 稳定错误分类 |
+| provider 异常正文被统一脱敏 | 已提供 400/401/402/403/404/409/422/429/5xx/连接/超时稳定分类，但没有服务端细节 | 仅在受控支持流程中使用 request ID 哈希定位，不记录正文 |
 | 基线会随源码变更而失效 | 修改代码后旧成绩不再证明当前提交 | 每次发布生成新目录并重新校验 provenance 与哈希链 |
 | 成本模型只支持简化输入/输出单价 | 不覆盖缓存、长上下文和 service tier | 版本化价格表并报告覆盖率，不冒充账单 |
 | 尚无生产 RBAC/KMS/队列/外部可观测性 | 仍是工程原型而非受监管生产系统 | 增加身份、密钥管理、任务队列、SLO 与安全审查 |
@@ -506,7 +513,7 @@ HC3 对有限样本和潜在异方差比经典同方差标准误更稳健。项�
 - [Phase 4 审计导出](../artifacts/phase4/audit_export.json)
 - [Phase 4 发布清单](../artifacts/phase4/releases/demo-release/release_manifest.json)
 - [Phase 5 语料说明](../evals/README.md)
-- [Phase 5 当前作品集基线摘要](../artifacts/portfolio_baseline/eval_summary.md)
+- [Phase 5 当前作品集基线摘要](../artifacts/portfolio_baseline_provider/eval_summary.md)
 - [Phase 6 行为评测合同](../evals/PHASE6.md)
 - [Phase 6 gpt-5.4-mini smoke 摘要](../artifacts/phase6_dev_smoke_03/phase6_summary.md)
 
@@ -516,16 +523,16 @@ HC3 对有限样本和潜在异方差比经典同方差标准误更稳健。项�
 
 - 构建“模型规划、工具计算”的科研分析 Agent，覆盖 CSV 结构/缺失检查、显式研究设计校验、ANCOVA/Welch 分析、聚合可视化与证据绑定报告。
 - 设计风险分级工具执行器，实现人工审批暂停、范围绑定、恢复重校验、瞬时错误重试、幂等发布和 SQLite 追加式 SHA-256 审计链。
-- 建立 50 题确定性组件评测与 20 题 Agent 行为合同，分别度量正确率、工具错误、证据 grounding、安全、延迟和成本覆盖；严格区分离线组件成绩、scripted/replay 回归与尚受 429/计费阻塞的在线模型评测。
+- 建立 50 题确定性组件评测与 20 题 Agent 行为合同，并实现 OpenAI/DeepSeek provider 隔离；分别度量正确率、工具错误、证据 grounding、安全、延迟和成本覆盖，严格区分离线回归与尚未完成的在线模型评测。
 
 ## 发布前检查清单
 
 - [x] 用当前源码在全新目录重跑 Phase 5，并通过独立 artifact verifier。
-- [x] 运行 `$env:PYTHONPATH="src"; .\.venv\Scripts\python.exe -m unittest discover -s tests -v`，确认 110 项测试通过。
+- [x] 运行 `$env:PYTHONPATH="src"; .\.venv\Scripts\python.exe -m unittest discover -s tests -v`，确认 127 项测试通过。
 - [x] 运行 phase6-validate，确认 20 题、16/4 split 和 golden 隔离。
 - [ ] 不展示 API Key、Authorization header、参与者 ID 或绝对环境路径截图。
 - [ ] 不把 Phase 5 的 100% 写成 LLM/Agent 成功率。
 - [ ] 不把 scripted/replay 回归写成真实模型评测。
-- [ ] 在线仍为 429 时，使用 blocked_external_billing，不发布成功率、token、延迟或成本。
+- [ ] OpenAI 仍为 429 时标记 blocked_external_billing；DeepSeek 未运行时标记 not_run，均不发布在线成功率、token、延迟或成本。
 - [ ] 演示发布时使用新的 release_name，保留审批前/批准后/恢复后三个 Test-Path 截图。
 - [ ] 报告中同时写明 available-case、非完整 ITT 与差异性失访风险。

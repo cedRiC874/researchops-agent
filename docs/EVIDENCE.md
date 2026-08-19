@@ -8,15 +8,15 @@
 
 | 声明 | 当前结果 | 证据 |
 | --- | --- | --- |
-| 固定离线任务全部通过 | 50/50，6 类均为 100% | [`eval_summary.md`](../artifacts/portfolio_baseline/eval_summary.md)、[`eval_report.json`](../artifacts/portfolio_baseline/eval_report.json) |
-| 非预期工具错误 | 0/45 attempts，0% | [`eval_report.json`](../artifacts/portfolio_baseline/eval_report.json) |
-| 主动注入错误被正确处理 | 毛工具错误 11/45，24.44% | [`eval_report.json`](../artifacts/portfolio_baseline/eval_report.json) |
-| 安全违规 | 0/50 | [`eval_report.json`](../artifacts/portfolio_baseline/eval_report.json) |
-| 证据引用 | 21/21，100% | [`eval_report.json`](../artifacts/portfolio_baseline/eval_report.json) |
-| 离线延迟 | P50 87.77 ms；P95 288.80 ms | [`eval_summary.md`](../artifacts/portfolio_baseline/eval_summary.md) |
-| 评测来源可复现 | 语料、源码、数据、依赖和产物 SHA-256 已记录 | [`eval_manifest.json`](../artifacts/portfolio_baseline/eval_manifest.json) |
-| 50 条审计链有效 | audit index 中全部 `valid=true` | [`eval_audit_index.json`](../artifacts/portfolio_baseline/eval_audit_index.json) |
-| 当前自动化测试 | 110/110 通过 | `python -m unittest discover -s tests -v` |
+| 固定离线任务全部通过 | 50/50，6 类均为 100% | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md)、[`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
+| 非预期工具错误 | 0/45 attempts，0% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
+| 主动注入错误被正确处理 | 毛工具错误 11/45，24.44% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
+| 安全违规 | 0/50 | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
+| 证据引用 | 21/21，100% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
+| 离线延迟 | P50 91.18 ms；P95 391.07 ms | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md) |
+| 评测来源可复现 | 语料、源码、数据、依赖和产物 SHA-256 已记录 | [`eval_manifest.json`](../artifacts/portfolio_baseline_provider/eval_manifest.json) |
+| 50 条审计链有效 | audit index 中全部 `valid=true` | [`eval_audit_index.json`](../artifacts/portfolio_baseline_provider/eval_audit_index.json) |
+| 当前自动化测试 | 127/127 通过 | `python -m unittest discover -s tests -v` |
 
 这些延迟是本机离线组件/控制面场景的执行时间，不是生产网络延迟。模型调用为 0，因此 `$0` 只代表这个确定性离线评测模式。
 
@@ -52,12 +52,16 @@ Phase 4 离线演示记录了：
 
 ## 在线 Agent 状态
 
-Phase 6 已实现 20 个自然语言任务、真实 SDK 工具轨迹采集、精确参数评分、结构化 claim 绑定和审批首次暂停协议。两次单题在线 smoke 均在首个模型响应前失败；独立最小请求确认 API Key 认证成功，但 API Platform 返回 429，且当前环境无法配置 API 计费。
+Phase 6 已实现 20 个自然语言任务、真实 SDK 工具轨迹采集、精确参数评分、结构化 claim 绑定和审批首次暂停协议。OpenAI 的两次单题 smoke 均在首个模型响应前失败；独立最小请求确认 API Key 认证成功，但 OpenAI API Platform 返回 429，且当前环境无法配置其 API 计费。
+
+Provider 适配层现已离线验证 OpenAI 与 DeepSeek 两条路径：独立环境变量、独立 client、固定 endpoint、模型 allowlist、零隐藏网络重试、动态审计 provider/transport、第三方 tracing fail-closed，以及 DeepSeek 并行工具调用下的本地串行和单发布提案限制。DeepSeek 的真实付费 smoke 尚未运行。
 
 因此对外状态固定为：
 
 ```text
-online_evaluation_status = blocked_external_billing
+openai_online_status = blocked_external_billing
+deepseek_provider_status = implemented_offline_validated
+deepseek_online_status = not_run
 online_agent_success_rate = unavailable
 online_usage_cost_latency = unavailable
 ```

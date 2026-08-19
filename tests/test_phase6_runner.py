@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import researchops.phase6_runner as phase6_runner_module
 
@@ -17,6 +19,8 @@ from researchops.phase6_agent import (
     AgentUsage,
     LogicalAgentRequest,
 )
+from researchops.cli import build_parser
+from researchops.model_providers import ProviderConfigurationError
 from researchops.phase6_runner import (
     Phase6RunError,
     phase6_status,
@@ -99,6 +103,158 @@ class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             validation["split_counts"], {"development": 16, "holdout": 4}
         )
+
+    def test_provider_status_is_offline_and_key_scoped(self) -> None:
+        deepseek_missing = phase6_status(
+            provider="deepseek",
+            environment={"OPENAI_API_KEY": "openai-only"},
+        )
+        self.assertEqual(deepseek_missing["evaluation_mode"], "online_agents_sdk")
+        self.assertEqual(deepseek_missing["provider"], "deepseek")
+        self.assertEqual(
+            deepseek_missing["transport"], "openai_compatible_responses"
+        )
+        self.assertEqual(deepseek_missing["online_run_status"], "not_run")
+        self.assertEqual(deepseek_missing["not_run_reason"], "api_key_missing")
+        self.assertFalse(deepseek_missing["sdk"]["api_key_configured"])
+        self.assertEqual(
+            deepseek_missing["sdk"]["api_key_environment_variable"],
+            "DEEPSEEK_API_KEY",
+        )
+        self.assertEqual(deepseek_missing["network_calls"], 0)
+
+        deepseek_ready = phase6_status(
+            provider="deepseek",
+            environment={"DEEPSEEK_API_KEY": "deepseek-only"},
+        )
+        self.assertEqual(
+            deepseek_ready["online_run_status"],
+            "ready_requires_explicit_confirmation",
+        )
+        self.assertTrue(deepseek_ready["sdk"]["api_key_configured"])
+
+        openai_missing = phase6_status(
+            provider="openai",
+            environment={"DEEPSEEK_API_KEY": "deepseek-only"},
+        )
+        self.assertEqual(openai_missing["online_run_status"], "not_run")
+        self.assertFalse(openai_missing["sdk"]["api_key_configured"])
+        with patch.dict(
+            os.environ,
+            {"OPENAI_API_KEY": "ambient-openai", "DEEPSEEK_API_KEY": "ambient-ds"},
+            clear=False,
+        ):
+            explicit_empty = phase6_status(provider="deepseek", environment={})
+        self.assertEqual(explicit_empty["online_run_status"], "not_run")
+        self.assertFalse(explicit_empty["sdk"]["api_key_configured"])
+        with self.assertRaises(ProviderConfigurationError):
+            phase6_status(provider="unknown", environment={})
+
+    async def test_deepseek_preflight_rejects_model_key_and_legacy_pricing_before_output(self) -> None:
+        calls: list[LogicalAgentRequest] = []
+
+        async def forbidden_runner(request, backend, **kwargs):
+            del backend, kwargs
+            calls.append(request)
+            raise AssertionError("runner must not start")
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            invalid_model_output = Path(directory) / "invalid-model"
+            with self.assertRaises(ProviderConfigurationError) as invalid_model:
+                await run_phase6_online_evaluation(
+                    project_root=ROOT,
+                    tasks_path=CORPUS,
+                    split_manifest_path=SPLITS,
+                    output_directory=invalid_model_output,
+                    provider="deepseek",
+                    model="gpt-5.4-mini",
+                    split="development",
+                    max_cases=1,
+                    confirm_online=True,
+                    environment={"DEEPSEEK_API_KEY": "test-key"},
+                    agent_runner=forbidden_runner,
+                )
+            self.assertEqual(
+                invalid_model.exception.code, "provider_model_not_allowed"
+            )
+            self.assertFalse(invalid_model_output.exists())
+
+            wrong_key_output = Path(directory) / "wrong-key"
+            with self.assertRaises(Phase6RunError) as missing_key:
+                await run_phase6_online_evaluation(
+                    project_root=ROOT,
+                    tasks_path=CORPUS,
+                    split_manifest_path=SPLITS,
+                    output_directory=wrong_key_output,
+                    provider="deepseek",
+                    model="deepseek-v4-flash",
+                    split="development",
+                    max_cases=1,
+                    confirm_online=True,
+                    environment={"OPENAI_API_KEY": "wrong-provider-key"},
+                    agent_runner=forbidden_runner,
+                )
+            self.assertEqual(missing_key.exception.code, "api_key_missing")
+            self.assertTrue(missing_key.exception.not_run)
+            self.assertFalse(wrong_key_output.exists())
+
+            priced_output = Path(directory) / "legacy-price"
+            with self.assertRaises(Phase6RunError) as unsupported_price:
+                await run_phase6_online_evaluation(
+                    project_root=ROOT,
+                    tasks_path=CORPUS,
+                    split_manifest_path=SPLITS,
+                    output_directory=priced_output,
+                    provider="deepseek",
+                    model="deepseek-v4-flash",
+                    split="development",
+                    max_cases=1,
+                    confirm_online=True,
+                    input_price_per_million_usd=0.14,
+                    output_price_per_million_usd=0.28,
+                    environment={"DEEPSEEK_API_KEY": "test-key"},
+                    agent_runner=forbidden_runner,
+                )
+            self.assertEqual(
+                unsupported_price.exception.code,
+                "phase6_pricing_unsupported_for_provider",
+            )
+            self.assertFalse(priced_output.exists())
+        self.assertEqual(calls, [])
+
+    def test_cli_provider_selection_is_explicit_for_online_runs(self) -> None:
+        status = build_parser().parse_args(["phase6-status", "--provider", "deepseek"])
+        self.assertEqual(status.provider, "deepseek")
+        online = build_parser().parse_args(
+            [
+                "phase6-run-online",
+                "--output-dir",
+                "artifacts/test-provider-cli",
+                "--provider",
+                "deepseek",
+                "--model",
+                "deepseek-v4-flash",
+                "--split",
+                "development",
+                "--max-cases",
+                "1",
+            ]
+        )
+        self.assertEqual(online.provider, "deepseek")
+        with self.assertRaises(SystemExit):
+            build_parser().parse_args(
+                [
+                    "phase6-run-online",
+                    "--output-dir",
+                    "artifacts/test-provider-cli",
+                    "--model",
+                    "deepseek-v4-flash",
+                    "--split",
+                    "development",
+                    "--max-cases",
+                    "1",
+                ]
+            )
 
     def test_cost_estimation_requires_consistent_nonempty_usage(self) -> None:
         base = AgentRunRecord(
@@ -196,6 +352,9 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
                 agent_runner=fake_runner,
             )
             self.assertEqual(result["status"], "completed")
+            self.assertEqual(result["evaluation_mode"], "online_agents_sdk")
+            self.assertEqual(result["provider"], "openai")
+            self.assertEqual(result["transport"], "openai_responses")
             self.assertEqual(result["report"]["included"], 1)
             self.assertEqual(result["report"]["passed"], 1)
             self.assertEqual(result["report"]["cost"]["status"], "complete")
@@ -219,6 +378,13 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
                 (output / "phase6_manifest.json").read_text(encoding="utf-8")
             )
             self.assertTrue(manifest["audit"]["all_chains_valid"])
+            self.assertEqual(manifest["schema_version"], "1.1")
+            self.assertEqual(manifest["provider"], "openai")
+            self.assertEqual(manifest["transport"], "openai_responses")
+            self.assertEqual(manifest["runtime"]["provider"], "openai")
+            self.assertEqual(
+                manifest["audit"]["provider_client_max_retries"], 0
+            )
             self.assertEqual(
                 manifest["task_corpus"]["golden_isolation"],
                 "only Phase6Task.public_input is transformed into LogicalAgentRequest",
@@ -236,11 +402,121 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
                     "SELECT COUNT(*) FROM tool_attempts"
                 ).fetchone()
                 self.assertEqual(attempts, (1,))
+                providers = connection.execute(
+                    "SELECT DISTINCT provider FROM model_calls"
+                ).fetchall()
+                self.assertEqual(providers, [("openai",)])
             finally:
                 connection.close()
             self.assertFalse(
                 any(path.name.startswith(".researchops-phase6-") for path in Path(directory).iterdir())
             )
+
+    async def test_deepseek_injected_runner_records_provider_and_unknown_cost(self) -> None:
+        seen_provider = None
+
+        async def fake_runner(
+            request: LogicalAgentRequest,
+            backend,
+            *,
+            api_key: str,
+            provider,
+            model: str,
+            max_turns: int,
+            tracing_disabled: bool,
+        ) -> AgentRunRecord:
+            nonlocal seen_provider
+            del max_turns
+            self.assertEqual(api_key, "deepseek-test-secret")
+            self.assertTrue(tracing_disabled)
+            self.assertEqual(provider.provider_id, "deepseek")
+            self.assertEqual(provider.api_key_env, "DEEPSEEK_API_KEY")
+            self.assertEqual(provider.transport_id, "openai_compatible_responses")
+            seen_provider = provider
+            payload = backend.inspect_dataset(request.dataset_id)
+            self.assertEqual(payload["row_count"], 240)
+            call_id = "sdk-deepseek-inspect-1"
+            return AgentRunRecord(
+                status="completed",
+                model=model,
+                final_output="聚合检查：240 行、10 列，其中 38 行存在缺失。",
+                tool_calls=(
+                    AgentToolCall(
+                        call_id,
+                        "inspect_dataset",
+                        {"dataset_id": "synthetic_trial"},
+                        "succeeded",
+                    ),
+                ),
+                usage=_usage(),
+                latency_ms=8.5,
+                cost_usd=None,
+                approval_interruptions=(),
+                tracing_disabled=True,
+                tool_observations=(
+                    AgentToolObservation(
+                        call_id,
+                        "inspect_dataset",
+                        "succeeded",
+                        (),
+                        None,
+                        hashlib.sha256(b"deepseek-aggregate-profile").hexdigest(),
+                    ),
+                ),
+                provider="deepseek",
+                transport="openai_compatible_responses",
+            )
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            output = Path(directory) / "deepseek-online-eval"
+            result = await run_phase6_online_evaluation(
+                project_root=ROOT,
+                tasks_path=CORPUS,
+                split_manifest_path=SPLITS,
+                output_directory=output,
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                split="development",
+                max_cases=1,
+                confirm_online=True,
+                environment={"DEEPSEEK_API_KEY": "deepseek-test-secret"},
+                agent_runner=fake_runner,
+            )
+            self.assertIsNotNone(seen_provider)
+            report = result["report"]
+            self.assertEqual(report["provider"], "deepseek")
+            self.assertEqual(report["transport"], "openai_compatible_responses")
+            self.assertEqual(report["included"], 1)
+            self.assertEqual(report["passed"], 1)
+            self.assertEqual(report["usage"]["status"], "complete")
+            self.assertEqual(report["cost"]["status"], "unavailable")
+            self.assertIsNone(report["cost"]["total_usd"])
+            self.assertEqual(report["pricing"]["status"], "not_provided")
+            self.assertEqual(report["pricing"]["provider"], "deepseek")
+
+            manifest = json.loads(
+                (output / "phase6_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["provider"], "deepseek")
+            self.assertEqual(
+                manifest["transport"], "openai_compatible_responses"
+            )
+            self.assertTrue(manifest["audit"]["all_chains_valid"])
+            connection = sqlite3.connect(output / "phase6_audit.sqlite3")
+            try:
+                provider_rows = connection.execute(
+                    "SELECT provider, model, cost_usd FROM model_calls"
+                ).fetchall()
+                self.assertEqual(
+                    provider_rows,
+                    [("deepseek", "deepseek-v4-flash", None)],
+                )
+            finally:
+                connection.close()
+            artifact_bytes = b"".join(
+                path.read_bytes() for path in output.iterdir() if path.is_file()
+            )
+            self.assertNotIn(b"deepseek-test-secret", artifact_bytes)
 
     async def test_runner_error_is_included_failure_and_audited(self) -> None:
         async def failing_runner(request, backend, **kwargs):

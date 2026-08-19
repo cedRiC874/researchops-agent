@@ -33,6 +33,13 @@ artifacts/portfolio_baseline/*
 !artifacts/portfolio_baseline/eval_summary.md
 !artifacts/portfolio_baseline/eval_audit_index.json
 
+!artifacts/portfolio_baseline_provider/
+artifacts/portfolio_baseline_provider/*
+!artifacts/portfolio_baseline_provider/eval_manifest.json
+!artifacts/portfolio_baseline_provider/eval_report.json
+!artifacts/portfolio_baseline_provider/eval_summary.md
+!artifacts/portfolio_baseline_provider/eval_audit_index.json
+
 !artifacts/phase6_dev_smoke_03/
 artifacts/phase6_dev_smoke_03/*
 !artifacts/phase6_dev_smoke_03/phase6_summary.md

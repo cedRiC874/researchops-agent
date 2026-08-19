@@ -12,6 +12,12 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Protocol
 
+from .model_providers import (
+    OpenAIProvider,
+    ProviderAdapter,
+    ProviderConfigurationError,
+)
+
 
 DEFAULT_PHASE6_MODEL = "gpt-5.6"
 RESUME_SUPPORTED = False
@@ -29,6 +35,8 @@ _FORBIDDEN_RESULT_KEY = re.compile(
     re.IGNORECASE,
 )
 _TOOL_TIMEOUT_SECONDS = 30.0
+_TOOL_CALL_BUDGET = 16
+_SDK_CALL_ID = re.compile(r"^[\x21-\x7E]{1,256}$")
 _TOOL_ARGUMENTS = {
     "inspect_dataset": ("dataset_id",),
     "recommend_statistical_method": ("dataset_id", "design_id"),
@@ -86,6 +94,9 @@ class ControlledExecutorBackend:
     _proposal_lock: Any = field(
         default_factory=threading.RLock, init=False, repr=False, compare=False
     )
+    _active_publish_sdk_call_id: str | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.run_id, str) or not self.run_id.strip():
@@ -114,9 +125,12 @@ class ControlledExecutorBackend:
     def ensure_publish_proposal(
         self, bundle_id: str, release_name: str, sdk_call_id: str
     ) -> Mapping[str, Any]:
-        if not isinstance(sdk_call_id, str) or not sdk_call_id:
+        if not isinstance(sdk_call_id, str) or not _SDK_CALL_ID.fullmatch(
+            sdk_call_id
+        ):
             raise Phase6AgentError(
-                "sdk_call_id_invalid", "SDK 发布审批调用缺少 call_id。"
+                "sdk_call_id_invalid",
+                "SDK 发布审批调用的 call_id 缺失、过长或包含非法字符。",
             )
         arguments = {"bundle_id": bundle_id, "release_name": release_name}
         with self._proposal_lock:
@@ -129,6 +143,11 @@ class ControlledExecutorBackend:
                         "同一 SDK call_id 的发布参数发生变化。",
                     )
                 return dict(cached_result)
+            if self._active_publish_sdk_call_id is not None:
+                raise Phase6AgentError(
+                    "publish_proposal_limit_exceeded",
+                    "同一运行最多允许一个待审批发布提案。",
+                )
             local_call_id = "SDKAPP-" + hashlib.sha256(
                 f"{self.run_id}\0{sdk_call_id}".encode("utf-8")
             ).hexdigest()[:24].upper()
@@ -156,6 +175,7 @@ class ControlledExecutorBackend:
                 "requires_approval": True,
             }
             self._publish_proposals[sdk_call_id] = (dict(arguments), dict(result))
+            object.__setattr__(self, "_active_publish_sdk_call_id", sdk_call_id)
             return result
 
     def _read_result(
@@ -356,6 +376,8 @@ class AgentRunRecord:
     tracing_disabled: bool
     model_responses: tuple[AgentModelResponse, ...] = ()
     tool_observations: tuple[AgentToolObservation, ...] = ()
+    provider: str = "openai"
+    transport: str = "openai_responses"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -372,6 +394,8 @@ class AgentRunRecord:
             "tracing_disabled": self.tracing_disabled,
             "model_responses": [item.to_dict() for item in self.model_responses],
             "tool_observations": [item.to_dict() for item in self.tool_observations],
+            "provider": self.provider,
+            "transport": self.transport,
         }
 
 
@@ -385,7 +409,9 @@ def phase6_sdk_status() -> dict[str, Any]:
     return {
         "installed": version is not None,
         "version": version,
-        "api_key_configured": bool(os.environ.get("OPENAI_API_KEY")),
+        # The runner fills this from the explicitly selected provider's key env.
+        "api_key_configured": None,
+        "api_key_scope": "provider_specific",
         "resume_supported": RESUME_SUPPORTED,
         "publish_boundary": "local_controlled_tool_proposal",
     }
@@ -395,7 +421,7 @@ def build_phase6_agent(
     request: LogicalAgentRequest,
     backend: ResearchToolBackend,
     *,
-    model: str = DEFAULT_PHASE6_MODEL,
+    model: Any = DEFAULT_PHASE6_MODEL,
 ):
     """Build the SDK Agent and four controlled tools without a network request."""
 
@@ -406,16 +432,34 @@ def build_phase6_agent(
             "sdk_not_installed", "未安装 OpenAI Agents SDK；在线适配器不可用。"
         ) from exc
 
+    # Provider claims about serial tool execution are advisory. DeepSeek, for
+    # example, can return several tool calls even when parallel_tool_calls=False.
+    # Keep the actual backend boundary serial and bounded for every provider.
+    tool_lock = asyncio.Lock()
+    tool_call_count = 0
+    tool_call_budget = _TOOL_CALL_BUDGET
+
+    def consume_tool_call_budget() -> None:
+        nonlocal tool_call_count
+        if tool_call_count >= tool_call_budget:
+            raise Phase6AgentError(
+                "tool_call_budget_exceeded",
+                "本次 Agent 运行的受控工具调用次数已达到上限。",
+            )
+        tool_call_count += 1
+
     async def inspect_dataset(context, dataset_id: str) -> str:
         """Inspect aggregate structure and missingness for an authorized dataset ID."""
 
-        normalized = _authorized_arguments(
-            "inspect_dataset", {"dataset_id": dataset_id}, request
-        )
-        result = await _call_backend(
-            backend, "inspect_dataset", normalized["dataset_id"]
-        )
-        return _json_result(result)
+        async with tool_lock:
+            consume_tool_call_budget()
+            normalized = _authorized_arguments(
+                "inspect_dataset", {"dataset_id": dataset_id}, request
+            )
+            result = await _call_backend(
+                backend, "inspect_dataset", normalized["dataset_id"]
+            )
+            return _json_result(result)
 
     inspect_dataset.__annotations__["context"] = RunContextWrapper[dict[str, str]]
     inspect_dataset.__annotations__["dataset_id"] = str
@@ -426,18 +470,20 @@ def build_phase6_agent(
     ) -> str:
         """Recommend a statistical method for authorized dataset and design IDs."""
 
-        normalized = _authorized_arguments(
-            "recommend_statistical_method",
-            {"dataset_id": dataset_id, "design_id": design_id},
-            request,
-        )
-        result = await _call_backend(
-            backend,
-            "recommend_statistical_method",
-            normalized["dataset_id"],
-            normalized["design_id"],
-        )
-        return _json_result(result)
+        async with tool_lock:
+            consume_tool_call_budget()
+            normalized = _authorized_arguments(
+                "recommend_statistical_method",
+                {"dataset_id": dataset_id, "design_id": design_id},
+                request,
+            )
+            result = await _call_backend(
+                backend,
+                "recommend_statistical_method",
+                normalized["dataset_id"],
+                normalized["design_id"],
+            )
+            return _json_result(result)
 
     recommend_statistical_method.__annotations__["context"] = RunContextWrapper[
         dict[str, str]
@@ -449,13 +495,15 @@ def build_phase6_agent(
     async def read_aggregate_evidence(context, bundle_id: str) -> str:
         """Read aggregate-only evidence for an authorized evidence bundle ID."""
 
-        normalized = _authorized_arguments(
-            "read_aggregate_evidence", {"bundle_id": bundle_id}, request
-        )
-        result = await _call_backend(
-            backend, "read_aggregate_evidence", normalized["bundle_id"]
-        )
-        return _json_result(result)
+        async with tool_lock:
+            consume_tool_call_budget()
+            normalized = _authorized_arguments(
+                "read_aggregate_evidence", {"bundle_id": bundle_id}, request
+            )
+            result = await _call_backend(
+                backend, "read_aggregate_evidence", normalized["bundle_id"]
+            )
+            return _json_result(result)
 
     read_aggregate_evidence.__annotations__["context"] = RunContextWrapper[
         dict[str, str]
@@ -476,27 +524,30 @@ def build_phase6_agent(
     async def publish_needs_approval(
         context, arguments: dict[str, Any], sdk_call_id: str
     ) -> bool:
-        normalized = _authorized_arguments(
-            "publish_aggregate_results", arguments, request
-        )
-        if not isinstance(backend, ControlledExecutorBackend):
-            raise Phase6AgentError(
-                "publish_backend_policy_denied",
-                "发布审批要求 ControlledExecutorBackend 在 SDK 中断前绑定本地范围。",
+        async with tool_lock:
+            consume_tool_call_budget()
+            normalized = _authorized_arguments(
+                "publish_aggregate_results", arguments, request
             )
-        proposal = backend.ensure_publish_proposal(
-            normalized["bundle_id"],
-            normalized["release_name"],
-            sdk_call_id,
-        )
-        if (
-            proposal.get("status") != "awaiting_approval"
-            or proposal.get("requires_approval") is not True
-        ):
-            raise Phase6AgentError(
-                "publish_backend_policy_denied", "本地发布提案未进入待审批状态。"
+            if not isinstance(backend, ControlledExecutorBackend):
+                raise Phase6AgentError(
+                    "publish_backend_policy_denied",
+                    "发布审批要求 ControlledExecutorBackend 在 SDK 中断前绑定本地范围。",
+                )
+            proposal = await asyncio.to_thread(
+                backend.ensure_publish_proposal,
+                normalized["bundle_id"],
+                normalized["release_name"],
+                sdk_call_id,
             )
-        return True
+            if (
+                proposal.get("status") != "awaiting_approval"
+                or proposal.get("requires_approval") is not True
+            ):
+                raise Phase6AgentError(
+                    "publish_backend_policy_denied", "本地发布提案未进入待审批状态。"
+                )
+            return True
 
     publish_aggregate_results.__annotations__["context"] = RunContextWrapper[
         dict[str, str]
@@ -574,6 +625,7 @@ async def run_phase6_agent(
     *,
     api_key: str | None = None,
     model: str = DEFAULT_PHASE6_MODEL,
+    provider: ProviderAdapter | None = None,
     runner: Any | None = None,
     tracing_disabled: bool = True,
     max_turns: int = 8,
@@ -581,7 +633,25 @@ async def run_phase6_agent(
 ) -> AgentRunRecord:
     """Run the online agent; a runner can be injected for deterministic no-network tests."""
 
-    key = _require_api_key(api_key)
+    adapter = provider if provider is not None else OpenAIProvider()
+    try:
+        provider_id = _provider_identity(adapter, "provider_id")
+        transport_id = _provider_identity(adapter, "transport_id")
+        api_key_env = _provider_identity(adapter, "api_key_env")
+        validated_model = adapter.validate_model(model)
+    except ProviderConfigurationError as exc:
+        raise Phase6AgentError(exc.code, str(exc)) from exc
+    except Exception as exc:
+        raise Phase6AgentError(
+            "provider_configuration_invalid",
+            f"Provider 配置无效：{type(exc).__name__}；未记录异常正文。",
+        ) from exc
+    key = _require_api_key(api_key, environment_variable=api_key_env)
+    if provider_id != "openai" and tracing_disabled is not True:
+        raise Phase6AgentError(
+            "external_tracing_must_be_disabled",
+            "第三方模型 provider 必须关闭 OpenAI 外部 tracing。",
+        )
     if isinstance(max_turns, bool) or not isinstance(max_turns, int) or max_turns < 1:
         raise Phase6AgentError("max_turns_invalid", "max_turns 必须是正整数。")
     if (
@@ -593,14 +663,12 @@ async def run_phase6_agent(
             "run_timeout_invalid", "run_timeout_seconds 必须在 (0, 600] 内。"
         )
     try:
-        from agents import RunConfig, Runner, set_default_openai_key
+        from agents import RunConfig, Runner
     except ImportError as exc:
         raise Phase6AgentError(
             "sdk_not_installed", "未安装 OpenAI Agents SDK；在线适配器不可用。"
         ) from exc
 
-    set_default_openai_key(key, use_for_tracing=not tracing_disabled)
-    agent = build_phase6_agent(request, backend, model=model)
     prompt = build_phase6_prompt(request)
     context = request.tool_context()
     run_config = RunConfig(
@@ -615,37 +683,62 @@ async def run_phase6_agent(
 
     started = time.perf_counter()
     try:
-        result_or_awaitable = run_method(
-            agent,
-            prompt,
-            context=context,
-            max_turns=max_turns,
-            run_config=run_config,
-        )
-        result = (
-            await asyncio.wait_for(
-                result_or_awaitable, timeout=float(run_timeout_seconds)
+        async with adapter.open_model(
+            model_id=validated_model,
+            api_key=key,
+            timeout_seconds=float(run_timeout_seconds),
+        ) as provider_model:
+            if (
+                provider_model.provider_id != provider_id
+                or provider_model.model_id != validated_model
+                or provider_model.transport_id != transport_id
+                or provider_model.sdk_model is None
+            ):
+                raise Phase6AgentError(
+                    "provider_model_identity_mismatch",
+                    "Provider 返回的模型身份与显式运行配置不一致。",
+                )
+            agent = build_phase6_agent(
+                request,
+                backend,
+                model=provider_model.sdk_model,
             )
-            if inspect.isawaitable(result_or_awaitable)
-            else result_or_awaitable
-        )
+            result_or_awaitable = run_method(
+                agent,
+                prompt,
+                context=context,
+                max_turns=max_turns,
+                run_config=run_config,
+            )
+            result = (
+                await asyncio.wait_for(
+                    result_or_awaitable, timeout=float(run_timeout_seconds)
+                )
+                if inspect.isawaitable(result_or_awaitable)
+                else result_or_awaitable
+            )
     except TimeoutError as exc:
         raise Phase6AgentError(
             "agent_run_timeout", "Agents SDK 运行超过受控总时限。"
         ) from exc
     except Phase6AgentError:
         raise
+    except ProviderConfigurationError as exc:
+        raise Phase6AgentError(exc.code, str(exc)) from exc
     except Exception as exc:
+        error_code = _classify_provider_error(exc)
         raise Phase6AgentError(
-            "agent_runner_failed",
-            f"Agents SDK 运行失败：{type(exc).__name__}；未记录异常正文。",
+            error_code,
+            f"Provider/Agents SDK 运行失败：{type(exc).__name__}；未记录异常正文。",
         ) from exc
     latency_ms = max((time.perf_counter() - started) * 1000.0, 0.0)
     return _record_result(
         result,
-        model=model,
+        model=validated_model,
         latency_ms=latency_ms,
         tracing_disabled=tracing_disabled,
+        provider=provider_id,
+        transport=transport_id,
     )
 
 
@@ -676,14 +769,64 @@ def build_phase6_prompt(request: LogicalAgentRequest) -> str:
     return "\n".join(lines)
 
 
-def _require_api_key(explicit_key: str | None) -> str:
-    candidate = explicit_key if explicit_key is not None else os.environ.get("OPENAI_API_KEY")
+def _require_api_key(
+    explicit_key: str | None,
+    *,
+    environment_variable: str = "OPENAI_API_KEY",
+) -> str:
+    candidate = (
+        explicit_key
+        if explicit_key is not None
+        else os.environ.get(environment_variable)
+    )
     if not isinstance(candidate, str) or not candidate.strip():
         raise Phase6AgentError(
             "api_key_missing",
-            "未配置显式 api_key 或 OPENAI_API_KEY；Runner 未启动。",
+            f"未配置显式 api_key 或 {environment_variable}；Runner 未启动。",
         )
     return candidate.strip()
+
+
+def _provider_identity(adapter: Any, attribute: str) -> str:
+    value = getattr(adapter, attribute, None)
+    if not isinstance(value, str) or not _LOGICAL_ID.fullmatch(value):
+        raise ProviderConfigurationError(
+            "provider_configuration_invalid",
+            f"Provider {attribute} 必须是安全的逻辑 ID。",
+        )
+    return value
+
+
+def _classify_provider_error(exc: Exception) -> str:
+    """Map provider failures to stable codes without reading response bodies."""
+
+    status_code = getattr(exc, "status_code", None)
+    if type(status_code) is int:
+        if status_code == 400:
+            return "provider_bad_request"
+        if status_code == 401:
+            return "provider_authentication_failed"
+        if status_code == 402:
+            return "provider_payment_required"
+        if status_code == 403:
+            return "provider_permission_denied"
+        if status_code == 404:
+            return "provider_resource_not_found"
+        if status_code == 409:
+            return "provider_conflict"
+        if status_code == 422:
+            return "provider_unprocessable_request"
+        if status_code == 429:
+            return "provider_rate_limited"
+        if 500 <= status_code <= 599:
+            return "provider_server_error"
+
+    exception_name = type(exc).__name__
+    if exception_name in {"APITimeoutError", "TimeoutException"}:
+        return "provider_timeout"
+    if exception_name in {"APIConnectionError", "ConnectError"}:
+        return "provider_connection_failed"
+    return "agent_runner_failed"
 
 
 def _normalize_question(value: Any) -> str:
@@ -835,6 +978,8 @@ def _record_result(
     model: str,
     latency_ms: float,
     tracing_disabled: bool,
+    provider: str = "openai",
+    transport: str = "openai_responses",
 ) -> AgentRunRecord:
     interruptions = _extract_interruptions(result)
     tool_calls = _extract_tool_calls(result, interruptions)
@@ -851,6 +996,8 @@ def _record_result(
         tracing_disabled=tracing_disabled,
         model_responses=_extract_model_responses(result),
         tool_observations=_extract_tool_observations(result, tool_calls),
+        provider=provider,
+        transport=transport,
     )
 
 

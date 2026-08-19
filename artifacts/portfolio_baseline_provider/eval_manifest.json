@@ -1,0 +1,60 @@
+{
+  "artifacts": {
+    "eval_audit.sqlite3": {
+      "byte_size": 176128,
+      "sha256": "06495560b1a8fa35a6330035f5ac1e8c060461a990bb0beaca29a2c6630e066d"
+    },
+    "eval_audit_index.json": {
+      "byte_size": 18053,
+      "sha256": "327d6fb7a71f41ddb6feea931d326a1d80fddb60535199f6acef13cfabe6930a"
+    },
+    "eval_report.json": {
+      "byte_size": 31219,
+      "sha256": "7e50fbb5eb0e976843dbb78b111aead892687f54c77ab2486643f435dbd81613"
+    },
+    "eval_results.jsonl": {
+      "byte_size": 194349,
+      "sha256": "33ab4e85323272fa54334a720f7ac6fd2037e21ac1cf3eb8c37d91eafdca45d5"
+    },
+    "eval_summary.md": {
+      "byte_size": 670,
+      "sha256": "6db12ab3ea4799c29a2556e0e1db466876b65a0e52690e367be07044761d383c"
+    },
+    "task_results.jsonl": {
+      "byte_size": 166092,
+      "sha256": "af44b4d1123e1cd2da8fc384bd0563da6522f48651f7fe763db0f9eda4b632da"
+    }
+  },
+  "audit": {
+    "all_chains_valid": true,
+    "database": "eval_audit.sqlite3",
+    "run_count": 50
+  },
+  "dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c",
+  "evaluation_mode": "offline_deterministic",
+  "generated_at_utc": "2026-08-19T06:27:31.247817+00:00",
+  "harness_error_count": 0,
+  "latency_scope": "offline scenario execution including local fixture setup; excludes scoring and artifact publication",
+  "llm_planner_evaluated": false,
+  "network_calls": 0,
+  "runner_version": "1.0.0",
+  "runtime": {
+    "matplotlib": "3.11.1",
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.13",
+    "scipy": "1.18.0",
+    "statsmodels": "0.14.6"
+  },
+  "schema_version": "1.0",
+  "simulated_backoff": true,
+  "source_tree_sha256": "f970def9cc49164ca4c756221e71babee3fee64273bb07dc95e956f618fadf67",
+  "subject_under_test": "components_and_control_plane",
+  "task_corpus": {
+    "file_name": "tasks.jsonl",
+    "golden_isolation": "system under test receives EvalTask.public_input only",
+    "sha256": "aef47d5136ae1aef090ccf94770f48386691634c028fce7e6251835b94a2eb42",
+    "task_count": 50
+  }
+}

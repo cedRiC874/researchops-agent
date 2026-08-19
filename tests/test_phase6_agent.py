@@ -4,10 +4,16 @@ import asyncio
 import hashlib
 import json
 import os
+import threading
 import time
 import unittest
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import patch
+
+from agents import RunConfig
+from agents.models.interface import Model
+from agents.tool_context import ToolContext
 
 import researchops.phase6_agent as phase6_module
 from researchops.phase6_agent import (
@@ -18,6 +24,7 @@ from researchops.phase6_agent import (
     phase6_sdk_status,
     run_phase6_agent,
 )
+from researchops.model_providers import ProviderModel
 
 
 class _Backend:
@@ -65,6 +72,56 @@ class _CapturingRunner:
         return self.result
 
 
+class _ProviderBoundModel(Model):
+    async def get_response(self, *args, **kwargs):
+        del args, kwargs
+        raise AssertionError("capturing runner must not invoke the provider model")
+
+    def stream_response(self, *args, **kwargs):
+        del args, kwargs
+
+        async def empty_stream():
+            if False:
+                yield None
+
+        return empty_stream()
+
+
+class _FakeProvider:
+    provider_id = "deepseek"
+    api_key_env = "DEEPSEEK_API_KEY"
+    transport_id = "openai_compatible_responses"
+
+    def __init__(self, *, returned_model: str | None = None) -> None:
+        self.returned_model = returned_model
+        self.sdk_model = _ProviderBoundModel()
+        self.opened = False
+        self.closed = False
+        self.api_key_seen: str | None = None
+
+    def validate_model(self, model_id: str) -> str:
+        if model_id != "deepseek-v4-flash":
+            raise AssertionError("unexpected test model")
+        return model_id
+
+    @asynccontextmanager
+    async def open_model(
+        self, *, model_id: str, api_key: str, timeout_seconds: float = 120.0
+    ):
+        self.opened = True
+        self.api_key_seen = api_key
+        self.timeout_seen = timeout_seconds
+        try:
+            yield ProviderModel(
+                provider_id=self.provider_id,
+                model_id=self.returned_model or model_id,
+                transport_id=self.transport_id,
+                sdk_model=self.sdk_model,
+            )
+        finally:
+            self.closed = True
+
+
 class _ProposeOnlyExecutor:
     def __init__(self) -> None:
         self.proposals: list[tuple[str, str, dict[str, str], str | None]] = []
@@ -104,6 +161,48 @@ def _result(*, final_output="done", new_items=(), interruptions=()):
 
 
 class Phase6AgentTests(unittest.TestCase):
+    def test_provider_error_classification_is_stable_and_body_free(self) -> None:
+        class ProviderFailure(RuntimeError):
+            def __init__(self, status_code: int) -> None:
+                super().__init__("secret provider response body")
+                self.status_code = status_code
+
+        expected = {
+            400: "provider_bad_request",
+            401: "provider_authentication_failed",
+            402: "provider_payment_required",
+            403: "provider_permission_denied",
+            404: "provider_resource_not_found",
+            409: "provider_conflict",
+            422: "provider_unprocessable_request",
+            429: "provider_rate_limited",
+            500: "provider_server_error",
+            503: "provider_server_error",
+        }
+        for status_code, error_code in expected.items():
+            with self.subTest(status_code=status_code):
+                self.assertEqual(
+                    phase6_module._classify_provider_error(
+                        ProviderFailure(status_code)
+                    ),
+                    error_code,
+                )
+
+        APIConnectionError = type("APIConnectionError", (RuntimeError,), {})
+        APITimeoutError = type("APITimeoutError", (RuntimeError,), {})
+        self.assertEqual(
+            phase6_module._classify_provider_error(APIConnectionError("secret")),
+            "provider_connection_failed",
+        )
+        self.assertEqual(
+            phase6_module._classify_provider_error(APITimeoutError("secret")),
+            "provider_timeout",
+        )
+        self.assertEqual(
+            phase6_module._classify_provider_error(RuntimeError("secret")),
+            "agent_runner_failed",
+        )
+
     def setUp(self) -> None:
         self.request = LogicalAgentRequest(
             research_question="What is the adjusted treatment effect?",
@@ -214,6 +313,27 @@ class Phase6AgentTests(unittest.TestCase):
                 )
             ],
         )
+        with self.assertRaises(Phase6AgentError) as caught:
+            asyncio.run(
+                approval_callback(
+                    SimpleNamespace(),
+                    {"bundle_id": "phase3", "release_name": "phase6-demo"},
+                    "sdk-call-publish-second",
+                )
+            )
+        self.assertEqual(
+            caught.exception.code, "publish_proposal_limit_exceeded"
+        )
+        with self.assertRaises(Phase6AgentError) as caught:
+            asyncio.run(
+                approval_callback(
+                    SimpleNamespace(),
+                    {"bundle_id": "phase3", "release_name": "phase6-demo"},
+                    "bad\ncall-id",
+                )
+            )
+        self.assertEqual(caught.exception.code, "sdk_call_id_invalid")
+        self.assertEqual(len(executor.proposals), 1)
         self.assertEqual(executor.handler_invocations, 0)
 
     def test_real_sdk_publish_loop_pauses_after_local_proposal(self) -> None:
@@ -317,6 +437,90 @@ class Phase6AgentTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "api_key_missing")
         self.assertFalse(runner.called)
         self.assertEqual(self.backend.calls, [])
+
+    def test_explicit_provider_is_isolated_and_recorded_without_global_key(self) -> None:
+        provider = _FakeProvider()
+        runner = _CapturingRunner(_result())
+        with patch.dict(
+            os.environ, {"DEEPSEEK_API_KEY": "deepseek-test-only"}, clear=True
+        ):
+            with patch("agents.set_default_openai_key") as global_key_setter:
+                record = asyncio.run(
+                    run_phase6_agent(
+                        self.request,
+                        self.backend,
+                        model="deepseek-v4-flash",
+                        provider=provider,
+                        runner=runner,
+                    )
+                )
+        global_key_setter.assert_not_called()
+        self.assertTrue(provider.opened)
+        self.assertTrue(provider.closed)
+        self.assertEqual(provider.api_key_seen, "deepseek-test-only")
+        self.assertIs(runner.agent.model, provider.sdk_model)
+        self.assertEqual(record.model, "deepseek-v4-flash")
+        self.assertEqual(record.provider, "deepseek")
+        self.assertEqual(record.transport, "openai_compatible_responses")
+        self.assertEqual(record.to_dict()["provider"], "deepseek")
+        self.assertEqual(
+            record.to_dict()["transport"], "openai_compatible_responses"
+        )
+
+    def test_third_party_provider_requires_its_own_key_and_disabled_tracing(self) -> None:
+        provider = _FakeProvider()
+        runner = _CapturingRunner(_result())
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "openai-only"}, clear=True):
+            with self.assertRaises(Phase6AgentError) as caught:
+                asyncio.run(
+                    run_phase6_agent(
+                        self.request,
+                        self.backend,
+                        model="deepseek-v4-flash",
+                        provider=provider,
+                        runner=runner,
+                    )
+                )
+        self.assertEqual(caught.exception.code, "api_key_missing")
+        self.assertFalse(provider.opened)
+        self.assertFalse(runner.called)
+
+        with self.assertRaises(Phase6AgentError) as caught:
+            asyncio.run(
+                run_phase6_agent(
+                    self.request,
+                    self.backend,
+                    api_key="deepseek-test-only",
+                    model="deepseek-v4-flash",
+                    provider=provider,
+                    runner=runner,
+                    tracing_disabled=False,
+                )
+            )
+        self.assertEqual(
+            caught.exception.code, "external_tracing_must_be_disabled"
+        )
+        self.assertFalse(provider.opened)
+        self.assertFalse(runner.called)
+
+    def test_provider_model_identity_mismatch_fails_before_runner(self) -> None:
+        provider = _FakeProvider(returned_model="deepseek-v4-pro")
+        runner = _CapturingRunner(_result())
+        with self.assertRaises(Phase6AgentError) as caught:
+            asyncio.run(
+                run_phase6_agent(
+                    self.request,
+                    self.backend,
+                    api_key="deepseek-test-only",
+                    model="deepseek-v4-flash",
+                    provider=provider,
+                    runner=runner,
+                )
+            )
+        self.assertEqual(caught.exception.code, "provider_model_identity_mismatch")
+        self.assertTrue(provider.opened)
+        self.assertTrue(provider.closed)
+        self.assertFalse(runner.called)
 
     def test_evaluation_golden_never_enters_prompt_or_tool_context(self) -> None:
         evaluation_task = {
@@ -536,6 +740,122 @@ class Phase6AgentTests(unittest.TestCase):
         self.assertEqual(record.tool_calls[0].status, "succeeded")
         self.assertEqual(record.final_output, "检查完成：240 行。")
         self.assertEqual(len(record.model_responses), 2)
+
+    def test_parallel_provider_calls_are_serialized_at_backend_boundary(self) -> None:
+        class ConcurrentBackend(_Backend):
+            def __init__(self) -> None:
+                super().__init__()
+                self.active = 0
+                self.max_active = 0
+                self.state_lock = threading.Lock()
+
+            def _run(self, call: tuple[object, ...], result):
+                with self.state_lock:
+                    self.active += 1
+                    self.max_active = max(self.max_active, self.active)
+                try:
+                    time.sleep(0.03)
+                    self.calls.append(call)
+                    return result
+                finally:
+                    with self.state_lock:
+                        self.active -= 1
+
+            def inspect_dataset(self, dataset_id: str):
+                return self._run(
+                    ("inspect_dataset", dataset_id),
+                    {"dataset_id": dataset_id, "row_count": 240},
+                )
+
+            def recommend_statistical_method(
+                self, dataset_id: str, design_id: str
+            ):
+                return self._run(
+                    ("recommend_statistical_method", dataset_id, design_id),
+                    {"method_code": "ancova_linear_model"},
+                )
+
+        backend = ConcurrentBackend()
+        agent = build_phase6_agent(self.request, backend)
+
+        async def invoke_both():
+            inspect_arguments = '{"dataset_id":"synthetic_v1"}'
+            method_arguments = (
+                '{"dataset_id":"synthetic_v1","design_id":"ancova_v1"}'
+            )
+            run_config = RunConfig(
+                tracing_disabled=True, trace_include_sensitive_data=False
+            )
+            return await asyncio.gather(
+                agent.tools[0].on_invoke_tool(
+                    ToolContext(
+                        context=self.request.tool_context(),
+                        tool_name="inspect_dataset",
+                        tool_call_id="parallel-inspect",
+                        tool_arguments=inspect_arguments,
+                        run_config=run_config,
+                    ),
+                    inspect_arguments,
+                ),
+                agent.tools[1].on_invoke_tool(
+                    ToolContext(
+                        context=self.request.tool_context(),
+                        tool_name="recommend_statistical_method",
+                        tool_call_id="parallel-method",
+                        tool_arguments=method_arguments,
+                        run_config=run_config,
+                    ),
+                    method_arguments,
+                ),
+            )
+
+        outputs = asyncio.run(invoke_both())
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(backend.max_active, 1)
+        self.assertEqual(
+            backend.calls,
+            [
+                ("inspect_dataset", "synthetic_v1"),
+                (
+                    "recommend_statistical_method",
+                    "synthetic_v1",
+                    "ancova_v1",
+                ),
+            ],
+        )
+
+    def test_tool_call_budget_fails_closed_before_backend(self) -> None:
+        backend = _Backend()
+        with patch.object(phase6_module, "_TOOL_CALL_BUDGET", 2):
+            agent = build_phase6_agent(self.request, backend)
+
+        async def invoke_three_times():
+            arguments = '{"dataset_id":"synthetic_v1"}'
+            outputs = []
+            for index in range(3):
+                outputs.append(
+                    await agent.tools[0].on_invoke_tool(
+                        ToolContext(
+                            context=self.request.tool_context(),
+                            tool_name="inspect_dataset",
+                            tool_call_id=f"budget-{index}",
+                            tool_arguments=arguments,
+                            run_config=RunConfig(
+                                tracing_disabled=True,
+                                trace_include_sensitive_data=False,
+                            ),
+                        ),
+                        arguments,
+                    )
+                )
+            return outputs
+
+        outputs = asyncio.run(invoke_three_times())
+        self.assertEqual(len(backend.calls), 2)
+        self.assertEqual(
+            json.loads(outputs[2]),
+            {"status": "error", "error_code": "tool_call_budget_exceeded"},
+        )
 
     def test_tool_timeout_is_structured_redacted_failure(self) -> None:
         from agents import RunConfig, Runner
