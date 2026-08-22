@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/pilot-staging/participant-lifecycle-v1.json",
+  "title": "ResearchOps external researcher pilot participant lifecycle",
+  "description": "Pseudonymous eligibility, affirmative consent, withdrawal, and retention record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "pilot_id",
+    "candidate_commitment_sha256",
+    "participant_id",
+    "eligibility",
+    "consent",
+    "lifecycle_status",
+    "withdrawal",
+    "retention"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "record_id": {
+      "type": "string",
+      "pattern": "^PLC-[A-Z0-9]{16}$"
+    },
+    "pilot_id": {
+      "$ref": "#/$defs/logical_id"
+    },
+    "candidate_commitment_sha256": {
+      "const": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+    },
+    "participant_id": {
+      "$ref": "#/$defs/participant_id"
+    },
+    "eligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "external_researcher",
+        "independent_of_project",
+        "project_contributor",
+        "saw_hidden_expected_answers",
+        "compensation_contingent_on_positive_feedback",
+        "confirmed_at"
+      ],
+      "properties": {
+        "external_researcher": {
+          "const": true
+        },
+        "independent_of_project": {
+          "const": true
+        },
+        "project_contributor": {
+          "const": false
+        },
+        "saw_hidden_expected_answers": {
+          "const": false
+        },
+        "compensation_contingent_on_positive_feedback": {
+          "const": false
+        },
+        "confirmed_at": {
+          "$ref": "#/$defs/utc_timestamp"
+        }
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "affirmative_action",
+        "accepted",
+        "accepted_at",
+        "purpose_presented",
+        "non_expert_role_presented",
+        "provider_network_use_presented",
+        "retention_90_days_presented",
+        "withdrawal_right_presented",
+        "contact_route_presented"
+      ],
+      "properties": {
+        "protocol_version": {
+          "const": "external-researcher-pilot-protocol-v1"
+        },
+        "affirmative_action": {
+          "const": true
+        },
+        "accepted": {
+          "const": true
+        },
+        "accepted_at": {
+          "$ref": "#/$defs/utc_timestamp"
+        },
+        "purpose_presented": {
+          "const": true
+        },
+        "non_expert_role_presented": {
+          "const": true
+        },
+        "provider_network_use_presented": {
+          "const": true
+        },
+        "retention_90_days_presented": {
+          "const": true
+        },
+        "withdrawal_right_presented": {
+          "const": true
+        },
+        "contact_route_presented": {
+          "const": true
+        }
+      }
+    },
+    "lifecycle_status": {
+      "enum": [
+        "consented",
+        "active",
+        "completed",
+        "withdrawal_requested",
+        "withdrawn",
+        "retention_deleted"
+      ]
+    },
+    "withdrawal": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/withdrawal"
+        }
+      ]
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "collected_at",
+        "delete_by",
+        "server_verified_not_more_than_90_days",
+        "direct_identifiers_present",
+        "provider_key_present",
+        "deleted_at"
+      ],
+      "properties": {
+        "collected_at": {
+          "$ref": "#/$defs/utc_timestamp"
+        },
+        "delete_by": {
+          "$ref": "#/$defs/utc_timestamp"
+        },
+        "server_verified_not_more_than_90_days": {
+          "const": true
+        },
+        "direct_identifiers_present": {
+          "const": false
+        },
+        "provider_key_present": {
+          "const": false
+        },
+        "deleted_at": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/utc_timestamp"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "lifecycle_status": {
+            "enum": [
+              "withdrawal_requested",
+              "withdrawn",
+              "retention_deleted"
+            ]
+          }
+        },
+        "required": [
+          "lifecycle_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "withdrawal": {
+            "$ref": "#/$defs/withdrawal"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "withdrawal": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "lifecycle_status": {
+            "const": "retention_deleted"
+          }
+        },
+        "required": [
+          "lifecycle_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "retention": {
+            "properties": {
+              "deleted_at": {
+                "$ref": "#/$defs/utc_timestamp"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "logical_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    },
+    "participant_id": {
+      "type": "string",
+      "pattern": "^PX-[A-Z0-9]{12}$"
+    },
+    "utc_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "withdrawal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_at",
+        "request_channel",
+        "sessions_revoked",
+        "new_tasks_blocked",
+        "delete_by",
+        "server_verified_delete_by_within_7_days",
+        "deletion_completed_at",
+        "aggregate_recalculation_required"
+      ],
+      "properties": {
+        "requested_at": {
+          "$ref": "#/$defs/utc_timestamp"
+        },
+        "request_channel": {
+          "enum": [
+            "pilot_ui",
+            "study_contact"
+          ]
+        },
+        "sessions_revoked": {
+          "const": true
+        },
+        "new_tasks_blocked": {
+          "const": true
+        },
+        "delete_by": {
+          "$ref": "#/$defs/utc_timestamp"
+        },
+        "server_verified_delete_by_within_7_days": {
+          "const": true
+        },
+        "deletion_completed_at": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/utc_timestamp"
+            }
+          ]
+        },
+        "aggregate_recalculation_required": {
+          "const": true
+        }
+      }
+    }
+  }
+}

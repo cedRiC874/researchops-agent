@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "researchops-pilot-staging"
+version = "0.1.0"
+description = "Invite-only external researcher usability pilot for ResearchOps"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.141.1",
+  "psycopg[binary,pool]==3.3.4",
+  "pydantic-settings==2.15.0",
+  "sqlalchemy==2.0.52",
+  "uvicorn==0.52.4",
+]
+
+[project.optional-dependencies]
+test = [
+  "httpx2==2.12.0",
+  "jsonschema==4.26.0",
+  "pytest==9.1.1",
+]
+
+[project.scripts]
+researchops-pilot-api = "pilot_staging.main:run_api"
+researchops-pilot-worker = "pilot_staging.worker:main"
+researchops-pilot-migrate = "pilot_staging.migrate:main"
+researchops-pilot-admin = "pilot_staging.admin:main"
+researchops-pilot-purge = "pilot_staging.retention:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

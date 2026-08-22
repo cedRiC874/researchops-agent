@@ -176,6 +176,58 @@ span 的 Trace ID 一致。PR #2 已把该切片合并到 `main@badb7169`；Ubun
 shutdown，长期快照见 [Linux CI evidence](evidence/production-slice-linux-ci-main-v1/README.md)。
 这一纵切不包含 LLM、外部发布或批准后恢复；完整批准与恢复仍属于 Phase 4。
 
+## External researcher pilot staging
+
+`services/pilot_staging/` 是第二个独立服务边界。它调用已锁定的 Eval v2 candidate，
+但不修改 `src/researchops`，也不复用只适合本机单用户的 self-pilot Web：
+
+```text
+operator admin token -> frozen campaign + one-time invites
+participant invite -> HMAC digest -> HttpOnly session + CSRF -> exact consent
+                  -> prepared task -> PostgreSQL queue -> online worker
+                  -> locked candidate + aggregate-only registry backend
+                  -> output DLP -> reveal timestamp -> non-expert feedback
+                  -> aggregate summary + claim gate
+```
+
+身份记录使用随机 `PX-*` participant ID；邀请、session 和 CSRF 只在数据库中保存
+peppered HMAC digest。API 容器不挂载 Provider secret，只有显式 `online` profile 的 worker
+读取 server-side secret。Worker 启动时验证 candidate commitment，并写入 heartbeat；在线
+模式下 API readiness 和首次 queue 都要求最近 heartbeat。任务一经 queue 不自动重跑，
+campaign Agent task-execution budget 同时计算 queue reservation 与已经开始的 assignment；
+它不是模型/API 请求数或费用上限。
+
+每个 assignment 的题目来自 prepared public pack，参与者不能上传数据、改变 dataset
+授权或选择 Provider endpoint。实际 answer outcome 决定是否显示 clarification feedback；
+expected scenario、golden、machine score/failure 和 Provider model identity不进入逐题 participant
+DTO。危险输出在 reveal 前检查 credential、email、绝对路径、subject ID 和疑似行级表格；
+命中时正文不展示，campaign 自动暂停。用户报告 safety concern 也会暂停，管理员只能通过
+不含 participant ID 的 incident list 复核并显式 resolve。
+
+PostgreSQL 状态机使用 `FOR UPDATE SKIP LOCKED` 和 lease；withdraw 与完成写入在 participant/
+attempt 行锁下串行，撤回会使排队任务终止，运行中结果在持久化前再次检查并丢弃。失败题
+只能标成技术排除后进入下一题，不能挑选性重跑。事件流按 campaign 做 append-only SHA-256
+链；summary 在 REPEATABLE READ 一致快照内复核事件链与 task-pack hash，并排除撤回参与者。
+
+这是 pilot-ready application boundary，不是 production deployment。真实外部使用仍要求
+HTTPS edge、托管 PostgreSQL TLS/PITR、Secret Manager、固定 image digest、脱敏 telemetry、
+daily retention scheduler、备份恢复与伦理/IRB 判断。即使 claim gate 通过，也只允许描述
+prepared public data 上的外部科研用户可用性；专业正确性、private holdout、未知分布、
+生产 SLA 和批准后恢复均不在其证明范围内。
+
+没有云主机时，`supervised` 是独立的 1–2 人操作预试环境，不是 `local` 或 `staging` 的
+别名。它强制 HTTPS Funnel、Secure Cookie、非 wildcard Host、online worker、retention
+确认、clean Git SHA 和实际 Docker image ID。`execution_environment` 在创建 campaign 时
+持久化到 PostgreSQL，summary 必须包含
+`supervised_environment_not_claim_eligible`；换进程、换配置读取旧 campaign 也不能解除。
+参与者可以在调用前或看到答案后跳题，skip 进入非达标 exclusion 且不能重跑。
+
+`start-supervised.ps1` 原子准备非敏感环境配置并默认以前台 Tailscale Funnel 运行；
+`status-supervised.ps1` 只报告脱敏 readiness/identity；`new-invite.ps1` 可原子创建冻结
+campaign 并显示一次性两小时链接；`stop-supervised.ps1` 先停 worker、清除 heartbeat、
+关闭 API/Funnel，再无 `-v` teardown。独立 `pilot-staging-ci` 不创建 Provider Key，使用
+fake executor、真实 PostgreSQL 和 offline Compose 验证这些边界。
+
 这种拆分遵循 OpenAI 官方关于任务特定评测、典型/边缘/对抗样本、持续评测，以及分别检查最终回答、工具调用和证据的建议：
 
 - [Evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices)

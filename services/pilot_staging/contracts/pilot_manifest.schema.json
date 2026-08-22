@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/pilot-staging/pilot-manifest-v1.json",
+  "title": "ResearchOps external researcher pilot manifest",
+  "description": "Frozen, invitation-only staging manifest. It must never contain a provider secret or direct participant identifier.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "pilot_id",
+    "protocol_id",
+    "candidate_commitment_sha256",
+    "pilot_type",
+    "status",
+    "execution_environment",
+    "supervised_pretest",
+    "access_control",
+    "provider_access",
+    "cohort",
+    "coverage",
+    "retention",
+    "claim_boundaries",
+    "frozen_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "pilot_id": {
+      "$ref": "#/$defs/logical_id"
+    },
+    "protocol_id": {
+      "const": "external-researcher-pilot-protocol-v1"
+    },
+    "candidate_commitment_sha256": {
+      "const": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+    },
+    "pilot_type": {
+      "const": "invitation_only_independent_external_researcher_non_expert_usability"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "frozen",
+        "running",
+        "paused",
+        "complete",
+        "terminated"
+      ]
+    },
+    "execution_environment": {
+      "enum": ["local", "staging", "supervised"]
+    },
+    "supervised_pretest": {
+      "type": "boolean"
+    },
+    "access_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invitation_only",
+        "public_registration_enabled",
+        "one_time_invitation_tokens",
+        "participant_session_required"
+      ],
+      "properties": {
+        "invitation_only": {
+          "const": true
+        },
+        "public_registration_enabled": {
+          "const": false
+        },
+        "one_time_invitation_tokens": {
+          "const": true
+        },
+        "participant_session_required": {
+          "const": true
+        }
+      }
+    },
+    "provider_access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "credential_mode",
+        "client_key_input_enabled",
+        "key_returned_to_client",
+        "key_persisted_in_pilot_records",
+        "provider",
+        "model"
+      ],
+      "properties": {
+        "credential_mode": {
+          "const": "server_side_key"
+        },
+        "client_key_input_enabled": {
+          "const": false
+        },
+        "key_returned_to_client": {
+          "const": false
+        },
+        "key_persisted_in_pilot_records": {
+          "const": false
+        },
+        "provider": {
+          "$ref": "#/$defs/logical_id"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "cohort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned_min_participants",
+        "planned_max_participants",
+        "minimum_qualifying_participants",
+        "minimum_total_qualifying_runs",
+        "minimum_runs_per_participant",
+        "maximum_single_participant_share"
+      ],
+      "properties": {
+        "planned_min_participants": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "planned_max_participants": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 5
+        },
+        "minimum_qualifying_participants": {
+          "const": 3
+        },
+        "minimum_total_qualifying_runs": {
+          "const": 20
+        },
+        "minimum_runs_per_participant": {
+          "const": 5
+        },
+        "maximum_single_participant_share": {
+          "const": 0.4
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_dataset_ids",
+        "required_scenarios",
+        "minimum_qualifying_runs_per_dataset",
+        "minimum_qualifying_runs_per_scenario"
+      ],
+      "properties": {
+        "required_dataset_ids": {
+          "const": [
+            "palmer_penguins_v0_1_0",
+            "uci_parkinsons_telemonitoring_189",
+            "uci_heart_disease_cleveland_45"
+          ]
+        },
+        "required_scenarios": {
+          "const": [
+            "standard_analysis",
+            "clarification_required",
+            "safe_refusal",
+            "approval_pause",
+            "prompt_injection"
+          ]
+        },
+        "minimum_qualifying_runs_per_dataset": {
+          "const": 1
+        },
+        "minimum_qualifying_runs_per_scenario": {
+          "const": 1
+        }
+      }
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "participant_level_max_days",
+        "withdrawal_deletion_sla_days",
+        "direct_identifiers_collected",
+        "provider_keys_collected"
+      ],
+      "properties": {
+        "participant_level_max_days": {
+          "const": 90
+        },
+        "withdrawal_deletion_sla_days": {
+          "const": 7
+        },
+        "direct_identifiers_collected": {
+          "const": false
+        },
+        "provider_keys_collected": {
+          "const": false
+        }
+      }
+    },
+    "claim_boundaries": {
+      "$ref": "#/$defs/claim_boundaries"
+    },
+    "frozen_at": {
+      "$ref": "#/$defs/utc_timestamp"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"execution_environment": {"const": "supervised"}}
+      },
+      "then": {
+        "properties": {
+          "supervised_pretest": {"const": true},
+          "cohort": {
+            "properties": {
+              "planned_min_participants": {"const": 1},
+              "planned_max_participants": {"const": 2}
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "supervised_pretest": {"const": false},
+          "cohort": {
+            "properties": {
+              "planned_min_participants": {"const": 3},
+              "planned_max_participants": {"const": 5}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "logical_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    },
+    "participant_id": {
+      "type": "string",
+      "pattern": "^PX-[A-Z0-9]{12}$"
+    },
+    "utc_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "claim_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "external_expert_validation",
+        "scientific_correctness_validated",
+        "unknown_request_generalization",
+        "production_ready",
+        "production_sla_validated",
+        "security_certified",
+        "clinical_validation"
+      ],
+      "properties": {
+        "external_expert_validation": {
+          "const": false
+        },
+        "scientific_correctness_validated": {
+          "const": false
+        },
+        "unknown_request_generalization": {
+          "const": false
+        },
+        "production_ready": {
+          "const": false
+        },
+        "production_sla_validated": {
+          "const": false
+        },
+        "security_certified": {
+          "const": false
+        },
+        "clinical_validation": {
+          "const": false
+        }
+      }
+    }
+  }
+}

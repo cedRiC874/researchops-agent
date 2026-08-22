@@ -439,6 +439,31 @@ repo-local holdout 的任务和金标都可见，不具备抗污染能力；4 �
 
 ## 已知限制与下一步
 
+### Pilot-ready staging（尚无外部参与者结果）
+
+仓库新增独立 `services/pilot_staging/`，实现邀请制科研用户体验流程：精确 consent、
+假名 session、多用户隔离、server-side Provider credential、PostgreSQL queue/lease、
+持久 reveal 计时、Markdown UI、非专家反馈、DLP、安全暂停、撤回、90 天 purge 和
+aggregate-only summary。它保持 Eval v2 candidate commitment
+`7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11`，没有改动
+冻结 prompt/scorer/tool schema。
+
+本地证据为 42 项无付费调用验证，其中包含 supervised/API/脚本/CI contracts、真实临时 PostgreSQL migration、完整 6 题
+lifecycle、consent replay、audit chain、task-pack integrity 与 migration checksum drift；Linux
+镜像也已构建。该证据只能证明实现已达到下一步部署/招募前的本地工程门槛。当前没有任何
+外部科研用户参与，所以 external participant count、专业正确性评审数和 external pilot
+claim 均为 0/false/null，不能写成“已完成外部验证”。
+
+若没有云平台，可先用 `execution_environment=supervised` 完成 1–2 人监督预试。该环境
+把自身持久写入 campaign，强制 HTTPS Funnel、Secure Cookie、clean Git/image identity
+和 worker heartbeat，并永久阻止 external validation claim。它只用于发现招募、同意、
+按钮、跳题、计时、反馈、撤回与安全暂停等人因/操作问题；不能并入正式 pilot 分母，也
+不能用于继续调优已锁定 prompt/scorer/tool schema。
+
+真实 pilot 目标为 3–5 名独立科研用户、至少 20 次达标反馈、每人至少 5 次、单人贡献不
+超过 40%，覆盖 3 个公开数据集和至少 5 类场景。即使完成，也只报告可理解性、下一步实用
+性、信息遗漏、明显问题、专家复核需求与安全担忧；科研用户不自动等于领域专家。
+
 | 限制 | 当前影响 | 下一步 |
 | --- | --- | --- |
 | 只有模拟数据 | 不能代表真实临床数据分布与治理要求 | 引入经过审批的脱敏数据沙箱和数据使用协议 |

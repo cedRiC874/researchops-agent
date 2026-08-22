@@ -23,6 +23,7 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
 | Eval v2 public candidate | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
+| External researcher pilot staging | supervised 实现与本地离线合同已完成，尚未真实运行或招募 | 邀请制、多用户隔离、完整 consent、服务器 Provider secret、PostgreSQL 队列、持久计时、DLP、安全暂停、跳题、撤回、聚合 summary；42 项无付费调用验证；1–2 人可经 Tailscale 监督预试但永久不进入正式 claim |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
 离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。PR #3 已修复 LF provenance 与退出码覆盖；当前 main run 32571384757 为 50/50、21/21、`phase5-ci-v1=valid`。详见 [CI 门禁审计](docs/evidence/main-offline-gate-20260822/README.md)。
@@ -318,6 +319,46 @@ $env:PYTHONPATH = "src"
 
 打开终端显示的 `http://127.0.0.1:8765`，先在首页选择受控 Provider/model 并输入 API Key。页面通过 Provider 模型目录核验认证和模型可见性（不生成模型 token），随后才显示题目。Web 只绑定本机，双语回答来自同一次 Provider 运行，正文只驻留进程内存；答案显示后题目仍保留在上方，并通过不执行原始 HTML/脚本的安全 Markdown 子集渲染，提交反馈时自动停止计时并进入下一题。新版 Web 表单定位为非领域专家可用性评价，只记录可理解性、实用性、判断置信度、专家复核需求、明显问题、信息遗漏和安全担忧，不要求使用者判断专业正确性。新 session 分离确定性的题包 ID 与唯一运行实例 ID。Web 双语输出上限为 10,000 tokens，普通 Eval v2 runner 仍保持 2,000 默认值。完整步骤见 [内部 Self-Pilot Web / CLI 指南](docs/SELF_PILOT_GUIDE.md)。该流程只能称为 internal self-pilot，不能替代外部用户或专家验证。
 
+## 邀请制外部科研用户 Pilot Staging
+
+`services/pilot_staging/` 是独立于冻结 `src/researchops` 的多用户 staging 实现，不是把
+本机 self-pilot 直接暴露到公网。参与者只使用一次性邀请和假名会话，不选择 Provider、
+不输入 API Key，也不接触 goldens、machine failures 或其他人的数据。服务器展示并绑定
+完整 consent 文档后，才允许把 6 个 prepared public tasks 送到已锁定 candidate；答案
+显示后题目保留在上方，Markdown 安全渲染，并把 Provider latency 与人工阅读时间分开。
+
+当前准备包覆盖 3 个公开数据集以及标准分析、澄清、拒绝、未授权资源、prompt injection
+和审批暂停。审批题只验证暂停与说明，不支持批准后在线恢复；完整恢复仍属于 Phase 4。
+PostgreSQL 保存一次运行状态、反馈、DLP/incident 和追加式事件 hash chain，withdraw 会立即
+撤销 session、阻止排队调用，并把参与者从 claim 分母排除。Provider secret 只挂载到显式
+启动的 worker；默认 online kill switch 关闭，因此测试和普通启动不会产生付费请求。
+
+目前已完成 38 个 API/domain/config/script/CI 无网络测试、3 个 locked-candidate/schema tests、1 个
+真实临时 PostgreSQL migration/lifecycle/checksum test，并成功构建 Linux 镜像。尚未招募
+或运行真实 Tailscale/Provider/参与者端到端流程，因此没有 external pilot 结果。公网使用前仍需 HTTPS、托管
+PostgreSQL TLS/backup、Secret Manager、固定部署 digest、脱敏 telemetry、daily retention
+scheduler 与适用的伦理/IRB 判断。详见 [运行手册](services/pilot_staging/README.md) 和
+[外部科研用户协议](docs/EXTERNAL_RESEARCHER_PILOT_PROTOCOL.md)。
+
+没有云平台时可使用明确的 `supervised` 模式做 1–2 人监督预试。该模式强制 Tailscale
+HTTPS、Secure Cookie、clean Git SHA、真实 Docker image ID、在线 worker heartbeat 和
+retention 确认，并把 `execution_environment=supervised` 持久写入 campaign；即使以后由
+staging 进程读取，`external_validation_claim_allowed` 仍永久为 false。准备好本地 secret
+与 Tailscale 登录后，一键启动与邀请：
+
+```powershell
+.\services\pilot_staging\scripts\start-supervised.ps1 `
+  -ConfirmOnline -ConfirmRetentionSchedule
+
+# 新窗口；省略 CampaignId 时自动创建并冻结 supervised campaign
+.\services\pilot_staging\scripts\new-invite.ps1
+```
+
+结束后运行 `stop-supervised.ps1`；它清除 worker readiness、关闭 Funnel 和容器，但不删除
+PostgreSQL volume。主持材料见 [主持指南](docs/SUPERVISED_PILOT_MODERATOR_GUIDE.md)、
+[招募检查表](docs/SUPERVISED_PILOT_RECRUITMENT_CHECKLIST.md) 与
+[单场记录模板](docs/SUPERVISED_PILOT_SESSION_RECORD.md)。
+
 ## 项目结构
 
 ```text
@@ -329,6 +370,7 @@ researchops-agent/
 ├── src/researchops/              # 分析、控制面、provider、Agent、评分器与 runner
 ├── tests/                        # 当前完整工作树 246 项单元/集成/故障注入测试
 ├── services/production_slice/    # 独立 FastAPI/PostgreSQL/S3/OTel 纵切与 18 项测试
+├── services/pilot_staging/       # 邀请制外部科研用户 pilot API/Web/worker/contracts
 ├── scripts/
 │   ├── portfolio_demo.ps1        # 一键完全离线作品集演示
 │   └── verify_phase5_artifacts.py
@@ -339,12 +381,13 @@ researchops-agent/
 │   └── PORTFOLIO.md
 └── .github/workflows/
     ├── ci.yml                     # Windows 离线完整性与回归 workflow
-    └── production-slice-e2e.yml   # Ubuntu 真实 Compose E2E
+    ├── production-slice-e2e.yml   # Ubuntu 真实 Compose E2E
+    └── pilot-staging-ci.yml       # 无 Provider Key 的 pilot API/PostgreSQL/Compose CI
 ```
 
 ## CI
 
-GitHub Actions 当前有两条独立 workflow。
+GitHub Actions 当前有三条独立 workflow。
 
 `windows-latest + Python 3.12` 的 `offline-quality-gate`：
 
@@ -366,7 +409,19 @@ GitHub Actions 当前有两条独立 workflow。
 - 核验 event hash chain、对象 metadata、幂等复用与 API→worker trace
 - 始终上传脱敏证据并在不删除 volume 的情况下 shutdown
 
-两条 workflow 都不读取 Provider API Key，也不运行付费在线评测。`main` 的
+已配置在 `ubuntu-24.04` 运行的 `pilot-staging-ci`：
+
+- 不创建 Provider Key，也不启动 online worker；
+- 生成 3 个非 Provider 临时 secret 和 3 个确定性合成数据集 registry；
+- 运行 supervised/API/schema/PowerShell/CI 合同；
+- 使用真实 PostgreSQL 17.6 验证 migration checksum、6 题生命周期、consent replay、
+  campaign 环境持久化、audit chain 与 task-pack integrity；
+- 构建并启动 offline API Compose，验证页面与 readiness 后无 `down -v` 退出。
+
+该 workflow 文件本身不等于远端通过证据；只有对应提交的 GitHub clean run 才能证明
+Linux checkout、真实 PostgreSQL 与无 Provider Key Compose 链路通过。
+
+三条 workflow 都不读取 Provider API Key，也不运行付费在线评测。`main` 的
 [production run 32568017244](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017244)
 和后续
 [manual dispatch 32568233292](https://github.com/cedRiC874/researchops-agent/actions/runs/32568233292)
