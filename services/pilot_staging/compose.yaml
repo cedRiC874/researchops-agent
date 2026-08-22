@@ -1,0 +1,103 @@
+name: researchops-pilot-staging
+
+x-pilot-app: &pilot-app
+  build:
+    context: ../..
+    dockerfile: services/pilot_staging/Dockerfile
+  env_file: .env
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  volumes:
+    - ../../artifacts/self_pilot_data/run-01:/data:ro
+
+services:
+  postgres:
+    image: postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+    environment:
+      POSTGRES_DB: researchops_pilot
+      POSTGRES_USER: researchops_pilot
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - pilot-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U researchops_pilot -d researchops_pilot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *pilot-app
+    command: ["researchops-pilot-migrate"]
+    restart: "no"
+    secrets:
+      - postgres_password
+      - admin_token
+      - token_pepper
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *pilot-app
+    command: ["researchops-pilot-api"]
+    ports:
+      - "127.0.0.1:8090:8090"
+    secrets:
+      - postgres_password
+      - admin_token
+      - token_pepper
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *pilot-app
+    profiles: ["online"]
+    command: ["researchops-pilot-worker"]
+    secrets:
+      - postgres_password
+      - token_pepper
+      - provider_api_key
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  retention:
+    <<: *pilot-app
+    profiles: ["maintenance"]
+    command: ["researchops-pilot-purge"]
+    restart: "no"
+    secrets:
+      - postgres_password
+      - admin_token
+      - token_pepper
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pilot-postgres-data:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  admin_token:
+    file: ./secrets/admin_token.txt
+  token_pepper:
+    file: ./secrets/token_pepper.txt
+  provider_api_key:
+    file: ./secrets/provider_api_key.txt

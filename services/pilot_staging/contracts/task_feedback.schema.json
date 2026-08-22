@@ -1,0 +1,400 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/pilot-staging/task-feedback-v1.json",
+  "title": "ResearchOps external researcher pilot task feedback",
+  "description": "One server-authored assignment/run plus non-expert usability feedback. Agent response bodies and provider credentials are deliberately outside this contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "pilot_id",
+    "candidate_commitment_sha256",
+    "participant_id",
+    "assignment_id",
+    "task_id",
+    "dataset_id",
+    "scenario",
+    "consent_verified_before_run",
+    "run_attempt_count",
+    "provider_outcome",
+    "response_sha256",
+    "provider_latency_ms",
+    "human_review_seconds",
+    "end_to_end_seconds",
+    "feedback",
+    "infrastructure_failure",
+    "protocol_deviation",
+    "qualifying_run",
+    "exclusion_reason",
+    "retention"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "record_id": {
+      "type": "string",
+      "pattern": "^PTF-[A-Z0-9]{16}$"
+    },
+    "pilot_id": {
+      "$ref": "#/$defs/logical_id"
+    },
+    "candidate_commitment_sha256": {
+      "const": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+    },
+    "participant_id": {
+      "$ref": "#/$defs/participant_id"
+    },
+    "assignment_id": {
+      "type": "string",
+      "pattern": "^PA-[A-Z0-9]{16}$"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^V2-(DEV|PUB)-[0-9]{3}$"
+    },
+    "dataset_id": {
+      "enum": [
+        "palmer_penguins_v0_1_0",
+        "uci_parkinsons_telemonitoring_189",
+        "uci_heart_disease_cleveland_45"
+      ]
+    },
+    "scenario": {
+      "enum": [
+        "standard_analysis",
+        "clarification_required",
+        "safe_refusal",
+        "approval_pause",
+        "prompt_injection"
+      ]
+    },
+    "consent_verified_before_run": {
+      "const": true
+    },
+    "run_attempt_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "provider_outcome": {
+      "enum": [
+        "completed",
+        "clarification_required",
+        "refused",
+        "waiting_approval",
+        "controlled_failure",
+        "infrastructure_failure",
+        "not_run"
+      ]
+    },
+    "response_sha256": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "provider_latency_ms": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 600000
+    },
+    "human_review_seconds": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 7200
+    },
+    "end_to_end_seconds": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 14400
+    },
+    "feedback": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/non_expert_feedback"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "infrastructure_failure": {
+      "type": "boolean"
+    },
+    "protocol_deviation": {
+      "type": "boolean"
+    },
+    "qualifying_run": {
+      "type": "boolean"
+    },
+    "exclusion_reason": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "enum": [
+            "withdrawn",
+            "invalid_or_missing_consent",
+            "duplicate_assignment",
+            "infrastructure_failure",
+            "protocol_deviation",
+            "participant_skipped",
+            "supervised_pretest"
+          ]
+        }
+      ]
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "collected_at",
+        "delete_by",
+        "server_verified_not_more_than_90_days",
+        "direct_identifiers_present",
+        "provider_key_present",
+        "raw_research_rows_present"
+      ],
+      "properties": {
+        "collected_at": {
+          "$ref": "#/$defs/utc_timestamp"
+        },
+        "delete_by": {
+          "$ref": "#/$defs/utc_timestamp"
+        },
+        "server_verified_not_more_than_90_days": {
+          "const": true
+        },
+        "direct_identifiers_present": {
+          "const": false
+        },
+        "provider_key_present": {
+          "const": false
+        },
+        "raw_research_rows_present": {
+          "const": false
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "qualifying_run": {
+            "const": true
+          }
+        },
+        "required": [
+          "qualifying_run"
+        ]
+      },
+      "then": {
+        "properties": {
+          "feedback": {
+            "$ref": "#/$defs/non_expert_feedback"
+          },
+          "infrastructure_failure": {
+            "const": false
+          },
+          "protocol_deviation": {
+            "const": false
+          },
+          "exclusion_reason": {
+            "type": "null"
+          },
+          "response_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "run_attempt_count": {
+            "const": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "exclusion_reason": {
+            "enum": [
+              "withdrawn",
+              "invalid_or_missing_consent",
+              "duplicate_assignment",
+              "infrastructure_failure",
+              "protocol_deviation",
+              "participant_skipped",
+              "supervised_pretest"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "provider_outcome": {
+            "const": "clarification_required"
+          },
+          "feedback": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "provider_outcome",
+          "feedback"
+        ]
+      },
+      "then": {
+        "properties": {
+          "feedback": {
+            "properties": {
+              "clarification_useful": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "feedback": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "clarification_useful": {
+                    "type": "null"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "logical_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    },
+    "participant_id": {
+      "type": "string",
+      "pattern": "^PX-[A-Z0-9]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "utc_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "non_expert_feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feedback_schema",
+        "understandable",
+        "useful_for_next_step",
+        "confidence",
+        "needs_expert_review",
+        "obvious_problem",
+        "missing_information",
+        "safety_concern",
+        "clarification_useful",
+        "notes"
+      ],
+      "properties": {
+        "feedback_schema": {
+          "const": "non_expert_usability_v2"
+        },
+        "understandable": {
+          "type": "boolean"
+        },
+        "useful_for_next_step": {
+          "type": "boolean"
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "needs_expert_review": {
+          "type": "boolean"
+        },
+        "obvious_problem": {
+          "type": "boolean"
+        },
+        "missing_information": {
+          "type": "boolean"
+        },
+        "safety_concern": {
+          "type": "boolean"
+        },
+        "clarification_useful": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "confidence": {
+                    "const": "low"
+                  }
+                },
+                "required": [
+                  "confidence"
+                ]
+              },
+              {
+                "properties": {
+                  "needs_expert_review": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "needs_expert_review"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "notes": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

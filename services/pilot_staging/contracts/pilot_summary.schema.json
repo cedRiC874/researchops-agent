@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/pilot-staging/pilot-summary-v1.json",
+  "title": "ResearchOps aggregate external researcher pilot summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "campaign_id", "status", "execution_environment",
+    "supervised_pretest", "external_pilot", "external_participant_pretest",
+    "evidence_status", "claim_scope", "external_validation_claim_allowed",
+    "external_validation_claim_reason_codes", "pilot_success_criteria_met",
+    "commitments", "cohort", "interactions", "coverage", "usability",
+    "machine_contract", "professional_correctness", "safety", "timing",
+    "retention_status", "boundaries"
+  ],
+  "properties": {
+    "schema_version": {"const": "external-pilot-summary/1.0"},
+    "campaign_id": {"type": "string", "pattern": "^EXT-PILOT-[A-F0-9]{16}$"},
+    "status": {"enum": ["draft", "frozen", "running", "paused", "complete", "terminated"]},
+    "execution_environment": {"enum": ["local", "staging", "supervised"]},
+    "supervised_pretest": {"type": "boolean"},
+    "external_pilot": {"type": "boolean"},
+    "external_participant_pretest": {"type": "boolean"},
+    "evidence_status": {"enum": ["external_researcher_usability_only", "supervised_external_user_pretest_only"]},
+    "claim_scope": {"const": "external_researcher_usability_on_prepared_public_data"},
+    "external_validation_claim_allowed": {"type": "boolean"},
+    "external_validation_claim_reason_codes": {
+      "type": "array", "uniqueItems": true,
+      "items": {"enum": [
+        "pilot_not_complete", "protocol_not_frozen",
+        "eligible_participant_count_below_minimum",
+        "completed_interaction_count_below_minimum",
+        "participant_concentration_too_high", "dataset_coverage_below_minimum",
+        "scenario_coverage_below_minimum", "feedback_coverage_incomplete",
+        "mixed_build_or_candidate_versions", "artifact_integrity_invalid",
+        "unresolved_safety_incident", "confirmed_safety_incident",
+        "prohibited_data_detected", "retention_not_configured",
+        "supervised_environment_not_claim_eligible",
+        "operator_eligibility_adjudication_not_implemented"
+      ]}
+    },
+    "pilot_success_criteria_met": {"type": ["boolean", "null"]},
+    "commitments": {"$ref": "#/$defs/commitments"},
+    "cohort": {"$ref": "#/$defs/cohort"},
+    "interactions": {"$ref": "#/$defs/interactions"},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "usability": {"$ref": "#/$defs/usability"},
+    "machine_contract": {"$ref": "#/$defs/machine_contract"},
+    "professional_correctness": {"$ref": "#/$defs/professional_correctness"},
+    "safety": {"$ref": "#/$defs/safety"},
+    "timing": {"$ref": "#/$defs/timing"},
+    "retention_status": {"$ref": "#/$defs/retention_status"},
+    "boundaries": {"const": [
+      "professional_correctness_not_assessed", "public_prepared_data_only",
+      "not_private_holdout", "not_unknown_distribution_generalization",
+      "not_production_sla"
+    ]}
+  },
+  "allOf": [{
+    "if": {"properties": {"execution_environment": {"const": "supervised"}}},
+    "then": {"properties": {
+      "supervised_pretest": {"const": true},
+      "external_pilot": {"const": false},
+      "external_participant_pretest": {"const": true},
+      "evidence_status": {"const": "supervised_external_user_pretest_only"},
+      "external_validation_claim_allowed": {"const": false},
+      "pilot_success_criteria_met": {"type": "null"},
+      "external_validation_claim_reason_codes": {
+        "contains": {"const": "supervised_environment_not_claim_eligible"}
+      }
+    }},
+    "else": {"properties": {
+      "supervised_pretest": {"const": false},
+      "external_pilot": {"const": true},
+      "external_participant_pretest": {"const": false},
+      "evidence_status": {"const": "external_researcher_usability_only"}
+    }}
+  }, {
+    "if": {"properties": {"external_validation_claim_allowed": {"const": true}}},
+    "then": {"properties": {
+      "status": {"const": "complete"},
+      "external_validation_claim_reason_codes": {"maxItems": 0},
+      "pilot_success_criteria_met": {"type": "boolean"},
+      "retention_status": {"properties": {"scheduled_purge_confirmed": {"const": true}}}
+    }},
+    "else": {"properties": {
+      "external_validation_claim_reason_codes": {"minItems": 1},
+      "pilot_success_criteria_met": {"type": "null"}
+    }}
+  }],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metric": {
+      "type": "object", "additionalProperties": false,
+      "required": ["yes_count", "denominator", "rate"],
+      "properties": {
+        "yes_count": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 0},
+        "rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "commitments": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "protocol_sha256", "consent_document_sha256", "task_pack_sha256",
+        "feedback_schema_sha256", "candidate_commitment_sha256",
+        "deployment_git_sha", "deployment_image_digest", "dataset_manifest_sha256",
+        "provider_id", "model_id", "transport_id"
+      ],
+      "properties": {
+        "protocol_sha256": {"$ref": "#/$defs/sha256"},
+        "consent_document_sha256": {"$ref": "#/$defs/sha256"},
+        "task_pack_sha256": {"$ref": "#/$defs/sha256"},
+        "feedback_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_commitment_sha256": {"const": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"},
+        "deployment_git_sha": {"oneOf": [
+          {"type": "string", "pattern": "^[0-9a-f]{40,64}$"}, {"type": "null"}
+        ]},
+        "deployment_image_digest": {"oneOf": [
+          {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}
+        ]},
+        "dataset_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "provider_id": {"const": "deepseek"},
+        "model_id": {"const": "deepseek-v4-flash"},
+        "transport_id": {"const": "openai_compatible_responses"}
+      }
+    },
+    "cohort": {
+      "type": "object", "additionalProperties": false,
+      "required": ["eligible_external_participant_count", "started_participant_count", "completed_participant_count", "withdrawn_participant_count"],
+      "properties": {
+        "eligible_external_participant_count": {"type": "integer", "minimum": 0, "maximum": 5},
+        "started_participant_count": {"type": "integer", "minimum": 0, "maximum": 5},
+        "completed_participant_count": {"type": "integer", "minimum": 0, "maximum": 5},
+        "withdrawn_participant_count": {"type": "integer", "minimum": 0, "maximum": 5}
+      }
+    },
+    "interactions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["planned_count", "started_count", "answer_displayed_count", "feedback_completed_count", "technical_failure_count", "seeded_count", "exploratory_count"],
+      "properties": {
+        "planned_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "started_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "answer_displayed_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "feedback_completed_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "technical_failure_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "seeded_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "exploratory_count": {"const": 0}
+      }
+    },
+    "coverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["dataset_count", "dataset_counts", "scenario_counts", "feedback_rate", "max_participant_contribution_rate"],
+      "properties": {
+        "dataset_count": {"type": "integer", "minimum": 0, "maximum": 3},
+        "dataset_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "scenario_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "feedback_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "max_participant_contribution_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "usability": {
+      "type": "object", "additionalProperties": false,
+      "required": ["understandable", "useful", "missing_information", "obvious_problem", "needs_expert_review", "clarification_useful"],
+      "properties": {
+        "understandable": {"$ref": "#/$defs/metric"},
+        "useful": {"$ref": "#/$defs/metric"},
+        "missing_information": {"$ref": "#/$defs/metric"},
+        "obvious_problem": {"$ref": "#/$defs/metric"},
+        "needs_expert_review": {"$ref": "#/$defs/metric"},
+        "clarification_useful": {"$ref": "#/$defs/metric"}
+      }
+    },
+    "machine_contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["assessed_count", "passed_count", "pass_rate", "model_planning_accuracy_claim_allowed"],
+      "properties": {
+        "assessed_count": {"const": 0}, "passed_count": {"const": 0},
+        "pass_rate": {"type": "null"}, "model_planning_accuracy_claim_allowed": {"const": false}
+      }
+    },
+    "professional_correctness": {
+      "type": "object", "additionalProperties": false,
+      "required": ["assessed_count", "qualified_reviewer_count", "acceptance_rate", "claim_allowed"],
+      "properties": {
+        "assessed_count": {"const": 0}, "qualified_reviewer_count": {"const": 0},
+        "acceptance_rate": {"type": "null"}, "claim_allowed": {"const": false}
+      }
+    },
+    "safety": {
+      "type": "object", "additionalProperties": false,
+      "required": ["user_reported_concern_count", "unresolved_incident_count", "confirmed_incident_count", "approval_bypass_count", "secret_or_personal_data_exposure_count"],
+      "properties": {
+        "user_reported_concern_count": {"type": "integer", "minimum": 0},
+        "unresolved_incident_count": {"type": "integer", "minimum": 0},
+        "confirmed_incident_count": {"type": "integer", "minimum": 0},
+        "approval_bypass_count": {"type": "integer", "minimum": 0},
+        "secret_or_personal_data_exposure_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "timing": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider_latency_ms_p50", "provider_latency_ms_p95", "human_review_seconds_p50", "human_review_seconds_p95", "latency_is_sla"],
+      "properties": {
+        "provider_latency_ms_p50": {"type": ["integer", "null"], "minimum": 0},
+        "provider_latency_ms_p95": {"type": ["integer", "null"], "minimum": 0},
+        "human_review_seconds_p50": {"type": ["integer", "null"], "minimum": 0},
+        "human_review_seconds_p95": {"type": ["integer", "null"], "minimum": 0},
+        "latency_is_sla": {"const": false}
+      }
+    },
+    "retention_status": {
+      "type": "object", "additionalProperties": false,
+      "required": ["participant_level_max_days", "withdrawal_deletion_sla_days", "scheduled_purge_confirmed"],
+      "properties": {
+        "participant_level_max_days": {"type": "integer", "minimum": 1, "maximum": 90},
+        "withdrawal_deletion_sla_days": {"const": 7},
+        "scheduled_purge_confirmed": {"type": "boolean"}
+      }
+    }
+  }
+}

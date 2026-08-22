@@ -98,6 +98,40 @@ OpenAI 路径保留独立事实：两次单题运行在首个有效模型响应�
 
 ## 独立复核
 
+### Pilot-ready staging 本地工程证据
+
+`services/pilot_staging/` 当前只有实现与本地验证证据，没有外部参与者结果，也没有执行
+新的付费 Provider run。验证分为：
+
+- 38 个 API/domain/config/script/CI 无网络测试：邀请、session/CSRF、完整 consent、双用户隔离、
+  online kill switch/worker heartbeat、一次运行、只读轮询、实际 clarification outcome、
+  failure exclusion、DLP pause、withdraw、rate/body limits 与正/负 claim gate；
+- 3 个 locked candidate 与 JSON Schema tests：candidate commitment/preflight、summary 正反
+  合同与 4 个 Draft 2020-12 schema 自检；
+- 1 个真实临时 PostgreSQL test：migration、6 题完整 lifecycle、consent replay 幂等、
+  REPEATABLE READ summary、audit chain、task-pack integrity，以及 migration checksum drift；
+- Linux Docker image 构建成功，Provider 依赖为 exact version lock；没有读取 Provider Key。
+
+Supervised mode 还将运行环境持久绑定到 campaign。测试覆盖在全部正向门槛均满足后，
+supervised summary 仍固定 `external_validation_claim_allowed=false`，并验证以后由 local 或
+staging 配置重新读取同一 campaign 也不能移除该 blocker。独立 Linux workflow 只创建
+非 Provider CI secret、真实 PostgreSQL 和 offline API Compose；不会创建 Provider Key、
+启动 online worker或调用模型。该 workflow 只有对应提交获得 GitHub clean run 后，才
+能成为远端 CI 证据；workflow 文件存在本身不是远端通过证明。
+
+正式 3–5 人 claim 目前也保持 fail-closed：服务尚无 operator-reviewed eligibility
+adjudication receipt，不能仅凭参与者自勾资格与离线招募表认定其独立性、利益冲突和
+golden exposure。因此所有非 supervised summary 目前固定包含
+`operator_eligibility_adjudication_not_implemented`；这是待实现门禁，不是已完成证据。
+
+临时 PostgreSQL 容器使用 `--rm` 且没有持久 volume，验证后已停止。上述结果证明本地
+staging contract 可继续部署复核，不证明公网安全、生产 SLA、外部科研用户满意度、领域
+正确性、private holdout 或未知请求泛化。只有真实 cohort 达到预注册人数/交互/覆盖/
+withdraw/安全/integrity 门槛后，才可在精确范围
+`external_researcher_usability_on_prepared_public_data` 内报告聚合可用性。
+精确命令边界与本地镜像 digest 见
+[pilot staging verification](../services/pilot_staging/VERIFICATION.md)。
+
 一键重新生成当前离线证据：
 
 ```powershell

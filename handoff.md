@@ -1,6 +1,6 @@
 # ResearchOps Agent 跨会话交接
 
-> 更新时间：2026-08-22（Asia/Shanghai）
+> 更新时间：2026-08-23（Asia/Shanghai）
 > 目标：让一个没有历史上下文的新 Codex 会话安全、准确地继续本项目。
 > 语言偏好：中文；先给结论，再给可执行步骤；不要夸大评测或生产化程度。
 
@@ -17,11 +17,12 @@
 
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
-- 当前 checkout 分支：`codex/eval-v2-evidence-v2`，未设置 upstream
-- `origin/main`：`b3f515a300855caef89efbf1f48859e91b27d925`；unittest 兼容提交完成后当前分支 ahead 4
-- 最新冻结实现提交：`3e921ce04c4f329e1229aa2d8ab74f67955b9f53`
-- 本地 `main` 指针仍为 `80ad08e835103eb5fb7c07e730580efa0206ce1a`，落后
-  `origin/main` 2 个提交；不要在 dirty worktree 上 reset 或强制切换。
+- 当前 PR 分支：`codex/pilot-ready-staging-ci`，从 `origin/main` 的
+  `ab9020edcb64c352f51e57d3e7942f2a8bf3000a` 创建。
+- GitHub `main`：`ab9020edcb64c352f51e57d3e7942f2a8bf3000a`；PR #4 已合并。
+- 原本地分支与远端 `main` 的提交历史不同但 tree 均为
+  `53d0127a0241ef8772b6865e057aa8dce820af29`；发布前已 fetch 并从远端 `main`
+  新建上述分支，因此 PR 不会重复携带旧 Eval v2 历史。
 - 版本：`0.2.0`
 - Annotated tag：`phase6-deepseek-v1`，仍指向 `80ad08e…`，不是当前 `main`
 - Release：https://github.com/cedRiC874/researchops-agent/releases/tag/phase6-deepseek-v1
@@ -32,13 +33,28 @@
   均成功；长期证据位于
   `docs/evidence/production-slice-linux-ci-main-v1/`。
 
-当前工作树在兼容提交后可见 tracked/untracked 变更为 0，staged 0。原有用户文件均已保留；
-PR #4 已发布前三个提交，另有一个把 pytest 风格函数改为纯 unittest 的兼容提交：
+PR #4 已用 regular merge 合并，保留独立证据/实现/状态提交；合并后 `main` 两条
+workflow 均通过：offline run `32573214902`（246 tests、Phase 5 50/50、21/21、
+audit/profile valid）与 production run `32573214910`（真实 344×8 Compose E2E）。
+
+本 PR 的提交边界仅包含 pilot-ready staging 实现与相应文档：
+
+```text
+M  .dockerignore, README.md, handoff.md, docs/ARCHITECTURE.md,
+   docs/EVIDENCE.md, docs/PORTFOLIO.md
+?? .github/workflows/pilot-staging-ci.yml
+?? docs/EXTERNAL_RESEARCHER_PILOT_PROTOCOL.md
+?? docs/SUPERVISED_PILOT_*.md
+?? services/pilot_staging/
+```
+
+本轮没有修改锁定的 `src/researchops`，没有运行付费 Provider，也没有读取任何 API
+Key。原有用户文件均已保留。PR #4 的本地提交边界曾为：
 
 ```text
 cf5e9d1: 18 个 main CI 长期证据与状态文档路径
 3e921ce: 39 个 Eval v2 locked candidate/self-pilot 冻结单元路径
-compatibility commit: 移除根 CI 未锁定的 pytest 依赖，并让 13 个 public-runner tests 真正被 unittest 收集
+879b7ca: 移除根 CI 未锁定的 pytest 依赖，并让 13 个 public-runner tests 真正被 unittest 收集
 Local-only ignored: output/、sessions/data、tmp/、service .env/secrets（全部保留）
 ```
 
@@ -51,8 +67,47 @@ Eval v2 candidate 的 source bundle 覆盖整个 `src/researchops/*.py`，因此
 7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11
 ```
 
-`main` 已包含 production slice 与其需要的 5 个 Eval v2 foundation 模块；完整
-Eval v2/self-pilot 已发布到 PR #4，仍未 merge/release。最新 Release仍是 v0.2.0。
+`main` 已包含完整 Eval v2/self-pilot 与 production slice；最新 Release 仍是
+v0.2.0，尚未为 Eval v2 或 pilot staging 新建 Release。
+
+## 1.1 当前 pilot-ready staging 状态（待 PR、未上线）
+
+独立服务位于 `services/pilot_staging/`，不把现有 localhost self-pilot 翻成
+external，也不改锁定 candidate。已实现：
+
+- 一次性邀请、HMAC token digest、HttpOnly session、CSRF、Host/body/rate 门禁；
+- 页面展示完整 consent 文档后才允许运行；撤回立即撤销 session、停止排队调用，
+  运行中结果写库前再检查并丢弃；
+- 服务器端 Provider secret 只挂载到显式 `online` worker，API/参与者不接触 Key；
+- 6 题 prepared public pack，覆盖 3 个数据集和 6 类场景；
+- PostgreSQL queue、worker heartbeat/readiness、单题一次 Agent task execution、campaign assignment 上限；该上限不是模型/API 请求数或费用上限；
+- output/notes DLP、safety pause、incident list/resolve、失败题排除后继续；
+- participant 可在 Agent task execution 排队前或答案显示后跳题；skip 不重跑、不计技术失败；
+- Provider latency 与人工阅读时间分开；Markdown 渲染时题目保持在答案上方；
+- 追加式事件 hash chain、task-pack integrity、一致快照 aggregate summary、90 天/撤回
+  7 天 purge 入口；
+- summary claim gate 固定为外部科研用户在 prepared public data 上的可用性，专业
+  正确性、private holdout、未知分布、生产 SLA 均保持 false/null。
+
+新增 `execution_environment=supervised` 的 1–2 人监督预试通道：环境值持久进入
+campaign/PostgreSQL，永久加入 `supervised_environment_not_claim_eligible`，以后用其他
+配置读取也不能解除；一键脚本自动绑定 clean Git/image ID、Tailscale HTTPS、Secure
+Cookie、worker heartbeat，并提供 status/invite/stop。主持指南、招募检查表和单场记录模板
+已冻结为 6 题流程。
+
+验证快照（无网络 Provider 调用）：38 个 API/domain/config/script/CI tests、3 个
+candidate/schema tests、1 个真实临时 PostgreSQL lifecycle/migration/checksum test；
+Linux Docker image `sha256:d587ba672dc7faad8b7f735d85719811b9f532d4a4a7b3fc4f965cff636472f5`
+已成功构建并通过 candidate/pip check。临时 PostgreSQL 容器已停止并由 `--rm` 删除，未建
+持久卷。
+
+`.github/workflows/pilot-staging-ci.yml` 已实现；必须以对应提交的 GitHub clean run 作为
+远端证据，不能把 workflow 文件本身称为通过证明。它不会创建 Provider Key 或启动 online worker。
+
+这仍不是 production staging。1–2 人 supervised 预试可在本机 Docker + Tailscale HTTPS
+下进行，但不能进入正式 external claim。正式 3–5 人 campaign 前仍需托管 PostgreSQL TLS+backup/PITR、Secret Manager、镜像
+digest/部署 SHA、脱敏 telemetry/告警、外部 daily retention scheduler、回滚与伦理/IRB
+判断（如适用）。完整清单见 `services/pilot_staging/README.md`。
 
 ## 2. 项目定位
 
