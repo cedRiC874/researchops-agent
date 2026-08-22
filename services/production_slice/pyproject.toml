@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "researchops-production-slice"
+version = "0.1.0"
+description = "Production-like FastAPI/PostgreSQL/S3/OTel vertical slice for ResearchOps"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "boto3==1.43.77",
+  "matplotlib==3.11.1",
+  "fastapi==0.141.1",
+  "numpy==2.5.2",
+  "opentelemetry-api==1.44.0",
+  "opentelemetry-exporter-otlp-proto-http==1.44.0",
+  "opentelemetry-instrumentation-fastapi==0.65b0",
+  "opentelemetry-instrumentation-sqlalchemy==0.65b0",
+  "opentelemetry-sdk==1.44.0",
+  "psycopg[binary,pool]==3.3.4",
+  "pydantic-settings==2.15.0",
+  "pandas==3.0.5",
+  "scipy==1.18.0",
+  "sqlalchemy==2.0.52",
+  "statsmodels==0.14.6",
+  "uvicorn==0.52.4",
+]
+
+[project.optional-dependencies]
+test = [
+  "httpx2==2.12.0",
+  "PyYAML==6.0.3",
+  "pytest==9.1.1",
+]
+
+[project.scripts]
+researchops-api = "researchops_service.main:run_api"
+researchops-worker = "researchops_service.worker:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
