@@ -98,6 +98,8 @@ def test_docker_context_is_deny_by_default() -> None:
     )
     assert '$env:CI -ne "true"' in bootstrap_ci
     assert "secret_values_printed = $false" in bootstrap_ci
+    assert "[IO.File]::SetUnixFileMode" in bootstrap_ci
+    assert "[IO.UnixFileMode]::OtherRead" in bootstrap_ci
     assert "prepared_sha256" in bootstrap_ci
 
     workflow_path = repo_root / ".github" / "workflows" / "production-slice-e2e.yml"

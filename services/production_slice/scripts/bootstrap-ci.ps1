@@ -77,6 +77,19 @@ $secretValues = [ordered]@{
 foreach ($entry in $secretValues.GetEnumerator()) {
     Write-Utf8NoBom -Path (Join-Path $secretsTarget $entry.Key) -Content $entry.Value
 }
+if (-not $IsWindows) {
+    $composeSecretMode = (
+        [IO.UnixFileMode]::UserRead -bor
+        [IO.UnixFileMode]::GroupRead -bor
+        [IO.UnixFileMode]::OtherRead
+    )
+    foreach ($entry in $secretValues.GetEnumerator()) {
+        [IO.File]::SetUnixFileMode(
+            (Join-Path $secretsTarget $entry.Key),
+            $composeSecretMode
+        )
+    }
+}
 
 $datasetId = "palmer_penguins_v0_1_0"
 $csvName = "$datasetId.csv"
