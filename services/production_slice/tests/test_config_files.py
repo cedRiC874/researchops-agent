@@ -85,6 +85,10 @@ def test_docker_context_is_deny_by_default() -> None:
     assert "[switch]$StopAfter" in e2e_script
     assert "down -v" not in e2e_script.lower()
     assert "secrets_persisted = $false" in e2e_script
+    assert "Get-SanitizedDiagnosticLogs" in e2e_script
+    assert "diagnostic_log_redaction_failed" in e2e_script
+    assert "diagnostic_logs_sanitized" in e2e_script
+    assert "[REDACTED_SECRET]" in e2e_script
     assert "response_body_persisted = $false" in e2e_script
     assert '"..\\.."' not in e2e_script
     assert '"production_slice\\e2e"' not in e2e_script

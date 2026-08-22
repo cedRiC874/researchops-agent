@@ -90,6 +90,51 @@ function Get-ComposeStatus([string]$ComposePath) {
     return $result
 }
 
+function Get-SanitizedDiagnosticLogs(
+    [string]$ComposePath,
+    [string]$SecretDirectory,
+    [DateTime]$Since
+) {
+    $logs = (& docker compose -f $ComposePath logs --no-color --since $Since.ToString("yyyy-MM-ddTHH:mm:ssZ") api worker 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($logs)) {
+        return $null
+    }
+
+    foreach ($file in Get-ChildItem -LiteralPath $SecretDirectory -File) {
+        $secretValue = [IO.File]::ReadAllText($file.FullName).Trim()
+        if ($secretValue) {
+            $logs = $logs.Replace($secretValue, "[REDACTED_SECRET]")
+        }
+        $secretValue = $null
+    }
+    $logs = [regex]::Replace(
+        $logs,
+        "(?im)^.*(?:authorization|bearer\s+[A-Za-z0-9_-]{16,}|api[_-]?key\s*[:=]).*$",
+        "[REDACTED_SENSITIVE_LOG_LINE]"
+    )
+
+    foreach ($file in Get-ChildItem -LiteralPath $SecretDirectory -File) {
+        $secretValue = [IO.File]::ReadAllText($file.FullName).Trim()
+        if ($secretValue -and $logs.Contains($secretValue)) {
+            throw "diagnostic_log_redaction_failed"
+        }
+        $secretValue = $null
+    }
+    if (
+        $logs -match "(?i)authorization" -or
+        $logs -match "(?i)bearer\s+[A-Za-z0-9_-]{16,}" -or
+        $logs -match "(?i)api[_-]?key\s*[:=]\s*\S+"
+    ) {
+        throw "diagnostic_log_redaction_failed"
+    }
+
+    $maximumCharacters = 65536
+    if ($logs.Length -gt $maximumCharacters) {
+        $logs = "[TRUNCATED_TO_LAST_64_KIB]`n" + $logs.Substring($logs.Length - $maximumCharacters)
+    }
+    return $logs
+}
+
 $dimensions = @{
     "palmer_penguins_v0_1_0" = @(344, 8)
     "uci_parkinsons_telemonitoring_189" = @(5875, 22)
@@ -136,6 +181,7 @@ $reused = $null
 $verification = $null
 $traceNames = @()
 $observedStatuses = @()
+$diagnosticLogs = $null
 
 try {
     if ($null -eq (Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -450,6 +496,15 @@ catch {
     catch {
         $composeStatus = @()
     }
+    try {
+        $diagnosticLogs = Get-SanitizedDiagnosticLogs `
+            -ComposePath $composePath `
+            -SecretDirectory $secretDirectory `
+            -Since $startedAt
+    }
+    catch {
+        $diagnosticLogs = $null
+    }
     $summary = [ordered]@{
         schema_version = "1.0"
         status = "failed"
@@ -460,6 +515,7 @@ catch {
         dataset_id = $DatasetId
         failure_stage = $stage
         error_code = $safeErrorCode
+        sanitized_diagnostics_persisted = ($null -ne $diagnosticLogs)
         secret_values_printed = $false
         model_calls = 0
     }
@@ -486,6 +542,11 @@ finally {
         run_id = $runId
         services = $composeStatus
     })
+    if ($null -ne $diagnosticLogs) {
+        Write-Utf8NoBom `
+            -Path (Join-Path $stagingDirectory "diagnostic_logs.txt") `
+            -Content $diagnosticLogs
+    }
 
     $verificationMarkdown = @"
 # Production Slice E2E Verification
@@ -494,6 +555,7 @@ finally {
 - Run ID: ``$runId``
 - Dataset: ``$DatasetId``
 - Failure stage: ``$(if ($success) { 'none' } else { $stage })``
+- Sanitized diagnostics persisted: ``$($null -ne $diagnosticLogs)``
 - Secret values printed: ``false``
 - Model calls: ``0``
 
@@ -503,6 +565,9 @@ development Compose check, not HA, production SLA, cloud IAM/KMS/TLS, or load ev
     Write-Utf8NoBom -Path (Join-Path $stagingDirectory "verification.md") -Content $verificationMarkdown
 
     $manifestFiles = @("e2e_summary.json", "compose_status.json", "verification.md")
+    if ($null -ne $diagnosticLogs) {
+        $manifestFiles += "diagnostic_logs.txt"
+    }
     $fileEntries = @()
     foreach ($name in $manifestFiles) {
         $path = Join-Path $stagingDirectory $name
@@ -517,6 +582,7 @@ development Compose check, not HA, production SLA, cloud IAM/KMS/TLS, or load ev
         run_id = $runId
         files = $fileEntries
         secrets_persisted = $false
+        diagnostic_logs_sanitized = ($null -ne $diagnosticLogs)
         response_body_persisted = $false
         row_level_data_persisted = $false
     })
