@@ -4,11 +4,13 @@
 
 ## 当前验证快照
 
-验证日期：2026-08-19。
+验证日期：2026-08-22。
 
 | 声明 | 当前结果 | 证据 |
 | --- | --- | --- |
-| 固定离线任务全部通过 | 50/50，6 类均为 100% | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md)、[`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
+| Phase 5 历史作品集基线 | 对应其冻结 source/manifest 的 50/50，6 类均为 100% | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md)、[`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
+| Phase 5 P1 事故快照 | 旧 main run 32568017243 为 44/50、evidence 10/21，但 workflow 错误显示绿色 | [门禁审计](evidence/main-offline-gate-20260822/README.md)、[旧 GitHub run](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017243) |
+| 当前 `main` Phase 5 | PR #3 已合并；run 32571384757 为 50/50、evidence 21/21、profile valid、50 条 audit chain 有效 | [main run](https://github.com/cedRiC874/researchops-agent/actions/runs/32571384757)、[修复与门禁证据](evidence/main-offline-gate-20260822/README.md) |
 | 非预期工具错误 | 0/45 attempts，0% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | 主动注入错误被正确处理 | 毛工具错误 11/45，24.44% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | 安全违规 | 0/50 | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
@@ -16,11 +18,36 @@
 | 离线延迟 | P50 100.38 ms；P95 411.03 ms | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md) |
 | 评测来源可复现 | 语料、源码、数据、依赖和产物 SHA-256 已记录 | [`eval_manifest.json`](../artifacts/portfolio_baseline_provider/eval_manifest.json) |
 | 50 条审计链有效 | audit index 中全部 `valid=true` | [`eval_audit_index.json`](../artifacts/portfolio_baseline_provider/eval_audit_index.json) |
-| 当前自动化测试 | 144/144 通过 | `python -m unittest discover -s tests -v` |
+| 当前自动化测试 | `main` 根测试 152/152；本地完整工作树 233/233；production slice 18/18 | [current main offline run](https://github.com/cedRiC874/researchops-agent/actions/runs/32571384757)；[main Linux run](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017244) |
 | DeepSeek development | 16/16；28 requests；71,039 tokens；P50/P95 7.65/17.40 s | [summary](evidence/phase6-deepseek-v1/development/phase6_summary.md)、[report](evidence/phase6-deepseek-v1/development/phase6_report.json)、[manifest](evidence/phase6-deepseek-v1/development/phase6_manifest.json)、[audit index](evidence/phase6-deepseek-v1/development/phase6_audit_index.json) |
 | DeepSeek repo-local holdout | 4/4；6 requests；16,854 tokens；P50/P95 5.05/14.59 s | [summary](evidence/phase6-deepseek-v1/holdout/phase6_summary.md)、[report](evidence/phase6-deepseek-v1/holdout/phase6_report.json)、[manifest](evidence/phase6-deepseek-v1/holdout/phase6_manifest.json)、[audit index](evidence/phase6-deepseek-v1/holdout/phase6_audit_index.json) |
+| Eval v2 public foundation | 完整 campaign 仍为 `design_only`；120 public tasks 全部 internal-ready；private holdout 未授权 | [设计](../evals/EVAL_V2.md)、[campaign](../evals/v2/campaign.json)、[dataset manifest](../evals/v2/external_datasets.json)、[task schema](../evals/v2/public_task_schema.json)、[internal review](../evals/v2/internal_review.json) |
+| DeepSeek public-regression candidate | 一次性运行 `complete`；Provider system 68/93（73.12%），三轮 23/31、22/31、23/31；fault harness 27/27；保守成本 CNY 0.908142 | [证据说明](evidence/eval-v2-public-regression-deepseek-v1/README.md)、[summary](../artifacts/eval_v2_public_regression/deepseek-v1/public_regression_summary.md)、[report](../artifacts/eval_v2_public_regression/deepseek-v1/public_regression_report.json)、[manifest](../artifacts/eval_v2_public_regression/deepseek-v1/artifact_manifest.json)、[candidate](../evals/v2/public_regression_candidate.json) |
+| Production-like vertical slice | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并；`main` push 与手动 dispatch 的 Ubuntu 真实 Compose E2E 均通过 | [长期 CI 快照](evidence/production-slice-linux-ci-main-v1/README.md)、[服务说明](../services/production_slice/README.md)、[验证快照](../services/production_slice/VERIFICATION.md)、[Linux workflow](../.github/workflows/production-slice-e2e.yml)、[Compose](../services/production_slice/compose.yaml) |
+| Internal self-pilot | 两个旧 corpus 的 12 题内部 session 已完成；`session-02` 可理解/有用 12/12、需专家复核 3/12、明显问题 1/12、安全担忧 0/12、严格机器合同 3/12 | 本地 `artifacts/self_pilot/session-01/02`（不提交逐题 state）；[使用指南](SELF_PILOT_GUIDE.md) |
 
 Phase 5 的 100.38/411.03 ms 是本机离线组件/控制面执行时间，模型调用为 0，因此 `$0` 只代表确定性离线模式。DeepSeek 行则是顺序在线评测中的 Agent 段延迟，同样不能解释为生产 SLA。
+
+历史 Phase 5 50/50 必须与其 source/manifest 绑定。2026-08-22 的
+`main@badb7169` workflow 虽然 144 项根测试和 artifact verifier 均通过，但新重建
+报告实际为 44/50、证据引用 10/21；6 个失败任务集中在 required evidence 与部分
+dataset/chart exact 字段。根因是仓库规定的 clean LF CSV hash 为 `7ae3…`，而
+corpus golden 绑定了本地遗留 CRLF 文件的 `db7c…`。该 main run 当时没有把
+success/evidence 阈值接入退出码，因此
+绿色 run 只能证明 workflow 和完整性检查完成，不能证明质量阈值通过。这一缺口列为
+P1；本地 CRLF 环境的 50/50 也不能替代 clean checkout。详见
+[main offline gate audit](evidence/main-offline-gate-20260822/README.md)。
+
+PR #3 已把全部 Phase 5 corpus provenance 更新到 LF lineage，corpus SHA-256 为
+`dd591862…8e67`；版本化 `phase5-ci-v1` 同时精确检查 50/50 与 21/21，workflow
+也不再丢失 `eval-run` 的 native exit code。push/PR clean runs 均为 50/50、21/21；
+合并后的 main run 32571384757 再次通过 152/152、50/50、21/21、profile valid 和
+50 条 audit chain 有效。修复前 44/50 产物会以稳定 reason 和 exit 1 被拒绝，P1
+已经关闭。
+
+Eval v2 public-regression 只运行了锁定 public candidate：31 道 Provider 行为题各重复三次，另有 9 道纯本地 fault harness 各重复三次。68/93 归因于 `DeepSeek + 锁定控制面`，不是模型单体或 LLM 规划准确率；27/27 fault 结果也未进入模型分母。完整 campaign 仍非 frozen，所有报告继续禁止 private holdout、未知生产集和跨 Provider 泛化声明。内部复核覆盖 120 个 ready tasks，但不是外部领域复核；外部专家复核为 0/3，private corpus 和第二 Provider仍未完成。
+
+Production-like vertical slice 位于独立 `services/production_slice/`；Eval v2 candidate commitment 在新增服务后仍通过冻结 verifier，反过来，本次 68/93 也没有评测该新服务层。PR #2 已合并至 `main@badb7169`。Ubuntu push run 32568017244 的真实 E2E 用时 68.861 秒：job 一次完成 `queued/claimed/publishing/succeeded`，344×8 aggregate profile、4-event PostgreSQL hash chain、MinIO metadata/hash/bytes、幂等复用及 API→worker Trace ID 均通过，secret leak 0、model calls 0；手动 dispatch run 32568233292 也成功。该结果仍不能外推为 HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量。长期证据见 [main Linux CI 快照](evidence/production-slice-linux-ci-main-v1/README.md)。
 
 ## 模拟试验分析证据
 

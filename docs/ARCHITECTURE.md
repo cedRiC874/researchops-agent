@@ -38,7 +38,7 @@ flowchart LR
 
     subgraph T["评测闭环"]
         F["Phase 5\n50 题离线组件与控制面"]
-        O["Phase 6\n20 题 Agent 行为语料"]
+        O["Phase 6 + Eval v2\nAgent 行为语料与冻结合同"]
         Z["评分器\n工具名、参数、证据、审批、安全、成本覆盖"]
     end
 
@@ -143,12 +143,38 @@ sequenceDiagram
 
 | 模式 | 被测对象 | 当前证据 | 不能声称什么 |
 | --- | --- | --- | --- |
-| `offline_deterministic` | 数据质量、方法选择、统计工具、报告、重试、审批和审计控制面 | 固定 50 题，50/50 通过 | 真实 LLM 的规划成功率 |
+| `offline_deterministic` | 数据质量、方法选择、统计工具、报告、重试、审批和审计控制面 | PR #3 已合并；当前 main run 32571384757 为 50/50、21/21、profile valid；旧 44/50 事故保留审计 | 真实 LLM 的规划成功率，或脱离 source/data/manifest 复用成绩 |
 | Phase 6 scripted/replay | Agent 工具轨迹采集、评分器和审批暂停协议 | 20 题语料校验与无网络 SDK 回归测试 | 真实 provider 的质量、延迟或成本 |
 | `online_agents_sdk` + `provider=openai` | OpenAI 模型的工具选择、参数、证据回答 | adapter 已验证；在线因 OpenAI API 计费条件阻塞 | 在线成功率、真实 token 成本或线上延迟 |
-| `online_agents_sdk` + `provider=deepseek` | DeepSeek V4 的同一 20 题行为合同 | provider/key/client/审批/审计已完成离线测试；真实 smoke 尚未运行 | DeepSeek 的在线成功率、真实延迟或成本 |
+| `online_agents_sdk` + `provider=deepseek` | DeepSeek V4 的同一 20 题行为合同 | 冻结版 development 16/16、repo-local holdout 4/4；usage、延迟、manifest 与审计索引已保存 | 抗污染泛化、生产 SLA 或未知成本为零 |
+| Eval v2 public candidate | schema、准备器、registry、inspect backend、Provider executor、runner/scorer、三次预承诺顺序、按 task-ID 聚合、工具请求/去重/backend telemetry、原子 artifacts 与 single-use receipt | 一次性 DeepSeek public run：Provider system 68/93；fault harness 27/27；完整 campaign仍 `design_only` | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
 
 Provider 是显式安全边界：OpenAI 与 DeepSeek 使用不同环境变量和独立 client，不允许任意 base URL，也不会修改 SDK 全局 Key。DeepSeek 会忽略 `parallel_tool_calls=False`，因此工具串行、调用预算和每运行单发布提案上限均由本地控制面强制执行，而不是依赖模型服务。
+
+## Production-like vertical slice
+
+独立子项目 `services/production_slice/` 提供首个基础设施纵切，且不修改 Eval v2
+candidate 锁定的 `src/researchops` 与根依赖：
+
+```text
+FastAPI -> PostgreSQL lease queue -> worker -> aggregate-only inspect backend
+        -> S3/MinIO private object -> OpenTelemetry collector
+```
+
+API 只接受 logical `dataset_id`，要求 Bearer token 与 HMAC 后的幂等键。PostgreSQL
+队列以 `FOR UPDATE SKIP LOCKED`、lease token、version CAS 和追加式 job event hash
+chain 实现 at-least-once 领取。Worker 在对象写入前先保存 deterministic key、SHA-256
+和 bytes 并进入 `publishing`；不确定写入进入 `outcome_unknown`，由 HEAD metadata
+reconcile 为 `succeeded`、`retry_wait` 或继续 unknown，不盲目写第二次。
+
+结果由 API 代理读取并重新校验 SHA-256，不暴露 object key、文件路径或 presigned URL。
+OTel 只记录 allowlisted 状态属性，不是审计账本。当前 18 项进程内无网络测试与
+真实 PostgreSQL/MinIO/collector Compose E2E 均已通过；API POST 与 worker consumer
+span 的 Trace ID 一致。PR #2 已把该切片合并到 `main@badb7169`；Ubuntu
+[`production-slice-e2e` run 32568017244](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017244)
+和后续手动 dispatch run 32568233292 均完成真实 Compose 链路、脱敏证据上传和安全
+shutdown，长期快照见 [Linux CI evidence](evidence/production-slice-linux-ci-main-v1/README.md)。
+这一纵切不包含 LLM、外部发布或批准后恢复；完整批准与恢复仍属于 Phase 4。
 
 这种拆分遵循 OpenAI 官方关于任务特定评测、典型/边缘/对抗样本、持续评测，以及分别检查最终回答、工具调用和证据的建议：
 
