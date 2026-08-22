@@ -49,7 +49,16 @@ jobs:
         run: |
           $env:PYTHONPATH = "src"
           python -m researchops.cli eval-run --output-dir artifacts/ci_phase5
-          python scripts/verify_phase5_artifacts.py artifacts/ci_phase5
+          $evaluationExitCode = $LASTEXITCODE
+
+          python scripts/verify_phase5_artifacts.py artifacts/ci_phase5 `
+            --quality-profile phase5-ci-v1
+          $verificationExitCode = $LASTEXITCODE
+
+          if ($evaluationExitCode -ne 0 -or $verificationExitCode -ne 0) {
+            Write-Output "::error title=phase5_offline_quality_gate_failed::eval_exit=$evaluationExitCode verifier_exit=$verificationExitCode"
+            exit 1
+          }
 
       - name: Upload sanitized evaluation evidence
         if: always()

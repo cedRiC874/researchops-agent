@@ -5,7 +5,9 @@ import hashlib
 import json
 import sqlite3
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -21,12 +23,30 @@ FORBIDDEN_CANARIES = {
     "authorization_header": "authorization: bearer",
     "traceback": "traceback (most recent call last)",
 }
+QUALITY_PROFILE_REQUIREMENTS: dict[str, tuple[tuple[str, int | float], ...]] = {
+    "phase5-ci-v1": (
+        ("task_count", 50),
+        ("passed_count", 50),
+        ("failed_count", 0),
+        ("success_rate", 1.0),
+        ("evidence_citations_required", 21),
+        ("evidence_citations_matched", 21),
+        ("evidence_citation_accuracy", 1.0),
+    )
+}
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="验证 Phase 5 产物哈希、审计链索引与脱敏")
+    parser = argparse.ArgumentParser(
+        description="验证 Phase 5 产物哈希、审计链索引、脱敏与可选质量门禁"
+    )
     parser.add_argument(
         "artifact_directory", nargs="?", type=Path, default=Path("artifacts/phase5")
+    )
+    parser.add_argument(
+        "--quality-profile",
+        choices=tuple(QUALITY_PROFILE_REQUIREMENTS),
+        help="可选的版本化发布质量阈值；不传时保持仅验证产物完整性的历史语义。",
     )
     args = parser.parse_args()
     artifact_directory = args.artifact_directory.resolve()
@@ -36,6 +56,25 @@ def main() -> int:
     )
     audit_index = json.loads(
         (artifact_directory / "eval_audit_index.json").read_text(encoding="utf-8")
+    )
+
+    quality_report: Mapping[str, Any] | None = None
+    quality_report_readable = True
+    if args.quality_profile is not None:
+        try:
+            loaded_report = json.loads(
+                (artifact_directory / "eval_report.json").read_text(encoding="utf-8")
+            )
+            if not isinstance(loaded_report, Mapping):
+                quality_report_readable = False
+            else:
+                quality_report = loaded_report
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            quality_report_readable = False
+    quality_gate = _build_quality_gate(
+        args.quality_profile,
+        quality_report,
+        report_readable=quality_report_readable,
     )
 
     hash_mismatches: list[str] = []
@@ -99,6 +138,7 @@ def main() -> int:
         and not any(forbidden.values())
         and not invalid_chains
         and not index_mismatches
+        and quality_gate["status"] != "invalid"
     )
     payload = {
         "status": "valid" if valid else "invalid",
@@ -109,9 +149,48 @@ def main() -> int:
         "invalid_chains": invalid_chains,
         "audit_index_mismatches": index_mismatches,
         "forbidden_content": forbidden,
+        "quality_gate": quality_gate,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0 if valid else 1
+
+
+def _build_quality_gate(
+    profile: str | None,
+    report: Mapping[str, Any] | None,
+    *,
+    report_readable: bool = True,
+) -> dict[str, Any]:
+    if profile is None:
+        return {
+            "profile": None,
+            "status": "not_enforced",
+            "error_code": None,
+            "mismatches": [],
+        }
+    if not report_readable or report is None:
+        return {
+            "profile": profile,
+            "status": "invalid",
+            "error_code": "phase5_quality_report_unreadable",
+            "mismatches": [],
+        }
+
+    mismatches = [
+        {
+            "field": field,
+            "expected": expected,
+            "actual": report.get(field),
+        }
+        for field, expected in QUALITY_PROFILE_REQUIREMENTS[profile]
+        if type(report.get(field)) is not type(expected) or report.get(field) != expected
+    ]
+    return {
+        "profile": profile,
+        "status": "valid" if not mismatches else "invalid",
+        "error_code": None if not mismatches else "phase5_quality_threshold_mismatch",
+        "mismatches": mismatches,
+    }
 
 
 def _sha256(path: Path) -> str:
