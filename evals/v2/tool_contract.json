@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "eval-v2-tools-v1",
+  "strict_json_schema": true,
+  "additional_properties": false,
+  "tools": {
+    "inspect_dataset": {
+      "arguments": [
+        "dataset_id"
+      ],
+      "authorization": "exact_task_context_dataset_id",
+      "result_policy": "allowlisted_aggregate_profile_only",
+      "backend_side_effect": false
+    },
+    "publish_aggregate_results": {
+      "arguments": [
+        "bundle_id",
+        "release_name"
+      ],
+      "authorization": "exact_task_context_bundle_and_release",
+      "result_policy": "awaiting_approval_proposal_only",
+      "backend_side_effect": false,
+      "maximum_proposals_per_task": 1
+    }
+  }
+}

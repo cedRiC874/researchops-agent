@@ -11,7 +11,11 @@ from typing import Any, AsyncContextManager, ClassVar, Protocol
 _OPENAI_MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _DEEPSEEK_MODELS = frozenset({"deepseek-v4-flash", "deepseek-v4-pro"})
 _DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+_ANTHROPIC_MODELS = frozenset(
+    {"claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5-20251001"}
+)
 _RESPONSES_TRANSPORT_ID = "openai_responses"
+_LITELLM_TRANSPORT_ID = "litellm_anthropic"
 
 
 class ProviderConfigurationError(RuntimeError):
@@ -144,20 +148,72 @@ class DeepSeekProvider:
             await client.close()
 
 
+@dataclass(frozen=True, slots=True)
+class AnthropicProvider:
+    """Anthropic models via the Agents SDK's LiteLLM transport.
+
+    The OpenAI Agents SDK does not speak Anthropic's API natively, so this
+    adapter routes through `agents.extensions.models.litellm_model.LitellmModel`
+    (LiteLLM's `anthropic/<model>` naming convention) instead of the
+    Responses-API transport used by OpenAI/DeepSeek. No client object is
+    constructed up front, so there is no long-lived connection to close.
+    """
+
+    provider_id: ClassVar[str] = "anthropic"
+    api_key_env: ClassVar[str] = "ANTHROPIC_API_KEY"
+    transport_id: ClassVar[str] = _LITELLM_TRANSPORT_ID
+
+    def validate_model(self, model_id: str) -> str:
+        if not isinstance(model_id, str):
+            raise ProviderConfigurationError(
+                "provider_model_invalid", "Anthropic model ID 必须是显式字符串。"
+            )
+        normalized = model_id.strip()
+        if normalized not in _ANTHROPIC_MODELS:
+            raise ProviderConfigurationError(
+                "provider_model_not_allowed",
+                "Anthropic model ID 不在受控 allowlist 中。",
+            )
+        return normalized
+
+    @asynccontextmanager
+    async def open_model(
+        self, *, model_id: str, api_key: str, timeout_seconds: float = 120.0
+    ) -> AsyncIterator[ProviderModel]:
+        normalized_model = self.validate_model(model_id)
+        normalized_key = _require_api_key(api_key, self.api_key_env)
+        # timeout is validated for parity with the other adapters even though
+        # LitellmModel takes it per-call rather than at construction time.
+        _validate_timeout(timeout_seconds)
+        LitellmModel = _load_litellm_transport()
+        sdk_model = LitellmModel(
+            model=f"anthropic/{normalized_model}",
+            api_key=normalized_key,
+        )
+        yield ProviderModel(
+            provider_id=self.provider_id,
+            model_id=normalized_model,
+            transport_id=self.transport_id,
+            sdk_model=sdk_model,
+        )
+
+
 def get_provider(provider_id: str) -> ProviderAdapter:
     """Resolve an explicitly selected provider without loading an SDK or client."""
 
     if not isinstance(provider_id, str):
         raise ProviderConfigurationError(
-            "provider_invalid", "provider 必须是 openai 或 deepseek。"
+            "provider_invalid", "provider 必须是 openai、deepseek 或 anthropic。"
         )
     normalized = provider_id.strip().lower()
     if normalized == OpenAIProvider.provider_id:
         return OpenAIProvider()
     if normalized == DeepSeekProvider.provider_id:
         return DeepSeekProvider()
+    if normalized == AnthropicProvider.provider_id:
+        return AnthropicProvider()
     raise ProviderConfigurationError(
-        "provider_invalid", "provider 必须是 openai 或 deepseek。"
+        "provider_invalid", "provider 必须是 openai、deepseek 或 anthropic。"
     )
 
 
@@ -193,3 +249,19 @@ def _load_responses_transport() -> tuple[Any, Any]:
             "provider_sdk_not_installed", "未安装 OpenAI Agents SDK provider transport。"
         ) from exc
     return AsyncOpenAI, OpenAIResponsesModel
+
+
+def _load_litellm_transport() -> Any:
+    """Delay the optional LiteLLM extension import so status checks stay
+    side-effect free, matching `_load_responses_transport`.
+    """
+
+    try:
+        from agents.extensions.models.litellm_model import LitellmModel
+    except ImportError as exc:
+        raise ProviderConfigurationError(
+            "provider_sdk_not_installed",
+            "未安装 Agents SDK 的 LiteLLM provider transport（需要 `pip install "
+            "\"openai-agents[litellm]\"`）。",
+        ) from exc
+    return LitellmModel

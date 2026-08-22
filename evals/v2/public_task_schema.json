@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2-public-task.json",
+  "title": "ResearchOps Eval v2 public task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "split",
+    "lifecycle_status",
+    "review_status",
+    "dataset_id",
+    "scenario",
+    "title",
+    "prompt",
+    "context",
+    "expected",
+    "tags"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "2.0"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^V2-(DEV|PUB)-[0-9]{3}$"
+    },
+    "split": {
+      "enum": [
+        "development",
+        "public_regression"
+      ]
+    },
+    "lifecycle_status": {
+      "enum": [
+        "draft",
+        "ready"
+      ]
+    },
+    "review_status": {
+      "enum": [
+        "unreviewed",
+        "internal_reviewed",
+        "external_reviewed"
+      ]
+    },
+    "dataset_id": {
+      "$ref": "#/$defs/logical_id"
+    },
+    "scenario": {
+      "enum": [
+        "standard_analysis",
+        "clarification_required",
+        "safe_refusal",
+        "approval_pause",
+        "unauthorized_resource",
+        "prompt_injection",
+        "provider_timeout",
+        "output_truncation",
+        "duplicate_tool_call",
+        "side_effect_outcome_unknown"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_id"
+      ],
+      "properties": {
+        "dataset_id": {
+          "$ref": "#/$defs/logical_id"
+        },
+        "design_id": {
+          "$ref": "#/$defs/logical_id"
+        },
+        "bundle_id": {
+          "$ref": "#/$defs/logical_id"
+        },
+        "release_name": {
+          "$ref": "#/$defs/logical_id"
+        }
+      }
+    },
+    "expected": {
+      "$ref": "#/$defs/expected"
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "logical_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    },
+    "evidence_id": {
+      "type": "string",
+      "pattern": "^E-[A-F0-9]{12}$"
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "tool_sequence",
+        "tool_arguments",
+        "required_evidence_ids",
+        "required_phrases",
+        "forbidden_phrases",
+        "forbidden_assertions",
+        "numeric_claims",
+        "allowed_numeric_claims",
+        "approval_state",
+        "safety_violation"
+      ],
+      "properties": {
+        "outcome": {
+          "enum": [
+            "completed",
+            "clarification_required",
+            "refused",
+            "waiting_approval",
+            "controlled_failure"
+          ]
+        },
+        "tool_sequence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/logical_id"
+          }
+        },
+        "tool_arguments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tool_call"
+          }
+        },
+        "required_evidence_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/evidence_id"
+          }
+        },
+        "required_phrases": {
+          "$ref": "#/$defs/unique_strings"
+        },
+        "forbidden_phrases": {
+          "$ref": "#/$defs/unique_strings"
+        },
+        "forbidden_assertions": {
+          "$ref": "#/$defs/unique_strings"
+        },
+        "numeric_claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/numeric_claim"
+          }
+        },
+        "allowed_numeric_claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/numeric_claim"
+          }
+        },
+        "approval_state": {
+          "enum": [
+            "not_required",
+            "awaiting_approval"
+          ]
+        },
+        "safety_violation": {
+          "const": false
+        }
+      }
+    },
+    "tool_call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "call_index",
+        "tool_name",
+        "arguments"
+      ],
+      "properties": {
+        "call_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tool_name": {
+          "$ref": "#/$defs/logical_id"
+        },
+        "arguments": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/logical_id"
+          }
+        }
+      }
+    },
+    "numeric_claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric_name",
+        "evidence_id",
+        "value",
+        "atol",
+        "rtol"
+      ],
+      "properties": {
+        "metric_name": {
+          "$ref": "#/$defs/logical_id"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/evidence_id"
+        },
+        "value": {
+          "type": "number"
+        },
+        "atol": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rtol": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "unique_strings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

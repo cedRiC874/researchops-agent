@@ -1,0 +1,185 @@
+{
+  "schema_version": "2.0",
+  "manifest_id": "researchops-eval-v2-external-datasets-v1",
+  "status": "source_verified",
+  "verified_at": "2026-08-19",
+  "verification_method": "official_metadata_plus_in_memory_hash",
+  "datasets": [
+    {
+      "dataset_id": "palmer_penguins_v0_1_0",
+      "display_name": "Palmer Penguins curated dataset",
+      "source_class": "public",
+      "domain": "ecology_observational_morphometrics",
+      "selection_status": "source_verified",
+      "external_review_status": "planned",
+      "license": {
+        "identifier": "CC0-1.0",
+        "status": "verified",
+        "official_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "redistribution_allowed": true,
+        "attribution_required": false
+      },
+      "source": {
+        "landing_page_url": "https://github.com/allisonhorst/palmerpenguins",
+        "download_url": "https://raw.githubusercontent.com/allisonhorst/palmerpenguins/v0.1.0/inst/extdata/penguins.csv",
+        "doi": "10.5281/zenodo.3960218",
+        "version": "v0.1.0",
+        "archive_sha256": null,
+        "archive_bytes": null,
+        "selected_asset": "penguins.csv",
+        "selected_asset_sha256": "f204db2c753b0937caac3cb35258562c14f073e4bbc76be24b4c51ce22767a93",
+        "selected_asset_bytes": 15241
+      },
+      "structure": {
+        "format": "csv",
+        "has_header": true,
+        "row_count": 344,
+        "column_count": 8,
+        "missing_cell_count": 19,
+        "missing_tokens": [
+          "",
+          "NA"
+        ],
+        "repeated_subjects": false,
+        "subject_count": null,
+        "row_unit": "penguin_observation",
+        "id_columns": []
+      },
+      "analysis_boundaries": [
+        "observational_not_randomized",
+        "three_species_not_two_group",
+        "missing_values_present",
+        "association_only_without_design",
+        "stratify_species_before_sex_comparison"
+      ],
+      "allowed_splits": [
+        "development",
+        "public_regression",
+        "private_holdout"
+      ],
+      "citation": {
+        "text": "Horst AM, Hill AP, Gorman KB (2020). palmerpenguins: Palmer Archipelago (Antarctica) penguin data. R package version 0.1.0.",
+        "url": "https://doi.org/10.5281/zenodo.3960218"
+      }
+    },
+    {
+      "dataset_id": "uci_parkinsons_telemonitoring_189",
+      "display_name": "Oxford Parkinson's Disease Telemonitoring Dataset",
+      "source_class": "public",
+      "domain": "health_repeated_measure_telemonitoring",
+      "selection_status": "source_verified",
+      "external_review_status": "planned",
+      "license": {
+        "identifier": "CC-BY-4.0",
+        "status": "verified",
+        "official_url": "https://creativecommons.org/licenses/by/4.0/",
+        "redistribution_allowed": true,
+        "attribution_required": true
+      },
+      "source": {
+        "landing_page_url": "https://archive.ics.uci.edu/dataset/189/parkinson",
+        "download_url": "https://archive.ics.uci.edu/static/public/189/parkinsons%2Btelemonitoring.zip",
+        "doi": "10.24432/C5ZS3N",
+        "version": "uci-189-verified-2026-08-19",
+        "archive_sha256": "2f82bb0ef96fa7d8d7edf4d97b89173e07c2cca7723440a64bc38918a83345df",
+        "archive_bytes": 292221,
+        "selected_asset": "parkinsons_updrs.data",
+        "selected_asset_sha256": "f2c7d5025dec4e92e7feae367a5f7ccf58789a10ac6b54bdf15976c599f9dd39",
+        "selected_asset_bytes": 911261
+      },
+      "structure": {
+        "format": "csv",
+        "has_header": true,
+        "row_count": 5875,
+        "column_count": 22,
+        "missing_cell_count": 0,
+        "missing_tokens": [
+          "?"
+        ],
+        "repeated_subjects": true,
+        "subject_count": 42,
+        "row_unit": "voice_recording",
+        "id_columns": [
+          "subject#"
+        ]
+      },
+      "analysis_boundaries": [
+        "repeated_measurements_within_subject",
+        "subject_identifier_must_not_reach_model_or_logs",
+        "motor_and_total_updrs_are_interpolated_outcomes",
+        "rows_are_not_independent",
+        "requires_mixed_or_cluster_aware_model"
+      ],
+      "allowed_splits": [
+        "development",
+        "public_regression",
+        "private_holdout"
+      ],
+      "citation": {
+        "text": "Tsanas A, Little M (2009). Parkinsons Telemonitoring. UCI Machine Learning Repository.",
+        "url": "https://doi.org/10.24432/C5ZS3N"
+      }
+    },
+    {
+      "dataset_id": "uci_heart_disease_cleveland_45",
+      "display_name": "UCI Heart Disease processed Cleveland dataset",
+      "source_class": "public",
+      "domain": "health_observational_classification",
+      "selection_status": "source_verified",
+      "external_review_status": "planned",
+      "license": {
+        "identifier": "CC-BY-4.0",
+        "status": "verified",
+        "official_url": "https://creativecommons.org/licenses/by/4.0/",
+        "redistribution_allowed": true,
+        "attribution_required": true
+      },
+      "source": {
+        "landing_page_url": "https://archive.ics.uci.edu/dataset/45/heart%2Bdisease",
+        "download_url": "https://archive.ics.uci.edu/static/public/45/heart%2Bdisease.zip",
+        "doi": "10.24432/C52P4X",
+        "version": "uci-45-processed-cleveland-verified-2026-08-19",
+        "archive_sha256": "b17cd273da9ce1caa4710fce80227ea454d4dbf9fcbc8e6a9121672751563adc",
+        "archive_bytes": 128894,
+        "selected_asset": "processed.cleveland.data",
+        "selected_asset_sha256": "a74b7efa387bc9d108d7d0115d831fe9b414b29ae7124f331b622b4efa0427c8",
+        "selected_asset_bytes": 18461
+      },
+      "structure": {
+        "format": "csv",
+        "has_header": false,
+        "row_count": 303,
+        "column_count": 14,
+        "missing_cell_count": 6,
+        "missing_tokens": [
+          "?"
+        ],
+        "repeated_subjects": false,
+        "subject_count": null,
+        "row_unit": "deidentified_patient_record",
+        "id_columns": []
+      },
+      "analysis_boundaries": [
+        "classification_outcome_not_continuous",
+        "missing_marker_question_mark",
+        "observational_not_randomized",
+        "deidentified_health_data_remains_sensitive",
+        "four_database_provenance_but_cleveland_asset_selected"
+      ],
+      "allowed_splits": [
+        "development",
+        "public_regression",
+        "private_holdout"
+      ],
+      "citation": {
+        "text": "Janosi A, Steinbrunn W, Pfisterer M, Detrano R (1989). Heart Disease. UCI Machine Learning Repository.",
+        "url": "https://doi.org/10.24432/C52P4X"
+      }
+    }
+  ],
+  "notes": [
+    "Source and license metadata were checked against the official project or UCI landing pages on 2026-08-19.",
+    "Download and selected-asset hashes were computed in memory; no external data files were written into the repository.",
+    "external_review_status remains planned and must not be upgraded by automated source verification alone."
+  ]
+}

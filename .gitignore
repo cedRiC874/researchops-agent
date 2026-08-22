@@ -3,6 +3,18 @@ __pycache__/
 .venv/
 .pytest_cache/
 .matplotlib/
+tmp/
+
+# Local rendered documents and email drafts. EML files may contain user email
+# addresses and must never enter source control.
+output/
+
+# Eval v2 private holdout material must remain with an external custodian.
+# These patterns are defense in depth; the campaign contract also rejects
+# repository-local private content, goldens, identifiers, and locators.
+evals/v2/private/
+evals/v2/custody/
+evals/v2/external/
 
 # Runtime outputs are ignored by default. Curated, aggregate-only portfolio
 # evidence is explicitly allowlisted below; SQLite ledgers and row-like JSONL
@@ -43,3 +55,15 @@ artifacts/portfolio_baseline_provider/*
 !artifacts/phase6_dev_smoke_03/
 artifacts/phase6_dev_smoke_03/*
 !artifacts/phase6_dev_smoke_03/phase6_summary.md
+
+# Curated, sanitized Eval v2 public-regression evidence. Model response
+# bodies, API keys and row-level data are not present in these files.
+!artifacts/eval_v2_public_regression/
+artifacts/eval_v2_public_regression/*
+!artifacts/eval_v2_public_regression/7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11.receipt.json
+!artifacts/eval_v2_public_regression/deepseek-v1/
+artifacts/eval_v2_public_regression/deepseek-v1/*
+!artifacts/eval_v2_public_regression/deepseek-v1/public_regression_summary.md
+!artifacts/eval_v2_public_regression/deepseek-v1/public_regression_report.json
+!artifacts/eval_v2_public_regression/deepseek-v1/public_regression_state.json
+!artifacts/eval_v2_public_regression/deepseek-v1/artifact_manifest.json
