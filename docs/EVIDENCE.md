@@ -4,13 +4,13 @@
 
 ## 当前验证快照
 
-验证日期：2026-08-22。
+验证日期：2026-08-23。
 
 | 声明 | 当前结果 | 证据 |
 | --- | --- | --- |
 | Phase 5 历史作品集基线 | 对应其冻结 source/manifest 的 50/50，6 类均为 100% | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md)、[`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | Phase 5 P1 事故快照 | 旧 main run 32568017243 为 44/50、evidence 10/21，但 workflow 错误显示绿色 | [门禁审计](evidence/main-offline-gate-20260822/README.md)、[旧 GitHub run](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017243) |
-| 当前 `main` Phase 5 | PR #3 已合并；run 32571384757 为 50/50、evidence 21/21、profile valid、50 条 audit chain 有效 | [main run](https://github.com/cedRiC874/researchops-agent/actions/runs/32571384757)、[修复与门禁证据](evidence/main-offline-gate-20260822/README.md) |
+| 当前 `main` Phase 5 | `main@a20fdfd8` run 32585792937：246 个根测试通过；Phase 5 为 50/50、evidence 21/21、profile valid、50 条 audit chain 有效 | [current main run](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792937)、[修复与门禁证据](evidence/main-offline-gate-20260822/README.md) |
 | 非预期工具错误 | 0/45 attempts，0% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | 主动注入错误被正确处理 | 毛工具错误 11/45，24.44% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | 安全违规 | 0/50 | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
@@ -18,12 +18,13 @@
 | 离线延迟 | P50 100.38 ms；P95 411.03 ms | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md) |
 | 评测来源可复现 | 语料、源码、数据、依赖和产物 SHA-256 已记录 | [`eval_manifest.json`](../artifacts/portfolio_baseline_provider/eval_manifest.json) |
 | 50 条审计链有效 | audit index 中全部 `valid=true` | [`eval_audit_index.json`](../artifacts/portfolio_baseline_provider/eval_audit_index.json) |
-| 当前自动化测试 | `main` 根测试 152/152；PR #4 本地完整工作树 246/246；production slice 18/18 | [current main offline run](https://github.com/cedRiC874/researchops-agent/actions/runs/32571384757)；[main Linux run](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017244) |
+| 当前自动化测试 | `main@a20fdfd8`：根测试 246/246；pilot staging 42/42；production slice 18/18 | [offline run](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792937)、[pilot run](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792915)、[production run](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792929) |
 | DeepSeek development | 16/16；28 requests；71,039 tokens；P50/P95 7.65/17.40 s | [summary](evidence/phase6-deepseek-v1/development/phase6_summary.md)、[report](evidence/phase6-deepseek-v1/development/phase6_report.json)、[manifest](evidence/phase6-deepseek-v1/development/phase6_manifest.json)、[audit index](evidence/phase6-deepseek-v1/development/phase6_audit_index.json) |
 | DeepSeek repo-local holdout | 4/4；6 requests；16,854 tokens；P50/P95 5.05/14.59 s | [summary](evidence/phase6-deepseek-v1/holdout/phase6_summary.md)、[report](evidence/phase6-deepseek-v1/holdout/phase6_report.json)、[manifest](evidence/phase6-deepseek-v1/holdout/phase6_manifest.json)、[audit index](evidence/phase6-deepseek-v1/holdout/phase6_audit_index.json) |
 | Eval v2 public foundation | 完整 campaign 仍为 `design_only`；120 public tasks 全部 internal-ready；private holdout 未授权 | [设计](../evals/EVAL_V2.md)、[campaign](../evals/v2/campaign.json)、[dataset manifest](../evals/v2/external_datasets.json)、[task schema](../evals/v2/public_task_schema.json)、[internal review](../evals/v2/internal_review.json) |
 | DeepSeek public-regression candidate | 一次性运行 `complete`；Provider system 68/93（73.12%），三轮 23/31、22/31、23/31；fault harness 27/27；保守成本 CNY 0.908142 | [证据说明](evidence/eval-v2-public-regression-deepseek-v1/README.md)、[summary](../artifacts/eval_v2_public_regression/deepseek-v1/public_regression_summary.md)、[report](../artifacts/eval_v2_public_regression/deepseek-v1/public_regression_report.json)、[manifest](../artifacts/eval_v2_public_regression/deepseek-v1/artifact_manifest.json)、[candidate](../evals/v2/public_regression_candidate.json) |
 | Production-like vertical slice | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并；`main` push 与手动 dispatch 的 Ubuntu 真实 Compose E2E 均通过 | [长期 CI 快照](evidence/production-slice-linux-ci-main-v1/README.md)、[服务说明](../services/production_slice/README.md)、[验证快照](../services/production_slice/VERIFICATION.md)、[Linux workflow](../.github/workflows/production-slice-e2e.yml)、[Compose](../services/production_slice/compose.yaml) |
+| Pilot-ready staging | PR #5 regular merged；`main` 无 Provider Key Linux run 42/42，真实 PostgreSQL 与 offline API Compose/teardown/final gate 均通过；尚无参与者或在线 Provider 结果 | [长期 CI 快照](evidence/pilot-staging-linux-ci-main-v1/README.md)、[main run](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792915)、[服务验证](../services/pilot_staging/VERIFICATION.md)、[workflow](../.github/workflows/pilot-staging-ci.yml) |
 | Internal self-pilot | 两个旧 corpus 的 12 题内部 session 已完成；`session-02` 可理解/有用 12/12、需专家复核 3/12、明显问题 1/12、安全担忧 0/12、严格机器合同 3/12 | 本地 `artifacts/self_pilot/session-01/02`（不提交逐题 state）；[使用指南](SELF_PILOT_GUIDE.md) |
 
 Phase 5 的 100.38/411.03 ms 是本机离线组件/控制面执行时间，模型调用为 0，因此 `$0` 只代表确定性离线模式。DeepSeek 行则是顺序在线评测中的 Agent 段延迟，同样不能解释为生产 SLA。
@@ -98,10 +99,10 @@ OpenAI 路径保留独立事实：两次单题运行在首个有效模型响应�
 
 ## 独立复核
 
-### Pilot-ready staging 本地工程证据
+### Pilot-ready staging 工程与 main CI 证据
 
-`services/pilot_staging/` 当前只有实现与本地验证证据，没有外部参与者结果，也没有执行
-新的付费 Provider run。验证分为：
+`services/pilot_staging/` 当前有实现、本地验证与 GitHub clean Linux CI 证据，没有外部
+参与者结果，也没有执行新的付费 Provider run。验证分为：
 
 - 38 个 API/domain/config/script/CI 无网络测试：邀请、session/CSRF、完整 consent、双用户隔离、
   online kill switch/worker heartbeat、一次运行、只读轮询、实际 clarification outcome、
@@ -116,8 +117,10 @@ Supervised mode 还将运行环境持久绑定到 campaign。测试覆盖在全�
 supervised summary 仍固定 `external_validation_claim_allowed=false`，并验证以后由 local 或
 staging 配置重新读取同一 campaign 也不能移除该 blocker。独立 Linux workflow 只创建
 非 Provider CI secret、真实 PostgreSQL 和 offline API Compose；不会创建 Provider Key、
-启动 online worker或调用模型。该 workflow 只有对应提交获得 GitHub clean run 后，才
-能成为远端 CI 证据；workflow 文件存在本身不是远端通过证明。
+启动 online worker或调用模型。PR #5 合并后，`main@a20fdfd8` 的
+[run 32585792915](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792915)
+已通过全部 42 项、offline API Compose、teardown 与最终 gate；步骤级长期审计见
+[pilot Linux CI snapshot](evidence/pilot-staging-linux-ci-main-v1/README.md)。
 
 正式 3–5 人 claim 目前也保持 fail-closed：服务尚无 operator-reviewed eligibility
 adjudication receipt，不能仅凭参与者自勾资格与离线招募表认定其独立性、利益冲突和
@@ -129,8 +132,9 @@ staging contract 可继续部署复核，不证明公网安全、生产 SLA、�
 正确性、private holdout 或未知请求泛化。只有真实 cohort 达到预注册人数/交互/覆盖/
 withdraw/安全/integrity 门槛后，才可在精确范围
 `external_researcher_usability_on_prepared_public_data` 内报告聚合可用性。
-精确命令边界与本地镜像 digest 见
-[pilot staging verification](../services/pilot_staging/VERIFICATION.md)。
+精确命令边界、本地镜像 digest 与远端 clean run 见
+[pilot staging verification](../services/pilot_staging/VERIFICATION.md) 和
+[pilot Linux CI snapshot](evidence/pilot-staging-linux-ci-main-v1/README.md)。
 
 一键重新生成当前离线证据：
 

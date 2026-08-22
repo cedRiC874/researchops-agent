@@ -2,7 +2,7 @@
 
 Date: 2026-08-23 (Asia/Shanghai)
 
-This is a local engineering verification snapshot. It is not an external participant
+This is a local and GitHub clean-CI engineering verification snapshot. It is not an external participant
 result, a production deployment attestation, a security certification or a Provider
 quality rerun.
 
@@ -24,6 +24,7 @@ quality rerun.
 | Real PostgreSQL integration | 1 passed | local PostgreSQL 17.6 container; fake executor |
 | Existing repository suite | 246 passed | existing offline suite |
 | Existing production slice | 18 passed | process-level test suite |
+| GitHub pilot-staging CI | 42 passed | 41 offline contracts plus 1 real PostgreSQL contract; no Provider key/worker/model call |
 
 The PostgreSQL integration applied the real migration, completed a six-task participant
 lifecycle, verified consent replay remained idempotent after campaign completion,
@@ -50,11 +51,19 @@ secret or network call. This is a local Docker content digest, not a signed regi
 artifact or deployment proof. Rebuilding or changing any copied file creates a new
 digest and requires a new campaign commitment.
 
-## Remaining launch gate
+## GitHub clean CI
 
-The no-Provider-key Linux workflow is implemented. A GitHub clean run for the exact
-commit is required before calling it remote CI evidence; the workflow file and local
-workflow/schema/PowerShell contracts alone are not a remote passing result.
+PR #5 was regular-merged as
+`a20fdfd8ff6a2e4e29881aa6693589655e307e72`. The exact `main` commit passed
+[`pilot-staging-ci` run 32585792915](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792915):
+three non-Provider ephemeral secrets, three synthetic registry entries, 41 offline
+contracts, one real PostgreSQL contract, offline API Compose startup, teardown and the
+final fail-closed gate all succeeded. Bootstrap reported
+`provider_secret_created=false` and `secret_values_printed=false`; the workflow did not
+start the online worker or make a model call. The durable claim boundary is recorded in
+[`docs/evidence/pilot-staging-linux-ci-main-v1/README.md`](../../docs/evidence/pilot-staging-linux-ci-main-v1/README.md).
+
+## Remaining launch gate
 
 The service is deliberately bound to loopback in Compose. A 1–2 person supervised
 pretest may use the fail-closed Tailscale HTTPS scripts, but it remains permanently

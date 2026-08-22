@@ -8,25 +8,25 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 
 ## Evidence at a glance
 
-当前验证快照：2026-08-22。
+当前验证快照：2026-08-23。
 
 | 层 | 状态 | 可复核结果 |
 | --- | --- | --- |
 | 模拟科研分析 | 已验证 | 240 行模拟 RCT；ANCOVA 与 Welch 均生成数值、样本流、诊断、证据 ID 和聚合图表 |
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
 | Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
-| 当前 `main` Phase 5 重建 | P1 已关闭 | PR #3 已合并；main run 32571384757 为 50/50、证据 21/21、profile valid、50 条 audit chain 全有效 |
+| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@a20fdfd8` run 32585792937：根测试 246/246，Phase 5 为 50/50、证据 21/21、profile valid、50 条 audit chain 全有效 |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | 当前 `main` 根测试 152/152；PR #4 本地完整工作树 246/246；production slice 18/18 |
+| 自动化测试 | 已验证 | `main@a20fdfd8`：根测试 246/246、pilot staging 42/42、production slice 18/18；三条 workflow 均成功 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
 | Provider 适配 | 已验证 | OpenAI 与 DeepSeek 使用独立 Key/client；DeepSeek V4 模型 allowlist、固定 endpoint、零隐藏重试 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
 | Eval v2 public candidate | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
-| External researcher pilot staging | supervised 实现与本地离线合同已完成，尚未真实运行或招募 | 邀请制、多用户隔离、完整 consent、服务器 Provider secret、PostgreSQL 队列、持久计时、DLP、安全暂停、跳题、撤回、聚合 summary；42 项无付费调用验证；1–2 人可经 Tailscale 监督预试但永久不进入正式 claim |
+| External researcher pilot staging | PR #5 已合并并通过无 Provider Key Linux CI；尚未真实运行或招募 | 邀请制、多用户隔离、完整 consent、服务器 Provider secret、PostgreSQL 队列、持久计时、DLP、安全暂停、跳题、撤回、聚合 summary；`main` run 32585792915 为 42/42；1–2 人可经 Tailscale 监督预试但永久不进入正式 claim |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
-离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。PR #3 已修复 LF provenance 与退出码覆盖；当前 main run 32571384757 为 50/50、21/21、`phase5-ci-v1=valid`。详见 [CI 门禁审计](docs/evidence/main-offline-gate-20260822/README.md)。
+离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。PR #3 已修复 LF provenance 与退出码覆盖；当前 main run 32585792937 为 50/50、21/21、`phase5-ci-v1=valid`。详见 [CI 门禁审计](docs/evidence/main-offline-gate-20260822/README.md)。
 
 ## 一键离线演示
 
@@ -393,7 +393,7 @@ GitHub Actions 当前有三条独立 workflow。
 
 - 安装锁定依赖
 - 验证 50 题与 20 题语料契约
-- 对已提交 `main` 运行 152 项根测试
+- 对已提交 `main` 运行 246 项根测试
 - 从固定模拟数据重建 50 题离线评测
 - 验证哈希、审计链和敏感 canary
 - 使用版本化 `phase5-ci-v1` 精确要求任务 50/50、失败 0、success rate 1、
@@ -418,10 +418,16 @@ GitHub Actions 当前有三条独立 workflow。
   campaign 环境持久化、audit chain 与 task-pack integrity；
 - 构建并启动 offline API Compose，验证页面与 readiness 后无 `down -v` 退出。
 
-该 workflow 文件本身不等于远端通过证据；只有对应提交的 GitHub clean run 才能证明
-Linux checkout、真实 PostgreSQL 与无 Provider Key Compose 链路通过。
+PR #5 合并后的 `main@a20fdfd8` 已由
+[pilot run 32585792915](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792915)
+证明 Linux checkout、真实 PostgreSQL 与无 Provider Key Compose 链路通过；长期审计见
+[pilot Linux CI 快照](docs/evidence/pilot-staging-linux-ci-main-v1/README.md)。
 
-三条 workflow 都不读取 Provider API Key，也不运行付费在线评测。`main` 的
+三条 workflow 都不读取 Provider API Key，也不运行付费在线评测。同一 merge commit 的
+[offline run 32585792937](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792937)
+和
+[production run 32585792929](https://github.com/cedRiC874/researchops-agent/actions/runs/32585792929)
+也成功。较早 `main` 的
 [production run 32568017244](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017244)
 和后续
 [manual dispatch 32568233292](https://github.com/cedRiC874/researchops-agent/actions/runs/32568233292)
