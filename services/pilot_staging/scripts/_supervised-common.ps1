@@ -320,6 +320,7 @@ function Assert-SupervisedEnvironment {
         RESEARCHOPS_PILOT_TOKEN_PEPPER_FILE = "/run/secrets/token_pepper"
         RESEARCHOPS_PILOT_REGISTRY_PATH = "/data/logical_dataset_registry.json"
         RESEARCHOPS_PILOT_PROJECT_ROOT = "/app/core"
+        RESEARCHOPS_PILOT_MIGRATIONS_PATH = "/app/pilot/migrations"
     }
     foreach ($entry in $expectedLocalValues.GetEnumerator()) {
         if ((Get-RequiredPilotValue $Environment $entry.Key) -ne $entry.Value) {

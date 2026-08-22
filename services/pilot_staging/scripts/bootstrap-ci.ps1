@@ -174,6 +174,7 @@ $envText = @(
     "RESEARCHOPS_PILOT_PROVIDER_API_KEY_FILE=/run/secrets/provider_api_key",
     "RESEARCHOPS_PILOT_REGISTRY_PATH=/data/logical_dataset_registry.json",
     "RESEARCHOPS_PILOT_PROJECT_ROOT=/app/core",
+    "RESEARCHOPS_PILOT_MIGRATIONS_PATH=/app/pilot/migrations",
     "RESEARCHOPS_PILOT_PROVIDER_EXECUTION_ENABLED=false",
     "RESEARCHOPS_PILOT_CANDIDATE_COMMITMENT_SHA256=$candidateCommitment",
     "RESEARCHOPS_PILOT_PROVIDER_ID=deepseek",

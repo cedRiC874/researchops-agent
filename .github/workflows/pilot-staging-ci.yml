@@ -125,6 +125,11 @@ jobs:
         run: |
           docker compose -f services/pilot_staging/compose.yaml up -d --build `
             postgres migrate api
+          if ($LASTEXITCODE -ne 0) {
+            docker compose -f services/pilot_staging/compose.yaml logs `
+              --no-color --tail 200 migrate api
+            throw "Offline pilot Compose startup failed."
+          }
           $ready = $false
           for ($attempt = 0; $attempt -lt 60; $attempt++) {
             try {

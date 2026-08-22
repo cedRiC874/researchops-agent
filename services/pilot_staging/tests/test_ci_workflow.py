@@ -32,6 +32,8 @@ def test_pilot_ci_is_pinned_offline_and_provider_key_free() -> None:
     assert "CI must not create a Provider API key file" in text
     assert "test_postgres_integration.py" in text
     assert "bootstrap-ci.ps1" in text
+    assert "Offline pilot Compose startup failed" in text
+    assert "--no-color --tail 200 migrate api" in text
     assert "docker compose -f services/pilot_staging/compose.yaml down" in text
     assert "down -v" not in text.lower()
     assert "id: teardown" in text

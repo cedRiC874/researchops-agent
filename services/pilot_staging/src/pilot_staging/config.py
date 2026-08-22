@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     provider_api_key_file: Path | None = None
     registry_path: Path
     project_root: Path
+    migrations_path: Path | None = None
     provider_execution_enabled: bool = False
     candidate_commitment_sha256: str = LOCKED_CANDIDATE_COMMITMENT
     provider_id: str = "deepseek"

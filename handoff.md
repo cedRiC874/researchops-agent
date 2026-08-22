@@ -97,7 +97,7 @@ Cookie、worker heartbeat，并提供 status/invite/stop。主持指南、招募
 
 验证快照（无网络 Provider 调用）：38 个 API/domain/config/script/CI tests、3 个
 candidate/schema tests、1 个真实临时 PostgreSQL lifecycle/migration/checksum test；
-Linux Docker image `sha256:d587ba672dc7faad8b7f735d85719811b9f532d4a4a7b3fc4f965cff636472f5`
+Linux Docker image `sha256:24ab5d3dfae6fdbce6f9ae7e176a106f0e09c955086d03de4f7304c879ab984b`
 已成功构建并通过 candidate/pip check。临时 PostgreSQL 容器已停止并由 `--rm` 删除，未建
 持久卷。
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import pytest
@@ -150,6 +151,7 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         token_pepper_file=pepper,
         registry_path=tmp_path / "unused-registry.json",
         project_root=tmp_path,
+        migrations_path=Path(__file__).resolve().parents[1] / "migrations",
     )
     run_migrations(settings)
     clock = Clock()

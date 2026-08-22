@@ -42,7 +42,7 @@ requirements:
 
 ```text
 researchops-pilot-staging:supervised-local
-sha256:d587ba672dc7faad8b7f735d85719811b9f532d4a4a7b3fc4f965cff636472f5
+sha256:24ab5d3dfae6fdbce6f9ae7e176a106f0e09c955086d03de4f7304c879ab984b
 ```
 
 The same image validated the locked candidate from `/app/core` without a Provider

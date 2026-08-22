@@ -169,6 +169,13 @@ def test_migration_has_checksum_runner_and_cascading_retention() -> None:
     assert "source_sha256" in migration
     assert "pg_advisory_lock" in runner
     assert "checksum drift" in runner
+    assert "config.migrations_path" in runner
+    assert "RESEARCHOPS_PILOT_MIGRATIONS_PATH=/app/pilot/migrations" in (
+        SERVICE / ".env.example"
+    ).read_text(encoding="utf-8")
+    assert "COPY services/pilot_staging/migrations /app/pilot/migrations" in (
+        SERVICE / "Dockerfile"
+    ).read_text(encoding="utf-8")
     assert "ON DELETE CASCADE" in migration
     assert "pilot_events is append-only" in migration
     assert "timedelta(days=6)" in retention

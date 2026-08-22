@@ -15,7 +15,11 @@ _LOCK_ID = 842018226
 
 def run_migrations(settings: Settings | None = None) -> None:
     config = settings or Settings()
-    migration_root = Path(__file__).resolve().parents[2] / "migrations"
+    migration_root = (
+        config.migrations_path
+        if config.migrations_path is not None
+        else Path(__file__).resolve().parents[2] / "migrations"
+    )
     files = sorted(migration_root.glob("*.sql"))
     if not files:
         raise RuntimeError("未找到 pilot migrations。")
