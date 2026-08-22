@@ -1,0 +1,14 @@
+**
+!pyproject.toml
+!src/
+!src/**
+!services/
+!services/production_slice/
+!services/production_slice/pyproject.toml
+!services/production_slice/requirements.runtime.lock
+!services/production_slice/src/
+!services/production_slice/src/**
+src/**/__pycache__/
+src/**/*.py[cod]
+services/production_slice/src/**/__pycache__/
+services/production_slice/src/**/*.py[cod]

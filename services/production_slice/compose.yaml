@@ -1,0 +1,122 @@
+name: researchops-production-slice
+
+x-app: &app
+  build:
+    context: ../..
+    dockerfile: services/production_slice/Dockerfile
+  env_file: .env
+  secrets:
+    - postgres_password
+    - minio_access_key
+    - minio_secret_key
+    - api_token
+    - idempotency_hmac_key
+  volumes:
+    - ../../artifacts/self_pilot_data/run-01:/data:ro
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    minio:
+      condition: service_healthy
+    otel-collector:
+      condition: service_started
+
+services:
+  postgres:
+    image: postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+    environment:
+      POSTGRES_DB: researchops
+      POSTGRES_USER: researchops
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U researchops -d researchops"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGDATABASE: researchops
+      PGUSER: researchops
+    secrets:
+      - postgres_password
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        export PGPASSWORD="$$(cat /run/secrets/postgres_password)"
+        for migration in /migrations/*.sql; do
+          psql -v ON_ERROR_STOP=1 -f "$$migration"
+        done
+    restart: "no"
+
+  minio:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z@sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0
+    command: server /data
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_access_key
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_secret_key
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.138.0@sha256:4a951ff0a9772f4fa8e9c7a326434370301b98b2b813933468dcb54aa6a6b5e5
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    restart: unless-stopped
+
+  api:
+    <<: *app
+    command: ["researchops-api"]
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  worker:
+    <<: *app
+    command: ["researchops-worker"]
+
+volumes:
+  postgres-data:
+  minio-data:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  minio_access_key:
+    file: ./secrets/minio_access_key.txt
+  minio_secret_key:
+    file: ./secrets/minio_secret_key.txt
+  api_token:
+    file: ./secrets/api_token.txt
+  idempotency_hmac_key:
+    file: ./secrets/idempotency_hmac_key.txt

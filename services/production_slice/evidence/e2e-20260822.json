@@ -1,0 +1,82 @@
+{
+  "schema_version": "1.0",
+  "status": "passed",
+  "completed_at_utc": "2026-08-22T08:08:38Z",
+  "environment": {
+    "docker_desktop_version": "4.87.0.236836",
+    "docker_engine_version": "29.7.2",
+    "docker_compose_version": "5.4.0",
+    "wsl_version": "2.7.12.0",
+    "os_type": "linux"
+  },
+  "images": {
+    "api_image_id": "sha256:c812d42a6bb7cc5e3c71e66f563d36c55a03fbdd3d68a91330b2c9c498f1c098",
+    "worker_image_id": "sha256:566a630263acd2a8bfefcc84a73393bcea378f3b9b90fb890a344e34b4bd506a",
+    "postgres": "sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94",
+    "minio": "sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0",
+    "otel_collector": "sha256:4a951ff0a9772f4fa8e9c7a326434370301b98b2b813933468dcb54aa6a6b5e5",
+    "python_base": "sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2"
+  },
+  "services": {
+    "api": "running",
+    "worker": "running",
+    "postgres": "running_healthy",
+    "minio": "running_healthy",
+    "otel_collector": "running",
+    "migrate": "exited_0"
+  },
+  "health": {
+    "live": "ok",
+    "ready": "ready"
+  },
+  "job": {
+    "job_id": "1eb317c6-d38c-4e15-873a-21c5e05b8793",
+    "dataset_id": "palmer_penguins_v0_1_0",
+    "initial_status": "queued",
+    "terminal_status": "succeeded",
+    "attempt_count": 1,
+    "row_count": 344,
+    "column_count": 8,
+    "artifact_sha256_present": true,
+    "artifact_bytes": 2651,
+    "row_level_data_exposed": false,
+    "filesystem_path_exposed": false,
+    "idempotency_reused": true,
+    "same_job_id_on_reuse": true
+  },
+  "postgres": {
+    "migration_versions": [1, 2],
+    "event_sequence": ["queued", "claimed", "publishing", "succeeded"],
+    "event_count": 4,
+    "event_hash_chain_valid": true,
+    "event_chain_head": "af41733a5f9b3496ba4c1fee5919edee6d04989cef1563873c7c1359036a31cf",
+    "deterministic_object_key_verified": true
+  },
+  "object_storage": {
+    "metadata_present": true,
+    "sha256_matches_database": true,
+    "byte_size_matches_database": true,
+    "healthcheck": true,
+    "server_side_encryption_enabled": false
+  },
+  "telemetry": {
+    "api_post_trace_id": "908a3fdc48f87dbd85f6371eb497149d",
+    "worker_execute_trace_id": "908a3fdc48f87dbd85f6371eb497149d",
+    "cross_process_trace_match": true,
+    "collector_exporter": "local_debug_detailed"
+  },
+  "security": {
+    "secret_values_printed": false,
+    "secret_value_leak_count_in_logs": 0,
+    "authorization_header_present_in_logs": false,
+    "bearer_pattern_present_in_logs": false,
+    "api_key_pattern_present_in_logs": false,
+    "secrets_git_tracked": false,
+    "docker_context_deny_by_default": true
+  },
+  "limitations": [
+    "Local MinIO has no KMS and server-side encryption is disabled for this development E2E.",
+    "This is a single-host Compose run, not HA, production SLA, cloud IAM/KMS/TLS, or load evidence.",
+    "The vertical slice does not call an LLM and does not implement external publication or approval recovery."
+  ]
+}
