@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "status": "passed",
+  "run_id": "E2E-20260822T103641Z-f2a7cfdd",
+  "started_at_utc": "2026-08-22T10:36:41.6301819Z",
+  "completed_at_utc": "2026-08-22T10:37:50.4908015Z",
+  "duration_seconds": 68.861,
+  "dataset_id": "palmer_penguins_v0_1_0",
+  "job": {
+    "job_id": "e7020f9f-ea43-4b2d-8c1c-a275cf6a65ce",
+    "initial_status": "queued",
+    "observed_api_statuses": [
+      "queued",
+      "succeeded"
+    ],
+    "terminal_status": "succeeded",
+    "attempt_count": 1,
+    "row_count": 344,
+    "column_count": 8,
+    "artifact_sha256_present": true,
+    "artifact_bytes": 2311,
+    "row_level_data_exposed": false,
+    "filesystem_path_exposed": false,
+    "idempotency_reused": true,
+    "same_job_id_on_reuse": true
+  },
+  "postgres": {
+    "event_count": 4,
+    "event_sequence": [
+      "queued",
+      "claimed",
+      "publishing",
+      "succeeded"
+    ],
+    "event_hash_chain_valid": true,
+    "event_chain_head": "b01a182cb9f68e54a5d639d45a5d092b8243d88c8dbe9bf31b588521f2d5c0c5",
+    "deterministic_object_key_verified": true
+  },
+  "object_storage": {
+    "metadata_present": true,
+    "sha256_matches_database": true,
+    "byte_size_matches_database": true,
+    "healthcheck": true,
+    "server_side_encryption_enabled": false
+  },
+  "telemetry": {
+    "trace_id": "bf5e3f3d0b480f9d60149d18a6a4d8b4",
+    "api_to_worker_trace_match": true,
+    "observed_span_names": [
+      "connect",
+      "INSERT researchops",
+      "SELECT researchops",
+      "POST /v1/inspection-jobs http receive",
+      "POST /v1/inspection-jobs http send",
+      "POST /v1/inspection-jobs",
+      "UPDATE researchops",
+      "inspection.execute"
+    ]
+  },
+  "security": {
+    "secret_values_printed": false,
+    "secret_value_leak_count": 0,
+    "authorization_present_in_logs": false,
+    "bearer_pattern_present_in_logs": false,
+    "api_key_pattern_present_in_logs": false
+  },
+  "model_calls": 0,
+  "limitations": [
+    "Single-host development Compose evidence only.",
+    "Local MinIO server-side encryption is disabled because no KMS is configured.",
+    "No LLM, external publication, or approval recovery is exercised."
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "schema_version": "1.0",
+  "status": "resolved_on_main",
+  "phase5_scope": "offline_deterministic_components_and_control_plane",
+  "dataset": {
+    "line_ending": "LF",
+    "byte_size": 15247,
+    "sha256": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00"
+  },
+  "task_corpus": {
+    "task_count": 50,
+    "byte_size": 30490,
+    "lf_count": 50,
+    "crlf_count": 0,
+    "sha256": "dd591862542be96d1da095d7569d31716ad66025f66e21e45b81e30dce8f8e67",
+    "provenance_scalar_changes": 38
+  },
+  "golden_lineage": {
+    "ancova_evidence_id": "E-8EDFAE7ED8F0",
+    "welch_evidence_id": "E-E5D03B8E6EB8",
+    "chart_id": "CH-11F349FABC44"
+  },
+  "positive_verification": {
+    "current_worktree": {
+      "passed_count": 50,
+      "task_count": 50,
+      "evidence_citations_matched": 21,
+      "evidence_citations_required": 21,
+      "evaluation_exit_code": 0,
+      "profile_verifier_exit_code": 0
+    },
+    "origin_main_source_snapshot": {
+      "source_tree_sha256": "ab3d46ee6a316b6da300eb28701e5206ea689d59de643226570ffde09de8ced2",
+      "passed_count": 50,
+      "task_count": 50,
+      "evidence_citations_matched": 21,
+      "evidence_citations_required": 21,
+      "evaluation_exit_code": 0,
+      "profile_verifier_exit_code": 0
+    }
+  },
+  "negative_verification": {
+    "input_passed_count": 44,
+    "input_task_count": 50,
+    "input_evidence_citations_matched": 10,
+    "input_evidence_citations_required": 21,
+    "profile": "phase5-ci-v1",
+    "error_code": "phase5_quality_threshold_mismatch",
+    "profile_verifier_exit_code": 1
+  },
+  "remote_pr_verification": {
+    "pr_number": 3,
+    "commit_sha": "8b1f764616333bc5549c42f465dad25f9a4450a3",
+    "file_count": 5,
+    "push_run": {
+      "run_id": 32570797245,
+      "conclusion": "success",
+      "tests": "152/152",
+      "task_result": "50/50",
+      "evidence_result": "21/21",
+      "quality_profile": "phase5-ci-v1",
+      "quality_profile_status": "valid",
+      "audit_all_valid": true,
+      "artifact_digest": "sha256:7ecfe7a3b510eadb37e65e9f890d13bcf65bc7c8d352a118c5fd64582728214f",
+      "artifact_byte_size": 5645
+    },
+    "pull_request_run": {
+      "run_id": 32570848599,
+      "conclusion": "success",
+      "task_result": "50/50",
+      "evidence_result": "21/21",
+      "audit_all_valid": true,
+      "artifact_digest": "sha256:06222e546bde96c1101f78361157b06c885dd247fe65e9406f3e42b550c91d2c",
+      "artifact_byte_size": 5653
+    }
+  },
+  "remote_main_verification": {
+    "merge_commit_sha": "b3f515a300855caef89efbf1f48859e91b27d925",
+    "run_id": 32571384757,
+    "conclusion": "success",
+    "tests": "152/152",
+    "task_result": "50/50",
+    "evidence_result": "21/21",
+    "quality_profile": "phase5-ci-v1",
+    "quality_profile_status": "valid",
+    "audit_run_count": 50,
+    "audit_all_valid": true,
+    "unexpected_tool_error_count": 0,
+    "safety_violation_count": 0,
+    "model_call_count": 0,
+    "artifact_digest": "sha256:d6cb19a4c1069aa7309f3afc0690024089ee06ef1e9afaaa4931de735d292aa5",
+    "artifact_byte_size": 5661,
+    "artifact_expires_at_utc": "2026-09-05T11:52:43Z",
+    "curated_lf_summary_sha256": "a7546f9a5b60b19143eb3be068beeed276c493cbcd628713307a2311cfb57fa3",
+    "curated_lf_summary_byte_size": 649
+  },
+  "tests": {
+    "root_worktree": "233/233",
+    "production_slice": "18/18",
+    "pip_check": "passed"
+  },
+  "eval_v2_candidate": {
+    "status": "valid",
+    "commitment_sha256": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+  },
+  "model_calls": 0,
+  "network_calls": 0,
+  "remote_main_fix_verified": true
+}

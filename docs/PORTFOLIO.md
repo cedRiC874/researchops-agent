@@ -1,17 +1,19 @@
 # ResearchOps Agent：作品集展示与面试演示手册
 
-> 状态快照：2026-08-19。本页只陈述仓库内可以核对的实现与测试事实。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout。OpenAI 独立最小请求在 Key 认证成功后返回 HTTP 429，仍受其 API 计费条件阻塞。
+> 状态快照：2026-08-22。本页只陈述仓库内可以核对的实现与测试事实。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 public candidate 已完成一次性 DeepSeek 三轮运行。OpenAI API 当前不可用，不影响 DeepSeek 与离线证据。
 
 ## 先说清楚：这个项目现在证明了什么
 
 | 证据层 | 当前状态 | 可以得出的结论 | 不能得出的结论 |
 | --- | --- | --- | --- |
-| 单元与集成测试 | 当前源码 144/144 通过 | 统计计算、策略、审批、审计、provider、评分器及 SDK scripted loop 的代码路径通过回归 | 真实模型在开放请求上的表现 |
-| Phase 5 | 当前作品集基线 50/50，独立产物校验有效 | 组件与控制面的可复现正确性、安全性和故障处理 | LLM 规划成功率或生产网络性能 |
+| 单元与集成测试 | 当前 `main` 根测试 152/152；PR #4 本地完整工作树 246/246；production slice 18/18 | 统计计算、策略、审批、审计、provider、Eval v2、FastAPI 状态机、幂等、lease 与对象 outcome-unknown 路径通过相应测试 | 真实生产负载、HA 或云基础设施 E2E |
+| Phase 5 | PR #3 已合并；当前 main run 32571384757 为 50/50、21/21、profile valid；旧 44/50 事故保留 | LF golden、版本化 fail-closed profile、双退出码与审计链已由 clean main 复核 | LLM 规划成功率，或脱离 source/data/manifest 复用成绩 |
 | Phase 6 行为合同 | 20 题：development 16、repo-local holdout 4；语料合同 20/20 有效 | 工具轨迹、精确参数、证据 grounding、澄清/拒绝和审批暂停都有明确评分口径 | 对未知生产请求的无偏泛化 |
 | Phase 6 scripted/replay | 注入 runner、scripted model 和构造轨迹的离线回归已覆盖 | 真实 Agents SDK 循环、工具调用提取、审批中断、usage/cost 空值处理和产物发布链路可测试 | scripted/replay 的通过率等同于真实模型质量 |
 | Provider 层 | OpenAI/DeepSeek 独立 Key、client、transport 与审计；DeepSeek 安全边界与真实调用均有证据 | provider 不会串 Key，全局 client 不被修改，并行 tool calls 不能绕过审批 | OpenAI 路径的模型质量 |
 | Phase 6 DeepSeek 在线 | 冻结版 development 16/16；repo-local non-secret holdout 4/4 | 在固定 runner/source/corpus/split 下的任务级质量、usage、延迟与安全证据 | 抗污染泛化、生产 SLA 或实际账单成本 |
+| Eval v2 public candidate | Provider system 68/93；三轮 23/31、22/31、23/31；fault harness 27/27 | 锁定 `DeepSeek + 控制面` 在公开任务上的重复表现、usage、成本与失败分层 | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
+| Production-like slice | 18/18 + 真实单机 Compose E2E；`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 | FastAPI/worker、PG lease queue、MinIO artifact、event hash chain、幂等与 API→worker Trace ID 的真实纵切 | HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量 |
 
 对外推荐状态标签：
 
@@ -23,6 +25,8 @@
     deepseek_development_status = passed_16_of_16
     deepseek_repo_local_holdout_status = passed_4_of_4
     deepseek_cost_status = unavailable
+    production_slice_ci_status = passed_main_linux_compose_e2e
+    main_phase5_rebuild_status = regression_44_of_50_gate_threshold_missing
 
 ## 30 秒电梯陈述
 
@@ -159,6 +163,11 @@ Phase 4 的逻辑资源固定读取已审核的 phase3 聚合证据。先启动�
 讲解词：
 
 > 这里测的是确定性组件与控制面，不是 LLM。毛工具错误率包含故意注入且被正确处理的错误，所以要与非预期工具错误率分开看。每次对当前源码演示时都生成新基线，避免拿旧源码的 50/50 冒充当前提交。
+
+历史注意：`main@badb7169` 曾重建为 44/50、证据引用 10/21，而 artifact verifier
+仍通过。PR #3 修复 LF provenance 与退出码覆盖后，push/PR clean runs 和合并后的
+main run 32571384757 均通过；当前 main 为 50/50、21/21、profile valid。演示仍需
+绑定当前 source/data/manifest，不能用任意历史 50/50 代替。
 
 ### 4:40–5:00：展示 20 题 Agent 合同与冻结在线证据
 
@@ -364,7 +373,8 @@ Phase 6 的额外限制：
 | approval_security | 6 | 暂停、批准、拒绝、过期、范围绑定 |
 | report_evidence | 4 | 证据引用、局限性、图表和表述护栏 |
 
-当前作品集基线记录：
+历史作品集基线记录如下；当前 main 的 LF lineage 也已由 run 32571384757 复核为
+50/50、21/21。两者都必须绑定各自 source/data/manifest：
 
 - 任务成功率：50/50，100%。
 - 非预期工具错误率：0%。
@@ -444,7 +454,8 @@ repo-local holdout 的任务和金标都可见，不具备抗污染能力；4 �
 | provider 异常正文被统一脱敏 | 已提供 400/401/402/403/404/409/422/429/5xx/连接/超时稳定分类，但没有服务端细节 | 仅在受控支持流程中使用 request ID 哈希定位，不记录正文 |
 | 基线会随源码变更而失效 | 修改代码后旧成绩不再证明当前提交 | 每次发布生成新目录并重新校验 provenance 与哈希链 |
 | 成本模型只支持简化输入/输出单价 | 不覆盖缓存、长上下文和 service tier | 版本化价格表并报告覆盖率，不冒充账单 |
-| 尚无生产 RBAC/KMS/队列/外部可观测性 | 仍是工程原型而非受监管生产系统 | 增加身份、密钥管理、任务队列、SLO 与安全审查 |
+| 纵切仍无 OIDC/RBAC、云 KMS/TLS、备份恢复、HA/负载/SLO | 已有 PostgreSQL lease queue、MinIO 与 OTel，但仍是单机工程原型 | 部署 pilot-ready staging，增加托管身份/密钥、备份、负载与安全审查 |
+| Offline workflow 历史 run 未检查质量阈值 | LF clean checkout 的 44/50 曾显示绿色 | PR #3 已加入 LF golden、精确 50/50/21/21 profile 与双退出码；main run 32571384757 已关闭缺口 |
 
 ## 面试问答
 
@@ -525,6 +536,8 @@ Development 16 题用于迭代；holdout 只有 4 题，而且任务与金标都
 - [DeepSeek holdout report](evidence/phase6-deepseek-v1/holdout/phase6_report.json)
 - [DeepSeek holdout manifest](evidence/phase6-deepseek-v1/holdout/phase6_manifest.json)
 - [DeepSeek holdout audit index](evidence/phase6-deepseek-v1/holdout/phase6_audit_index.json)
+- [Production slice main Linux CI](evidence/production-slice-linux-ci-main-v1/README.md)
+- [Main offline gate audit](evidence/main-offline-gate-20260822/README.md)
 
 ## 推荐的简历项目描述
 
@@ -536,8 +549,11 @@ Development 16 题用于迭代；holdout 只有 4 题，而且任务与金标都
 
 ## 发布前检查清单
 
-- [x] 用当前源码在全新目录重跑 Phase 5，并通过独立 artifact verifier。
-- [x] 运行 `$env:PYTHONPATH="src"; .\.venv\Scripts\python.exe -m unittest discover -s tests -v`，确认 144 项测试通过。
+- [x] 保留历史 Phase 5 50/50 的独立 artifact verifier 与 source/manifest 绑定证据。
+- [x] PR #3 完成 LF Phase 5 golden 与 fail-closed profile；两次 clean runs 为 50/50、21/21，负向 44/50 exit 1。
+- [x] PR #3 已合并；clean `main` run 32571384757 为 50/50、21/21、profile valid。
+- [x] `main` 运行 152 项已提交根测试；PR #4 本地完整工作树 246 项通过；production slice 18 项通过。
+- [x] `main` Ubuntu production-slice push 与手动 dispatch E2E 均通过并上传脱敏证据。
 - [x] 运行 phase6-validate，确认 20 题、16/4 split 和 golden 隔离。
 - [ ] 不展示 API Key、Authorization header、参与者 ID 或绝对环境路径截图。
 - [ ] 不把 Phase 5 的 100% 写成 LLM/Agent 成功率。

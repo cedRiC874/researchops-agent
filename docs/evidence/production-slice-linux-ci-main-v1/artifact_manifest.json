@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "run_id": "E2E-20260822T103641Z-f2a7cfdd",
+  "files": [
+    {
+      "file": "main_e2e_summary.json",
+      "sha256": "6491e7edcbcb7ae619143b9e491aeb54f271233a37b3bc75da07b311d81193d8",
+      "byte_size": 2160
+    },
+    {
+      "file": "compose_status.json",
+      "sha256": "1e3cf82dd2b171d5793080a85de78d89d428af4235ec15195efb39ca5f0eb631",
+      "byte_size": 1511
+    },
+    {
+      "file": "verification.md",
+      "sha256": "34e8094da612f990fe263f30a445b99c4f3a204a41503908f12215827f0f8d3d",
+      "byte_size": 429
+    }
+  ],
+  "source_artifact": {
+    "name": "production-slice-e2e-32568017244",
+    "id": 9474610006,
+    "digest": "sha256:7669f7cba91d185c2a8a7c213ef34941b650063e3bc8fe009f94ecfceaba108d",
+    "byte_size": 2855,
+    "expires_at_utc": "2026-09-05T10:37:50Z"
+  },
+  "secrets_persisted": false,
+  "diagnostic_logs_sanitized": false,
+  "response_body_persisted": false,
+  "row_level_data_persisted": false
+}

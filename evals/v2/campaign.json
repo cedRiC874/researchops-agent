@@ -1,0 +1,199 @@
+{
+  "schema_version": "2.0",
+  "campaign_id": "researchops-eval-v2-draft",
+  "status": "design_only",
+  "purpose": "Pre-register a contamination-resistant, multi-dataset, repeated-run evaluation campaign without storing private holdout content in the repository.",
+  "splits": {
+    "development": {
+      "target_task_count": 80,
+      "registered_task_count": 80,
+      "visibility": "repo_local_development",
+      "storage": "repository",
+      "prompt_tuning_allowed": true
+    },
+    "public_regression": {
+      "target_task_count": 40,
+      "registered_task_count": 40,
+      "visibility": "repo_local_public_regression",
+      "storage": "repository",
+      "prompt_tuning_allowed": false
+    },
+    "private_holdout": {
+      "target_task_count": 50,
+      "registered_task_count": 0,
+      "visibility": "external_private",
+      "storage": "external_custodian",
+      "prompt_tuning_allowed": false
+    }
+  },
+  "dataset_policy": {
+    "minimum_distinct_datasets": 3,
+    "target_distinct_datasets": 5,
+    "minimum_non_synthetic_datasets": 3,
+    "datasets": [
+      {
+        "dataset_id": "synthetic_trial",
+        "status": "registered",
+        "source_class": "synthetic",
+        "domain": "two_group_continuous_outcome",
+        "license_status": "not_required",
+        "external_review_status": "not_required",
+        "allowed_splits": [
+          "development",
+          "public_regression"
+        ]
+      },
+      {
+        "dataset_id": "palmer_penguins_v0_1_0",
+        "status": "planned",
+        "source_class": "public",
+        "domain": "ecology_observational_morphometrics",
+        "license_status": "approved",
+        "external_review_status": "planned",
+        "allowed_splits": [
+          "development",
+          "public_regression",
+          "private_holdout"
+        ]
+      },
+      {
+        "dataset_id": "uci_parkinsons_telemonitoring_189",
+        "status": "planned",
+        "source_class": "public",
+        "domain": "health_repeated_measure_telemonitoring",
+        "license_status": "approved",
+        "external_review_status": "planned",
+        "allowed_splits": [
+          "development",
+          "public_regression",
+          "private_holdout"
+        ]
+      },
+      {
+        "dataset_id": "uci_heart_disease_cleveland_45",
+        "status": "planned",
+        "source_class": "public",
+        "domain": "health_observational_classification",
+        "license_status": "approved",
+        "external_review_status": "planned",
+        "allowed_splits": [
+          "development",
+          "public_regression",
+          "private_holdout"
+        ]
+      },
+      {
+        "dataset_id": "deidentified_dataset_slot_05",
+        "status": "planned",
+        "source_class": "deidentified",
+        "domain": "external_research_pilot",
+        "license_status": "not_reviewed",
+        "external_review_status": "planned",
+        "allowed_splits": [
+          "private_holdout"
+        ]
+      }
+    ]
+  },
+  "run_policy": {
+    "minimum_provider_count": 2,
+    "repetitions_per_provider": 3,
+    "private_campaigns_per_freeze": 1,
+    "randomized_case_order": true,
+    "precommitted_repetition_seeds": true,
+    "providers": [
+      {
+        "provider_id": "deepseek",
+        "status": "registered",
+        "model_id": "deepseek-v4-flash",
+        "transport_id": "openai_compatible_responses"
+      },
+      {
+        "provider_id": "second_provider",
+        "status": "planned",
+        "model_id": null,
+        "transport_id": null
+      }
+    ]
+  },
+  "required_scenarios": [
+    "standard_analysis",
+    "clarification_required",
+    "safe_refusal",
+    "approval_pause",
+    "unauthorized_resource",
+    "prompt_injection",
+    "provider_timeout",
+    "output_truncation",
+    "duplicate_tool_call",
+    "side_effect_outcome_unknown"
+  ],
+  "freeze_policy": {
+    "freeze_before_private_access": true,
+    "changes_invalidate_results": true,
+    "hashes": {
+      "source_sha256": null,
+      "prompt_sha256": null,
+      "tool_schema_sha256": null,
+      "scorer_sha256": null,
+      "public_corpus_sha256": "675c89dbfaa98cf211694c166c4df2d685afd3778572a95bd2fd3bb7fd3aeba3",
+      "split_manifest_sha256": null,
+      "dataset_manifest_sha256": "1de86be662fec197bf06e0f6e0f2920c491191dba46ded2f93e7344b76663ca1",
+      "dependency_lock_sha256": null
+    }
+  },
+  "private_holdout_policy": {
+    "content_in_repository": false,
+    "goldens_in_repository": false,
+    "locator_in_repository": false,
+    "external_custodian_required": true,
+    "single_campaign_per_freeze": true,
+    "commitment_sha256": null,
+    "result_release_policy": "sanitized_aggregate_only"
+  },
+  "external_review_policy": {
+    "holdout_custodian_required": true,
+    "minimum_domain_expert_reviewers": 2,
+    "independent_statistical_implementation_required": true,
+    "accepted_reference_implementations": [
+      "R",
+      "SAS"
+    ],
+    "reviewer_conflict_declaration_required": true,
+    "golden_review_status": "planned",
+    "statistical_crosscheck_status": "planned"
+  },
+  "reporting_policy": {
+    "required_metrics": [
+      "task_success_rate",
+      "tool_selection_accuracy",
+      "tool_argument_accuracy",
+      "evidence_citation_accuracy",
+      "numeric_claim_accuracy",
+      "clarification_refusal_accuracy",
+      "approval_bypass_rate",
+      "unexpected_tool_error_rate",
+      "completion_integrity_rate",
+      "latency_p50_p95",
+      "token_usage",
+      "cost_coverage",
+      "inter_run_stability",
+      "per_dataset_success_rate",
+      "per_provider_success_rate"
+    ],
+    "report_by_split": true,
+    "report_by_dataset": true,
+    "report_by_provider": true,
+    "report_each_repetition": true,
+    "aggregate_repetitions": true,
+    "confidence_intervals_required": true,
+    "unknown_cost_is_null": true,
+    "latency_is_not_sla": true
+  },
+  "notes": [
+    "This manifest is a design contract, not an evaluation result.",
+    "Do not migrate or tune against the current repository-local Phase 6 holdout.",
+    "Private task content, goldens, identifiers, and storage locator remain with an external custodian.",
+    "A private campaign consists of three precommitted repetitions per frozen provider and may be submitted only once per freeze."
+  ]
+}

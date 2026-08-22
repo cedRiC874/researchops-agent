@@ -30,10 +30,28 @@
 - Compose 5 状态读取最终改为 container ID + 无引号 `docker inspect` 模板，消除
   不同 Windows 用户下的 JSON/Go-template 转义差异；验证运行
   `E2E-20260822T090447Z-8fd401a8` 通过。
-- Ubuntu 24.04 GitHub Actions workflow 已实现：固定 Action commit SHA、临时随机
-  CI secret、确定性 344×8 registry、18 项测试、真实 Compose E2E、always-upload
-  脱敏证据与无 `-v` shutdown。Workflow/fixture 已本地验证，尚未 commit/push，
-  因而没有远端 run 结果。
+- Ubuntu 24.04 GitHub Actions workflow 已经由 PR #2 合并至 `main` commit
+  `badb7169fff4d6f1a3a5952ac84032d75c059b01`。默认分支
+  [`production-slice-e2e` run 32568017244](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017244)
+  通过：固定 Action commit SHA、临时随机 CI secret、确定性 344×8 registry、
+  18 项测试、真实 Compose E2E、always-upload 脱敏证据、无 `-v` shutdown 与最终
+  gate 均成功。E2E run `E2E-20260822T103641Z-f2a7cfdd` 用时 68.861 秒，
+  job 一次成功，event chain、对象 metadata、幂等复用与 API→worker trace 均有效，
+  secret 泄露扫描为 0。
+- 同一 `main` commit 的显式
+  [`workflow_dispatch` run 32568233292](https://github.com/cedRiC874/researchops-agent/actions/runs/32568233292)
+  也通过，证明默认分支手动触发器有效。
+- 同一 `main` commit 的
+  [`offline-quality-gate` run 32568017243](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017243)
+  workflow conclusion 为 `success`，该已提交源码的 144 项根测试为 `OK`；但其新
+  重建 Phase 5 实际为 44/50、evidence citations 10/21。该 main run 的 offline
+  workflow 未对这些质量阈值 fail-closed，因此不能称为“离线质量通过”。LF golden、
+  版本化质量 profile 与双退出码修复已由 PR #3 的 push/PR clean runs 复核后合并；
+  main run 32571384757 为 152/152、50/50、21/21、profile valid、audit valid，
+  P1 已关闭；详见
+  [main offline gate audit](../../docs/evidence/main-offline-gate-20260822/README.md)。
+  Production slice 的完整远端证据索引见
+  [`docs/evidence/production-slice-linux-ci-main-v1/`](../../docs/evidence/production-slice-linux-ci-main-v1/README.md)。
 - Eval v2 public candidate verifier 在新增独立服务后仍为 `valid`，commitment
   保持 `7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11`。
 
@@ -41,13 +59,18 @@
 
 | Scope | Files | SHA-256 |
 | --- | ---: | --- |
-| `src/researchops_service/**/*.py` | 16 | `6c0a597269ba085bed4912431f2a1a9540afbedd500a1ba244d995d7c0b7d92d` |
-| `tests/**/*.py` | 5 | `2bc186cc7572e22c4dabfd46aaa0e93206846406f7e828197a8d2e7528aa09fc` |
-| Git ignore/Actions/Docker/Compose/OTel/migrations/dependency/bootstrap/E2E config | 14 | `293f713bb4b27303fca5d3d9c6121ae84a726b23b184dc4baa1d953a9121cba7` |
+| `src/researchops_service/**/*.py` | 16 | `5baf76bcd27594680362a00000681c60174f324db5ef7f8326bec41cb5d16f40` |
+| `tests/**/*.py` | 5 | `30e867ceca238b939b7fa1cd5c778779cb7b9e92d66875fc6e337a44ca589676` |
+| `.dockerignore`、service `.gitignore`、Actions/Docker/Compose/OTel/migrations/dependency/bootstrap/E2E config | 14 | `c014cd4a1ac6d98b4d0ed59bb5928e6fafa0202148aba67ed579912acc64d32b` |
 | `pyproject.toml` | 1 | `0c9586171e40c9f2be77645f15bab1bbd4713884a672925322074ed20038f073` |
 | Full test lock | 1 | `863fd851a94af199dd15e6cfb3024b5d08979aa0dce60d70652775ef9be89a59` |
 | Runtime lock | 1 | `fab0eb00e6d3072b8acefe513ba1f06561d75c28fcd0174fd772d6c573b473fd` |
 | E2E evidence | 1 | `409157f68264bd574a9f7d80fc7ffbb76a35451095de79000042cdf89f6c0014` |
+
+前三个 bundle hash 的算法为：对按 POSIX 相对路径排序的文件构造
+`{path: sha256(file_bytes)}`，以 UTF-8、排序 key、无额外空格的 JSON 序列化后再做
+SHA-256。单文件行直接对文件 bytes 做 SHA-256。以上值对应合并后的
+`main@badb7169`，不包含本验证 Markdown 本身。
 
 ## 未执行与声明边界
 
@@ -55,4 +78,5 @@
 备份恢复、生产 SLA 或负载容量。Local MinIO 未配置 KMS，服务端加密显式关闭；
 不得把它描述为生产静态加密。该切片没有 LLM、外部发布或批准后恢复；完整批准
 与恢复仍属于 Phase 4。本次 Eval v2 68/93 没有覆盖这个新服务层。机器可复核结果
-见 [evidence/e2e-20260822.json](evidence/e2e-20260822.json)。
+见 [本机 E2E JSON](evidence/e2e-20260822.json) 与
+[main Linux CI 证据快照](../../docs/evidence/production-slice-linux-ci-main-v1/README.md)。

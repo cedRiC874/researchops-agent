@@ -8,21 +8,24 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 
 ## Evidence at a glance
 
-当前验证快照：2026-08-19。
+当前验证快照：2026-08-22。
 
 | 层 | 状态 | 可复核结果 |
 | --- | --- | --- |
 | 模拟科研分析 | 已验证 | 240 行模拟 RCT；ANCOVA 与 Welch 均生成数值、样本流、诊断、证据 ID 和聚合图表 |
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
-| 离线组件与控制面评测 | 已验证 | 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
+| Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
+| 当前 `main` Phase 5 重建 | P1 已关闭 | PR #3 已合并；main run 32571384757 为 50/50、证据 21/21、profile valid、50 条 audit chain 全有效 |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | 144/144 通过 |
+| 自动化测试 | 已验证 | 当前 `main` 根测试 152/152；PR #4 本地完整工作树 246/246；production slice 18/18 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
 | Provider 适配 | 已验证 | OpenAI 与 DeepSeek 使用独立 Key/client；DeepSeek V4 模型 allowlist、固定 endpoint、零隐藏重试 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
+| Eval v2 public candidate | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
+| Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
-离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率。
+离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。PR #3 已修复 LF provenance 与退出码覆盖；当前 main run 32571384757 为 50/50、21/21、`phase5-ci-v1=valid`。详见 [CI 门禁审计](docs/evidence/main-offline-gate-20260822/README.md)。
 
 ## 一键离线演示
 
@@ -186,7 +189,7 @@ $callId = "CALL-从输出复制"
 | 审批安全 | 6 | 暂停、批准、拒绝、过期、参数绑定、禁止导出 |
 | 报告证据 | 4 | claim 绑定、局限性、图表引用、表述护栏 |
 
-最新快照：50/50；非预期工具错误 0/45；主动注入的毛工具错误 11/45；安全违规 0/50；证据引用 21/21；P50/P95 为 100.38/411.03 ms。
+历史作品集快照：50/50；非预期工具错误 0/45；主动注入的毛工具错误 11/45；安全违规 0/50；证据引用 21/21；P50/P95 为 100.38/411.03 ms。该结果绑定旧 CRLF source/data/manifest；当前 main 的 LF lineage 已由 run 32571384757 独立复核为 50/50、21/21，两套证据不可互相替代。
 
 黄金答案只在执行结束后加载，系统输入只能来自 `EvalTask.public_input()`。完整指标见 [证据索引](docs/EVIDENCE.md)。
 
@@ -222,6 +225,42 @@ DeepSeek 会忽略 `parallel_tool_calls=False`，所以串行与审批安全由�
 
 人工复核还记录了两个不影响自动 4/4、但影响作品集解读的 P2：HOLD-002 在 prose 中报告了 CI/p，却没有输出对应 optional CLAIM；HOLD-003 的路径在安全清洗后出现 `[PATH_REDACTED]`，拒绝决定正确但文本可读性受损。
 
+### Eval v2：设计合同，不是新成绩
+
+Eval v2 新增独立 campaign contract 与公开 task schema，预注册 80 个 development、40 个 public regression 和至少 50 个 external private holdout 任务，并要求 3–5 个数据集、至少 2 个 Provider、每个 Provider 3 次重复、外部 golden 复核以及 R/SAS 独立统计交叉检查。
+
+当前已选择 Palmer Penguins、UCI Parkinsons Telemonitoring 和 UCI Heart Disease Cleveland；3 个数据集的官方许可、下载/asset SHA-256、bytes、行列和缺失计数已经核验，但外部专家 review 仍为 planned。受控准备器执行 hash 复核、固定转换、Parkinsons subject pseudonymization、原子非覆盖发布，并生成每次解析都重验路径/hash 的逻辑 registry。独立 inspect backend 只返回白名单聚合 profile，不返回路径、hash、样例值或行级内容。独立 runner 只向 executor 传递 public input，由 per-task gateway 再做参数授权；scorer 检查轨迹、outcome、evidence/numeric claims、审批、安全和 completion。Provider executor 复用隔离 ProviderAdapter，要求显式在线确认；artifact writer 原子发布脱敏 report/summary/manifest；重复聚合要求每个 Provider 恰好三次。80 development + 40 public regression 已全部 internal-ready；public candidate 已完成一次性 DeepSeek 三轮运行，但完整 campaign 仍为 `design_only`。private holdout 的题面、golden、task ID 和 locator 不得进入仓库；同一 freeze 只允许提交一次 private campaign。详见 [Eval v2 设计](evals/EVAL_V2.md)、[public-regression evidence](docs/evidence/eval-v2-public-regression-deepseek-v1/README.md)、[campaign manifest](evals/v2/campaign.json) 与 [external dataset manifest](evals/v2/external_datasets.json)。离线校验：
+
+```powershell
+.\.venv\Scripts\python.exe -m researchops.cli eval-v2-validate
+.\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-public-freeze `
+  --verify-environment
+```
+
+Public-regression 配置作为独立 `candidate_locked` 锁定，并未把完整 campaign 冒充为 frozen。Candidate commitment `7744770a…f0d11` 已一次性运行：Provider system 68/93（73.12%），三轮 23/31、22/31、23/31；deterministic fault harness 27/27，未归因模型、未合并进入模型分母。该结果属于 `DeepSeek + 锁定控制面`，不能称为 LLM 规划准确率或未知生产集泛化。
+
+显式联网复核公开资产，不写入数据文件：
+
+```powershell
+.\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-datasets --confirm-download
+```
+
+准备本地受控数据与逻辑 registry；目标目录必须是 `artifacts/` 下的新目录：
+
+```powershell
+.\.venv\Scripts\python.exe -m researchops.cli eval-v2-prepare-datasets `
+  --output-dir artifacts/eval_v2_datasets/local-01 `
+  --confirm-download
+```
+
+准备完成后，可通过逻辑 ID 执行聚合检查：
+
+```powershell
+.\.venv\Scripts\python.exe -m researchops.cli eval-v2-inspect `
+  palmer_penguins_v0_1_0 `
+  --registry artifacts/eval_v2_datasets/local-01/logical_dataset_registry.json
+```
+
 ## 手动运行核心流程
 
 ```powershell
@@ -247,14 +286,49 @@ $env:PYTHONPATH = "src"
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
+## 内部 Self-Pilot Web / CLI
+
+已提供盲化选题、双语本机 Web 评测台、单题 Provider 运行、服务器计时、人工反馈和 Markdown 总结。机器评分会在人工反馈提交后才显示，Provider 正文不写入 session。
+
+```powershell
+# 创建 12 题 session
+.\.venv\Scripts\python.exe -m researchops.cli self-pilot-create `
+  --output-dir artifacts/self_pilot/session-01
+
+# 查看下一题
+.\.venv\Scripts\python.exe -m researchops.cli self-pilot-next `
+  --session-dir artifacts/self_pilot/session-01
+
+# 推荐：启动双语本机 Web 评测台
+.\.venv\Scripts\python.exe -m researchops.cli self-pilot-web `
+  --session-dir artifacts/self_pilot/session-01 `
+  --registry artifacts/self_pilot_data/run-01/logical_dataset_registry.json `
+  --confirm-online
+
+# 显式运行一道 Provider 任务
+.\.venv\Scripts\python.exe -m researchops.cli self-pilot-run `
+  --session-dir artifacts/self_pilot/session-01 `
+  --registry artifacts/self_pilot_data/run-01/logical_dataset_registry.json `
+  --provider deepseek --model deepseek-v4-flash --confirm-online
+
+# 完成全部反馈后生成总结
+.\.venv\Scripts\python.exe -m researchops.cli self-pilot-summary `
+  --session-dir artifacts/self_pilot/session-01
+```
+
+打开终端显示的 `http://127.0.0.1:8765`，先在首页选择受控 Provider/model 并输入 API Key。页面通过 Provider 模型目录核验认证和模型可见性（不生成模型 token），随后才显示题目。Web 只绑定本机，双语回答来自同一次 Provider 运行，正文只驻留进程内存；答案显示后题目仍保留在上方，并通过不执行原始 HTML/脚本的安全 Markdown 子集渲染，提交反馈时自动停止计时并进入下一题。新版 Web 表单定位为非领域专家可用性评价，只记录可理解性、实用性、判断置信度、专家复核需求、明显问题、信息遗漏和安全担忧，不要求使用者判断专业正确性。新 session 分离确定性的题包 ID 与唯一运行实例 ID。Web 双语输出上限为 10,000 tokens，普通 Eval v2 runner 仍保持 2,000 默认值。完整步骤见 [内部 Self-Pilot Web / CLI 指南](docs/SELF_PILOT_GUIDE.md)。该流程只能称为 internal self-pilot，不能替代外部用户或专家验证。
+
 ## 项目结构
 
 ```text
 researchops-agent/
 ├── data/                         # 脱敏模拟 CSV 与研究设计
 ├── evals/                        # 50 题组件语料 + 20 题 Agent 行为语料
+│   ├── EVAL_V2.md                # private holdout、多数据集和重复运行设计
+│   └── v2/                        # campaign、公开 task schema/corpus 与外部数据 manifest
 ├── src/researchops/              # 分析、控制面、provider、Agent、评分器与 runner
-├── tests/                        # 144 项单元/集成/故障注入测试
+├── tests/                        # 当前完整工作树 246 项单元/集成/故障注入测试
+├── services/production_slice/    # 独立 FastAPI/PostgreSQL/S3/OTel 纵切与 18 项测试
 ├── scripts/
 │   ├── portfolio_demo.ps1        # 一键完全离线作品集演示
 │   └── verify_phase5_artifacts.py
@@ -263,21 +337,51 @@ researchops-agent/
 │   ├── ARCHITECTURE.md
 │   ├── EVIDENCE.md
 │   └── PORTFOLIO.md
-└── .github/workflows/ci.yml       # Windows 离线质量门禁
+└── .github/workflows/
+    ├── ci.yml                     # Windows 离线完整性与回归 workflow
+    └── production-slice-e2e.yml   # Ubuntu 真实 Compose E2E
 ```
 
 ## CI
 
-GitHub Actions 在 `windows-latest + Python 3.12` 上：
+GitHub Actions 当前有两条独立 workflow。
+
+`windows-latest + Python 3.12` 的 `offline-quality-gate`：
 
 - 安装锁定依赖
 - 验证 50 题与 20 题语料契约
-- 运行 144 项测试
+- 对已提交 `main` 运行 152 项根测试
 - 从固定模拟数据重建 50 题离线评测
 - 验证哈希、审计链和敏感 canary
+- 使用版本化 `phase5-ci-v1` 精确要求任务 50/50、失败 0、success rate 1、
+  evidence citations 21/21 与 citation accuracy 1
+- 分别保留 evaluation/verifier 的 native exit code，任一非零都 fail-closed
 - 上传脱敏的评测摘要、报告、manifest 和审计索引
 
-CI 不读取 API Key，也不运行付费在线评测。
+`ubuntu-24.04` 的 `production-slice-e2e`：
+
+- 生成临时随机 CI secret 与确定性 344×8 合成 registry
+- 运行 18 项 production-slice contract tests
+- 构建并启动真实 PostgreSQL、MinIO、OTel、API 与 worker Compose 链路
+- 核验 event hash chain、对象 metadata、幂等复用与 API→worker trace
+- 始终上传脱敏证据并在不删除 volume 的情况下 shutdown
+
+两条 workflow 都不读取 Provider API Key，也不运行付费在线评测。`main` 的
+[production run 32568017244](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017244)
+和后续
+[manual dispatch 32568233292](https://github.com/cedRiC874/researchops-agent/actions/runs/32568233292)
+均通过；长期证据见 [Linux CI 快照](docs/evidence/production-slice-linux-ci-main-v1/README.md)。
+
+必须区分 workflow 结论与评测质量：`offline-quality-gate` 的
+[run 32568017243](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017243)
+虽然显示 `success`，但其 Phase 5 报告为 44/50、证据引用 10/21。该 main run
+当时的 verifier 只对产物完整性、哈希、审计链与敏感内容 fail-closed，尚未把质量
+阈值接入 job 退出码；不能把该绿色 check 写成当前源码 50/50。根因是 clean checkout 的 LF CSV
+hash 与历史 CRLF golden provenance 不一致。PR #3 已更新全部 38 个 Phase 5
+provenance 标量，加入 profile 阈值与退出码传播；push/PR clean runs 均通过后，
+[`main` run 32571384757](https://github.com/cedRiC874/researchops-agent/actions/runs/32571384757)
+再次得到 50/50、21/21、profile valid，修复前 44/50 产物会
+稳定返回非零。P1 已关闭，旧 run 继续作为事故证据保留。
 
 ## 已知限制
 
@@ -285,17 +389,22 @@ CI 不读取 API Key，也不运行付费在线评测。
 - 当前主分析是 available-case，不是完整 ITT；缺失机制与差异性失访需要进一步研究。
 - Phase 5 只评测确定性组件和控制面，模型调用为 0。
 - Phase 6 的 4 题 holdout 位于仓库内、不具备抗污染能力且不含审批场景；4/4 不能外推到未知请求。
+- Eval v2 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明锁定 public system 的 68/93；private holdout、外部复核和第二 Provider仍未完成，不能声称未知生产集泛化。
+- Production-like slice 已完成真实 PostgreSQL/MinIO/collector Compose E2E；它仍是单机 development 证据，不代表 HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量。
+- 旧 `main` run 32568017243 曾出现 44/50 却绿色的门禁缺陷；PR #3 与新 main run 32571384757 已恢复 50/50、21/21 并 fail-closed，旧历史成绩仍不能跨 source/data/manifest 冒充当前提交成绩。
 - DeepSeek development/holdout 是小样本顺序评测，不是生产负载或 SLA；成本因缺少完整价格表保持 unavailable。
 - OpenAI 最小 API 请求在 Key 认证成功后返回 HTTP 429，仍受外部 API 计费条件阻塞。
 - 审计链尚无外部签名 checkpoint；完全控制数据库的人仍可重算整条链。
 - 当前同步只读工具使用软超时；未来慢写工具需要合作式 deadline 或进程隔离。
-- CI 当前只覆盖 Windows；尚未做真实科研数据、外部秘密 holdout 和生产负载测试。
+- CI 已覆盖 Windows 根项目与 Ubuntu 单机 Compose，但尚未做真实科研数据、外部秘密 holdout、云环境、HA 或生产负载测试。
 
 ## 作品集与面试材料
 
 - [30 秒介绍、5 分钟演示和面试问答](docs/PORTFOLIO.md)
 - [架构与安全边界](docs/ARCHITECTURE.md)
 - [声明到证据的映射](docs/EVIDENCE.md)
+- [Production slice main Linux CI 证据](docs/evidence/production-slice-linux-ci-main-v1/README.md)
+- [Main offline gate 审计](docs/evidence/main-offline-gate-20260822/README.md)
 - [Phase 5 语料说明](evals/README.md)
 - [Phase 6 评测边界](evals/PHASE6.md)
 

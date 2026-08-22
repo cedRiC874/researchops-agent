@@ -122,5 +122,11 @@ runs on Ubuntu 24.04 for relevant pushes, pull requests and manual dispatches. I
 6. stops Compose without deleting volumes, then enforces the E2E exit status.
 
 The workflow does not consume GitHub Secrets or provider API keys. Action dependencies
-are pinned to full commit SHAs. It has been locally syntax/fixture validated but will not
-execute on GitHub until the changes are committed and pushed or opened as a pull request.
+are pinned to full commit SHAs. PR #2 merged it into `main`; the default-branch
+[`production-slice-e2e` run 32568017244](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017244)
+passed all contract, real Compose E2E, sanitized-upload, teardown and final-gate steps.
+The subsequent explicit
+[`workflow_dispatch` run 32568233292](https://github.com/cedRiC874/researchops-agent/actions/runs/32568233292)
+also passed on the same `main` commit.
+The curated aggregate-only snapshot is in
+[`../../docs/evidence/production-slice-linux-ci-main-v1/`](../../docs/evidence/production-slice-linux-ci-main-v1/README.md).

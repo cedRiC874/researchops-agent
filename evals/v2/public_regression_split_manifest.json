@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "manifest_id": "eval-v2-public-regression-orders-v1",
+  "split": "public_regression",
+  "public_tasks_sha256": "675c89dbfaa98cf211694c166c4df2d685afd3778572a95bd2fd3bb7fd3aeba3",
+  "task_count": 40,
+  "execution_channels": {
+    "provider_behavior": [
+      "V2-PUB-001", "V2-PUB-002", "V2-PUB-003", "V2-PUB-004",
+      "V2-PUB-005", "V2-PUB-006", "V2-PUB-007", "V2-PUB-010",
+      "V2-PUB-012", "V2-PUB-013", "V2-PUB-014", "V2-PUB-015",
+      "V2-PUB-016", "V2-PUB-017", "V2-PUB-018", "V2-PUB-019",
+      "V2-PUB-020", "V2-PUB-023", "V2-PUB-025", "V2-PUB-026",
+      "V2-PUB-027", "V2-PUB-028", "V2-PUB-029", "V2-PUB-030",
+      "V2-PUB-031", "V2-PUB-032", "V2-PUB-033", "V2-PUB-036",
+      "V2-PUB-038", "V2-PUB-039", "V2-PUB-040"
+    ],
+    "deterministic_fault_injection": [
+      "V2-PUB-008", "V2-PUB-009", "V2-PUB-011",
+      "V2-PUB-021", "V2-PUB-022", "V2-PUB-024",
+      "V2-PUB-034", "V2-PUB-035", "V2-PUB-037"
+    ]
+  },
+  "repetitions": [
+    {
+      "repetition_index": 1,
+      "seed": 2026082101,
+      "task_order": [
+        "V2-PUB-006", "V2-PUB-014", "V2-PUB-005", "V2-PUB-035",
+        "V2-PUB-025", "V2-PUB-021", "V2-PUB-016", "V2-PUB-012",
+        "V2-PUB-007", "V2-PUB-038", "V2-PUB-008", "V2-PUB-027",
+        "V2-PUB-022", "V2-PUB-004", "V2-PUB-010", "V2-PUB-003",
+        "V2-PUB-009", "V2-PUB-030", "V2-PUB-033", "V2-PUB-034",
+        "V2-PUB-001", "V2-PUB-019", "V2-PUB-029", "V2-PUB-024",
+        "V2-PUB-013", "V2-PUB-020", "V2-PUB-015", "V2-PUB-028",
+        "V2-PUB-023", "V2-PUB-017", "V2-PUB-032", "V2-PUB-037",
+        "V2-PUB-011", "V2-PUB-018", "V2-PUB-039", "V2-PUB-040",
+        "V2-PUB-031", "V2-PUB-036", "V2-PUB-026", "V2-PUB-002"
+      ],
+      "task_order_sha256": "9e712696abc35b4e80a6ae8b294e9eb749afd36ac0909c5d2001b39533765d90"
+    },
+    {
+      "repetition_index": 2,
+      "seed": 2026082102,
+      "task_order": [
+        "V2-PUB-022", "V2-PUB-009", "V2-PUB-003", "V2-PUB-014",
+        "V2-PUB-034", "V2-PUB-006", "V2-PUB-018", "V2-PUB-020",
+        "V2-PUB-015", "V2-PUB-021", "V2-PUB-016", "V2-PUB-028",
+        "V2-PUB-031", "V2-PUB-010", "V2-PUB-026", "V2-PUB-008",
+        "V2-PUB-004", "V2-PUB-002", "V2-PUB-005", "V2-PUB-019",
+        "V2-PUB-037", "V2-PUB-038", "V2-PUB-029", "V2-PUB-032",
+        "V2-PUB-025", "V2-PUB-017", "V2-PUB-024", "V2-PUB-027",
+        "V2-PUB-033", "V2-PUB-039", "V2-PUB-030", "V2-PUB-013",
+        "V2-PUB-001", "V2-PUB-007", "V2-PUB-040", "V2-PUB-012",
+        "V2-PUB-035", "V2-PUB-023", "V2-PUB-011", "V2-PUB-036"
+      ],
+      "task_order_sha256": "ca51bb99c0ad8af2b6c9f940c7ffa5302f66773ce1df82c6cad043ddd8930461"
+    },
+    {
+      "repetition_index": 3,
+      "seed": 2026082103,
+      "task_order": [
+        "V2-PUB-017", "V2-PUB-029", "V2-PUB-015", "V2-PUB-020",
+        "V2-PUB-019", "V2-PUB-012", "V2-PUB-006", "V2-PUB-027",
+        "V2-PUB-023", "V2-PUB-025", "V2-PUB-033", "V2-PUB-040",
+        "V2-PUB-024", "V2-PUB-010", "V2-PUB-039", "V2-PUB-011",
+        "V2-PUB-005", "V2-PUB-009", "V2-PUB-032", "V2-PUB-016",
+        "V2-PUB-026", "V2-PUB-031", "V2-PUB-028", "V2-PUB-036",
+        "V2-PUB-035", "V2-PUB-037", "V2-PUB-004", "V2-PUB-014",
+        "V2-PUB-002", "V2-PUB-003", "V2-PUB-018", "V2-PUB-001",
+        "V2-PUB-038", "V2-PUB-021", "V2-PUB-030", "V2-PUB-008",
+        "V2-PUB-013", "V2-PUB-022", "V2-PUB-034", "V2-PUB-007"
+      ],
+      "task_order_sha256": "0c30a7c6acc2c091acf91a8bac2c2fbd84401c0fc0ce689c77afb79b82700200"
+    }
+  ]
+}

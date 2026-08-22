@@ -1,0 +1,14 @@
+{
+  "api_keys_persisted": false,
+  "candidate_commitment_sha256": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11",
+  "candidate_execution_receipt_sha256": "67038444cc7aa5f83fcd711773f01aa559208230ef013f85ee05d68a4876b540",
+  "case_chain_head_sha256": "3a6dc09043ad9929756f44635eb5e423b025e8a0d60406320f0917ebce03931b",
+  "files": {
+    "public_regression_report.json": "d41e489d8dd4e3d5df81c9e050b0574cdccdf96210dfb98481a3b1bafdc54f3b",
+    "public_regression_state.json": "49e731bee55cd33a9f07171dd01c84d6164d92a3ed6eab45b72bfc73f0fd8035",
+    "public_regression_summary.md": "66b26ebdb0c86b4c4867549a463ce787e77f3c65d64203808716494f04dd6bbf"
+  },
+  "model_outputs_persisted": false,
+  "run_id": "PUBREG-5A75025255EC4443",
+  "schema_version": "1.0"
+}

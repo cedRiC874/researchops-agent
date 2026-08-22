@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "run_id": "E2E-20260822T103641Z-f2a7cfdd",
+  "services": [
+    {
+      "service": "api",
+      "state": "running",
+      "status": "running",
+      "health": "",
+      "exit_code": 0,
+      "image": "researchops-production-slice-api"
+    },
+    {
+      "service": "migrate",
+      "state": "exited",
+      "status": "exited",
+      "health": "",
+      "exit_code": 0,
+      "image": "postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94"
+    },
+    {
+      "service": "minio",
+      "state": "running",
+      "status": "running",
+      "health": "healthy",
+      "exit_code": 0,
+      "image": "minio/minio:RELEASE.2025-07-23T15-54-02Z@sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0"
+    },
+    {
+      "service": "otel-collector",
+      "state": "running",
+      "status": "running",
+      "health": "",
+      "exit_code": 0,
+      "image": "otel/opentelemetry-collector-contrib:0.138.0@sha256:4a951ff0a9772f4fa8e9c7a326434370301b98b2b813933468dcb54aa6a6b5e5"
+    },
+    {
+      "service": "postgres",
+      "state": "running",
+      "status": "running",
+      "health": "healthy",
+      "exit_code": 0,
+      "image": "postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94"
+    },
+    {
+      "service": "worker",
+      "state": "running",
+      "status": "running",
+      "health": "",
+      "exit_code": 0,
+      "image": "researchops-production-slice-worker"
+    }
+  ]
+}

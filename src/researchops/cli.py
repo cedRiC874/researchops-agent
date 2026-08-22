@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 
 from .analysis_tools import AnalysisExecutionError
@@ -15,8 +16,18 @@ from .eval_runner import (
     run_offline_evaluation,
     validate_eval_suite,
 )
+from .eval_v2_contracts import EvalV2ContractError
+from .eval_v2_dataset_prep import (
+    EvalV2LogicalDatasetRegistry,
+    prepare_eval_v2_datasets,
+)
+from .eval_v2_dataset_verify import verify_eval_v2_dataset_downloads
+from .eval_v2_inspect_backend import EvalV2InspectDatasetBackend
+from .eval_v2_freeze import validate_public_regression_candidate
+from .eval_v2_public_runner import run_public_regression_online
+from .eval_v2_public import validate_eval_v2_suite
 from .method_selection import MethodSelectionError, recommend_method
-from .model_providers import ProviderConfigurationError
+from .model_providers import ProviderConfigurationError, get_provider
 from .offline_agent import (
     decide_phase4_call,
     resume_phase4_call,
@@ -31,6 +42,14 @@ from .phase6_runner import (
     run_phase6_online_evaluation,
     validate_phase6_suite,
 )
+from .self_pilot import (
+    create_self_pilot_session,
+    get_next_self_pilot_task,
+    record_self_pilot_feedback,
+    run_self_pilot_task,
+    summarize_self_pilot,
+)
+from .self_pilot_web import SelfPilotWebController, serve_self_pilot_web
 from .tool_runtime import ToolRuntimeError
 from .workflow import run_phase3_analysis, validate_cli_output_directory
 
@@ -182,6 +201,218 @@ def build_parser() -> argparse.ArgumentParser:
     phase6_run_parser.add_argument(
         "--output-price-per-million-usd", type=_nonnegative_float
     )
+
+    eval_v2_validate_parser = subparsers.add_parser(
+        "eval-v2-validate",
+        help="离线验证 Eval v2 campaign 设计、冻结门槛与 private holdout 隔离",
+    )
+    eval_v2_validate_parser.add_argument(
+        "--campaign", type=Path, default=Path("evals/v2/campaign.json")
+    )
+    eval_v2_validate_parser.add_argument(
+        "--datasets",
+        type=Path,
+        default=Path("evals/v2/external_datasets.json"),
+    )
+    eval_v2_validate_parser.add_argument(
+        "--tasks", type=Path, default=Path("evals/v2/public_tasks.jsonl")
+    )
+    eval_v2_validate_parser.add_argument(
+        "--task-schema",
+        type=Path,
+        default=Path("evals/v2/public_task_schema.json"),
+    )
+    eval_v2_validate_parser.add_argument(
+        "--internal-review",
+        type=Path,
+        default=Path("evals/v2/internal_review.json"),
+    )
+
+    eval_v2_verify_parser = subparsers.add_parser(
+        "eval-v2-verify-datasets",
+        help="显式确认后在内存中重新下载并核对 Eval v2 公开数据资产",
+    )
+    eval_v2_verify_parser.add_argument(
+        "--datasets",
+        type=Path,
+        default=Path("evals/v2/external_datasets.json"),
+    )
+    eval_v2_verify_parser.add_argument(
+        "--timeout-seconds", type=_positive_float, default=30.0
+    )
+    eval_v2_verify_parser.add_argument("--confirm-download", action="store_true")
+
+    eval_v2_prepare_parser = subparsers.add_parser(
+        "eval-v2-prepare-datasets",
+        help="显式确认后下载、核验并原子生成 Eval v2 受控数据产物",
+    )
+    eval_v2_prepare_parser.add_argument(
+        "--datasets",
+        type=Path,
+        default=Path("evals/v2/external_datasets.json"),
+    )
+    eval_v2_prepare_parser.add_argument("--output-dir", type=Path, required=True)
+    eval_v2_prepare_parser.add_argument(
+        "--timeout-seconds", type=_positive_float, default=30.0
+    )
+    eval_v2_prepare_parser.add_argument("--confirm-download", action="store_true")
+
+    eval_v2_registry_parser = subparsers.add_parser(
+        "eval-v2-registry-status",
+        help="校验准备产物 hash，并输出不含路径的逻辑数据集目录",
+    )
+    eval_v2_registry_parser.add_argument("--registry", type=Path, required=True)
+
+    eval_v2_inspect_parser = subparsers.add_parser(
+        "eval-v2-inspect",
+        help="通过逻辑 ID 返回 Eval v2 准备数据的白名单聚合 profile",
+    )
+    eval_v2_inspect_parser.add_argument("dataset_id")
+    eval_v2_inspect_parser.add_argument("--registry", type=Path, required=True)
+
+    eval_v2_freeze_parser = subparsers.add_parser(
+        "eval-v2-verify-public-freeze",
+        help="离线复核 public-regression candidate 的组件 hash、顺序和通道隔离",
+    )
+    eval_v2_freeze_parser.add_argument(
+        "--candidate",
+        type=Path,
+        default=Path("evals/v2/public_regression_candidate.json"),
+    )
+    eval_v2_freeze_parser.add_argument(
+        "--verify-environment", action="store_true"
+    )
+
+    eval_v2_public_run_parser = subparsers.add_parser(
+        "eval-v2-run-public-online",
+        help="按锁定顺序、分通道并在预算护栏内运行 Eval v2 public regression",
+    )
+    eval_v2_public_run_parser.add_argument(
+        "--candidate",
+        type=Path,
+        default=Path("evals/v2/public_regression_candidate.json"),
+    )
+    eval_v2_public_run_parser.add_argument("--registry", type=Path, required=True)
+    eval_v2_public_run_parser.add_argument("--output-dir", type=Path, required=True)
+    eval_v2_public_run_parser.add_argument(
+        "--budget-cny", type=_positive_float, required=True
+    )
+    eval_v2_public_run_parser.add_argument(
+        "--max-total-input-tokens", type=_positive_int, default=1_000_000
+    )
+    eval_v2_public_run_parser.add_argument(
+        "--max-total-output-tokens", type=_positive_int, default=333_333
+    )
+    eval_v2_public_run_parser.add_argument(
+        "--max-model-calls", type=_positive_int, default=744
+    )
+    eval_v2_public_run_parser.add_argument("--resume", action="store_true")
+    eval_v2_public_run_parser.add_argument("--confirm-online", action="store_true")
+
+    pilot_create_parser = subparsers.add_parser(
+        "self-pilot-create",
+        help="创建不含 golden 的内部 self-pilot 任务包",
+    )
+    pilot_create_parser.add_argument("--output-dir", type=Path, required=True)
+    pilot_create_parser.add_argument(
+        "--tasks", type=Path, default=Path("evals/v2/public_tasks.jsonl")
+    )
+    pilot_create_parser.add_argument(
+        "--datasets",
+        type=Path,
+        default=Path("evals/v2/external_datasets.json"),
+    )
+    pilot_create_parser.add_argument(
+        "--task-count", type=_positive_int, default=12
+    )
+
+    pilot_next_parser = subparsers.add_parser(
+        "self-pilot-next", help="显示下一道待运行或待反馈的 self-pilot 任务"
+    )
+    pilot_next_parser.add_argument("--session-dir", type=Path, required=True)
+
+    pilot_run_parser = subparsers.add_parser(
+        "self-pilot-run", help="显式确认后运行一道 self-pilot Provider 任务"
+    )
+    pilot_run_parser.add_argument("--session-dir", type=Path, required=True)
+    pilot_run_parser.add_argument("--registry", type=Path, required=True)
+    pilot_run_parser.add_argument(
+        "--tasks", type=Path, default=Path("evals/v2/public_tasks.jsonl")
+    )
+    pilot_run_parser.add_argument(
+        "--datasets",
+        type=Path,
+        default=Path("evals/v2/external_datasets.json"),
+    )
+    pilot_run_parser.add_argument(
+        "--provider", choices=("openai", "deepseek"), required=True
+    )
+    pilot_run_parser.add_argument("--model", required=True)
+    pilot_run_parser.add_argument("--task-id")
+    pilot_run_parser.add_argument("--max-turns", type=_positive_int, default=8)
+    pilot_run_parser.add_argument(
+        "--timeout-seconds", type=_positive_float, default=120.0
+    )
+    pilot_run_parser.add_argument("--confirm-online", action="store_true")
+
+    pilot_record_parser = subparsers.add_parser(
+        "self-pilot-record", help="记录 self-pilot 人工接受度、时间和修改情况"
+    )
+    pilot_record_parser.add_argument("--session-dir", type=Path, required=True)
+    pilot_record_parser.add_argument("--task-id", required=True)
+    pilot_record_parser.add_argument(
+        "--accepted", choices=("yes", "no"), required=True
+    )
+    pilot_record_parser.add_argument(
+        "--first-pass", choices=("yes", "no"), required=True
+    )
+    pilot_record_parser.add_argument(
+        "--manual-revisions", type=_nonnegative_int, required=True
+    )
+    pilot_record_parser.add_argument(
+        "--duration-seconds", type=_positive_float, required=True
+    )
+    pilot_record_parser.add_argument(
+        "--critical-error", choices=("yes", "no"), required=True
+    )
+    pilot_record_parser.add_argument(
+        "--safety-concern", choices=("yes", "no"), required=True
+    )
+    pilot_record_parser.add_argument(
+        "--clarification-useful", choices=("yes", "no", "na"), default="na"
+    )
+    pilot_record_parser.add_argument("--notes")
+
+    pilot_web_parser = subparsers.add_parser(
+        "self-pilot-web",
+        help="启动仅绑定本机的双语 self-pilot 人工评测网页",
+    )
+    pilot_web_parser.add_argument("--session-dir", type=Path, required=True)
+    pilot_web_parser.add_argument("--registry", type=Path, required=True)
+    pilot_web_parser.add_argument(
+        "--tasks", type=Path, default=Path("evals/v2/public_tasks.jsonl")
+    )
+    pilot_web_parser.add_argument(
+        "--datasets",
+        type=Path,
+        default=Path("evals/v2/external_datasets.json"),
+    )
+    pilot_web_parser.add_argument(
+        "--translations",
+        type=Path,
+        default=Path("evals/v2/self_pilot_translations.zh-CN.json"),
+    )
+    pilot_web_parser.add_argument("--port", type=_tcp_port, default=8765)
+    pilot_web_parser.add_argument("--max-turns", type=_positive_int, default=8)
+    pilot_web_parser.add_argument(
+        "--timeout-seconds", type=_positive_float, default=120.0
+    )
+    pilot_web_parser.add_argument("--confirm-online", action="store_true")
+
+    pilot_summary_parser = subparsers.add_parser(
+        "self-pilot-summary", help="生成并显示内部 self-pilot Markdown 汇总"
+    )
+    pilot_summary_parser.add_argument("--session-dir", type=Path, required=True)
     return parser
 
 
@@ -294,6 +525,170 @@ def main() -> int:
                 report["harness_error_count"] == 0
                 and report["passed"] == report["included"]
             ) else 5
+        elif args.command == "eval-v2-validate":
+            result = validate_eval_v2_suite(
+                campaign_path=args.campaign,
+                dataset_manifest_path=args.datasets,
+                public_tasks_path=args.tasks,
+                task_schema_path=args.task_schema,
+                internal_review_path=args.internal_review,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "eval-v2-verify-datasets":
+            result = verify_eval_v2_dataset_downloads(
+                args.datasets,
+                confirm_download=args.confirm_download,
+                timeout_seconds=args.timeout_seconds,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["status"] == "verified" else 4
+        elif args.command == "eval-v2-prepare-datasets":
+            project_root = Path(__file__).resolve().parents[2]
+            result = prepare_eval_v2_datasets(
+                project_root=project_root,
+                dataset_manifest_path=args.datasets,
+                output_directory=args.output_dir,
+                confirm_download=args.confirm_download,
+                timeout_seconds=args.timeout_seconds,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["status"] == "prepared" else 4
+        elif args.command == "eval-v2-registry-status":
+            registry = EvalV2LogicalDatasetRegistry.load(args.registry)
+            result = {
+                "status": "valid",
+                "dataset_count": len(registry.dataset_ids),
+                "datasets": registry.public_catalog(),
+                "filesystem_paths_exposed": False,
+                "model_row_access": False,
+                "network_calls": 0,
+            }
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "eval-v2-inspect":
+            backend = EvalV2InspectDatasetBackend.from_registry_path(args.registry)
+            result = backend.inspect_dataset(args.dataset_id)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "eval-v2-verify-public-freeze":
+            project_root = Path(__file__).resolve().parents[2]
+            result = validate_public_regression_candidate(
+                project_root=project_root,
+                candidate_path=args.candidate,
+                verify_environment=args.verify_environment,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "eval-v2-run-public-online":
+            project_root = Path(__file__).resolve().parents[2]
+            result = run_public_regression_online(
+                project_root=project_root,
+                candidate_path=args.candidate,
+                registry_path=args.registry,
+                output_directory=args.output_dir,
+                api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
+                budget_cny=args.budget_cny,
+                confirm_online=args.confirm_online,
+                resume=args.resume,
+                max_total_input_tokens=args.max_total_input_tokens,
+                max_total_output_tokens=args.max_total_output_tokens,
+                max_model_calls=args.max_model_calls,
+                progress_callback=lambda event: print(
+                    json.dumps(event, ensure_ascii=False), flush=True
+                ),
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["status"] == "complete" else 5
+        elif args.command == "self-pilot-create":
+            project_root = Path(__file__).resolve().parents[2]
+            result = create_self_pilot_session(
+                project_root=project_root,
+                output_directory=args.output_dir,
+                tasks_path=args.tasks,
+                dataset_manifest_path=args.datasets,
+                task_count=args.task_count,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "self-pilot-next":
+            project_root = Path(__file__).resolve().parents[2]
+            result = get_next_self_pilot_task(
+                project_root=project_root,
+                session_directory=args.session_dir,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "self-pilot-run":
+            if not args.confirm_online:
+                raise EvalV2ContractError(
+                    "eval_v2_online_confirmation_required",
+                    "Self-pilot Provider 运行需要 --confirm-online。",
+                )
+            project_root = Path(__file__).resolve().parents[2]
+            provider = get_provider(args.provider)
+            api_key = os.environ.get(provider.api_key_env, "")
+            result = run_self_pilot_task(
+                project_root=project_root,
+                session_directory=args.session_dir,
+                tasks_path=args.tasks,
+                dataset_manifest_path=args.datasets,
+                registry_path=args.registry,
+                provider=provider,
+                model_id=args.model,
+                api_key=api_key,
+                task_id=args.task_id,
+                confirm_online=True,
+                max_turns=args.max_turns,
+                run_timeout_seconds=args.timeout_seconds,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "self-pilot-record":
+            project_root = Path(__file__).resolve().parents[2]
+            clarification = (
+                None
+                if args.clarification_useful == "na"
+                else args.clarification_useful == "yes"
+            )
+            result = record_self_pilot_feedback(
+                project_root=project_root,
+                session_directory=args.session_dir,
+                task_id=args.task_id,
+                accepted=args.accepted == "yes",
+                first_pass=args.first_pass == "yes",
+                manual_revisions=args.manual_revisions,
+                duration_seconds=args.duration_seconds,
+                critical_error=args.critical_error == "yes",
+                safety_concern=args.safety_concern == "yes",
+                clarification_useful=clarification,
+                notes=args.notes,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "self-pilot-web":
+            project_root = Path(__file__).resolve().parents[2]
+            controller = SelfPilotWebController(
+                project_root=project_root,
+                session_directory=args.session_dir,
+                tasks_path=args.tasks,
+                dataset_manifest_path=args.datasets,
+                registry_path=args.registry,
+                translations_path=args.translations,
+                confirm_online=args.confirm_online,
+                max_turns=args.max_turns,
+                run_timeout_seconds=args.timeout_seconds,
+            )
+            serve_self_pilot_web(controller, port=args.port)
+            return 0
+        elif args.command == "self-pilot-summary":
+            project_root = Path(__file__).resolve().parents[2]
+            result = summarize_self_pilot(
+                project_root=project_root,
+                session_directory=args.session_dir,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         else:
             return 2
     except (
@@ -301,6 +696,7 @@ def main() -> int:
         OpenAIAgentIntegrationError,
         AuditError,
         EvalContractError,
+        EvalV2ContractError,
         EvaluationRunError,
         ProviderConfigurationError,
         Phase6AgentError,
@@ -345,6 +741,13 @@ def _positive_int(value: str) -> int:
     return parsed
 
 
+def _tcp_port(value: str) -> int:
+    parsed = _positive_int(value)
+    if parsed > 65535:
+        raise argparse.ArgumentTypeError("端口必须在 1 到 65535 之间")
+    return parsed
+
+
 def _positive_float(value: str) -> float:
     try:
         parsed = float(value)
@@ -362,6 +765,16 @@ def _nonnegative_float(value: str) -> float:
         raise argparse.ArgumentTypeError("必须是非负数") from exc
     if parsed < 0:
         raise argparse.ArgumentTypeError("必须是非负数")
+    return parsed
+
+
+def _nonnegative_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("必须是非负整数") from exc
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("必须是非负整数")
     return parsed
 
 

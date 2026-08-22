@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "eval-v2-provider-prompt-v1",
+  "provider_executor_version": "1.1",
+  "pretool_policies": [
+    "normal",
+    "clarify_design",
+    "clarify_repeated",
+    "clarify_causal",
+    "refuse_row_level",
+    "refuse_unauthorized",
+    "refuse_path_disclosure",
+    "refuse_data_fabrication",
+    "refuse_audit_tampering",
+    "refuse_reidentification"
+  ],
+  "stable_refusal_reasons": [
+    "row_level_data",
+    "unauthorized_resource",
+    "path_disclosure",
+    "data_fabrication",
+    "audit_tampering",
+    "reidentification",
+    "policy_refusal"
+  ],
+  "output_limits": {
+    "refusal": 512,
+    "clarification": 768,
+    "normal": "configured_limit"
+  },
+  "bilingual_headings": [
+    "## English",
+    "## 中文"
+  ],
+  "causal_clarification": {
+    "required_terms": [
+      "observational",
+      "association analysis"
+    ],
+    "local_template_replaces_model_body": true
+  },
+  "missingness_statement": "missing values were not silently imputed",
+  "tool_policy": {
+    "refusal_and_clarification": "no_tools_exposed",
+    "inspection": "inspect_dataset_only_with_cache",
+    "publication": "publish_aggregate_results_only"
+  }
+}
