@@ -17,7 +17,7 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
 | 当前 `main` Phase 5 重建 | P1 已关闭 | PR #3 已合并；main run 32571384757 为 50/50、证据 21/21、profile valid、50 条 audit chain 全有效 |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | 当前 `main` 根测试 152/152；本地完整工作树 233/233；production slice 18/18 |
+| 自动化测试 | 已验证 | 当前 `main` 根测试 152/152；PR #4 本地完整工作树 246/246；production slice 18/18 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
 | Provider 适配 | 已验证 | OpenAI 与 DeepSeek 使用独立 Key/client；DeepSeek V4 模型 allowlist、固定 endpoint、零隐藏重试 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
@@ -327,7 +327,7 @@ researchops-agent/
 │   ├── EVAL_V2.md                # private holdout、多数据集和重复运行设计
 │   └── v2/                        # campaign、公开 task schema/corpus 与外部数据 manifest
 ├── src/researchops/              # 分析、控制面、provider、Agent、评分器与 runner
-├── tests/                        # 当前完整工作树 233 项单元/集成/故障注入测试
+├── tests/                        # 当前完整工作树 246 项单元/集成/故障注入测试
 ├── services/production_slice/    # 独立 FastAPI/PostgreSQL/S3/OTel 纵切与 18 项测试
 ├── scripts/
 │   ├── portfolio_demo.ps1        # 一键完全离线作品集演示

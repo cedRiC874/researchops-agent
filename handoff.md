@@ -18,7 +18,7 @@
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
 - 当前 checkout 分支：`codex/eval-v2-evidence-v2`，未设置 upstream
-- `origin/main`：`b3f515a300855caef89efbf1f48859e91b27d925`；状态收尾提交完成后当前分支 ahead 3
+- `origin/main`：`b3f515a300855caef89efbf1f48859e91b27d925`；unittest 兼容提交完成后当前分支 ahead 4
 - 最新冻结实现提交：`3e921ce04c4f329e1229aa2d8ab74f67955b9f53`
 - 本地 `main` 指针仍为 `80ad08e835103eb5fb7c07e730580efa0206ce1a`，落后
   `origin/main` 2 个提交；不要在 dirty worktree 上 reset 或强制切换。
@@ -32,12 +32,13 @@
   均成功；长期证据位于
   `docs/evidence/production-slice-linux-ci-main-v1/`。
 
-当前工作树可见 tracked/untracked 变更为 0，staged 0。原有用户文件均已保留；
-本地形成两个内容提交，另有一个仅更新本节最终状态的收尾提交，均尚未 push：
+当前工作树在兼容提交后可见 tracked/untracked 变更为 0，staged 0。原有用户文件均已保留；
+PR #4 已发布前三个提交，另有一个把 pytest 风格函数改为纯 unittest 的兼容提交：
 
 ```text
 cf5e9d1: 18 个 main CI 长期证据与状态文档路径
 3e921ce: 39 个 Eval v2 locked candidate/self-pilot 冻结单元路径
+compatibility commit: 移除根 CI 未锁定的 pytest 依赖，并让 13 个 public-runner tests 真正被 unittest 收集
 Local-only ignored: output/、sessions/data、tmp/、service .env/secrets（全部保留）
 ```
 
@@ -51,8 +52,7 @@ Eval v2 candidate 的 source bundle 覆盖整个 `src/researchops/*.py`，因此
 ```
 
 `main` 已包含 production slice 与其需要的 5 个 Eval v2 foundation 模块；完整
-Eval v2/self-pilot 已提交为本地 `3e921ce`，仍未 push/merge/release。最新 Release
-仍是 v0.2.0。
+Eval v2/self-pilot 已发布到 PR #4，仍未 merge/release。最新 Release仍是 v0.2.0。
 
 ## 2. 项目定位
 
@@ -235,7 +235,7 @@ Repo-local non-secret holdout：
 
 ```text
 main offline run 32571384757: 152 root tests OK; Phase 5 50/50; evidence 21/21
-local complete worktree: 233 tests passed（本次本地验证）
+PR #4 local complete worktree: 246 tests passed（本次本地验证）
 production slice: 18 contract tests passed
 main Ubuntu Compose E2E run 32568017244: success
 manual workflow_dispatch run 32568233292: success
@@ -460,7 +460,7 @@ DeepSeek ... 真实 smoke 尚未运行
 
 如果用户没有指定新的任务，先询问是否按以下顺序继续：
 
-1. 复核本地 `cf5e9d1`、`3e921ce` 与末尾状态提交，经用户明确授权后 push/create PR；
+1. 将 unittest 兼容提交同步到 PR #4，并等待 Windows/Ubuntu clean checks；
 2. 继续明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets；
 3. 推进 pilot-ready staging、外部科研用户 pilot、第二 Provider 与 external
    private holdout。

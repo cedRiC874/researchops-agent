@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import inspect
 import json
+import tempfile
+import unittest
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
-
-import pytest
 
 from researchops.cli import build_parser
 from researchops.eval_v2_contracts import EvalV2ContractError
@@ -41,6 +42,47 @@ FAULT_SCENARIOS = {
 }
 
 
+class _Raises:
+    def __init__(self, expected: type[BaseException]) -> None:
+        self.expected = expected
+        self.value: BaseException | None = None
+
+    def __enter__(self) -> "_Raises":
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> bool:
+        if exc_type is None:
+            raise AssertionError(f"{self.expected.__name__} was not raised")
+        if not issubclass(exc_type, self.expected):
+            return False
+        self.value = exc
+        return True
+
+
+def _raises(expected: type[BaseException]) -> _Raises:
+    return _Raises(expected)
+
+
+class _MonkeyPatch:
+    _MISSING = object()
+
+    def __init__(self) -> None:
+        self._changes: list[tuple[object, str, object]] = []
+
+    def setattr(self, target: object, name: str, value: object) -> None:
+        previous = getattr(target, name, self._MISSING)
+        self._changes.append((target, name, previous))
+        setattr(target, name, value)
+
+    def undo(self) -> None:
+        for target, name, previous in reversed(self._changes):
+            if previous is self._MISSING:
+                delattr(target, name)
+            else:
+                setattr(target, name, previous)
+        self._changes.clear()
+
+
 class _AggregateOnlyBackend:
     def inspect_dataset(self, dataset_id: str) -> dict[str, object]:
         return {
@@ -54,13 +96,12 @@ def test_conservative_cost_uses_all_cache_miss_pricing() -> None:
     assert conservative_cost_cny(2_000_000, 2_000_000) == Decimal("24.000000")
 
 
-@pytest.mark.parametrize("input_tokens,output_tokens", [(-1, 0), (0, -1), (True, 0)])
-def test_conservative_cost_rejects_invalid_usage(
-    input_tokens: int, output_tokens: int
-) -> None:
-    with pytest.raises(EvalV2ContractError) as captured:
-        conservative_cost_cny(input_tokens, output_tokens)
-    assert captured.value.code == "eval_v2_budget_usage_invalid"
+def test_conservative_cost_rejects_invalid_usage() -> None:
+    for input_tokens, output_tokens in ((-1, 0), (0, -1), (True, 0)):
+        with _raises(EvalV2ContractError) as captured:
+            conservative_cost_cny(input_tokens, output_tokens)
+        assert captured.value is not None
+        assert captured.value.code == "eval_v2_budget_usage_invalid"
 
 
 def test_all_nine_fault_tasks_pass_without_a_model_call() -> None:
@@ -149,8 +190,9 @@ def test_atomic_writer_rejects_outputs_and_credentials(tmp_path: Path) -> None:
         {"final_output": "answer"},
         {"nested": {"value": "sk-this-is-a-test-secret-value"}},
     ):
-        with pytest.raises(EvalV2ContractError) as captured:
+        with _raises(EvalV2ContractError) as captured:
             _atomic_write_json(target, payload)
+        assert captured.value is not None
         assert captured.value.code == "eval_v2_public_artifact_unsafe"
     assert not target.exists()
 
@@ -180,7 +222,7 @@ def test_resume_refuses_ambiguous_inflight_case(tmp_path: Path) -> None:
     }
     _atomic_write_json(state_path, state)
 
-    with pytest.raises(EvalV2ContractError) as captured:
+    with _raises(EvalV2ContractError) as captured:
         _initialize_or_resume_state(
             output=output,
             state_path=state_path,
@@ -249,7 +291,7 @@ def test_candidate_receipt_blocks_a_second_output_directory(tmp_path: Path) -> N
         resume=True,
     )
 
-    with pytest.raises(EvalV2ContractError) as second_output:
+    with _raises(EvalV2ContractError) as second_output:
         _validate_existing_candidate_receipt(
             receipt_path=receipt,
             root=root,
@@ -259,7 +301,7 @@ def test_candidate_receipt_blocks_a_second_output_directory(tmp_path: Path) -> N
         )
     assert second_output.value.code == "eval_v2_public_candidate_receipt_mismatch"
 
-    with pytest.raises(EvalV2ContractError) as duplicate_start:
+    with _raises(EvalV2ContractError) as duplicate_start:
         _validate_existing_candidate_receipt(
             receipt_path=receipt,
             root=root,
@@ -308,7 +350,7 @@ def test_resume_detects_score_tampering_with_case_hash_chain(tmp_path: Path) -> 
     tampered["completed_cases"][0]["score"]["passed"] = False
     _atomic_write_json(state_path, tampered)
 
-    with pytest.raises(EvalV2ContractError) as captured:
+    with _raises(EvalV2ContractError) as captured:
         _initialize_or_resume_state(
             output=output,
             state_path=state_path,
@@ -349,7 +391,7 @@ def test_online_confirmation_and_key_fail_before_filesystem_write(
         "output_directory": output,
         "budget_cny": 6,
     }
-    with pytest.raises(EvalV2ContractError) as confirmation:
+    with _raises(EvalV2ContractError) as confirmation:
         run_public_regression_online(
             **common,
             api_key="unused-test-key",
@@ -358,7 +400,7 @@ def test_online_confirmation_and_key_fail_before_filesystem_write(
     assert confirmation.value.code == "eval_v2_online_confirmation_required"
     assert not output.exists()
 
-    with pytest.raises(EvalV2ContractError) as missing_key:
+    with _raises(EvalV2ContractError) as missing_key:
         run_public_regression_online(
             **common,
             api_key="",
@@ -476,3 +518,41 @@ def _minimal_state_spec() -> dict[str, object]:
             },
         },
     }
+
+
+def _run_function_test(function) -> None:
+    parameters = inspect.signature(function).parameters
+    unknown = set(parameters).difference({"tmp_path", "monkeypatch"})
+    if unknown:
+        raise AssertionError(f"unsupported unittest fixture parameters: {sorted(unknown)}")
+
+    temporary_directory: tempfile.TemporaryDirectory[str] | None = None
+    monkeypatch: _MonkeyPatch | None = None
+    arguments: dict[str, object] = {}
+    try:
+        if "tmp_path" in parameters:
+            temporary_directory = tempfile.TemporaryDirectory()
+            arguments["tmp_path"] = Path(temporary_directory.name)
+        if "monkeypatch" in parameters:
+            monkeypatch = _MonkeyPatch()
+            arguments["monkeypatch"] = monkeypatch
+        function(**arguments)
+    finally:
+        if monkeypatch is not None:
+            monkeypatch.undo()
+        if temporary_directory is not None:
+            temporary_directory.cleanup()
+
+
+def load_tests(loader, standard_tests, pattern):
+    del loader, standard_tests, pattern
+    suite = unittest.TestSuite()
+    for name, function in sorted(globals().items()):
+        if name.startswith("test_") and callable(function):
+            suite.addTest(
+                unittest.FunctionTestCase(
+                    lambda function=function: _run_function_test(function),
+                    description=name,
+                )
+            )
+    return suite

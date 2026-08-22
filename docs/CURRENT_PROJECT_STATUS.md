@@ -23,7 +23,7 @@ Phase 5 P1 已关闭：旧 `main@badb7169` 的 offline workflow 曾在实际 44/
 | 项目 | 当前状态 |
 | --- | --- |
 | 当前 checkout 分支 | `codex/eval-v2-evidence-v2`，未设置 upstream |
-| 当前分支关系 | 最终状态提交完成后比 `origin/main` ahead 3；最新冻结实现 commit 为 `3e921ce04c4f329e1229aa2d8ab74f67955b9f53` |
+| 当前分支关系 | unittest 兼容提交完成后比 `origin/main` ahead 4；最新冻结实现 commit 为 `3e921ce04c4f329e1229aa2d8ab74f67955b9f53` |
 | `origin/main` | `b3f515a300855caef89efbf1f48859e91b27d925` |
 | 本地 `main` 指针 | 仍为 `80ad08e835103eb5fb7c07e730580efa0206ce1a`，落后 `origin/main` 2 个提交；不要在 dirty tree 上强制切换/reset |
 | 已发布版本 | `0.2.0` |
@@ -34,9 +34,10 @@ Phase 5 P1 已关闭：旧 `main@badb7169` 的 offline workflow 曾在实际 44/
 | PR #3 | 已 squash 合并 Phase 5 LF provenance 与 fail-closed CI；merge commit `b3f515a…` |
 | 本地 evidence commit | `cf5e9d19e88fe041415ba46490977e3128497913`，18 个文档/长期证据路径 |
 | 本地 frozen implementation commit | `3e921ce04c4f329e1229aa2d8ab74f67955b9f53`，39 个锁定 candidate/self-pilot 路径 |
-| 当前工作树 | 可见 tracked/untracked 变更 0，staged 0；本地运行数据与输出继续 ignored 并保留 |
+| PR #4 | `Add locked Eval v2 public candidate and evidence`，3 个基础提交 / 57 个原始文件；Ubuntu compose E2E 已通过，Windows 首轮因测试文件依赖未锁定 pytest 失败，纯 unittest 修复正在提交 |
+| 当前工作树 | 兼容提交完成后可见 tracked/untracked 变更 0、staged 0；本地运行数据与输出继续 ignored 并保留 |
 
-当前 Release 不包含 production slice 或 Eval v2 新增实现。`main` 已包含完整 production slice 以及其依赖的 5 个 Eval v2 foundation 模块；完整 Eval v2 runner/scorer/provider/self-pilot/corpus/证据位于本地 commit `3e921ce`，尚未 push/merge/release，不能笼统说成“已进入 main”。
+当前 Release 不包含 production slice 或 Eval v2 新增实现。`main` 已包含完整 production slice 以及其依赖的 5 个 Eval v2 foundation 模块；完整 Eval v2 runner/scorer/provider/self-pilot/corpus/证据已进入 PR #4，尚未 merge/release，不能笼统说成“已进入 main”。
 
 ### 2.1 当前本地提交与排除项
 
@@ -314,7 +315,7 @@ Public-regression 配置作为独立 `candidate_locked` 锁定，commitment 为 
 
 ```text
 main root: 152 passed (run 32571384757)
-local complete worktree: 233 passed (本次本地验证)
+PR #4 local complete worktree: 246 passed (本次本地验证)
 Production slice: 18 passed
 ```
 
@@ -402,7 +403,7 @@ $env:PYTHONPATH = "src"
 
 ## 12. 下一步优先级
 
-1. 复核本地 `cf5e9d1`、`3e921ce` 与末尾状态提交，明确授权后 push 并创建 PR；继续排除 `output/`、sessions、数据、secret 与临时文件。
+1. 完成 PR #4 的纯 unittest 兼容修复并取得新的 Windows clean run；继续排除 `output/`、sessions、数据、secret 与临时文件。
 2. 找到外部领域专家或统计支持资源，完成 dataset/golden 外部复核，并使用 R 或 SAS 做独立数值交叉检查。
 3. 建设 pilot-ready staging，并邀请真实科研用户 pilot。
 4. 冻结第二 Provider。

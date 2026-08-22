@@ -6,7 +6,7 @@
 
 | 证据层 | 当前状态 | 可以得出的结论 | 不能得出的结论 |
 | --- | --- | --- | --- |
-| 单元与集成测试 | 当前 `main` 根测试 152/152；本地完整工作树 233/233；production slice 18/18 | 统计计算、策略、审批、审计、provider、Eval v2、FastAPI 状态机、幂等、lease 与对象 outcome-unknown 路径通过相应测试 | 真实生产负载、HA 或云基础设施 E2E |
+| 单元与集成测试 | 当前 `main` 根测试 152/152；PR #4 本地完整工作树 246/246；production slice 18/18 | 统计计算、策略、审批、审计、provider、Eval v2、FastAPI 状态机、幂等、lease 与对象 outcome-unknown 路径通过相应测试 | 真实生产负载、HA 或云基础设施 E2E |
 | Phase 5 | PR #3 已合并；当前 main run 32571384757 为 50/50、21/21、profile valid；旧 44/50 事故保留 | LF golden、版本化 fail-closed profile、双退出码与审计链已由 clean main 复核 | LLM 规划成功率，或脱离 source/data/manifest 复用成绩 |
 | Phase 6 行为合同 | 20 题：development 16、repo-local holdout 4；语料合同 20/20 有效 | 工具轨迹、精确参数、证据 grounding、澄清/拒绝和审批暂停都有明确评分口径 | 对未知生产请求的无偏泛化 |
 | Phase 6 scripted/replay | 注入 runner、scripted model 和构造轨迹的离线回归已覆盖 | 真实 Agents SDK 循环、工具调用提取、审批中断、usage/cost 空值处理和产物发布链路可测试 | scripted/replay 的通过率等同于真实模型质量 |
@@ -552,7 +552,7 @@ Development 16 题用于迭代；holdout 只有 4 题，而且任务与金标都
 - [x] 保留历史 Phase 5 50/50 的独立 artifact verifier 与 source/manifest 绑定证据。
 - [x] PR #3 完成 LF Phase 5 golden 与 fail-closed profile；两次 clean runs 为 50/50、21/21，负向 44/50 exit 1。
 - [x] PR #3 已合并；clean `main` run 32571384757 为 50/50、21/21、profile valid。
-- [x] `main` 运行 152 项已提交根测试；本地完整工作树 233 项通过；production slice 18 项通过。
+- [x] `main` 运行 152 项已提交根测试；PR #4 本地完整工作树 246 项通过；production slice 18 项通过。
 - [x] `main` Ubuntu production-slice push 与手动 dispatch E2E 均通过并上传脱敏证据。
 - [x] 运行 phase6-validate，确认 20 题、16/4 split 和 golden 隔离。
 - [ ] 不展示 API Key、Authorization header、参与者 ID 或绝对环境路径截图。

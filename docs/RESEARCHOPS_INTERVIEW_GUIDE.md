@@ -357,7 +357,7 @@ Golden 来源：
 | Phase 5 LF provenance 与 fail-closed CI profile | 8 |
 | **合计** | **152** |
 
-152 项是当前 `main` 已提交根测试，主要为单元测试和隔离集成测试，包括临时 CSV、真实 statsmodels 计算、临时 SQLite、文件系统副作用、scripted SDK 工具循环、注入 runner，以及 LF golden/质量阈值/退出码契约。本地尚未发布的完整工作树本次为 233/233；production slice 另有 18 项 contract tests。真正的 DeepSeek 在线 20 题不在 CI 中实时调用，冻结结果作为独立评测证据保存。
+152 项是当前 `main` 已提交根测试，主要为单元测试和隔离集成测试，包括临时 CSV、真实 statsmodels 计算、临时 SQLite、文件系统副作用、scripted SDK 工具循环、注入 runner，以及 LF golden/质量阈值/退出码契约。PR #4 本地完整工作树为 246/246；production slice 另有 18 项 contract tests。真正的 DeepSeek 在线 20 题不在 CI 中实时调用，冻结结果作为独立评测证据保存。
 
 另外要主动披露：`main` offline workflow run 32568017243 虽显示绿色，其 Phase 5
 新重建只有 44/50、证据引用 10/21。根因是 LF/CRLF provenance 与 native exit code
