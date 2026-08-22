@@ -77,19 +77,6 @@ $secretValues = [ordered]@{
 foreach ($entry in $secretValues.GetEnumerator()) {
     Write-Utf8NoBom -Path (Join-Path $secretsTarget $entry.Key) -Content $entry.Value
 }
-if (-not $IsWindows) {
-    $composeSecretMode = (
-        [IO.UnixFileMode]::UserRead -bor
-        [IO.UnixFileMode]::GroupRead -bor
-        [IO.UnixFileMode]::OtherRead
-    )
-    foreach ($entry in $secretValues.GetEnumerator()) {
-        [IO.File]::SetUnixFileMode(
-            (Join-Path $secretsTarget $entry.Key),
-            $composeSecretMode
-        )
-    }
-}
 
 $datasetId = "palmer_penguins_v0_1_0"
 $csvName = "$datasetId.csv"
@@ -150,8 +137,13 @@ Write-Utf8NoBom -Path $registryPath -Content (($registry | ConvertTo-Json -Depth
 if ($IsLinux -or $IsMacOS) {
     & chmod 600 $envTarget
     & chmod 700 $secretsTarget
+    $composeSecretMode = (
+        [IO.UnixFileMode]::UserRead -bor
+        [IO.UnixFileMode]::GroupRead -bor
+        [IO.UnixFileMode]::OtherRead
+    )
     foreach ($secretFile in Get-ChildItem -LiteralPath $secretsTarget -File) {
-        & chmod 600 $secretFile.FullName
+        [IO.File]::SetUnixFileMode($secretFile.FullName, $composeSecretMode)
     }
 }
 
