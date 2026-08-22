@@ -18,8 +18,8 @@
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
 - 当前 checkout 分支：`codex/eval-v2-evidence-v2`，未设置 upstream
-- 当前 HEAD / `origin/main`：`b3f515a300855caef89efbf1f48859e91b27d925`
-- HEAD 提交：`Fix Phase 5 LF provenance and CI quality gate`
+- `origin/main`：`b3f515a300855caef89efbf1f48859e91b27d925`；状态收尾提交完成后当前分支 ahead 3
+- 最新冻结实现提交：`3e921ce04c4f329e1229aa2d8ab74f67955b9f53`
 - 本地 `main` 指针仍为 `80ad08e835103eb5fb7c07e730580efa0206ce1a`，落后
   `origin/main` 2 个提交；不要在 dirty worktree 上 reset 或强制切换。
 - 版本：`0.2.0`
@@ -32,14 +32,13 @@
   均成功；长期证据位于
   `docs/evidence/production-slice-linux-ci-main-v1/`。
 
-当前工作树不是完全干净。切换到新分支前后的 48 个原始状态条目逐项一致，所有
-用户文件均已保留；P1 已进入 main，当前剩余 57 个可见状态条目、staged 0：
+当前工作树可见 tracked/untracked 变更为 0，staged 0。原有用户文件均已保留；
+本地形成两个内容提交，另有一个仅更新本节最终状态的收尾提交，均尚未 push：
 
 ```text
-Eval v2: 31（corpus/manifest、runner/scorer/provider、tests、curated artifacts）
-Self-pilot: 5（Web/CLI、guide、tests；translations 位于 Eval v2 目录）
-CI evidence: 11；共享文档: 7；共享源码: 2；Git policy: 1
-Local-only ignored: output/、sessions/data、tmp/、service .env/secrets
+cf5e9d1: 18 个 main CI 长期证据与状态文档路径
+3e921ce: 39 个 Eval v2 locked candidate/self-pilot 冻结单元路径
+Local-only ignored: output/、sessions/data、tmp/、service .env/secrets（全部保留）
 ```
 
 `output/email/*.eml` 含用户邮箱，绝不能提交；`output/` 继续本地保留，不删除。
@@ -51,8 +50,9 @@ Eval v2 candidate 的 source bundle 覆盖整个 `src/researchops/*.py`，因此
 7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11
 ```
 
-`main` 已包含 production slice 与其需要的 5 个 Eval v2 foundation 模块；其余
-Eval v2/self-pilot 仍未 commit/push/release。最新 Release 仍是 v0.2.0。
+`main` 已包含 production slice 与其需要的 5 个 Eval v2 foundation 模块；完整
+Eval v2/self-pilot 已提交为本地 `3e921ce`，仍未 push/merge/release。最新 Release
+仍是 v0.2.0。
 
 ## 2. 项目定位
 
@@ -278,11 +278,12 @@ $env:PYTHONPATH = "src"
 
 不要在 CI 中默认运行付费在线评测。
 
-## 7. 未提交的面试与邮件材料
+## 7. 面试与邮件材料
 
 ### 7.1 面试指南
 
 - `docs/RESEARCHOPS_INTERVIEW_GUIDE.md`
+- 已进入本地 evidence commit `cf5e9d1`，尚未 push
 - 约 19 KB
 - 统一写入累计有效投入约 120 小时
 - 内容包括架构、逻辑 ID、审批、审计、统计、评测、测试、生产化和面试雷区
@@ -303,9 +304,9 @@ $env:PYTHONPATH = "src"
 - 用户当时不在电脑前；当前会话无 Gmail/Outlook 发送连接器
 - 不要要求用户在聊天里提供邮箱密码或应用密码
 
-提交前建议：
+后续建议：
 
-1. 决定是否提交面试指南 MD 与 PDF；
+1. 面试指南 MD 已提交；决定 PDF 是否作为作品集产物纳入仓库；
 2. 不提交 EML；
 3. 删除本地 EML 或将 `output/email/` 加入 `.gitignore`；
 4. 明确 `output/pdf/` 是否作为作品集产物纳入仓库；
@@ -459,11 +460,9 @@ DeepSeek ... 真实 smoke 尚未运行
 
 如果用户没有指定新的任务，先询问是否按以下顺序继续：
 
-1. 先独立提交 main Phase 5/production CI 的长期证据与状态文档；
-2. 再按冻结 source bundle 整体提交 Eval v2/self-pilot 实现、测试、corpus 与
-   curated artifacts；
-3. 明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets；
-4. 推进 pilot-ready staging、外部科研用户 pilot、第二 Provider 与 external
+1. 复核本地 `cf5e9d1`、`3e921ce` 与末尾状态提交，经用户明确授权后 push/create PR；
+2. 继续明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets；
+3. 推进 pilot-ready staging、外部科研用户 pilot、第二 Provider 与 external
    private holdout。
 
 不要直接重新跑当前 4 题 holdout，也不要根据它继续调 prompt。

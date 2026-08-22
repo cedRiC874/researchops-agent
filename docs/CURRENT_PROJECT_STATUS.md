@@ -2,7 +2,7 @@
 
 > 状态快照：2026-08-22（Asia/Shanghai）
 > 用途：集中记录当前已经完成、已经验证、尚未完成以及可以/不可以对外声称的事实。
-> 重要说明：已发布的 `v0.2.0 / phase6-deepseek-v1`、已合并但尚未发布新 Release 的 production slice，以及当前本地未提交的 Eval v2 工作必须分开表述。
+> 重要说明：已发布的 `v0.2.0 / phase6-deepseek-v1`、已合并但尚未发布新 Release 的 production slice，以及已在本地提交但尚未 push/release 的 Eval v2 工作必须分开表述。
 
 ## 1. 当前结论
 
@@ -11,7 +11,7 @@ ResearchOps Agent 已经形成一个 evidence-first 科研数据分析 Agent 工
 当前有三层证据：
 
 1. 已发布的 Phase 5/6 基线：Phase 5 离线组件与控制面 50/50；冻结 DeepSeek Phase 6 development 16/16、repo-local holdout 4/4。
-2. 本地未发布的 Eval v2 public foundation 与一次性 public candidate：3 个外部数据集、120 个 internal-ready 公开任务、受控数据准备、逻辑 registry、聚合 inspect backend、Provider executor、runner/scorer、三次重复聚合、原子 artifact writer；DeepSeek public Provider system 68/93，fault harness 27/27。
+2. 本地已提交但未发布的 Eval v2 public foundation 与一次性 public candidate：3 个外部数据集、120 个 internal-ready 公开任务、受控数据准备、逻辑 registry、聚合 inspect backend、Provider executor、runner/scorer、三次重复聚合、原子 artifact writer；DeepSeek public Provider system 68/93，fault harness 27/27。
 3. 已进入 `main` 的独立 production-like vertical slice：FastAPI、PostgreSQL lease queue、aggregate inspect、S3/MinIO 与 OTel；18/18 contract tests、本机 E2E、Ubuntu `main` push E2E 与手动 dispatch E2E 均通过。
 
 完整 Eval v2 campaign 仍是 `design_only`：public candidate 已运行，但没有 private holdout、第二 Provider或外部领域专家复核结果。68/93 只属于锁定的 `DeepSeek + 控制面` public system，不能称为模型单体规划准确率或未知生产泛化。
@@ -23,7 +23,8 @@ Phase 5 P1 已关闭：旧 `main@badb7169` 的 offline workflow 曾在实际 44/
 | 项目 | 当前状态 |
 | --- | --- |
 | 当前 checkout 分支 | `codex/eval-v2-evidence-v2`，未设置 upstream |
-| 当前 HEAD / `origin/main` | `b3f515a300855caef89efbf1f48859e91b27d925` |
+| 当前分支关系 | 最终状态提交完成后比 `origin/main` ahead 3；最新冻结实现 commit 为 `3e921ce04c4f329e1229aa2d8ab74f67955b9f53` |
+| `origin/main` | `b3f515a300855caef89efbf1f48859e91b27d925` |
 | 本地 `main` 指针 | 仍为 `80ad08e835103eb5fb7c07e730580efa0206ce1a`，落后 `origin/main` 2 个提交；不要在 dirty tree 上强制切换/reset |
 | 已发布版本 | `0.2.0` |
 | Annotated tag | `phase6-deepseek-v1`，仍指向 `80ad08e…` |
@@ -31,19 +32,20 @@ Phase 5 P1 已关闭：旧 `main@badb7169` 的 offline workflow 曾在实际 44/
 | PR #1 | 已合并，两个离线质量门成功 |
 | PR #2 | 已 squash 合并 production slice 与 Linux CI；merge commit `badb7169…` |
 | PR #3 | 已 squash 合并 Phase 5 LF provenance 与 fail-closed CI；merge commit `b3f515a…` |
-| 当前工作树 | P1 已进入 main；剩余 57 个可见状态条目：Eval v2 31、self-pilot 5、CI evidence 11、共享文档 7、共享源码 2、Git policy 1；staged 0 |
+| 本地 evidence commit | `cf5e9d19e88fe041415ba46490977e3128497913`，18 个文档/长期证据路径 |
+| 本地 frozen implementation commit | `3e921ce04c4f329e1229aa2d8ab74f67955b9f53`，39 个锁定 candidate/self-pilot 路径 |
+| 当前工作树 | 可见 tracked/untracked 变更 0，staged 0；本地运行数据与输出继续 ignored 并保留 |
 
-当前 Release 不包含 production slice 或本地 Eval v2 新增实现。`main` 已包含完整 production slice 以及其依赖的 5 个 Eval v2 foundation 模块；其余 Eval v2 runner/scorer/provider/self-pilot/corpus/证据仍在本地未发布工作树，不能笼统说成“全部已进入 main”。
+当前 Release 不包含 production slice 或 Eval v2 新增实现。`main` 已包含完整 production slice 以及其依赖的 5 个 Eval v2 foundation 模块；完整 Eval v2 runner/scorer/provider/self-pilot/corpus/证据位于本地 commit `3e921ce`，尚未 push/merge/release，不能笼统说成“已进入 main”。
 
-### 2.1 当前工作树分类
+### 2.1 当前本地提交与排除项
 
 | 分组 | 当前处理 |
 | --- | --- |
-| Eval v2 冻结单元 | corpus/manifest、runner/scorer/provider、测试与 curated public artifacts 保持原样；candidate verifier 当前仍为 `valid`，commitment `7744770a…f0d11` |
-| Self-pilot | Web/CLI、翻译、指南与测试保留在同一冻结源码单元中，尚未提交 |
-| Phase 5 P1 | 已进入 `main@b3f515a`；run 32571384757 为 50/50、21/21、quality profile valid；本地仅保留未提交的长期证据文档 |
-| 共享源码 | `cli.py` 与 `model_providers.py` 参与 Eval v2 source bundle，不能在提交冻结证据时任意拆除或还原 |
-| 文档 | README、ARCHITECTURE、EVIDENCE、PORTFOLIO、状态与 handoff 已同步 main 恢复证据；保持未暂存，待独立文档提交 |
+| Eval v2 冻结单元 | 已整体提交为 `3e921ce`；candidate verifier 为 `valid`，commitment `7744770a…f0d11` |
+| Self-pilot | Web/CLI、翻译、指南与测试与冻结源码一起进入 `3e921ce` |
+| Phase 5/production CI evidence | 已独立提交为 `cf5e9d1`；main Phase 5 run 32571384757 与 production run 32568017244 均有长期快照 |
+| 共享源码 | `cli.py` 与 `model_providers.py` 参与 Eval v2 source bundle，已原样进入 `3e921ce`，不得在后续 PR 中遗漏 |
 | 本地输出 | `output/` 完整保留但不提交；其中 EML 含用户邮箱，必须继续排除 |
 | 本地运行数据 | self-pilot sessions、准备数据、production E2E、`tmp/`、`.env` 与 5 个 secret 均继续 ignored，不清理、不提交 |
 
@@ -348,7 +350,7 @@ Campaign 仍为 `design_only`，`ready_for_freeze=false`；public candidate run 
 - Eval v2 Provider 在线运行：DeepSeek public candidate 已完成 3 次；private 与第二 Provider 未运行。
 - 两个 Provider × 每个 3 次公开集评测：仅 DeepSeek 完成，第二 Provider 未执行。
 - Private campaign：未执行。
-- Eval v2 public 证据已在本地整理，尚未 commit/push/release。
+- Eval v2 public 证据与冻结实现已提交为本地 `3e921ce`，尚未 push/merge/release。
 - Production-like FastAPI/PostgreSQL lease queue/S3/OTel vertical slice 已合并至 `main`，18 项测试、本机 E2E、Ubuntu push 与手动 dispatch 均通过；仍未完成 HA、云 IAM/KMS/TLS、备份恢复和负载测试。
 
 ## 10. 正确对外表述
@@ -400,13 +402,12 @@ $env:PYTHONPATH = "src"
 
 ## 12. 下一步优先级
 
-1. 独立提交当前 main Phase 5/production CI 的长期证据与状态文档，不混入 Eval v2 源码。
-2. 按冻结 source bundle 整体提交当前 Eval v2/self-pilot 实现、测试、corpus 与 curated artifacts；继续排除 `output/`、sessions、数据、secret 与临时文件。
-3. 找到外部领域专家或统计支持资源，完成 dataset/golden 外部复核，并使用 R 或 SAS 做独立数值交叉检查。
-4. 建设 pilot-ready staging，并邀请真实科研用户 pilot。
-5. 冻结第二 Provider。
-6. 由外部 custodian 创建、冻结并一次性运行 private holdout。
-7. 发布独立 Eval v2 版本证据。
+1. 复核本地 `cf5e9d1`、`3e921ce` 与末尾状态提交，明确授权后 push 并创建 PR；继续排除 `output/`、sessions、数据、secret 与临时文件。
+2. 找到外部领域专家或统计支持资源，完成 dataset/golden 外部复核，并使用 R 或 SAS 做独立数值交叉检查。
+3. 建设 pilot-ready staging，并邀请真实科研用户 pilot。
+4. 冻结第二 Provider。
+5. 由外部 custodian 创建、冻结并一次性运行 private holdout。
+6. 发布独立 Eval v2 版本证据。
 
 ## 13. 相关文档
 
