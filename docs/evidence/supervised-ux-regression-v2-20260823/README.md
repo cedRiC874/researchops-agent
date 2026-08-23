@@ -69,6 +69,15 @@ post-campaign runs 均为 `success`：
 candidate commitment 仍为 `7744770a…f0d11`。它也不把历史 Phase 5 50/50 称为 LLM
 规划准确率。
 
+PR #7/#8 随后已 regular merge；当前默认分支为
+`main@4a3f5cf81e44fe51fbefd099cc98aca8e6bb2300`。该精确 main commit 的
+[offline run 32640814960](https://github.com/cedRiC874/researchops-agent/actions/runs/32640814960)
+与
+[pilot run 32640814963](https://github.com/cedRiC874/researchops-agent/actions/runs/32640814963)
+均为 `success`。长期合并证据见
+[pilot telemetry main CI v1](../pilot-telemetry-main-ci-v1/README.md)。Campaign 本身仍
+绑定执行时的 deployment SHA `fda5abf…`，主干合并不能倒改该 provenance。
+
 ## 冻结任务与终态
 
 6 个 source tasks 全部来自 `public_regression + ready + internal_reviewed`，与 v1 的

@@ -17,9 +17,9 @@
 
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
-- 本次 evidence-only 分支：`codex/pilot-ci-evidence`，从 `origin/main` 的
-  `a20fdfd8ff6a2e4e29881aa6693589655e307e72` 创建。
-- GitHub `main`：`a20fdfd8ff6a2e4e29881aa6693589655e307e72`；PR #5 已 regular merge。
+- 本次 evidence-only 分支：`codex/pilot-main-evidence-v2`，从 `origin/main` 的
+  `4a3f5cf81e44fe51fbefd099cc98aca8e6bb2300` 创建。
+- GitHub `main`：`4a3f5cf81e44fe51fbefd099cc98aca8e6bb2300`；PR #7/#8 已 regular merge。
 - 版本：`0.2.0`
 - Annotated tag：`phase6-deepseek-v1`，仍指向 `80ad08e…`，不是当前 `main`
 - Release：https://github.com/cedRiC874/researchops-agent/releases/tag/phase6-deepseek-v1
@@ -40,12 +40,14 @@ PR #5 已用 regular merge 合并 pilot staging 两个提交：`ce40353`（实�
 production run `32585792929`。长期 pilot CI 证据位于
 `docs/evidence/pilot-staging-linux-ci-main-v1/`。
 
-本次 evidence-only PR 目标边界仅为新增上述长期快照并更新 `README.md`、
-`docs/EVIDENCE.md`、`services/pilot_staging/VERIFICATION.md` 与本文件；不改代码、
-workflow、candidate 或 Eval v2。
+本次 evidence-only PR 目标边界仅为新增 `main@4a3f5cf8` 长期快照，并更新
+`README.md`、`docs/EVIDENCE.md`、supervised evidence、
+`services/pilot_staging/VERIFICATION.md` 与本文件；不改运行代码、workflow、candidate
+或 Eval v2。
 
-本轮没有修改锁定的 `src/researchops`，没有运行付费 Provider，也没有读取任何 API
-Key。原有用户文件均已保留。PR #4 的本地提交边界曾为：
+本次 evidence-only PR 没有修改锁定的 `src/researchops`，没有重新运行付费 Provider，
+也没有读取任何 API Key；它只记录此前 supervised regression 和新的 main clean runs。
+原有用户文件均已保留。PR #4 的本地提交边界曾为：
 
 ```text
 cf5e9d1: 18 个 main CI 长期证据与状态文档路径
@@ -66,7 +68,7 @@ Eval v2 candidate 的 source bundle 覆盖整个 `src/researchops/*.py`，因此
 `main` 已包含完整 Eval v2/self-pilot、production slice 与 pilot staging；最新 Release 仍是
 v0.2.0，尚未为 Eval v2 或 pilot staging 新建 Release。
 
-## 1.1 当前 pilot-ready staging 状态（main 基线已合并；最新 supervised 证据在 PR #8）
+## 1.1 当前 pilot-ready staging 状态（PR #7/#8 已进入 main）
 
 独立服务位于 `services/pilot_staging/`，不把现有 localhost self-pilot 翻成
 external，也不改锁定 candidate。已实现：
@@ -108,11 +110,11 @@ digest/部署 SHA、脱敏 telemetry/告警、外部 daily retention scheduler�
 
 ### 最新 supervised UX regression（2026-08-23）
 
-- 当前分支：`codex/failure-telemetry`；本轮 campaign 的部署提交为
-  `fda5abfdafe1d7908af521b4595bd56bf2a796b3`。PR #8 在执行时以该 head 达到
-  `CLEAN`；post-campaign CI 修复提交为 `8dc67706e4ffec8e48057747020f8c8d82f66bb5`，
-  push/PR offline 与 pilot CI 均成功。后续 evidence-only 文档提交可以继续移动 PR
-  head。PR 尚未进入 `main` 或 Release。
+- PR #7/#8 已 regular merge；当前默认分支 merge commit 为
+  `4a3f5cf81e44fe51fbefd099cc98aca8e6bb2300`。精确 main push runs：offline
+  `32640814960`、pilot `32640814963`，均成功。当前 Release 仍未包含这些变更。
+- 本轮 campaign 的原始部署提交仍为
+  `fda5abfdafe1d7908af521b4595bd56bf2a796b3`；进入 main 不会倒改运行 provenance。
 - 初始 supervised campaign 因完成页“退出”文案歧义被参与者误操作为正式 withdraw；
   该参与者数据保持排除，campaign 已关闭，未恢复或重计。
 - 修复后用同一参与者、不同 6 道 public/internal-reviewed tasks 完成 v2 UX regression：
@@ -130,6 +132,8 @@ digest/部署 SHA、脱敏 telemetry/告警、外部 daily retention scheduler�
   `docs/evidence/supervised-ux-regression-v2-20260823/README.md`；两个故障已分别登记在
   同目录 `failures/`。不得使用本轮 6 题继续调 prompt，不得把同一参与者说成第二位
   独立参与者，也不得跨 v1/v2 聚合或声称 external validation。
+- Main 合并与 clean-run 长期快照：
+  `docs/evidence/pilot-telemetry-main-ci-v1/README.md`。
 - Post-campaign offline reruns 证明 Haswell/x86-v3 containment 仍依赖 hosted CPU；当前
   branch 已固定 Nehalem/x86-v2，并将 Phase 5 当前 lineage 更新为 ANCOVA
   `E-36034128278C`、chart `CH-6D27DA2CB989`、corpus SHA-256
@@ -312,12 +316,12 @@ Repo-local non-secret holdout：
 
 ## 6. 当前自动化验证
 
-2026-08-23 的当前 `main@a20fdfd8` 分层验证：
+2026-08-23 的当前 `main@4a3f5cf8` 分层验证：
 
 ```text
-main offline run 32585792937: 246 root tests OK; Phase 5 50/50; evidence 21/21
-main pilot run 32585792915: 41 offline contracts + 1 real PostgreSQL contract; offline Compose success
-main production run 32585792929: 18 contract tests + real PostgreSQL/MinIO/OTel E2E success
+main offline run 32640814960: 246 root tests OK; Phase 5 50/50; evidence 21/21; profile valid
+main pilot run 32640814963: 45 offline contracts + 1 real PostgreSQL contract; no-key offline Compose success
+production slice: 18 contracts + real PostgreSQL/MinIO/OTel E2E 沿用独立历史 main 快照；main@4a3f5cf8 未触发该 workflow
 ```
 
 重要 P1 历史事实：run 32568017243 的 workflow conclusion 虽为 `success`，其新重建
@@ -332,6 +336,11 @@ SHA-256 `dd591862…8e67`；`phase5-ci-v1` 精确要求 50/50 与 21/21；workfl
 32571384757 再次通过 152/152、50/50、21/21、`phase5-ci-v1=valid` 与 50 条 audit
 chain。修复前 44/50 产物会稳定 exit 1；P1 已关闭。详见
 `docs/evidence/main-offline-gate-20260822/`。
+
+当前 main 后续又固定 Nehalem/x86-v2 numerical lineage：ANCOVA
+`E-36034128278C`、chart `CH-6D27DA2CB989`、corpus SHA-256
+`ffa82ef1…debf`。`main@4a3f5cf8` 的 run 32640814960 通过 canonical identity、
+50/50 与 21/21；这只更新硬件敏感 lineage，不是模型评测或 LLM 规划准确率。
 
 Phase 6 契约校验：
 
