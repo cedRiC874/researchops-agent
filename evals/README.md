@@ -50,8 +50,9 @@ Phase 5 evidence ID 会绑定统计结果的完整数值。Windows hosted runner
 可能选择不同 OpenBLAS/NumPy dispatch，并在数值仍处于评分容差内时产生末位浮点
 差异。CI 因此固定 `OPENBLAS_CORETYPE=NEHALEM`、相关数值库的单线程执行，并禁用
 NumPy `X86_V3/X86_V4` dispatch groups。评测前要求 OpenBLAS 实际回报
-`Core: Nehalem`、NumPy 实际处于 x86-v2，并运行 canonical ANCOVA 核验 evidence ID；
-不支持、静默回退或数值 identity 漂移都会 fail-closed。
+`Core: Nehalem`，并运行 canonical ANCOVA 核验最终 evidence ID；不依赖 NumPy
+内部 feature-flag 的报告语义。不支持、静默回退或数值 identity 漂移都会
+fail-closed。
 
 这一 x86-v2 lineage 只重绑定硬件敏感的 evidence/chart IDs 与 corpus hash；统计数值、
 scorer、被测组件和 Eval v2 candidate 源码均未修改。先前 Haswell/x86-v3 的
