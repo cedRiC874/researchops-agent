@@ -21,7 +21,7 @@ jobs:
       OMP_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
       NUMEXPR_NUM_THREADS: "1"
-      NPY_DISABLE_CPU_FEATURES: AVX512F
+      NPY_DISABLE_CPU_FEATURES: X86_V4
 
     steps:
       - name: Check out repository

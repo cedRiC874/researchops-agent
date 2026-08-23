@@ -141,7 +141,7 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
         self.assertIn('OMP_NUM_THREADS: "1"', workflow)
         self.assertIn('MKL_NUM_THREADS: "1"', workflow)
         self.assertIn('NUMEXPR_NUM_THREADS: "1"', workflow)
-        self.assertIn("NPY_DISABLE_CPU_FEATURES: AVX512F", workflow)
+        self.assertIn("NPY_DISABLE_CPU_FEATURES: X86_V4", workflow)
         self.assertIn("phase5_blas_kernel_mismatch", workflow)
         self.assertIn("Core:\\s*Haswell", workflow)
         self.assertIn("phase5_numeric_identity_mismatch", workflow)

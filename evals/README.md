@@ -49,7 +49,7 @@ accuracy 1；workflow 分别保存 evaluation/verifier 的 native exit code，�
 Phase 5 evidence ID 会绑定统计结果的完整数值。Windows hosted runner 的不同 CPU
 可能选择不同 OpenBLAS kernel，并在数值仍处于评分容差内时产生末位浮点差异。CI
 因此固定 `OPENBLAS_CORETYPE=HASWELL`、相关数值库的单线程执行，并禁用 NumPy
-AVX-512 dispatch。评测前既要求 OpenBLAS 实际回报 `Core: Haswell`，也实际运行
+`X86_V4` dispatch group。评测前既要求 OpenBLAS 实际回报 `Core: Haswell`，也实际运行
 canonical ANCOVA 并核验冻结的 evidence ID；不支持、静默回退或数值 identity 漂移
 都会 fail-closed。这只固定重建环境，不修改 golden、scorer 或被测组件。任一
 50/50 或 21/21 偏差仍由上述 quality profile fail-closed。
