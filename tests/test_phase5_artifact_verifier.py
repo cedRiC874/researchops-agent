@@ -136,6 +136,9 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
             encoding="utf-8"
         )
 
+        self.assertIn("OPENBLAS_CORETYPE: HASWELL", workflow)
+        self.assertIn('OPENBLAS_NUM_THREADS: "1"', workflow)
+        self.assertIn('OMP_NUM_THREADS: "1"', workflow)
         self.assertIn("--quality-profile phase5-ci-v1", workflow)
         self.assertIn("$evaluationExitCode = $LASTEXITCODE", workflow)
         self.assertIn("$verificationExitCode = $LASTEXITCODE", workflow)
