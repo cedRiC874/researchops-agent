@@ -16,7 +16,7 @@ jobs:
       # Evidence IDs bind numerical results. Pin one supported BLAS kernel and
       # one reduction thread so hosted-runner CPU differences cannot perturb
       # the final floating-point bits used by the Phase 5 identity hash.
-      OPENBLAS_CORETYPE: GENERIC
+      OPENBLAS_CORETYPE: HASWELL
       OPENBLAS_NUM_THREADS: "1"
       OMP_NUM_THREADS: "1"
 
@@ -36,6 +36,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.lock
+
+      - name: Verify deterministic BLAS kernel
+        shell: pwsh
+        run: |
+          $env:OPENBLAS_VERBOSE = "2"
+          $probe = (& python -c "import numpy as np; np.linalg.svd(np.eye(4))" 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $probe -notmatch '(?im)^Core:\s*Haswell\s*$') {
+            Write-Output "::error title=phase5_blas_kernel_mismatch::The pinned Haswell OpenBLAS kernel was not activated."
+            exit 1
+          }
+          Write-Output "OpenBLAS core verified: Haswell"
 
       - name: Validate evaluation contracts
         shell: pwsh
