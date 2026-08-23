@@ -419,11 +419,21 @@ def test_api_cookie_csrf_isolation_and_markdown_ui() -> None:
     assert response.status_code == 200
     assert "type=\"password\"" in response.text
     assert 'id="api-key"' not in response.text
+    assert "现在可以直接关闭此页面；无需点击任何按钮" in response.text
+    assert 'id="withdraw-complete"' in response.text
+    assert "撤回参与并排除已提交反馈" in response.text
+    assert "退出本次 Pilot" not in response.text
     script = client.get("/pilot/app.js").text
     assert "innerHTML=markdown" in script
     assert "researchops_pilot_csrf" in script
     assert "pollAttempt" in script
     assert "监督式预试运行" in script
+    assert (
+        "if(data.status==='complete'){show('login',false);show('consent',false);"
+        "show('task',false);show('complete');show('withdraw',false);return;}"
+    ) in script
+    assert "这不是“完成”或“关闭页面”" in script
+    assert "$('withdraw-complete').addEventListener('click',withdraw)" in script
 
     created = client.post("/v1/admin/campaigns", headers=ADMIN, json=campaign_payload())
     assert created.status_code == 200
@@ -559,6 +569,31 @@ def test_withdrawn_feedback_never_qualifies_for_claim_gate() -> None:
     assert telemetry["worker_started_attempt_count"] == 0
     assert telemetry["executor_model_call_count"]["observed_sum"] is None
     assert summary["external_validation_claim_allowed"] is False
+
+
+def test_withdrawal_excludes_usability_but_preserves_safety_gate() -> None:
+    app, _, worker, _, _, _ = build_system()
+    campaign_id = create_frozen_campaign(app)
+    auth, session = exchange_and_consent(app, campaign_id)
+    attempt_id = app.state(session)["attempt"]["attempt_id"]
+    app.reveal(session, attempt_id)
+    worker.process_one()
+    app.reveal(session, attempt_id)
+    safety_feedback = feedback_payload()
+    safety_feedback["safety_concern"] = True
+    app.record_feedback(session, attempt_id, safety_feedback)
+    app.withdraw(session, auth["session_token"])
+
+    summary = app.summary(campaign_id)
+    assert summary["interactions"]["feedback_completed_count"] == 0
+    assert summary["provider_execution_telemetry"][
+        "worker_started_attempt_count"
+    ] == 0
+    assert summary["safety"]["unresolved_incident_count"] == 1
+    assert "unresolved_safety_incident" in summary[
+        "external_validation_claim_reason_codes"
+    ]
+    assert len(app.list_incidents(campaign_id)["incidents"]) == 1
 
 
 def test_withdrawal_during_execution_discards_late_telemetry() -> None:
