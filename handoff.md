@@ -17,12 +17,9 @@
 
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
-- 当前 PR 分支：`codex/pilot-ready-staging-ci`，从 `origin/main` 的
-  `ab9020edcb64c352f51e57d3e7942f2a8bf3000a` 创建。
-- GitHub `main`：`ab9020edcb64c352f51e57d3e7942f2a8bf3000a`；PR #4 已合并。
-- 原本地分支与远端 `main` 的提交历史不同但 tree 均为
-  `53d0127a0241ef8772b6865e057aa8dce820af29`；发布前已 fetch 并从远端 `main`
-  新建上述分支，因此 PR 不会重复携带旧 Eval v2 历史。
+- 本次 evidence-only 分支：`codex/pilot-ci-evidence`，从 `origin/main` 的
+  `a20fdfd8ff6a2e4e29881aa6693589655e307e72` 创建。
+- GitHub `main`：`a20fdfd8ff6a2e4e29881aa6693589655e307e72`；PR #5 已 regular merge。
 - 版本：`0.2.0`
 - Annotated tag：`phase6-deepseek-v1`，仍指向 `80ad08e…`，不是当前 `main`
 - Release：https://github.com/cedRiC874/researchops-agent/releases/tag/phase6-deepseek-v1
@@ -37,16 +34,15 @@ PR #4 已用 regular merge 合并，保留独立证据/实现/状态提交；合
 workflow 均通过：offline run `32573214902`（246 tests、Phase 5 50/50、21/21、
 audit/profile valid）与 production run `32573214910`（真实 344×8 Compose E2E）。
 
-本 PR 的提交边界仅包含 pilot-ready staging 实现与相应文档：
+PR #5 已用 regular merge 合并 pilot staging 两个提交：`ce40353`（实现）与
+`e188810`（Linux image migration path/fail-fast 修复）。合并后的同一 `main` commit
+三条 workflow 均成功：pilot run `32585792915`、offline run `32585792937`、
+production run `32585792929`。长期 pilot CI 证据位于
+`docs/evidence/pilot-staging-linux-ci-main-v1/`。
 
-```text
-M  .dockerignore, README.md, handoff.md, docs/ARCHITECTURE.md,
-   docs/EVIDENCE.md, docs/PORTFOLIO.md
-?? .github/workflows/pilot-staging-ci.yml
-?? docs/EXTERNAL_RESEARCHER_PILOT_PROTOCOL.md
-?? docs/SUPERVISED_PILOT_*.md
-?? services/pilot_staging/
-```
+本次 evidence-only PR 目标边界仅为新增上述长期快照并更新 `README.md`、
+`docs/EVIDENCE.md`、`services/pilot_staging/VERIFICATION.md` 与本文件；不改代码、
+workflow、candidate 或 Eval v2。
 
 本轮没有修改锁定的 `src/researchops`，没有运行付费 Provider，也没有读取任何 API
 Key。原有用户文件均已保留。PR #4 的本地提交边界曾为：
@@ -67,10 +63,10 @@ Eval v2 candidate 的 source bundle 覆盖整个 `src/researchops/*.py`，因此
 7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11
 ```
 
-`main` 已包含完整 Eval v2/self-pilot 与 production slice；最新 Release 仍是
+`main` 已包含完整 Eval v2/self-pilot、production slice 与 pilot staging；最新 Release 仍是
 v0.2.0，尚未为 Eval v2 或 pilot staging 新建 Release。
 
-## 1.1 当前 pilot-ready staging 状态（待 PR、未上线）
+## 1.1 当前 pilot-ready staging 状态（已合并、未上线）
 
 独立服务位于 `services/pilot_staging/`，不把现有 localhost self-pilot 翻成
 external，也不改锁定 candidate。已实现：
@@ -101,8 +97,9 @@ Linux Docker image `sha256:24ab5d3dfae6fdbce6f9ae7e176a106f0e09c955086d03de4f730
 已成功构建并通过 candidate/pip check。临时 PostgreSQL 容器已停止并由 `--rm` 删除，未建
 持久卷。
 
-`.github/workflows/pilot-staging-ci.yml` 已实现；必须以对应提交的 GitHub clean run 作为
-远端证据，不能把 workflow 文件本身称为通过证明。它不会创建 Provider Key 或启动 online worker。
+`.github/workflows/pilot-staging-ci.yml` 已由 `main` run `32585792915` 验证：42/42、
+真实 PostgreSQL、offline API Compose、teardown 与最终 gate 均成功；bootstrap 记录
+`provider_secret_created=false`、`secret_values_printed=false`，且没有启动 online worker。
 
 这仍不是 production staging。1–2 人 supervised 预试可在本机 Docker + Tailscale HTTPS
 下进行，但不能进入正式 external claim。正式 3–5 人 campaign 前仍需托管 PostgreSQL TLS+backup/PITR、Secret Manager、镜像
@@ -286,14 +283,12 @@ Repo-local non-secret holdout：
 
 ## 6. 当前自动化验证
 
-2026-08-22 的分层验证：
+2026-08-23 的当前 `main@a20fdfd8` 分层验证：
 
 ```text
-main offline run 32571384757: 152 root tests OK; Phase 5 50/50; evidence 21/21
-PR #4 local complete worktree: 246 tests passed（本次本地验证）
-production slice: 18 contract tests passed
-main Ubuntu Compose E2E run 32568017244: success
-manual workflow_dispatch run 32568233292: success
+main offline run 32585792937: 246 root tests OK; Phase 5 50/50; evidence 21/21
+main pilot run 32585792915: 41 offline contracts + 1 real PostgreSQL contract; offline Compose success
+main production run 32585792929: 18 contract tests + real PostgreSQL/MinIO/OTel E2E success
 ```
 
 重要 P1 历史事实：run 32568017243 的 workflow conclusion 虽为 `success`，其新重建
@@ -515,9 +510,9 @@ DeepSeek ... 真实 smoke 尚未运行
 
 如果用户没有指定新的任务，先询问是否按以下顺序继续：
 
-1. 将 unittest 兼容提交同步到 PR #4，并等待 Windows/Ubuntu clean checks；
-2. 继续明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets；
-3. 推进 pilot-ready staging、外部科研用户 pilot、第二 Provider 与 external
-   private holdout。
+1. 在本机按主持指南完成 1 名科研相关参与者的 supervised 6 题预试，不并入正式 claim；
+2. 复核去标识 summary、场次记录、撤回/跳题和 teardown，再决定是否邀请第 2 人；
+3. 继续明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets；随后推进
+   托管 staging、正式外部科研用户 pilot、第二 Provider 与 external private holdout。
 
 不要直接重新跑当前 4 题 holdout，也不要根据它继续调 prompt。
