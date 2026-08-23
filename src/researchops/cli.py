@@ -277,7 +277,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_freeze_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate.json"),
+        default=Path("evals/v2/public_regression_candidate_v2.json"),
     )
     eval_v2_freeze_parser.add_argument(
         "--verify-environment", action="store_true"
@@ -290,7 +290,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_public_run_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate.json"),
+        default=Path("evals/v2/public_regression_candidate_v2.json"),
     )
     eval_v2_public_run_parser.add_argument("--registry", type=Path, required=True)
     eval_v2_public_run_parser.add_argument("--output-dir", type=Path, required=True)

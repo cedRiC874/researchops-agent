@@ -16,7 +16,7 @@ from .eval_v2_runner import (
 from .model_providers import ProviderAdapter, ProviderConfigurationError
 
 
-PROVIDER_EXECUTOR_VERSION = "1.1"
+PROVIDER_EXECUTOR_VERSION = "1.2"
 _DEFAULT_MAX_OUTPUT_TOKENS = 2000
 _MAX_CONFIGURABLE_OUTPUT_TOKENS = 10000
 _REFUSAL_MAX_OUTPUT_TOKENS = 512
@@ -381,10 +381,10 @@ class EvalV2ProviderExecutor:
             outcome = "completed"
             approval_state = "not_required"
 
-        completion_error = (
+        completion_failure = (
             None
             if publish_pending
-            else _provider_completion_error(
+            else _provider_completion_failure(
                 result,
                 effective_output_limit=effective_output_limit,
                 request_policy=request_policy,
@@ -395,13 +395,15 @@ class EvalV2ProviderExecutor:
             outcome = "controlled_failure"
             error_code = "provider_output_incomplete"
             completion_status = "output_truncated"
-        elif completion_error is not None:
+            completion_failure_source = "final_output_missing"
+        elif completion_failure is not None:
             outcome = "controlled_failure"
-            error_code = completion_error
+            error_code, completion_failure_source = completion_failure
             completion_status = "output_truncated"
         else:
             error_code = None
             completion_status = "complete"
+            completion_failure_source = None
         return EvalV2ExecutorResult(
             outcome=outcome,
             final_output=output,
@@ -410,6 +412,7 @@ class EvalV2ProviderExecutor:
             side_effect_occurred=False,
             error_code=error_code,
             completion_status=completion_status,
+            completion_failure_source=completion_failure_source,
             model_call_count=usage["requests"],
             input_tokens=usage["input_tokens"],
             output_tokens=usage["output_tokens"],
@@ -806,35 +809,51 @@ def _extract_sdk_tool_call_count(result: Any) -> int | None:
         return None
 
 
-def _provider_completion_error(
+def _provider_completion_failure(
     result: Any,
     *,
     effective_output_limit: int,
     request_policy: str,
     aggregate_usage: Mapping[str, int | None],
-) -> str | None:
+) -> tuple[str, str] | None:
     raw_responses = getattr(result, "raw_responses", None)
     if raw_responses:
-        statuses: list[str | None] = []
+        output_statuses: list[str | None] = []
+        response_statuses: list[str | None] = []
         response_output_tokens: list[int | None] = []
         for response in raw_responses:
-            statuses.append(_response_completion_status(response))
+            output_statuses.append(_response_completion_status(response))
+            response_status = getattr(response, "status", None)
+            response_statuses.append(
+                response_status if isinstance(response_status, str) else None
+            )
             usage = getattr(response, "usage", None)
             response_output_tokens.append(
                 _optional_nonnegative_int(getattr(usage, "output_tokens", None))
             )
-        if "incomplete" in statuses:
-            return "provider_output_incomplete"
+        if "incomplete" in output_statuses or "incomplete" in response_statuses:
+            return (
+                "provider_output_incomplete",
+                "response_output_item_incomplete",
+            )
+        non_completed = {
+            "cancelled",
+            "failed",
+            "in_progress",
+            "incomplete",
+            "queued",
+        }
         if any(
-            status in {"cancelled", "failed", "in_progress", "mixed", "queued"}
-            for status in statuses
+            status in non_completed for status in response_statuses
+        ) or any(
+            status in non_completed | {"mixed"} for status in output_statuses
         ):
-            return "provider_output_not_completed"
+            return "provider_output_not_completed", "response_not_completed"
         if any(
             tokens is not None and tokens >= effective_output_limit
             for tokens in response_output_tokens
         ):
-            return "output_limit_suspected"
+            return "output_limit_suspected", "output_limit_suspected"
         return None
     aggregate_output = aggregate_usage.get("output_tokens")
     requests = aggregate_usage.get("requests")
@@ -843,7 +862,7 @@ def _provider_completion_error(
         and aggregate_output >= effective_output_limit
         and (request_policy != "normal" or requests in {None, 0, 1})
     ):
-        return "output_limit_suspected"
+        return "output_limit_suspected", "output_limit_suspected"
     return None
 
 

@@ -23,6 +23,7 @@ from pilot_staging.domain import (
 )
 from pilot_staging.memory import StaticDatasetCatalog
 from pilot_staging.postgres import PostgresPilotStore
+from pilot_staging.telemetry import execution_telemetry_sha256
 from pilot_staging.migrate import run_migrations
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -81,6 +82,7 @@ class FailureExecutor:
             model_requested_tool_call_count=0,
             backend_executed_tool_call_count=0,
             error_code="provider_output_incomplete",
+            completion_failure_source="final_output_missing",
         )
 
 
@@ -212,7 +214,7 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         with store.engine.connect() as connection:
             assert connection.execute(
                 text("SELECT version FROM pilot_schema_migrations ORDER BY version")
-            ).scalars().all() == [1, 2]
+            ).scalars().all() == [1, 2, 3]
         application = PilotApplication(
             store=store,
             dataset_catalog=StaticDatasetCatalog(DATASETS),
@@ -298,6 +300,7 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         assert failed.model_call_count == 1
         assert failed.model_requested_tool_call_count == 0
         assert failed.backend_executed_tool_call_count == 0
+        assert failed.completion_failure_source == "final_output_missing"
         with store.engine.connect() as connection:
             stored_failure = connection.execute(
                 text(
@@ -305,12 +308,27 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
                     SELECT status,started_at,error_code,safe_output,output_sha256,
                            provider_latency_ms,outcome,
                            model_call_count,model_requested_tool_call_count,
-                           backend_executed_tool_call_count,lease_owner,lease_expires_at
+                           backend_executed_tool_call_count,completion_failure_source,
+                           lease_owner,lease_expires_at
                     FROM pilot_attempts WHERE attempt_id=CAST(:id AS uuid)
                     """
                 ),
                 {"id": failure_attempt["attempt_id"]},
             ).mappings().one()
+            failure_event = connection.execute(
+                text(
+                    """
+                    SELECT payload FROM pilot_events
+                    WHERE campaign_id=:campaign AND event_type='attempt_failed'
+                      AND payload->>'attempt_id'=:attempt
+                    ORDER BY sequence DESC LIMIT 1
+                    """
+                ),
+                {
+                    "campaign": failure_campaign_id,
+                    "attempt": failure_attempt["attempt_id"],
+                },
+            ).scalar_one()
         assert stored_failure["safe_output"] is None
         assert stored_failure["output_sha256"] is None
         assert stored_failure["provider_latency_ms"] == 1250
@@ -318,11 +336,18 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         assert stored_failure["model_call_count"] == 1
         assert stored_failure["model_requested_tool_call_count"] == 0
         assert stored_failure["backend_executed_tool_call_count"] == 0
+        assert stored_failure["completion_failure_source"] == "final_output_missing"
         assert stored_failure["lease_owner"] is None
         assert stored_failure["lease_expires_at"] is None
         assert stored_failure["status"] == "failed"
         assert stored_failure["started_at"] is not None
         assert stored_failure["error_code"] == "provider_output_incomplete"
+        assert failure_event["completion_failure_source"] == "final_output_missing"
+        assert failure_event["execution_telemetry_digest_version"] == (
+            "pilot-execution-telemetry-v2"
+        )
+        assert len(failure_event["execution_telemetry_sha256"]) == 64
+        assert len(failure_event["execution_telemetry_v2_sha256"]) == 64
         for field in (
             "model_call_count",
             "model_requested_tool_call_count",
@@ -349,7 +374,9 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
                         WHERE conname IN (
                           'pilot_attempt_model_call_count_nonnegative',
                           'pilot_attempt_requested_tool_call_count_nonnegative',
-                          'pilot_attempt_backend_tool_call_count_nonnegative'
+                          'pilot_attempt_backend_tool_call_count_nonnegative',
+                          'pilot_attempt_completion_failure_source_allowlist',
+                          'pilot_attempt_completion_failure_source_mapping'
                         )
                         """
                     )
@@ -359,7 +386,34 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
             "pilot_attempt_model_call_count_nonnegative": True,
             "pilot_attempt_requested_tool_call_count_nonnegative": True,
             "pilot_attempt_backend_tool_call_count_nonnegative": True,
+            "pilot_attempt_completion_failure_source_allowlist": True,
+            "pilot_attempt_completion_failure_source_mapping": True,
         }
+        for invalid_source in ("raw_provider_reason", "response_not_completed"):
+            with pytest.raises(IntegrityError) as source_constraint_error:
+                with store.engine.begin() as connection:
+                    connection.execute(
+                        text(
+                            """
+                            UPDATE pilot_attempts SET completion_failure_source=:source
+                            WHERE attempt_id=CAST(:id AS uuid)
+                            """
+                        ),
+                        {"id": failure_attempt["attempt_id"], "source": invalid_source},
+                    )
+                assert source_constraint_error.value.orig.sqlstate == "23514"
+        with pytest.raises(IntegrityError) as outcome_constraint_error:
+            with store.engine.begin() as connection:
+                connection.execute(
+                    text(
+                        """
+                        UPDATE pilot_attempts SET outcome='completed'
+                        WHERE attempt_id=CAST(:id AS uuid)
+                        """
+                    ),
+                    {"id": failure_attempt["attempt_id"]},
+                )
+        assert outcome_constraint_error.value.orig.sqlstate == "23514"
         failure_summary = application.summary(failure_campaign_id)
         telemetry = failure_summary["provider_execution_telemetry"]
         assert telemetry["worker_started_attempt_count"] == 1
@@ -369,6 +423,20 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         assert telemetry["backend_executed_tool_call_count"]["observed_sum"] == 0
         assert telemetry["telemetry_coverage_status"] == "complete"
         assert telemetry["append_only_event_binding_status"] == "valid"
+        assert telemetry["completion_failure_sources"] == {
+            "semantics_version": "pilot-completion-failure-source-v2",
+            "applicable_attempt_count": 1,
+            "observed_attempt_count": 1,
+            "unknown_attempt_count": 0,
+            "coverage_rate": 1.0,
+            "coverage_status": "complete",
+            "counts": [
+                {
+                    "completion_failure_source": "final_output_missing",
+                    "attempt_count": 1,
+                }
+            ],
+        }
         with store.engine.begin() as connection:
             connection.execute(
                 text(
@@ -402,12 +470,35 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         assert store.campaign_summary_data(failure_campaign_id)[
             "telemetry_integrity_valid"
         ] is True
+        with store.engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    UPDATE pilot_attempts
+                    SET completion_failure_source='response_output_item_incomplete'
+                    WHERE attempt_id=CAST(:id AS uuid)
+                    """
+                ),
+                {"id": failure_attempt["attempt_id"]},
+            )
+        assert store.campaign_summary_data(failure_campaign_id)[
+            "telemetry_integrity_valid"
+        ] is False
+        with store.engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    UPDATE pilot_attempts
+                    SET completion_failure_source='final_output_missing'
+                    WHERE attempt_id=CAST(:id AS uuid)
+                    """
+                ),
+                {"id": failure_attempt["attempt_id"]},
+            )
+        assert store.campaign_summary_data(failure_campaign_id)[
+            "telemetry_integrity_valid"
+        ] is True
         for field, tampered_value, restored_value in (
-            (
-                "error_code",
-                "participant_skipped",
-                "provider_output_incomplete",
-            ),
             ("started_at", None, stored_failure["started_at"]),
             ("status", "assigned", "failed"),
         ):
@@ -446,7 +537,8 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
                     """
                     SELECT status,error_code,safe_output,output_sha256,
                            provider_latency_ms,outcome,model_call_count,
-                           model_requested_tool_call_count,backend_executed_tool_call_count
+                           model_requested_tool_call_count,backend_executed_tool_call_count,
+                           completion_failure_source
                     FROM pilot_attempts WHERE attempt_id=CAST(:id AS uuid)
                     """
                 ),
@@ -462,6 +554,7 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
             "model_call_count": 1,
             "model_requested_tool_call_count": 0,
             "backend_executed_tool_call_count": 0,
+            "completion_failure_source": "final_output_missing",
         }
         assert failure_executor.calls == 1
 
@@ -488,7 +581,7 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
                     """
                     SELECT safe_output,output_sha256,provider_latency_ms,outcome,
                            model_call_count,model_requested_tool_call_count,
-                           backend_executed_tool_call_count
+                           backend_executed_tool_call_count,completion_failure_source
                     FROM pilot_attempts WHERE attempt_id=CAST(:id AS uuid)
                     """
                 ),
@@ -899,6 +992,104 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         assert running_tombstone["worker_started"] is True
         assert running_tombstone["final_status"] == "running"
         assert running_tombstone["pre_delete_binding_status"] == "valid"
+        assert running_tombstone["execution_telemetry_digest_version"] == (
+            "pilot-execution-telemetry-v2"
+        )
+        assert len(running_tombstone["execution_telemetry_sha256"]) == 64
+        assert len(running_tombstone["execution_telemetry_v2_sha256"]) == 64
+        assert running_tombstone["completion_failure_source"] is None
+
+        legacy_campaign = application.create_campaign(payload())["campaign_id"]
+        application.freeze_campaign(legacy_campaign)
+        legacy_auth = application.exchange_invite(
+            application.create_invite(legacy_campaign)["invite_token"]
+        )
+        legacy_session = application.authenticate(
+            legacy_auth["session_token"], csrf_token=legacy_auth["csrf_token"]
+        )
+        application.record_consent(legacy_session, consent())
+        legacy_session = application.authenticate(
+            legacy_auth["session_token"], csrf_token=legacy_auth["csrf_token"]
+        )
+        legacy_attempt = application.state(legacy_session)["attempt"]
+        application.reveal(legacy_session, legacy_attempt["attempt_id"])
+        legacy_claimed = store.claim_attempt(
+            worker_id="legacy-v1-telemetry-worker",
+            lease_seconds=300,
+            execution_environment="local",
+            deployment_image_digest=None,
+            now=clock(),
+        )
+        assert legacy_claimed is not None
+        with store.engine.begin() as connection:
+            legacy_row = connection.execute(
+                text(
+                    """
+                    UPDATE pilot_attempts SET
+                        status='failed',provider_completed_at=:now,
+                        provider_latency_ms=400,outcome='controlled_failure',
+                        error_code='provider_output_incomplete',model_call_count=1,
+                        model_requested_tool_call_count=0,
+                        backend_executed_tool_call_count=0,
+                        completion_failure_source=NULL,
+                        lease_owner=NULL,lease_expires_at=NULL
+                    WHERE attempt_id=CAST(:id AS uuid)
+                    RETURNING *
+                    """
+                ),
+                {"id": legacy_attempt["attempt_id"], "now": clock()},
+            ).mappings().one()
+            store._append_event(
+                connection,
+                campaign_id=legacy_campaign,
+                event_type="attempt_failed",
+                payload={
+                    "attempt_id": legacy_attempt["attempt_id"],
+                    "error_code": "provider_output_incomplete",
+                    "execution_telemetry_sha256": execution_telemetry_sha256(
+                        legacy_row
+                    ),
+                },
+                now=clock(),
+            )
+        legacy_before_exclusion = store.campaign_summary_data(legacy_campaign)
+        assert legacy_before_exclusion["telemetry_integrity_valid"] is True
+        assert legacy_before_exclusion["provider_execution_telemetry"][
+            "completion_failure_sources"
+        ]["coverage_status"] == "partial"
+        application.exclude_failed_attempt(
+            legacy_session, legacy_attempt["attempt_id"]
+        )
+        application.withdraw(legacy_session, legacy_auth["session_token"])
+        legacy_purge = store.purge_expired_records(
+            now=clock(),
+            retention_due_by=clock(),
+            withdrawal_before=clock(),
+            invite_retention_before=clock() - timedelta(days=90),
+        )
+        assert legacy_purge["participant_records_deleted"] == 1
+        legacy_after_retention = store.campaign_summary_data(legacy_campaign)
+        assert legacy_after_retention["telemetry_integrity_valid"] is True
+        with store.engine.connect() as connection:
+            legacy_tombstone = connection.execute(
+                text(
+                    """
+                        SELECT payload FROM pilot_events
+                        WHERE campaign_id=:id
+                          AND event_type='attempt_retention_deleted'
+                          AND payload->>'attempt_id'=:attempt
+                        """
+                    ),
+                    {
+                        "id": legacy_campaign,
+                        "attempt": legacy_attempt["attempt_id"],
+                    },
+                ).scalar_one()
+        assert legacy_tombstone["execution_telemetry_digest_version"] == (
+            "pilot-execution-telemetry-v2"
+        )
+        assert legacy_tombstone["completion_failure_source"] is None
+        assert legacy_tombstone["pre_delete_binding_status"] == "valid"
 
         run_migrations(settings)
         run_migrations(settings)

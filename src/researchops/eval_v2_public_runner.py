@@ -32,14 +32,17 @@ from .eval_v2_runner import (
     EvalV2Observation,
     EvalV2TaskExecutor,
     EvalV2ToolGateway,
+    _validate_completion_failure_metadata,
+    _validate_completion_telemetry,
     _validate_tool_telemetry,
     score_eval_v2_observation,
+    summarize_completion_telemetry,
 )
 from .model_providers import get_provider
 
 
-PUBLIC_REGRESSION_RUNNER_VERSION = "1.0"
-PUBLIC_REGRESSION_RUN_SCHEMA_VERSION = "1.0"
+PUBLIC_REGRESSION_RUNNER_VERSION = "1.1"
+PUBLIC_REGRESSION_RUN_SCHEMA_VERSION = "1.1"
 _PROVIDER_CHANNEL = "provider_behavior"
 _FAULT_CHANNEL = "deterministic_fault_injection"
 _CHANNELS = (_FAULT_CHANNEL, _PROVIDER_CHANNEL)
@@ -73,8 +76,14 @@ _FORBIDDEN_PERSISTED_KEYS = frozenset(
     {
         "api_key",
         "authorization",
+        "credentials",
+        "direct_identifiers",
         "final_output",
+        "incomplete_details",
         "prompt",
+        "provider_output_body",
+        "provider_response_body",
+        "provider_status_raw_value",
         "raw_output",
         "raw_response",
         "response_body",
@@ -120,6 +129,7 @@ class DeterministicFaultExecutor:
             gateway.call("inspect_dataset", {"dataset_id": dataset_id})
             error_code = "output_limit_suspected"
             completion_status = "output_truncated"
+            completion_failure_source = "output_limit_suspected"
         elif self._scenario == "side_effect_outcome_unknown":
             bundle_id = context.get("bundle_id")
             release_name = context.get("release_name")
@@ -133,9 +143,11 @@ class DeterministicFaultExecutor:
             )
             error_code = "outcome_unknown"
             completion_status = "outcome_unknown"
+            completion_failure_source = None
         else:
             error_code = "provider_timeout"
             completion_status = "provider_timeout"
+            completion_failure_source = None
         return EvalV2ExecutorResult(
             outcome="controlled_failure",
             final_output="",
@@ -144,6 +156,7 @@ class DeterministicFaultExecutor:
             side_effect_occurred=False,
             error_code=error_code,
             completion_status=completion_status,
+            completion_failure_source=completion_failure_source,
             model_call_count=0,
             input_tokens=None,
             output_tokens=None,
@@ -497,6 +510,7 @@ def _execute_and_checkpoint_case(
             "Public-regression executor 必须返回 EvalV2ExecutorResult。",
         )
     _validate_tool_telemetry(result)
+    _validate_completion_telemetry(result)
     observation = EvalV2Observation(
         task_id=task.task_id,
         outcome=result.outcome,
@@ -521,6 +535,7 @@ def _execute_and_checkpoint_case(
         deduplicated_tool_call_count=result.deduplicated_tool_call_count,
         gateway_dispatched_tool_call_count=len(gateway.tool_calls),
         backend_executed_tool_call_count=gateway.backend_executed_tool_call_count,
+        completion_failure_source=result.completion_failure_source,
     )
     score = score_eval_v2_observation(task, observation)
     entry = {
@@ -536,6 +551,7 @@ def _execute_and_checkpoint_case(
             "side_effect_occurred": observation.side_effect_occurred,
             "error_code": observation.error_code,
             "completion_status": observation.completion_status,
+            "completion_failure_source": observation.completion_failure_source,
             "observed_tool_sequence": [
                 call.tool_name for call in observation.tool_calls
             ],
@@ -1007,6 +1023,7 @@ def _channel_report(
         "tasks_with_any_failed_repetition": any_failed,
         "tasks_incomplete_with_partial_results": incomplete_with_results,
         "tasks_not_started": expected_tasks - len(task_ids),
+        "completion_telemetry": _summarize_public_completion_telemetry(entries),
         "repetitions": repetitions,
     }
 
@@ -1071,10 +1088,44 @@ def _repetition_report(
             if usage_complete and all(item["output_tokens"] is not None for item in usages)
             else None,
         },
+        "completion_telemetry": _summarize_public_completion_telemetry(entries),
         "task_scores": [entry["score"] for entry in entries],
         "task_diagnostics": {
             entry["task_id"]: entry["diagnostics"] for entry in entries
         },
+    }
+
+
+def _summarize_public_completion_telemetry(
+    entries: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    records: list[dict[str, Any]] = []
+    for entry in entries:
+        diagnostics = entry.get("diagnostics")
+        if not isinstance(diagnostics, Mapping):
+            raise EvalV2ContractError(
+                "eval_v2_completion_telemetry_invalid",
+                "Public-regression case diagnostics 无效。",
+            )
+        _validate_completion_failure_metadata(
+            outcome=diagnostics.get("outcome"),
+            error_code=diagnostics.get("error_code"),
+            completion_status=diagnostics.get("completion_status"),
+            completion_failure_source=diagnostics.get(
+                "completion_failure_source"
+            ),
+        )
+        records.append(
+            {
+                "error_code": diagnostics.get("error_code"),
+                "completion_failure_source": diagnostics.get(
+                    "completion_failure_source"
+                ),
+            }
+        )
+    return {
+        **summarize_completion_telemetry(records),
+        "case_count": len(entries),
     }
 
 
@@ -1089,6 +1140,8 @@ def _render_summary(report: Mapping[str, Any]) -> str:
     )
     provider_rate = provider["case_success_rate"]
     fault_rate = fault["case_success_rate"]
+    provider_completion = provider["completion_telemetry"]
+    fault_completion = fault["completion_telemetry"]
     return "\n".join(
         [
             "# Eval v2 Public-Regression Run",
@@ -1111,6 +1164,12 @@ def _render_summary(report: Mapping[str, Any]) -> str:
             f"- Completed: {provider['completed_case_count']}/{provider['expected_case_count']}",
             f"- Passed: {provider['passed_case_count']}",
             f"- Case success rate: {_rate_text(provider_rate)}",
+            (
+                "- Completion telemetry: "
+                f"{provider_completion['classified_failure_count']}/"
+                f"{provider_completion['eligible_failure_count']} classified; "
+                f"status `{provider_completion['coverage_status']}`"
+            ),
             f"- Tasks passing all three repetitions: {provider['tasks_passing_all_three_repetitions']}/{provider['expected_task_count_per_repetition']}",
             "",
             "## Deterministic fault-injection channel",
@@ -1118,6 +1177,12 @@ def _render_summary(report: Mapping[str, Any]) -> str:
             f"- Completed: {fault['completed_case_count']}/{fault['expected_case_count']}",
             f"- Passed: {fault['passed_case_count']}",
             f"- Harness success rate: {_rate_text(fault_rate)}",
+            (
+                "- Completion telemetry: "
+                f"{fault_completion['classified_failure_count']}/"
+                f"{fault_completion['eligible_failure_count']} classified; "
+                f"status `{fault_completion['coverage_status']}`"
+            ),
             "- These local fixture results are not attributed to the model.",
             "",
             "## Claim boundary",
@@ -1515,6 +1580,15 @@ def _validate_resume_completed_cases(state: Mapping[str, Any]) -> None:
                 "Resume case hash chain 无效。",
             )
         case_chain_head = entry["case_record_sha256"]
+        diagnostics = entry["diagnostics"]
+        _validate_completion_failure_metadata(
+            outcome=diagnostics.get("outcome"),
+            error_code=diagnostics.get("error_code"),
+            completion_status=diagnostics.get("completion_status"),
+            completion_failure_source=diagnostics.get(
+                "completion_failure_source"
+            ),
+        )
         if entry["channel"] == _PROVIDER_CHANNEL:
             provider_entries.append(entry)
 

@@ -1,0 +1,63 @@
+{
+  "schema_version": "2.0",
+  "candidate_id": "eval-v2-public-regression-deepseek-completion-telemetry-v2",
+  "status": "candidate_locked",
+  "locked_at_utc": "2026-08-23T14:19:09Z",
+  "scope": "public_regression",
+  "campaign_id": "researchops-eval-v2-draft",
+  "campaign_status_expected": "design_only",
+  "full_campaign_frozen": false,
+  "private_holdout_access_authorized": false,
+  "model_quality_claim_allowed": false,
+  "predecessor_candidate_commitment_sha256": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11",
+  "prior_results_inherited": false,
+  "completion_telemetry_contract_id": "completion-telemetry-v2",
+  "execution_policy": {
+    "repetitions_per_provider": 3,
+    "randomized_case_order": true,
+    "precommitted_orders": true,
+    "split_manifest_id": "eval-v2-public-regression-orders-v1",
+    "provider_behavior_task_count": 31,
+    "deterministic_fault_injection_task_count": 9,
+    "fault_results_attributed_to_model": false,
+    "execution_channels_reported_separately": true
+  },
+  "provider_config": {
+    "provider_id": "deepseek",
+    "model_id": "deepseek-v4-flash",
+    "transport_id": "openai_compatible_responses",
+    "max_turns": 8,
+    "case_timeout_seconds": 120,
+    "normal_max_output_tokens": 2000,
+    "refusal_max_output_tokens": 512,
+    "clarification_max_output_tokens": 768
+  },
+  "hash_algorithm": "sha256-bundle-v1",
+  "component_hashes": {
+    "source_bundle_sha256": "fd4721d77e2f55112b057cf4a01647294f3dfc32c0569bba4dc9f38ce094c519",
+    "prompt_contract_sha256": "1205316b29b8188432341f066a5c677991b41f5f075c1714f0c4a29e663b60e9",
+    "prompt_source_sha256": "c618da9f733beff8adc61ab748e3940fab887c0e0e948841fe30410e896ad2b9",
+    "scorer_bundle_sha256": "da8b3780788129ad715c1467242e67fc40019d0e12b907b14b16338d3ede41d8",
+    "tool_contract_sha256": "aa89e9d660a0b923126a10f09d426ca5e95c3232b2d21c1585623cddd531ff90",
+    "tool_source_bundle_sha256": "69d889845ab646842ce6651a151e9b5c87797148e1183b744d7f5689c1222e9b",
+    "split_manifest_sha256": "6201a36285b6e8ff7c2cacb2206d7293ddbbbe2640c3b22f7b2b2106a6dc9b35",
+    "public_tasks_sha256": "675c89dbfaa98cf211694c166c4df2d685afd3778572a95bd2fd3bb7fd3aeba3",
+    "public_task_schema_sha256": "d83ea8228b99510012321133fa3ddcff2e68c0956bc76dd9328de1903fcdf554",
+    "dataset_manifest_sha256": "1de86be662fec197bf06e0f6e0f2920c491191dba46ded2f93e7344b76663ca1",
+    "internal_review_sha256": "20e828b1c7df15435046a97ac96b8757c75bf34fb5ef2a01b59d87d857bb4c0a",
+    "dependency_bundle_sha256": "d8e2a73352d902219d05ed21f6fb28abdac50d1b4e4d7a960d60cfc728900a74",
+    "pyproject_sha256": "8c26359997fe2120e1412a19ee3b602c039ca7248cbc51158c099f8a06a6e5fb",
+    "requirements_lock_sha256": "b3e27f4c5702b81e1d29ec8f96c30e8d2585ff284b1f111a80d1fb918ef49616",
+    "completion_telemetry_contract_sha256": "65e0feb9186cb8134b5d695f1977d193963387f41cfe81916089fff124431832"
+  },
+  "candidate_commitment_sha256": "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5",
+  "limitations": [
+    "This locks an offline Completion Telemetry v2 candidate only; the full Eval v2 campaign remains design_only.",
+    "No result, pass rate, or model-quality evidence from the predecessor candidate is inherited.",
+    "Private holdout access is not authorized and no model-quality claim is allowed.",
+    "Provider-behavior and deterministic fault-injection channels must be reported separately.",
+    "Completion failure sources are diagnostic observations, not causal Provider root-cause claims.",
+    "requirements.lock pins versions but does not include wheel or sdist artifact hashes.",
+    "No online Provider call or paid public-regression run was performed for this candidate."
+  ]
+}

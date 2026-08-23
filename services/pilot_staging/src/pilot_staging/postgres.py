@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection, Engine
 
 from .domain import (
+    COMPLETION_FAILURE_SOURCES,
     Attempt,
     AttemptStatus,
     Campaign,
@@ -25,7 +26,107 @@ from .domain import (
     PilotTask,
     ProviderBudgetExhausted,
 )
-from .telemetry import execution_telemetry_sha256, summarize_provider_execution_telemetry
+from .telemetry import (
+    EXECUTION_TELEMETRY_DIGEST_V2,
+    execution_telemetry_event_binding,
+    execution_telemetry_sha256,
+    execution_telemetry_v2_sha256,
+    summarize_provider_execution_telemetry,
+)
+
+
+_COMPLETION_FAILURE_ERROR_BY_SOURCE = {
+    "final_output_missing": "provider_output_incomplete",
+    "response_output_item_incomplete": "provider_output_incomplete",
+    "response_not_completed": "provider_output_not_completed",
+    "output_limit_suspected": "output_limit_suspected",
+}
+
+
+def _is_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _completion_failure_source_matches(
+    error_code: Any, completion_failure_source: Any
+) -> bool:
+    if completion_failure_source is None:
+        return True
+    return (
+        isinstance(completion_failure_source, str)
+        and completion_failure_source in COMPLETION_FAILURE_SOURCES
+        and _COMPLETION_FAILURE_ERROR_BY_SOURCE[completion_failure_source] == error_code
+    )
+
+
+def _valid_event_binding_shape(
+    payload: Mapping[str, Any], *, error_code: Any
+) -> bool:
+    if not _is_sha256(payload.get("execution_telemetry_sha256")):
+        return False
+    version = payload.get("execution_telemetry_digest_version")
+    if version is None:
+        return (
+            "execution_telemetry_v2_sha256" not in payload
+            and "completion_failure_source" not in payload
+        )
+    if version != EXECUTION_TELEMETRY_DIGEST_V2:
+        return False
+    return (
+        "completion_failure_source" in payload
+        and _is_sha256(payload.get("execution_telemetry_v2_sha256"))
+        and _completion_failure_source_matches(
+            error_code, payload.get("completion_failure_source")
+        )
+    )
+
+
+def _event_binding_matches_record(
+    payload: Mapping[str, Any], record: Mapping[str, Any]
+) -> bool:
+    if not _valid_event_binding_shape(payload, error_code=record.get("error_code")):
+        return False
+    if payload["execution_telemetry_sha256"] != execution_telemetry_sha256(record):
+        return False
+    if (
+        payload.get("completion_failure_source") is not None
+        and record.get("outcome") != "controlled_failure"
+    ):
+        return False
+    if payload.get("execution_telemetry_digest_version") is None:
+        return record.get("completion_failure_source") is None
+    return (
+        payload.get("completion_failure_source")
+        == record.get("completion_failure_source")
+        and payload.get("execution_telemetry_v2_sha256")
+        == execution_telemetry_v2_sha256(record)
+    )
+
+
+def _event_binding_matches_tombstone(
+    payload: Mapping[str, Any], tombstone: Mapping[str, Any]
+) -> bool:
+    if not _valid_event_binding_shape(payload, error_code=payload.get("error_code")):
+        return False
+    if payload["execution_telemetry_sha256"] != tombstone[
+        "execution_telemetry_sha256"
+    ]:
+        return False
+    event_version = payload.get("execution_telemetry_digest_version")
+    tombstone_version = tombstone.get("execution_telemetry_digest_version")
+    if event_version is None:
+        return tombstone.get("completion_failure_source") is None
+    return (
+        tombstone_version == EXECUTION_TELEMETRY_DIGEST_V2
+        and payload.get("completion_failure_source")
+        == tombstone.get("completion_failure_source")
+        and payload.get("execution_telemetry_v2_sha256")
+        == tombstone.get("execution_telemetry_v2_sha256")
+    )
 
 
 class PostgresPilotStore:
@@ -642,7 +743,9 @@ class PostgresPilotStore:
                         """
                         UPDATE pilot_attempts
                         SET status='failed',provider_completed_at=:now,
-                            error_code='provider_lease_expired',lease_owner=NULL,lease_expires_at=NULL
+                            error_code='provider_lease_expired',
+                            completion_failure_source=NULL,
+                            lease_owner=NULL,lease_expires_at=NULL
                         WHERE attempt_id=:id
                         RETURNING *
                         """
@@ -656,7 +759,7 @@ class PostgresPilotStore:
                     payload={
                         "attempt_id": str(row["attempt_id"]),
                         "error_code": "provider_lease_expired",
-                        "execution_telemetry_sha256": execution_telemetry_sha256(expired),
+                        **execution_telemetry_event_binding(expired),
                     },
                     now=now,
                 )
@@ -722,6 +825,7 @@ class PostgresPilotStore:
                             provider_latency_ms=NULL,outcome=NULL,
                             model_call_count=NULL,model_requested_tool_call_count=NULL,
                             backend_executed_tool_call_count=NULL,
+                            completion_failure_source=NULL,
                             lease_owner=NULL,lease_expires_at=NULL
                         WHERE attempt_id=CAST(:id AS uuid) AND status='running'
                           AND lease_owner=:worker
@@ -739,7 +843,7 @@ class PostgresPilotStore:
                     payload={
                         "attempt_id": attempt_id,
                         "error_code": "participant_withdrew",
-                        "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                        **execution_telemetry_event_binding(row),
                     },
                     now=now,
                 )
@@ -755,6 +859,7 @@ class PostgresPilotStore:
                         model_call_count=:model_calls,
                         model_requested_tool_call_count=:requested_calls,
                         backend_executed_tool_call_count=:backend_calls,
+                        completion_failure_source=:completion_source,
                         lease_owner=NULL,lease_expires_at=NULL
                     WHERE attempt_id=CAST(:id AS uuid) AND status='running'
                       AND lease_owner=:worker AND lease_expires_at>:now
@@ -772,6 +877,7 @@ class PostgresPilotStore:
                     "model_calls": result.model_call_count,
                     "requested_calls": result.model_requested_tool_call_count,
                     "backend_calls": result.backend_executed_tool_call_count,
+                    "completion_source": result.completion_failure_source,
                 },
             ).mappings().first()
             if row is None:
@@ -783,7 +889,7 @@ class PostgresPilotStore:
                 payload={
                     "attempt_id": attempt_id,
                     "output_sha256": output_sha256,
-                    "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                    **execution_telemetry_event_binding(row),
                 },
                 now=now,
             )
@@ -835,6 +941,7 @@ class PostgresPilotStore:
                         model_call_count=:model_calls,
                         model_requested_tool_call_count=:requested_calls,
                         backend_executed_tool_call_count=:backend_calls,
+                        completion_failure_source=:completion_source,
                         lease_owner=NULL,lease_expires_at=NULL
                     WHERE attempt_id=CAST(:id AS uuid) AND status='running'
                       AND lease_owner=:worker AND lease_expires_at>:now
@@ -862,6 +969,11 @@ class PostgresPilotStore:
                         if telemetry is not None
                         else None
                     ),
+                    "completion_source": (
+                        telemetry.completion_failure_source
+                        if telemetry is not None
+                        else None
+                    ),
                     "id": attempt_id,
                     "worker": worker_id,
                 },
@@ -884,7 +996,7 @@ class PostgresPilotStore:
                 payload={
                     "attempt_id": attempt_id,
                     "error_code": error_code,
-                    "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                    **execution_telemetry_event_binding(row),
                 },
                 now=now,
             )
@@ -1054,7 +1166,7 @@ class PostgresPilotStore:
                 payload={
                     "attempt_id": attempt_id,
                     "error_code": row["error_code"],
-                    "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                    **execution_telemetry_event_binding(row),
                 },
                 now=now,
             )
@@ -1106,7 +1218,7 @@ class PostgresPilotStore:
                 payload={
                     "attempt_id": attempt_id,
                     "error_code": "participant_skipped",
-                    "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                    **execution_telemetry_event_binding(row),
                 },
                 now=now,
             )
@@ -1208,9 +1320,7 @@ class PostgresPilotStore:
                         event_type="attempt_retention_deleted",
                         payload={
                             "attempt_id": str(attempt["attempt_id"]),
-                            "execution_telemetry_sha256": execution_telemetry_sha256(
-                                attempt
-                            ),
+                            **execution_telemetry_event_binding(attempt),
                             "deletion_reason": deletion_reason,
                             "worker_started": attempt["started_at"] is not None,
                             "final_status": attempt["status"],
@@ -1561,14 +1671,13 @@ class PostgresPilotStore:
                 continue
             payload = dict(event["payload"])
             attempt_id = payload.get("attempt_id")
-            digest = payload.get("execution_telemetry_sha256")
             if (
                 not isinstance(attempt_id, str)
                 or attempt_id in retired_attempts
                 or attempt_id in attempts_by_id
-                or not isinstance(digest, str)
-                or len(digest) != 64
-                or any(character not in "0123456789abcdef" for character in digest)
+                or not _valid_event_binding_shape(
+                    payload, error_code=payload.get("stable_error_code")
+                )
                 or payload.get("deletion_reason")
                 not in {"withdrawal_due", "retention_due"}
                 or payload.get("pre_delete_binding_status") not in {"valid", "invalid"}
@@ -1599,16 +1708,13 @@ class PostgresPilotStore:
                 if attempt_id not in retired_attempts:
                     return False
                 tombstone = retired_attempts[attempt_id]
-                digest = payload.get("execution_telemetry_sha256")
-                if digest is not None and digest != tombstone[
-                    "execution_telemetry_sha256"
-                ]:
-                    return False
                 if event["event_type"] == "attempt_started":
                     if attempt_id in started_event_ids:
                         return False
                     started_event_ids.add(attempt_id)
                 else:
+                    if not _event_binding_matches_tombstone(payload, tombstone):
+                        return False
                     latest_terminal_event[attempt_id] = (
                         str(event["event_type"]),
                         payload,
@@ -1619,10 +1725,7 @@ class PostgresPilotStore:
                     return False
                 started_event_ids.add(attempt_id)
                 continue
-            digest = payload.get("execution_telemetry_sha256")
-            if not isinstance(digest, str) or digest != execution_telemetry_sha256(
-                attempts_by_id[attempt_id]
-            ):
+            if not _event_binding_matches_record(payload, attempts_by_id[attempt_id]):
                 return False
             latest_terminal_event[attempt_id] = (str(event["event_type"]), payload)
 
@@ -1917,6 +2020,7 @@ def _attempt(row: Mapping[str, Any], task_row: Mapping[str, Any]) -> Attempt:
         model_call_count=row["model_call_count"],
         model_requested_tool_call_count=row["model_requested_tool_call_count"],
         backend_executed_tool_call_count=row["backend_executed_tool_call_count"],
+        completion_failure_source=row["completion_failure_source"],
     )
 
 

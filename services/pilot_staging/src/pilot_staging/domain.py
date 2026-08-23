@@ -7,9 +7,17 @@ from typing import Any, ClassVar, Mapping
 
 
 LOCKED_CANDIDATE_COMMITMENT = (
-    "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+    "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5"
 )
 CLAIM_SCOPE = "external_researcher_usability_on_prepared_public_data"
+COMPLETION_FAILURE_SOURCES = frozenset(
+    {
+        "final_output_missing",
+        "output_limit_suspected",
+        "response_not_completed",
+        "response_output_item_incomplete",
+    }
+)
 
 
 class CampaignStatus(StrEnum):
@@ -108,6 +116,7 @@ class Attempt:
     model_call_count: int | None = None
     model_requested_tool_call_count: int | None = None
     backend_executed_tool_call_count: int | None = None
+    completion_failure_source: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +128,7 @@ class CandidateResult:
     model_requested_tool_call_count: int | None
     backend_executed_tool_call_count: int
     error_code: str | None = None
+    completion_failure_source: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +140,7 @@ class ExecutionTelemetry:
     model_call_count: int | None
     model_requested_tool_call_count: int | None
     backend_executed_tool_call_count: int | None
+    completion_failure_source: str | None = None
 
     _ALLOWED_OUTCOMES: ClassVar[frozenset[str]] = frozenset(
         {
@@ -155,6 +166,18 @@ class ExecutionTelemetry:
                 raise ValueError(f"{name} 必须为 nullable non-negative integer。")
         if self.outcome is not None and self.outcome not in self._ALLOWED_OUTCOMES:
             raise ValueError("outcome 不属于 locked executor allowlist。")
+        if (
+            self.completion_failure_source is not None
+            and self.completion_failure_source not in COMPLETION_FAILURE_SOURCES
+        ):
+            raise ValueError("completion_failure_source 不属于安全 allowlist。")
+        if (
+            self.completion_failure_source is not None
+            and self.outcome != "controlled_failure"
+        ):
+            raise ValueError(
+                "completion_failure_source 必须绑定 controlled_failure outcome。"
+            )
 
     @classmethod
     def from_candidate_result(cls, result: CandidateResult) -> "ExecutionTelemetry":
@@ -164,6 +187,7 @@ class ExecutionTelemetry:
             model_call_count=result.model_call_count,
             model_requested_tool_call_count=result.model_requested_tool_call_count,
             backend_executed_tool_call_count=result.backend_executed_tool_call_count,
+            completion_failure_source=result.completion_failure_source,
         )
 
 

@@ -17,7 +17,11 @@ from .eval_v2_public import (
 from .eval_v2_runner import eval_v2_tool_contract
 
 
-PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION = "1.0"
+PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION = "2.0"
+COMPLETION_TELEMETRY_CONTRACT_ID = "completion-telemetry-v2"
+HISTORICAL_CANDIDATE_COMMITMENT_SHA256 = (
+    "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+)
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _EXACT_REQUIREMENT = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[^\s]+)$")
 _FAULT_SCENARIOS = frozenset(
@@ -35,6 +39,9 @@ _CANDIDATE_FIELDS = frozenset(
         "full_campaign_frozen",
         "private_holdout_access_authorized",
         "model_quality_claim_allowed",
+        "predecessor_candidate_commitment_sha256",
+        "prior_results_inherited",
+        "completion_telemetry_contract_id",
         "execution_policy",
         "provider_config",
         "hash_algorithm",
@@ -83,6 +90,7 @@ _COMPONENT_KEYS = frozenset(
         "dependency_bundle_sha256",
         "pyproject_sha256",
         "requirements_lock_sha256",
+        "completion_telemetry_contract_sha256",
     }
 )
 
@@ -141,6 +149,9 @@ def build_public_regression_component_hashes(
         ),
         "pyproject_sha256": _sha256_file(root / "pyproject.toml"),
         "requirements_lock_sha256": _sha256_file(root / "requirements.lock"),
+        "completion_telemetry_contract_sha256": _sha256_file(
+            root / "evals" / "v2" / "completion_telemetry_contract.json"
+        ),
     }
 
 
@@ -161,6 +172,11 @@ def validate_public_regression_candidate(
         or candidate["full_campaign_frozen"] is not False
         or candidate["private_holdout_access_authorized"] is not False
         or candidate["model_quality_claim_allowed"] is not False
+        or candidate["predecessor_candidate_commitment_sha256"]
+        != HISTORICAL_CANDIDATE_COMMITMENT_SHA256
+        or candidate["prior_results_inherited"] is not False
+        or candidate["completion_telemetry_contract_id"]
+        != COMPLETION_TELEMETRY_CONTRACT_ID
         or candidate["hash_algorithm"] != "sha256-bundle-v1"
     ):
         raise EvalV2ContractError(
@@ -218,6 +234,10 @@ def validate_public_regression_candidate(
     tool_snapshot = _load_json_object(
         root / "evals" / "v2" / "tool_contract.json", "tool contract"
     )
+    completion_snapshot = _load_json_object(
+        root / "evals" / "v2" / "completion_telemetry_contract.json",
+        "completion telemetry contract",
+    )
     if prompt_snapshot != eval_v2_prompt_contract():
         raise EvalV2ContractError(
             "eval_v2_public_candidate_prompt_drift",
@@ -227,6 +247,17 @@ def validate_public_regression_candidate(
         raise EvalV2ContractError(
             "eval_v2_public_candidate_tool_drift",
             "Tool contract snapshot 与源码不一致。",
+        )
+    if (
+        completion_snapshot.get("schema_version") != "2.0"
+        or completion_snapshot.get("contract_id")
+        != COMPLETION_TELEMETRY_CONTRACT_ID
+        or completion_snapshot.get("diagnostic_only") is not True
+        or completion_snapshot.get("causal_root_cause_claim_allowed") is not False
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_completion_contract_invalid",
+            "Completion telemetry contract 状态或声明边界无效。",
         )
 
     split = _validate_public_regression_split(root)
@@ -277,6 +308,11 @@ def validate_public_regression_candidate(
         "full_campaign_frozen": False,
         "private_holdout_access_authorized": False,
         "model_quality_claim_allowed": False,
+        "predecessor_candidate_commitment_sha256": (
+            HISTORICAL_CANDIDATE_COMMITMENT_SHA256
+        ),
+        "prior_results_inherited": False,
+        "completion_telemetry_contract_id": COMPLETION_TELEMETRY_CONTRACT_ID,
         "public_regression_task_count": 40,
         "provider_behavior_task_count": 31,
         "deterministic_fault_injection_task_count": 9,

@@ -1,6 +1,6 @@
 # ResearchOps Agent：作品集展示与面试演示手册
 
-> 状态快照：2026-08-22。本页只陈述仓库内可以核对的实现与测试事实。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 public candidate 已完成一次性 DeepSeek 三轮运行。OpenAI API 当前不可用，不影响 DeepSeek 与离线证据。
+> 状态快照：2026-08-22；2026-08-23 补充 Completion Telemetry v2 离线实现。本页只陈述仓库内可以核对的实现与测试事实。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行，v2 telemetry candidate 未在线运行且不继承该成绩。OpenAI API 当前不可用，不影响既有 DeepSeek 与离线证据。
 
 ## 先说清楚：这个项目现在证明了什么
 
@@ -12,7 +12,8 @@
 | Phase 6 scripted/replay | 注入 runner、scripted model 和构造轨迹的离线回归已覆盖 | 真实 Agents SDK 循环、工具调用提取、审批中断、usage/cost 空值处理和产物发布链路可测试 | scripted/replay 的通过率等同于真实模型质量 |
 | Provider 层 | OpenAI/DeepSeek 独立 Key、client、transport 与审计；DeepSeek 安全边界与真实调用均有证据 | provider 不会串 Key，全局 client 不被修改，并行 tool calls 不能绕过审批 | OpenAI 路径的模型质量 |
 | Phase 6 DeepSeek 在线 | 冻结版 development 16/16；repo-local non-secret holdout 4/4 | 在固定 runner/source/corpus/split 下的任务级质量、usage、延迟与安全证据 | 抗污染泛化、生产 SLA 或实际账单成本 |
-| Eval v2 public candidate | Provider system 68/93；三轮 23/31、22/31、23/31；fault harness 27/27 | 锁定 `DeepSeek + 控制面` 在公开任务上的重复表现、usage、成本与失败分层 | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
+| Eval v2 public candidate v1（历史） | Provider system 68/93；三轮 23/31、22/31、23/31；fault harness 27/27 | 锁定 `DeepSeek + 控制面` 在公开任务上的重复表现、usage、成本与失败分层 | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
+| Completion Telemetry v2 | 新 commitment `1f6ac18e…e5ce5`；离线 root/pilot/PostgreSQL 合同通过；0 次 Provider 调用 | 可区分安全 completion 分支并显式报告 legacy unknown coverage | 因果根因、在线模型质量、继承 v1 68/93 或未知生产泛化 |
 | Production-like slice | 18/18 + 真实单机 Compose E2E；`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 | FastAPI/worker、PG lease queue、MinIO artifact、event hash chain、幂等与 API→worker Trace ID 的真实纵切 | HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量 |
 
 对外推荐状态标签：
@@ -444,7 +445,7 @@ repo-local holdout 的任务和金标都可见，不具备抗污染能力；4 �
 仓库新增独立 `services/pilot_staging/`，实现邀请制科研用户体验流程：精确 consent、
 假名 session、多用户隔离、server-side Provider credential、PostgreSQL queue/lease、
 持久 reveal 计时、Markdown UI、非专家反馈、DLP、安全暂停、撤回、90 天 purge 和
-aggregate-only summary。它保持 Eval v2 candidate commitment
+aggregate-only summary。该段记录的是历史 v1 staging：它保持 Eval v2 candidate commitment
 `7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11`，没有改动
 冻结 prompt/scorer/tool schema。
 

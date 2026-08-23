@@ -97,6 +97,7 @@ jobs:
             services/pilot_staging/tests/test_config_files.py `
             services/pilot_staging/tests/test_candidate_contract.py `
             services/pilot_staging/tests/test_summary_contract.py `
+            services/pilot_staging/tests/test_completion_telemetry.py `
             services/pilot_staging/tests/test_supervised_scripts.py `
             services/pilot_staging/tests/test_ci_workflow.py `
             --basetemp=artifacts/pilot_ci_pytest_tmp

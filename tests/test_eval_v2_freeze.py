@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
@@ -12,10 +13,17 @@ from researchops.eval_v2_freeze import (
     sha256_bundle_v1,
     validate_public_regression_candidate,
 )
+from researchops.eval_v2_runner import (
+    COMPLETION_FAILURE_SOURCES,
+    COMPLETION_FAILURE_SOURCE_TO_ERROR_CODE,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate.json"
+CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v2.json"
+HISTORICAL_CANDIDATE_PATH = (
+    REPO_ROOT / "evals" / "v2" / "public_regression_candidate.json"
+)
 SPLIT_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_split_manifest.json"
 
 
@@ -32,10 +40,51 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertFalse(result["full_campaign_frozen"])
         self.assertFalse(result["private_holdout_access_authorized"])
         self.assertFalse(result["model_quality_claim_allowed"])
+        self.assertFalse(result["prior_results_inherited"])
+        self.assertEqual(
+            result["completion_telemetry_contract_id"], "completion-telemetry-v2"
+        )
         self.assertEqual(result["provider_behavior_task_count"], 31)
         self.assertEqual(result["deterministic_fault_injection_task_count"], 9)
         self.assertEqual(result["dependency_lock"]["exact_pin_count"], 58)
         self.assertFalse(result["dependency_lock"]["artifact_hashes_included"])
+
+    def test_historical_v1_candidate_is_preserved_without_result_inheritance(self) -> None:
+        raw = HISTORICAL_CANDIDATE_PATH.read_bytes()
+        historical = json.loads(raw)
+
+        self.assertEqual(
+            hashlib.sha256(raw).hexdigest(),
+            "b7ea7416c56b52e301c84aaa9c687b3925a64f11f6b5ae21f155ec27d67b8bfb",
+        )
+        self.assertEqual(
+            historical["candidate_commitment_sha256"],
+            "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11",
+        )
+        self.assertEqual(
+            candidate_commitment_sha256(historical),
+            historical["candidate_commitment_sha256"],
+        )
+
+    def test_completion_telemetry_machine_contract_matches_runtime_allowlist(self) -> None:
+        contract = json.loads(
+            (
+                REPO_ROOT / "evals" / "v2" / "completion_telemetry_contract.json"
+            ).read_text(encoding="utf-8")
+        )
+        sources = contract["failure_sources"]
+
+        self.assertEqual(
+            [item["source"] for item in sources], list(COMPLETION_FAILURE_SOURCES)
+        )
+        self.assertEqual(
+            {item["source"]: item["error_code"] for item in sources},
+            dict(COMPLETION_FAILURE_SOURCE_TO_ERROR_CODE),
+        )
+        self.assertEqual(contract["precedence"], list(COMPLETION_FAILURE_SOURCES))
+        self.assertTrue(contract["diagnostic_only"])
+        self.assertFalse(contract["causal_root_cause_claim_allowed"])
+        self.assertIn("provider_response_body", contract["persistence_forbidden"])
 
     def test_precommitted_orders_are_distinct_and_filter_by_execution_channel(self) -> None:
         all_orders = load_public_regression_task_orders(SPLIT_PATH)
