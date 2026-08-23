@@ -4,14 +4,15 @@
 > 目标：让一个没有历史上下文的新 Codex 会话安全、准确地继续本项目。
 > 语言偏好：中文；先给结论，再给可执行步骤；不要夸大评测或生产化程度。
 
-## 最新未提交状态：Completion Telemetry v2
+## 最新 main 状态：Completion Telemetry v2
 
-- 当前分支：`codex/completion-telemetry-v2`，基于 `origin/main@dd661b52faf62a3c291d5f00b12feaa4c1b7ad41`；工作树包含本轮有意保留的未提交实现。
-- 新增 RFC 与 machine contract；root runner/provider/public artifact 和 pilot staging/PostgreSQL 已贯通四类 `completion_failure_source`。
-- v1 candidate manifest 字节保持不变，历史 commitment 仍为 `7744770a…f0d11`；新 v2 candidate commitment 为 `1f6ac18e…e5ce5`，明确 `prior_results_inherited=false`。
-- 验证：root 258/258；pilot 离线 suite 51 passed + 1 个真实 PostgreSQL test 按环境变量 skip，另行真实 PostgreSQL migration/dual-digest/mixed-retention contract 1/1 通过；candidate/hash/environment 验证为 `valid`、网络调用 0。
-- 本轮没有读取 Key、调用 Provider 或运行付费评测。现有 repo-local `services/pilot_staging/.env` 未修改；未来启动前必须显式更新 candidate commitment，并创建新 campaign，不能续用旧结果。
-- 下文早期 branch/main/candidate 状态是历史交接记录；如有冲突，以本节为准。
+- PR #11 已 regular merge；GitHub `main` 为 `094cb9b173e5d153f1aff9db2ce8a25e50a57f7d`，feature 与 merge tree 完全一致。
+- `main` clean runs：offline `32648925769`、pilot `32648925679`、production slice `32648925726`，三者均为 `success`。
+- RFC、machine contract、root runner/provider/public artifact 与 pilot staging/PostgreSQL 已贯通四类 `completion_failure_source`。
+- v1 candidate manifest 字节保持不变，历史 commitment 仍为 `7744770a…f0d11`；v2 commitment 为 `1f6ac18e…e5ce5`，明确 `prior_results_inherited=false`。
+- 验证：root 258/258；pilot 51 个 offline contracts + 1 个真实 PostgreSQL contract；production slice 18/18 + 真实 Compose E2E；网络/模型调用 0。
+- 本轮没有读取 Key、调用 Provider 或运行付费评测。repo-local `services/pilot_staging/.env` 未自动升级；未来启用 v2 前必须显式更新 commitment、重建镜像并创建新 campaign，不能续用或回填旧结果。
+- 长期证据位于 [Completion Telemetry v2 main CI v1](docs/evidence/completion-telemetry-v2-main-ci-v1/README.md)。下文更早状态如有冲突，以本节为准。
 
 ## 0. 新会话首先执行
 
@@ -26,9 +27,9 @@
 
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
-- 当前实现分支：`codex/completion-telemetry-v2`，从 `origin/main` 的
-  `dd661b52faf62a3c291d5f00b12feaa4c1b7ad41` 创建。
-- GitHub `main`：`dd661b52faf62a3c291d5f00b12feaa4c1b7ad41`；PR #9/#10 已 regular merge。
+- 当前 evidence 分支：`codex/completion-telemetry-v2-main-evidence`，从 `origin/main` 的
+  `094cb9b173e5d153f1aff9db2ce8a25e50a57f7d` 创建。
+- GitHub `main`：`094cb9b173e5d153f1aff9db2ce8a25e50a57f7d`；PR #11 已 regular merge。
 - 版本：`0.2.0`
 - Annotated tag：`phase6-deepseek-v1`，仍指向 `80ad08e…`，不是当前 `main`
 - Release：https://github.com/cedRiC874/researchops-agent/releases/tag/phase6-deepseek-v1
@@ -325,12 +326,12 @@ Repo-local non-secret holdout：
 
 ## 6. 当前自动化验证
 
-2026-08-23 的当前 `main@4a3f5cf8` 分层验证：
+2026-08-23 的当前 `main@094cb9b1` 分层验证：
 
 ```text
-main offline run 32640814960: 246 root tests OK; Phase 5 50/50; evidence 21/21; profile valid
-main pilot run 32640814963: 45 offline contracts + 1 real PostgreSQL contract; no-key offline Compose success
-production slice: 18 contracts + real PostgreSQL/MinIO/OTel E2E 沿用独立历史 main 快照；main@4a3f5cf8 未触发该 workflow
+main offline run 32648925769: 258 root tests OK; Phase 5 50/50; evidence 21/21; profile valid
+main pilot run 32648925679: 51 offline contracts + 1 real PostgreSQL contract; no-key offline Compose success
+main production run 32648925726: 18 contracts + real PostgreSQL/MinIO/OTel E2E success
 ```
 
 重要 P1 历史事实：run 32568017243 的 workflow conclusion 虽为 `success`，其新重建
