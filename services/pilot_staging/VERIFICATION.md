@@ -6,6 +6,23 @@ This is a local and GitHub clean-CI engineering verification snapshot. It is not
 result, a production deployment attestation, a security certification or a Provider
 quality rerun.
 
+## Current main integration
+
+PR #7/#8 已 regular merge 至
+`main@4a3f5cf81e44fe51fbefd099cc98aca8e6bb2300`。该精确 commit 的：
+
+- [`offline-quality-gate` run 32640814960](https://github.com/cedRiC874/researchops-agent/actions/runs/32640814960)
+  通过 246 个根测试、canonical Nehalem/x86-v2 preflight、Phase 5 50/50、
+  evidence 21/21 与 `phase5-ci-v1=valid`；
+- [`pilot-staging-ci` run 32640814963](https://github.com/cedRiC874/researchops-agent/actions/runs/32640814963)
+  通过 45 个 offline contracts、1 个真实 PostgreSQL contract、无 Provider Key Compose
+  startup/teardown 与最终 gate；bootstrap 为 `provider_secret_created=false`、
+  `secret_values_printed=false`。
+
+长期步骤级证据见
+[`docs/evidence/pilot-telemetry-main-ci-v1/README.md`](../../docs/evidence/pilot-telemetry-main-ci-v1/README.md)。
+下方 PR #5 数字保留为早期历史基线，不是当前 main 的最新计数。
+
 ## Frozen boundary
 
 - Eval v2 candidate status: `valid`
@@ -73,7 +90,9 @@ TLS plus backup/PITR, secret management and rotation, immutable image/deployment
 identity, redacted telemetry/alerts, an external daily retention schedule, rollback,
 incident contact and any applicable ethics/IRB determination.
 
-Until then, `external_validation_claim_allowed` must remain false and no external pilot
-result may be claimed. The formal path also remains blocked by
+Until then, `external_validation_claim_allowed` must remain false. A supervised
+same-participant UX regression has completed and is documented, but it is permanently
+ineligible for an external-validation claim and is not an independent second participant.
+The formal path also remains blocked by
 `operator_eligibility_adjudication_not_implemented` until a trusted pseudonymous
 operator review receipt is implemented.

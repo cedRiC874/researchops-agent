@@ -15,18 +15,18 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | 模拟科研分析 | 已验证 | 240 行模拟 RCT；ANCOVA 与 Welch 均生成数值、样本流、诊断、证据 ID 和聚合图表 |
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
 | Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
-| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@a20fdfd8` run 32585792937：根测试 246/246，Phase 5 为 50/50、证据 21/21、profile valid、50 条 audit chain 全有效 |
+| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@4a3f5cf8` run 32640814960：根测试 246/246，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | `main@a20fdfd8`：根测试 246/246、pilot staging 42/42、production slice 18/18；三条 workflow 均成功 |
+| 自动化测试 | 已验证 | `main@4a3f5cf8`：根测试 246/246；pilot staging 45 个 offline contracts + 1 个真实 PostgreSQL contract；production slice 18/18 由其独立 main CI 快照支撑 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
 | Provider 适配 | 已验证 | OpenAI 与 DeepSeek 使用独立 Key/client；DeepSeek V4 模型 allowlist、固定 endpoint、零隐藏重试 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
 | Eval v2 public candidate | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
-| External researcher pilot staging | PR #5 已合并并通过无 Provider Key Linux CI；尚未真实运行或招募 | 邀请制、多用户隔离、完整 consent、服务器 Provider secret、PostgreSQL 队列、持久计时、DLP、安全暂停、跳题、撤回、聚合 summary；`main` run 32585792915 为 42/42；1–2 人可经 Tailscale 监督预试但永久不进入正式 claim |
+| External researcher pilot staging | PR #7/#8 已合并并通过当前 main CI；supervised UX regression 已完成 | `main` run 32640814963 为 45 个 offline contracts + 1 个真实 PostgreSQL contract；同一参与者 v2 为 1 completed、4 feedback、2 controlled failures，永久不进入正式 claim，也不算第二位独立参与者 |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
-离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。PR #3 已修复 LF provenance 与退出码覆盖；当前 main run 32585792937 为 50/50、21/21、`phase5-ci-v1=valid`。详见 [CI 门禁审计](docs/evidence/main-offline-gate-20260822/README.md)。
+离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。PR #3 已修复 LF provenance 与退出码覆盖；当前 `main@4a3f5cf8` 进一步固定 Nehalem/x86-v2 数值 lineage，run 32640814960 为 50/50、21/21、`phase5-ci-v1=valid`。详见 [CI 门禁审计](docs/evidence/main-offline-gate-20260822/README.md) 与 [当前 main pilot/telemetry 快照](docs/evidence/pilot-telemetry-main-ci-v1/README.md)。
 
 ## 一键离线演示
 
@@ -333,12 +333,14 @@ PostgreSQL 保存一次运行状态、反馈、DLP/incident 和追加式事件 h
 撤销 session、阻止排队调用，并把参与者从 claim 分母排除。Provider secret 只挂载到显式
 启动的 worker；默认 online kill switch 关闭，因此测试和普通启动不会产生付费请求。
 
-目前已完成 38 个 API/domain/config/script/CI 无网络测试、3 个 locked-candidate/schema tests、1 个
-真实临时 PostgreSQL migration/lifecycle/checksum test，并成功构建 Linux 镜像。尚未招募
-或运行真实 Tailscale/Provider/参与者端到端流程，因此没有 external pilot 结果。公网使用前仍需 HTTPS、托管
+当前 main 已由 45 个 pilot offline contracts、1 个真实 PostgreSQL
+migration/lifecycle/constraint contract 与无 Provider Key Compose 链路验证。同一参与者
+supervised UX regression 已通过 Tailscale/Provider 完成，但永久不属于 external validation，
+也不是第二位独立参与者。正式公网 pilot 前仍需托管
 PostgreSQL TLS/backup、Secret Manager、固定部署 digest、脱敏 telemetry、daily retention
 scheduler 与适用的伦理/IRB 判断。详见 [运行手册](services/pilot_staging/README.md) 和
-[外部科研用户协议](docs/EXTERNAL_RESEARCHER_PILOT_PROTOCOL.md)。
+[外部科研用户协议](docs/EXTERNAL_RESEARCHER_PILOT_PROTOCOL.md)；main 合并证据见
+[pilot telemetry main CI v1](docs/evidence/pilot-telemetry-main-ci-v1/README.md)。
 
 没有云平台时可使用明确的 `supervised` 模式做 1–2 人监督预试。该模式强制 Tailscale
 HTTPS、Secure Cookie、clean Git SHA、真实 Docker image ID、在线 worker heartbeat 和
@@ -465,6 +467,7 @@ provenance 标量，加入 profile 阈值与退出码传播；push/PR clean runs
 - [架构与安全边界](docs/ARCHITECTURE.md)
 - [声明到证据的映射](docs/EVIDENCE.md)
 - [Production slice main Linux CI 证据](docs/evidence/production-slice-linux-ci-main-v1/README.md)
+- [Pilot telemetry 与 supervised UX main CI 证据](docs/evidence/pilot-telemetry-main-ci-v1/README.md)
 - [Main offline gate 审计](docs/evidence/main-offline-gate-20260822/README.md)
 - [Phase 5 语料说明](evals/README.md)
 - [Phase 6 评测边界](evals/PHASE6.md)
