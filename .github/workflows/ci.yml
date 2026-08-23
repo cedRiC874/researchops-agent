@@ -19,6 +19,9 @@ jobs:
       OPENBLAS_CORETYPE: HASWELL
       OPENBLAS_NUM_THREADS: "1"
       OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      NPY_DISABLE_CPU_FEATURES: AVX512F
 
     steps:
       - name: Check out repository
@@ -47,6 +50,15 @@ jobs:
             exit 1
           }
           Write-Output "OpenBLAS core verified: Haswell"
+          Remove-Item Env:OPENBLAS_VERBOSE
+
+          $env:PYTHONPATH = "src"
+          $identity = (& python -c "import json,pandas as pd; from pathlib import Path; from researchops.analysis_tools import run_ancova; from researchops.contracts import ResearchDesign; from researchops.data_quality import profile_csv; p=Path('data/synthetic_trial.csv'); f=pd.read_csv(p,encoding='utf-8-sig',low_memory=False); d=ResearchDesign.from_dict(json.loads(Path('data/synthetic_trial_design.json').read_text(encoding='utf-8'))); print(run_ancova(f,profile_csv(p),d).evidence_id)" | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $identity -ne "E-8EDFAE7ED8F0") {
+            Write-Output "::error title=phase5_numeric_identity_mismatch::The canonical ANCOVA evidence identity was not reproduced."
+            exit 1
+          }
+          Write-Output "Canonical ANCOVA evidence identity verified."
 
       - name: Validate evaluation contracts
         shell: pwsh
