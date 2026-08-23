@@ -1,8 +1,8 @@
 # Pilot Staging Verification Snapshot
 
-> Historical note: the clean runs below verify predecessor candidate
-> `7744770a…f0d11`. Completion Telemetry v2 candidate `1f6ac18e…e5ce5` has only
-> offline local verification in this change and inherits none of those results.
+> Current note: Completion Telemetry v2 candidate `1f6ac18e…e5ce5` 已进入
+> `main@094cb9b1` 并通过无 Provider Key clean CI；它不继承 predecessor
+> `7744770a…f0d11` 的任何结果。
 
 Date: 2026-08-23 (Asia/Shanghai)
 
@@ -12,27 +12,31 @@ quality rerun.
 
 ## Current main integration
 
-PR #7/#8 已 regular merge 至
-`main@4a3f5cf81e44fe51fbefd099cc98aca8e6bb2300`。该精确 commit 的：
+PR #11 已 regular merge 至
+`main@094cb9b173e5d153f1aff9db2ce8a25e50a57f7d`。该精确 commit 的：
 
-- [`offline-quality-gate` run 32640814960](https://github.com/cedRiC874/researchops-agent/actions/runs/32640814960)
-  通过 246 个根测试、canonical Nehalem/x86-v2 preflight、Phase 5 50/50、
-  evidence 21/21 与 `phase5-ci-v1=valid`；
-- [`pilot-staging-ci` run 32640814963](https://github.com/cedRiC874/researchops-agent/actions/runs/32640814963)
-  通过 45 个 offline contracts、1 个真实 PostgreSQL contract、无 Provider Key Compose
-  startup/teardown 与最终 gate；bootstrap 为 `provider_secret_created=false`、
-  `secret_values_printed=false`。
+- [`offline-quality-gate` run 32648925769](https://github.com/cedRiC874/researchops-agent/actions/runs/32648925769)
+  通过 258 个根测试、Phase 5 50/50、evidence 21/21 与
+  `phase5-ci-v1=valid`；
+- [`pilot-staging-ci` run 32648925679](https://github.com/cedRiC874/researchops-agent/actions/runs/32648925679)
+  通过 51 个 offline contracts、1 个真实 PostgreSQL contract、无 Provider Key
+  Compose startup/teardown 与最终 gate；
+- [`production-slice-e2e` run 32648925726](https://github.com/cedRiC874/researchops-agent/actions/runs/32648925726)
+  通过 18 个 contracts 与真实 PostgreSQL/MinIO/OTel E2E；这是相邻服务回归，
+  不是 telemetry 或模型质量成绩。
 
 长期步骤级证据见
-[`docs/evidence/pilot-telemetry-main-ci-v1/README.md`](../../docs/evidence/pilot-telemetry-main-ci-v1/README.md)。
+[`docs/evidence/completion-telemetry-v2-main-ci-v1/README.md`](../../docs/evidence/completion-telemetry-v2-main-ci-v1/README.md)。
 下方 PR #5 数字保留为早期历史基线，不是当前 main 的最新计数。
 
 ## Frozen boundary
 
-- Eval v2 candidate status: `valid`
-- Candidate commitment:
+- Historical v1 commitment:
   `7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11`
-- `src/researchops` modified by this work: no
+- Completion Telemetry v2 status: `candidate_locked / valid`
+- Completion Telemetry v2 commitment:
+  `1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5`
+- `prior_results_inherited`: `false`
 - Paid/model network calls made by this verification: 0
 - Provider API Key read, printed or stored: no
 
@@ -40,12 +44,11 @@ PR #7/#8 已 regular merge 至
 
 | Layer | Result | Network/model behavior |
 | --- | ---: | --- |
-| Pilot API/domain/config/scripts/CI | 38 passed | in-memory store, fake executor and static PowerShell/workflow checks; no network |
-| Locked candidate + JSON Schema | 3 passed | local file/hash validation only |
+| Root repository suite | 258 passed | full root suite; not 258 telemetry-only tests |
+| Pilot offline contracts | 51 passed | in-memory/fake executor plus config/schema/PowerShell/workflow checks; no network |
 | Real PostgreSQL integration | 1 passed | local PostgreSQL 17.6 container; fake executor |
-| Existing repository suite | 246 passed | existing offline suite |
 | Existing production slice | 18 passed | process-level test suite |
-| GitHub pilot-staging CI | 42 passed | 41 offline contracts plus 1 real PostgreSQL contract; no Provider key/worker/model call |
+| GitHub pilot-staging CI | success | 51 offline contracts plus 1 real PostgreSQL contract; no Provider key/worker/model call |
 
 The PostgreSQL integration applied the real migration, completed a six-task participant
 lifecycle, verified consent replay remained idempotent after campaign completion,
