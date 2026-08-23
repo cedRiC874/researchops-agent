@@ -119,9 +119,30 @@ The API container does not mount the Provider secret. The prepared formal pack r
 30 **Agent task executions** (five people × six assignments), and assignments are never
 automatically retried or overwritten. This is not a 30-request or currency cap: one
 task can require multiple model turns (the locked executor allows up to eight), while
-`model_call_count` is retained on each attempt. The current aggregate summary does not
-publish model-call, token or cost totals, so this budget must not be presented as any of
-those limits.
+summary schema 1.1 reports observed sums and observed/unknown attempt coverage separately
+for executor model calls, model-requested tool calls and backend executions. Controlled
+failures retain these counts without retaining failed output text; exceptions remain
+unknown rather than becoming zero. Token/cost and total upstream HTTP-request coverage
+remain unavailable, and none of these counters is model planning accuracy.
+The telemetry scope includes only consented, non-withdrawn participants: withdrawal
+removes their attempts from both observed sums and unknown denominators. Campaign-level
+safety incidents remain aggregated and can still block a claim after withdrawal, so the
+observed sums must never be presented as campaign-wide billing or API-request totals.
+The PostgreSQL adapter binds worker-start scope, terminal classification, stable failure
+reason and the safe telemetry tuple to append-only events. Summary generation performs
+bidirectional event/attempt checks and fails the artifact-integrity gate after otherwise
+valid database telemetry tampering. The in-memory test adapter reports this event binding
+as `not_applicable`, never as production evidence.
+Before retention cascade-deletes participant attempts, PostgreSQL appends a minimal
+`attempt_retention_deleted` tombstone containing only the attempt ID, final telemetry
+digest, final execution classification and stable deletion reason. A separate
+participant-level tombstone contains no participant ID and preserves only the aggregate
+fact that a withdrawal occurred. The retention deadline wins: purge records the pre-delete
+binding status, and an invalid status survives deletion and continues blocking claims.
+Verified tombstones preserve integrity and withdrawal counts after lawful deletion, while
+an unrecorded manual deletion remains fail-closed. The public summary reports participant
+projection binding as `valid`, `invalid`, or `not_applicable`; claim-eligible PostgreSQL
+evidence requires `valid`.
 
 ## Supervised 1–2 person pretest
 

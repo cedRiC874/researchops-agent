@@ -3,7 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Mapping, Protocol, Sequence
 
-from .domain import Attempt, Campaign, CandidateResult, Feedback, ParticipantSession, PilotTask
+from .domain import (
+    Attempt,
+    Campaign,
+    CandidateResult,
+    ExecutionTelemetry,
+    Feedback,
+    ParticipantSession,
+    PilotTask,
+)
 
 
 class PilotStore(Protocol):
@@ -99,6 +107,7 @@ class PilotStore(Protocol):
         worker_id: str,
         error_code: str,
         withheld: bool,
+        telemetry: ExecutionTelemetry | None,
         now: datetime,
     ) -> Attempt: ...
 

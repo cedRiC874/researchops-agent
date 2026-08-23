@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://researchops.local/schemas/pilot-staging/pilot-summary-v1.json",
+  "$id": "https://researchops.local/schemas/pilot-staging/pilot-summary-v1.1.json",
   "title": "ResearchOps aggregate external researcher pilot summary",
   "type": "object",
   "additionalProperties": false,
@@ -9,12 +9,12 @@
     "supervised_pretest", "external_pilot", "external_participant_pretest",
     "evidence_status", "claim_scope", "external_validation_claim_allowed",
     "external_validation_claim_reason_codes", "pilot_success_criteria_met",
-    "commitments", "cohort", "interactions", "coverage", "usability",
+    "commitments", "cohort", "interactions", "provider_execution_telemetry", "coverage", "usability",
     "machine_contract", "professional_correctness", "safety", "timing",
     "retention_status", "boundaries"
   ],
   "properties": {
-    "schema_version": {"const": "external-pilot-summary/1.0"},
+    "schema_version": {"const": "external-pilot-summary/1.1"},
     "campaign_id": {"type": "string", "pattern": "^EXT-PILOT-[A-F0-9]{16}$"},
     "status": {"enum": ["draft", "frozen", "running", "paused", "complete", "terminated"]},
     "execution_environment": {"enum": ["local", "staging", "supervised"]},
@@ -43,6 +43,7 @@
     "commitments": {"$ref": "#/$defs/commitments"},
     "cohort": {"$ref": "#/$defs/cohort"},
     "interactions": {"$ref": "#/$defs/interactions"},
+    "provider_execution_telemetry": {"$ref": "#/$defs/provider_execution_telemetry"},
     "coverage": {"$ref": "#/$defs/coverage"},
     "usability": {"$ref": "#/$defs/usability"},
     "machine_contract": {"$ref": "#/$defs/machine_contract"},
@@ -81,7 +82,13 @@
       "status": {"const": "complete"},
       "external_validation_claim_reason_codes": {"maxItems": 0},
       "pilot_success_criteria_met": {"type": "boolean"},
-      "retention_status": {"properties": {"scheduled_purge_confirmed": {"const": true}}}
+      "retention_status": {"properties": {
+        "scheduled_purge_confirmed": {"const": true},
+        "participant_projection_binding_status": {"const": "valid"}
+      }},
+      "provider_execution_telemetry": {"properties": {
+        "append_only_event_binding_status": {"const": "valid"}
+      }}
     }},
     "else": {"properties": {
       "external_validation_claim_reason_codes": {"minItems": 1},
@@ -148,6 +155,62 @@
         "exploratory_count": {"const": 0}
       }
     },
+    "telemetry_metric": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observed_sum", "observed_attempt_count", "unknown_attempt_count", "coverage_rate"],
+      "properties": {
+        "observed_sum": {"type": ["integer", "null"], "minimum": 0},
+        "observed_attempt_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "unknown_attempt_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "coverage_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "provider_execution_telemetry": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "telemetry_counter_semantics_version", "scope",
+        "withdrawn_participant_attempts_included", "worker_started_attempt_count",
+        "terminal_attempt_count", "technical_failure_attempt_count",
+        "safety_withheld_attempt_count", "participant_skipped_after_execution_count",
+        "failure_reason_counts", "executor_model_call_count",
+        "model_requested_tool_call_count", "backend_executed_tool_call_count",
+        "telemetry_coverage_status", "token_usage_collection_status",
+        "cost_coverage_status", "upstream_api_request_total_claim_allowed",
+        "campaign_wide_billing_total_claim_allowed",
+        "model_planning_accuracy_claim_allowed", "append_only_event_binding_status"
+      ],
+      "properties": {
+        "telemetry_counter_semantics_version": {"const": "pilot-provider-telemetry-v1"},
+        "scope": {"const": "consented_non_withdrawn_participants_only"},
+        "withdrawn_participant_attempts_included": {"const": false},
+        "worker_started_attempt_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "terminal_attempt_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "technical_failure_attempt_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "safety_withheld_attempt_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "participant_skipped_after_execution_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "failure_reason_counts": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["reason_code", "attempt_count"],
+            "properties": {
+              "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+              "attempt_count": {"type": "integer", "minimum": 1, "maximum": 60}
+            }
+          }
+        },
+        "executor_model_call_count": {"$ref": "#/$defs/telemetry_metric"},
+        "model_requested_tool_call_count": {"$ref": "#/$defs/telemetry_metric"},
+        "backend_executed_tool_call_count": {"$ref": "#/$defs/telemetry_metric"},
+        "telemetry_coverage_status": {"enum": ["no_attempts", "complete", "partial"]},
+        "token_usage_collection_status": {"const": "not_collected"},
+        "cost_coverage_status": {"const": "unavailable"},
+        "upstream_api_request_total_claim_allowed": {"const": false},
+        "campaign_wide_billing_total_claim_allowed": {"const": false},
+        "model_planning_accuracy_claim_allowed": {"const": false},
+        "append_only_event_binding_status": {"enum": ["valid", "invalid", "not_applicable"]}
+      }
+    },
     "coverage": {
       "type": "object", "additionalProperties": false,
       "required": ["dataset_count", "dataset_counts", "scenario_counts", "feedback_rate", "max_participant_contribution_rate"],
@@ -211,11 +274,17 @@
     },
     "retention_status": {
       "type": "object", "additionalProperties": false,
-      "required": ["participant_level_max_days", "withdrawal_deletion_sla_days", "scheduled_purge_confirmed"],
+      "required": [
+        "participant_level_max_days", "withdrawal_deletion_sla_days",
+        "scheduled_purge_confirmed", "participant_projection_binding_status"
+      ],
       "properties": {
         "participant_level_max_days": {"type": "integer", "minimum": 1, "maximum": 90},
         "withdrawal_deletion_sla_days": {"const": 7},
-        "scheduled_purge_confirmed": {"type": "boolean"}
+        "scheduled_purge_confirmed": {"type": "boolean"},
+        "participant_projection_binding_status": {
+          "enum": ["valid", "invalid", "not_applicable"]
+        }
       }
     }
   }

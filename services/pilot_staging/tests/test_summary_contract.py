@@ -7,10 +7,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
+import pytest
 
 from pilot_staging.application import PilotApplication
 from pilot_staging.domain import LOCKED_CANDIDATE_COMMITMENT
 from pilot_staging.memory import InMemoryPilotStore, StaticDatasetCatalog
+from pilot_staging.telemetry import validate_provider_execution_telemetry
 
 
 SERVICE = Path(__file__).resolve().parents[1]
@@ -91,6 +93,22 @@ def test_application_summary_matches_published_schema() -> None:
     Draft202012Validator(schema).validate(summary)
     assert summary["external_validation_claim_allowed"] is False
     assert summary["pilot_success_criteria_met"] is None
+    assert summary["schema_version"] == "external-pilot-summary/1.1"
+    telemetry = summary["provider_execution_telemetry"]
+    assert telemetry["telemetry_coverage_status"] == "no_attempts"
+    assert telemetry["executor_model_call_count"]["observed_sum"] is None
+    assert telemetry["model_planning_accuracy_claim_allowed"] is False
+    assert telemetry["append_only_event_binding_status"] == "not_applicable"
+    assert summary["retention_status"][
+        "participant_projection_binding_status"
+    ] == "not_applicable"
+    assert "artifact_integrity_invalid" in summary[
+        "external_validation_claim_reason_codes"
+    ]
+    invalid_telemetry = deepcopy(telemetry)
+    invalid_telemetry["executor_model_call_count"]["unknown_attempt_count"] = 1
+    with pytest.raises(ValueError, match="denominator mismatch"):
+        validate_provider_execution_telemetry(invalid_telemetry)
 
     positive = deepcopy(summary)
     positive["status"] = "complete"
@@ -111,6 +129,23 @@ def test_application_summary_matches_published_schema() -> None:
         feedback_completed_count=24,
         seeded_count=24,
     )
+    positive["provider_execution_telemetry"].update(
+        worker_started_attempt_count=24,
+        terminal_attempt_count=24,
+        telemetry_coverage_status="complete",
+        append_only_event_binding_status="valid",
+    )
+    for name in (
+        "executor_model_call_count",
+        "model_requested_tool_call_count",
+        "backend_executed_tool_call_count",
+    ):
+        positive["provider_execution_telemetry"][name] = {
+            "observed_sum": 24,
+            "observed_attempt_count": 24,
+            "unknown_attempt_count": 0,
+            "coverage_rate": 1.0,
+        }
     positive["coverage"].update(
         dataset_count=3,
         dataset_counts={
@@ -130,7 +165,22 @@ def test_application_summary_matches_published_schema() -> None:
         max_participant_contribution_rate=0.25,
     )
     positive["retention_status"]["scheduled_purge_confirmed"] = True
+    positive["retention_status"]["participant_projection_binding_status"] = "valid"
     Draft202012Validator(schema).validate(positive)
+    for invalid_binding_status in ("invalid", "not_applicable"):
+        invalid_binding = deepcopy(positive)
+        invalid_binding["provider_execution_telemetry"][
+            "append_only_event_binding_status"
+        ] = invalid_binding_status
+        with pytest.raises(Exception):
+            Draft202012Validator(schema).validate(invalid_binding)
+    for invalid_projection_status in ("invalid", "not_applicable"):
+        invalid_projection = deepcopy(positive)
+        invalid_projection["retention_status"][
+            "participant_projection_binding_status"
+        ] = invalid_projection_status
+        with pytest.raises(Exception):
+            Draft202012Validator(schema).validate(invalid_projection)
 
     supervised = deepcopy(positive)
     supervised["execution_environment"] = "supervised"

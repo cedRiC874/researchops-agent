@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import pytest
+import psycopg
 
 from pilot_staging.application import (
     PilotApplication,
@@ -14,11 +15,17 @@ from pilot_staging.application import (
     task_pack_commitment_sha256,
 )
 from pilot_staging.config import Settings
-from pilot_staging.domain import CandidateResult, Feedback, LOCKED_CANDIDATE_COMMITMENT
+from pilot_staging.domain import (
+    CampaignNotAvailable,
+    CandidateResult,
+    Feedback,
+    LOCKED_CANDIDATE_COMMITMENT,
+)
 from pilot_staging.memory import StaticDatasetCatalog
 from pilot_staging.postgres import PostgresPilotStore
 from pilot_staging.migrate import run_migrations
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 
 DATABASE_URL = os.environ.get("PILOT_TEST_DATABASE_URL")
@@ -58,6 +65,32 @@ class Executor:
             model_requested_tool_call_count=1,
             backend_executed_tool_call_count=1,
         )
+
+
+class FailureExecutor:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def execute(self, task):
+        self.calls += 1
+        return CandidateResult(
+            final_output="",
+            outcome="controlled_failure",
+            provider_latency_ms=1250,
+            model_call_count=1,
+            model_requested_tool_call_count=0,
+            backend_executed_tool_call_count=0,
+            error_code="provider_output_incomplete",
+        )
+
+
+class RaisingExecutor:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def execute(self, task):
+        self.calls += 1
+        raise RuntimeError("SECRET_RAW_PROVIDER_BODY must not be persisted")
 
 
 def payload():
@@ -153,10 +186,33 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         project_root=tmp_path,
         migrations_path=Path(__file__).resolve().parents[1] / "migrations",
     )
+    migration_v1_path = Path(__file__).resolve().parents[1] / "migrations" / "0001_pilot_staging.sql"
+    migration_v1 = migration_v1_path.read_bytes()
+    dsn = settings.database_url().replace("postgresql+psycopg://", "postgresql://", 1)
+    with psycopg.connect(dsn, autocommit=True) as connection:
+        connection.execute(
+            """
+            CREATE TABLE pilot_schema_migrations (
+                version integer PRIMARY KEY,
+                source_sha256 char(64) NOT NULL,
+                applied_at timestamptz NOT NULL DEFAULT now()
+            )
+            """
+        )
+        with connection.transaction():
+            connection.execute(migration_v1.decode("utf-8"))
+            connection.execute(
+                "INSERT INTO pilot_schema_migrations(version,source_sha256) VALUES (%s,%s)",
+                (1, hashlib.sha256(migration_v1).hexdigest()),
+            )
     run_migrations(settings)
     clock = Clock()
     store = PostgresPilotStore(DATABASE_URL)
     try:
+        with store.engine.connect() as connection:
+            assert connection.execute(
+                text("SELECT version FROM pilot_schema_migrations ORDER BY version")
+            ).scalars().all() == [1, 2]
         application = PilotApplication(
             store=store,
             dataset_catalog=StaticDatasetCatalog(DATASETS),
@@ -210,6 +266,260 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         ]
         assert store.campaign_summary_data(campaign_id)["audit_chain_valid"] is True
         assert store.campaign_summary_data(campaign_id)["task_pack_integrity_valid"] is True
+
+        failure_executor = FailureExecutor()
+        failure_worker = PilotWorker(
+            store=store,
+            executor=failure_executor,
+            worker_id="postgres-failure-telemetry-worker",
+            clock=clock,
+        )
+        failure_campaign_id = application.create_campaign(payload())["campaign_id"]
+        application.freeze_campaign(failure_campaign_id)
+        failure_auth = application.exchange_invite(
+            application.create_invite(failure_campaign_id)["invite_token"]
+        )
+        failure_session = application.authenticate(
+            failure_auth["session_token"], csrf_token=failure_auth["csrf_token"]
+        )
+        application.record_consent(failure_session, consent())
+        failure_session = application.authenticate(
+            failure_auth["session_token"], csrf_token=failure_auth["csrf_token"]
+        )
+        failure_attempt = application.state(failure_session)["attempt"]
+        application.reveal(failure_session, failure_attempt["attempt_id"])
+        failed = failure_worker.process_one()
+        assert failed is not None
+        assert failed.error_code == "provider_output_incomplete"
+        assert failed.safe_output is None
+        assert failed.output_sha256 is None
+        assert failed.provider_latency_ms == 1250
+        assert failed.outcome == "controlled_failure"
+        assert failed.model_call_count == 1
+        assert failed.model_requested_tool_call_count == 0
+        assert failed.backend_executed_tool_call_count == 0
+        with store.engine.connect() as connection:
+            stored_failure = connection.execute(
+                text(
+                    """
+                    SELECT status,started_at,error_code,safe_output,output_sha256,
+                           provider_latency_ms,outcome,
+                           model_call_count,model_requested_tool_call_count,
+                           backend_executed_tool_call_count,lease_owner,lease_expires_at
+                    FROM pilot_attempts WHERE attempt_id=CAST(:id AS uuid)
+                    """
+                ),
+                {"id": failure_attempt["attempt_id"]},
+            ).mappings().one()
+        assert stored_failure["safe_output"] is None
+        assert stored_failure["output_sha256"] is None
+        assert stored_failure["provider_latency_ms"] == 1250
+        assert stored_failure["outcome"] == "controlled_failure"
+        assert stored_failure["model_call_count"] == 1
+        assert stored_failure["model_requested_tool_call_count"] == 0
+        assert stored_failure["backend_executed_tool_call_count"] == 0
+        assert stored_failure["lease_owner"] is None
+        assert stored_failure["lease_expires_at"] is None
+        assert stored_failure["status"] == "failed"
+        assert stored_failure["started_at"] is not None
+        assert stored_failure["error_code"] == "provider_output_incomplete"
+        for field in (
+            "model_call_count",
+            "model_requested_tool_call_count",
+            "backend_executed_tool_call_count",
+        ):
+            with pytest.raises(IntegrityError) as constraint_error:
+                with store.engine.begin() as connection:
+                    connection.execute(
+                        text(
+                            f"""
+                            UPDATE pilot_attempts SET {field}=-1
+                            WHERE attempt_id=CAST(:id AS uuid)
+                            """
+                        ),
+                        {"id": failure_attempt["attempt_id"]},
+                    )
+            assert constraint_error.value.orig.sqlstate == "23514"
+        with store.engine.connect() as connection:
+            validated_constraints = dict(
+                connection.execute(
+                    text(
+                        """
+                        SELECT conname,convalidated FROM pg_constraint
+                        WHERE conname IN (
+                          'pilot_attempt_model_call_count_nonnegative',
+                          'pilot_attempt_requested_tool_call_count_nonnegative',
+                          'pilot_attempt_backend_tool_call_count_nonnegative'
+                        )
+                        """
+                    )
+                ).all()
+            )
+        assert validated_constraints == {
+            "pilot_attempt_model_call_count_nonnegative": True,
+            "pilot_attempt_requested_tool_call_count_nonnegative": True,
+            "pilot_attempt_backend_tool_call_count_nonnegative": True,
+        }
+        failure_summary = application.summary(failure_campaign_id)
+        telemetry = failure_summary["provider_execution_telemetry"]
+        assert telemetry["worker_started_attempt_count"] == 1
+        assert telemetry["technical_failure_attempt_count"] == 1
+        assert telemetry["executor_model_call_count"]["observed_sum"] == 1
+        assert telemetry["model_requested_tool_call_count"]["observed_sum"] == 0
+        assert telemetry["backend_executed_tool_call_count"]["observed_sum"] == 0
+        assert telemetry["telemetry_coverage_status"] == "complete"
+        assert telemetry["append_only_event_binding_status"] == "valid"
+        with store.engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    UPDATE pilot_attempts SET model_call_count=2
+                    WHERE attempt_id=CAST(:id AS uuid)
+                    """
+                ),
+                {"id": failure_attempt["attempt_id"]},
+            )
+        tampered_raw = store.campaign_summary_data(failure_campaign_id)
+        assert tampered_raw["audit_chain_valid"] is True
+        assert tampered_raw["telemetry_integrity_valid"] is False
+        tampered_summary = application.summary(failure_campaign_id)
+        assert tampered_summary["provider_execution_telemetry"][
+            "append_only_event_binding_status"
+        ] == "invalid"
+        assert "artifact_integrity_invalid" in tampered_summary[
+            "external_validation_claim_reason_codes"
+        ]
+        with store.engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    UPDATE pilot_attempts SET model_call_count=1
+                    WHERE attempt_id=CAST(:id AS uuid)
+                    """
+                ),
+                {"id": failure_attempt["attempt_id"]},
+            )
+        assert store.campaign_summary_data(failure_campaign_id)[
+            "telemetry_integrity_valid"
+        ] is True
+        for field, tampered_value, restored_value in (
+            (
+                "error_code",
+                "participant_skipped",
+                "provider_output_incomplete",
+            ),
+            ("started_at", None, stored_failure["started_at"]),
+            ("status", "assigned", "failed"),
+        ):
+            with store.engine.begin() as connection:
+                connection.execute(
+                    text(
+                        f"""
+                        UPDATE pilot_attempts SET {field}=:value
+                        WHERE attempt_id=CAST(:id AS uuid)
+                        """
+                    ),
+                    {"id": failure_attempt["attempt_id"], "value": tampered_value},
+                )
+            assert store.campaign_summary_data(failure_campaign_id)[
+                "telemetry_integrity_valid"
+            ] is False
+            with store.engine.begin() as connection:
+                connection.execute(
+                    text(
+                        f"""
+                        UPDATE pilot_attempts SET {field}=:value
+                        WHERE attempt_id=CAST(:id AS uuid)
+                        """
+                    ),
+                    {"id": failure_attempt["attempt_id"], "value": restored_value},
+                )
+            assert store.campaign_summary_data(failure_campaign_id)[
+                "telemetry_integrity_valid"
+            ] is True
+        application.exclude_failed_attempt(
+            failure_session, failure_attempt["attempt_id"]
+        )
+        with store.engine.connect() as connection:
+            after_exclusion = connection.execute(
+                text(
+                    """
+                    SELECT status,error_code,safe_output,output_sha256,
+                           provider_latency_ms,outcome,model_call_count,
+                           model_requested_tool_call_count,backend_executed_tool_call_count
+                    FROM pilot_attempts WHERE attempt_id=CAST(:id AS uuid)
+                    """
+                ),
+                {"id": failure_attempt["attempt_id"]},
+            ).mappings().one()
+        assert dict(after_exclusion) == {
+            "status": "excluded",
+            "error_code": "provider_output_incomplete",
+            "safe_output": None,
+            "output_sha256": None,
+            "provider_latency_ms": 1250,
+            "outcome": "controlled_failure",
+            "model_call_count": 1,
+            "model_requested_tool_call_count": 0,
+            "backend_executed_tool_call_count": 0,
+        }
+        assert failure_executor.calls == 1
+
+        raising_executor = RaisingExecutor()
+        raising_worker = PilotWorker(
+            store=store,
+            executor=raising_executor,
+            worker_id="postgres-unknown-telemetry-worker",
+            clock=clock,
+        )
+        unknown_attempt = application.state(failure_session)["attempt"]
+        application.reveal(failure_session, unknown_attempt["attempt_id"])
+        unknown_failure = raising_worker.process_one()
+        assert unknown_failure is not None
+        assert unknown_failure.error_code == "provider_failed"
+        assert unknown_failure.provider_latency_ms is None
+        assert unknown_failure.outcome is None
+        assert unknown_failure.model_call_count is None
+        assert unknown_failure.model_requested_tool_call_count is None
+        assert unknown_failure.backend_executed_tool_call_count is None
+        with store.engine.connect() as connection:
+            unknown_stored = connection.execute(
+                text(
+                    """
+                    SELECT safe_output,output_sha256,provider_latency_ms,outcome,
+                           model_call_count,model_requested_tool_call_count,
+                           backend_executed_tool_call_count
+                    FROM pilot_attempts WHERE attempt_id=CAST(:id AS uuid)
+                    """
+                ),
+                {"id": unknown_attempt["attempt_id"]},
+            ).mappings().one()
+        assert all(value is None for value in unknown_stored.values())
+        unknown_summary = application.summary(failure_campaign_id)[
+            "provider_execution_telemetry"
+        ]
+        assert unknown_summary["worker_started_attempt_count"] == 2
+        assert unknown_summary["technical_failure_attempt_count"] == 2
+        assert unknown_summary["telemetry_coverage_status"] == "partial"
+        assert unknown_summary["executor_model_call_count"] == {
+            "observed_sum": 1,
+            "observed_attempt_count": 1,
+            "unknown_attempt_count": 1,
+            "coverage_rate": 0.5,
+        }
+        assert unknown_summary["failure_reason_counts"] == [
+            {"reason_code": "provider_failed", "attempt_count": 1},
+            {"reason_code": "provider_output_incomplete", "attempt_count": 1},
+        ]
+        assert raising_executor.calls == 1
+        with store.engine.begin() as connection:
+            connection.execute(
+                text("DELETE FROM pilot_participants WHERE participant_id=:id"),
+                {"id": failure_session.participant_id},
+            )
+        manually_deleted = store.campaign_summary_data(failure_campaign_id)
+        assert manually_deleted["audit_chain_valid"] is True
+        assert manually_deleted["telemetry_integrity_valid"] is False
 
         git_sha = "a" * 40
         image_digest = "sha256:" + "b" * 64
@@ -304,6 +614,291 @@ def test_real_postgres_lifecycle_and_consent_replay(tmp_path) -> None:
         assert "supervised_environment_not_claim_eligible" in reloaded_summary[
             "external_validation_claim_reason_codes"
         ]
+        with store.engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    UPDATE pilot_attempts SET error_code='provider_failed'
+                    WHERE attempt_id=CAST(:id AS uuid)
+                    """
+                ),
+                {"id": second_attempt["attempt_id"]},
+            )
+        purge_result = store.purge_expired_records(
+            now=clock(),
+            retention_due_by=clock(),
+            withdrawal_before=clock(),
+            invite_retention_before=clock() - timedelta(days=90),
+        )
+        assert purge_result["participant_records_deleted"] == 1
+        with store.engine.connect() as connection:
+            assert connection.execute(
+                text(
+                    "SELECT count(*) FROM pilot_participants WHERE participant_id=:id"
+                ),
+                {"id": second_session.participant_id},
+            ).scalar_one() == 0
+            assert connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id AND event_type='attempt_retention_deleted'
+                    """
+                ),
+                {"id": supervised_id},
+            ).scalar_one() == 1
+            assert connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id
+                      AND event_type='attempt_retention_deleted'
+                      AND payload->>'pre_delete_binding_status'='invalid'
+                    """
+                ),
+                {"id": supervised_id},
+            ).scalar_one() == 1
+        retained_summary = store.campaign_summary_data(supervised_id)
+        assert retained_summary["audit_chain_valid"] is True
+        assert retained_summary["telemetry_integrity_valid"] is False
+        assert retained_summary["participant_projection_integrity_valid"] is True
+        assert retained_summary["withdrawn_participant_count"] == 1
+        with store.engine.connect() as connection:
+            tombstones = connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id
+                      AND event_type='attempt_retention_deleted'
+                    """
+                ),
+                {"id": supervised_id},
+            ).scalar_one()
+        assert tombstones == 1
+        with store.engine.connect() as connection:
+            participant_tombstones = connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id
+                      AND event_type='participant_retention_deleted'
+                      AND payload->>'withdrawal_recorded'='true'
+                    """
+                ),
+                {"id": supervised_id},
+            ).scalar_one()
+        assert participant_tombstones == 1
+
+        replacement_invite = supervised_application.create_invite(supervised_id)
+        with pytest.raises(CampaignNotAvailable):
+            supervised_application.exchange_invite(replacement_invite["invite_token"])
+        with store.engine.connect() as connection:
+            assert connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id AND event_type='invite_redeemed'
+                    """
+                ),
+                {"id": supervised_id},
+            ).scalar_one() == 2
+            assert connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_invites
+                    WHERE campaign_id=:id AND used_at IS NULL
+                    """
+                ),
+                {"id": supervised_id},
+            ).scalar_one() == 1
+
+        replacement_payload = payload()
+        replacement_payload["target_participants"] = 2
+        replacement_payload["max_provider_runs"] = 12
+        replacement_payload["deployment_git_sha"] = git_sha
+        replacement_payload["deployment_image_digest"] = image_digest
+        replacement_campaign = supervised_application.create_campaign(
+            replacement_payload
+        )["campaign_id"]
+        supervised_application.freeze_campaign(replacement_campaign)
+        replacement_auth = supervised_application.exchange_invite(
+            supervised_application.create_invite(replacement_campaign)[
+                "invite_token"
+            ]
+        )
+        assert replacement_auth["campaign"]["execution_environment"] == "supervised"
+
+        no_attempt_campaign_id = application.create_campaign(payload())["campaign_id"]
+        application.freeze_campaign(no_attempt_campaign_id)
+        no_attempt_auth = application.exchange_invite(
+            application.create_invite(no_attempt_campaign_id)["invite_token"]
+        )
+        no_attempt_session = application.authenticate(
+            no_attempt_auth["session_token"], csrf_token=no_attempt_auth["csrf_token"]
+        )
+        application.record_consent(no_attempt_session, consent())
+        no_attempt_session = application.authenticate(
+            no_attempt_auth["session_token"], csrf_token=no_attempt_auth["csrf_token"]
+        )
+        application.withdraw(no_attempt_session, no_attempt_auth["session_token"])
+        no_attempt_purge = store.purge_expired_records(
+            now=clock(),
+            retention_due_by=clock(),
+            withdrawal_before=clock(),
+            invite_retention_before=clock() - timedelta(days=90),
+        )
+        assert no_attempt_purge["participant_records_deleted"] == 1
+        no_attempt_summary = store.campaign_summary_data(no_attempt_campaign_id)
+        assert no_attempt_summary["withdrawn_participant_count"] == 1
+        assert no_attempt_summary["telemetry_integrity_valid"] is True
+        assert no_attempt_summary["participant_projection_integrity_valid"] is True
+        with store.engine.connect() as connection:
+            assert connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id
+                      AND event_type='attempt_retention_deleted'
+                    """
+                ),
+                {"id": no_attempt_campaign_id},
+            ).scalar_one() == 0
+            assert connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id
+                      AND event_type='participant_retention_deleted'
+                      AND payload->>'withdrawal_recorded'='true'
+                    """
+                ),
+                {"id": no_attempt_campaign_id},
+            ).scalar_one() == 1
+
+        valid_retention_campaign = application.create_campaign(payload())["campaign_id"]
+        application.freeze_campaign(valid_retention_campaign)
+        valid_retention_auth = application.exchange_invite(
+            application.create_invite(valid_retention_campaign)["invite_token"]
+        )
+        valid_retention_session = application.authenticate(
+            valid_retention_auth["session_token"],
+            csrf_token=valid_retention_auth["csrf_token"],
+        )
+        application.record_consent(valid_retention_session, consent())
+        valid_retention_session = application.authenticate(
+            valid_retention_auth["session_token"],
+            csrf_token=valid_retention_auth["csrf_token"],
+        )
+        valid_attempt = application.state(valid_retention_session)["attempt"]
+        application.reveal(valid_retention_session, valid_attempt["attempt_id"])
+        worker.process_one()
+        application.withdraw(
+            valid_retention_session, valid_retention_auth["session_token"]
+        )
+        valid_purge = store.purge_expired_records(
+            now=clock(),
+            retention_due_by=clock(),
+            withdrawal_before=clock(),
+            invite_retention_before=clock() - timedelta(days=90),
+        )
+        assert valid_purge["participant_records_deleted"] == 1
+        valid_retention_summary = store.campaign_summary_data(
+            valid_retention_campaign
+        )
+        assert valid_retention_summary["telemetry_integrity_valid"] is True
+        assert valid_retention_summary["participant_projection_integrity_valid"] is True
+        assert valid_retention_summary["withdrawn_participant_count"] == 1
+
+        manual_no_attempt_campaign = application.create_campaign(payload())["campaign_id"]
+        application.freeze_campaign(manual_no_attempt_campaign)
+        manual_no_attempt_auth = application.exchange_invite(
+            application.create_invite(manual_no_attempt_campaign)["invite_token"]
+        )
+        manual_no_attempt_session = application.authenticate(
+            manual_no_attempt_auth["session_token"],
+            csrf_token=manual_no_attempt_auth["csrf_token"],
+        )
+        application.record_consent(manual_no_attempt_session, consent())
+        manual_no_attempt_session = application.authenticate(
+            manual_no_attempt_auth["session_token"],
+            csrf_token=manual_no_attempt_auth["csrf_token"],
+        )
+        application.withdraw(
+            manual_no_attempt_session, manual_no_attempt_auth["session_token"]
+        )
+        with store.engine.begin() as connection:
+            connection.execute(
+                text("DELETE FROM pilot_participants WHERE participant_id=:id"),
+                {"id": manual_no_attempt_session.participant_id},
+            )
+        manual_projection = store.campaign_summary_data(manual_no_attempt_campaign)
+        assert manual_projection["telemetry_integrity_valid"] is True
+        assert manual_projection["participant_projection_integrity_valid"] is False
+        assert manual_projection["withdrawn_participant_count"] == 0
+        assert "artifact_integrity_invalid" in application.summary(
+            manual_no_attempt_campaign
+        )["external_validation_claim_reason_codes"]
+
+        running_campaign = application.create_campaign(payload())["campaign_id"]
+        application.freeze_campaign(running_campaign)
+        running_auth = application.exchange_invite(
+            application.create_invite(running_campaign)["invite_token"]
+        )
+        running_session = application.authenticate(
+            running_auth["session_token"], csrf_token=running_auth["csrf_token"]
+        )
+        application.record_consent(running_session, consent())
+        running_session = application.authenticate(
+            running_auth["session_token"], csrf_token=running_auth["csrf_token"]
+        )
+        running_attempt = application.state(running_session)["attempt"]
+        application.reveal(running_session, running_attempt["attempt_id"])
+        claimed = store.claim_attempt(
+            worker_id="retention-running-worker",
+            lease_seconds=300,
+            execution_environment="local",
+            deployment_image_digest=None,
+            now=clock(),
+        )
+        assert claimed is not None and claimed.status.value == "running"
+        application.withdraw(running_session, running_auth["session_token"])
+        running_purge = store.purge_expired_records(
+            now=clock(),
+            retention_due_by=clock(),
+            withdrawal_before=clock(),
+            invite_retention_before=clock() - timedelta(days=90),
+        )
+        assert running_purge["participant_records_deleted"] == 1
+        running_summary = store.campaign_summary_data(running_campaign)
+        assert running_summary["telemetry_integrity_valid"] is True
+        assert running_summary["participant_projection_integrity_valid"] is True
+        assert running_summary["withdrawn_participant_count"] == 1
+        late_result = Executor().execute(claimed.task)
+        with pytest.raises(Exception, match="attempt 不存在"):
+            store.complete_attempt(
+                attempt_id=claimed.attempt_id,
+                worker_id="retention-running-worker",
+                result=late_result,
+                safe_output=late_result.final_output,
+                output_sha256=hashlib.sha256(
+                    late_result.final_output.encode("utf-8")
+                ).hexdigest(),
+                now=clock(),
+            )
+        with store.engine.connect() as connection:
+            running_tombstone = connection.execute(
+                text(
+                    """
+                    SELECT payload FROM pilot_events
+                    WHERE campaign_id=:id
+                      AND event_type='attempt_retention_deleted'
+                    """
+                ),
+                {"id": running_campaign},
+            ).scalar_one()
+        assert running_tombstone["worker_started"] is True
+        assert running_tombstone["final_status"] == "running"
+        assert running_tombstone["pre_delete_binding_status"] == "valid"
 
         run_migrations(settings)
         run_migrations(settings)

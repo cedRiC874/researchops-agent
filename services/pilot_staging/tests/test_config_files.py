@@ -162,6 +162,10 @@ def test_migration_has_checksum_runner_and_cascading_retention() -> None:
     migration = (SERVICE / "migrations" / "0001_pilot_staging.sql").read_text(
         encoding="utf-8"
     )
+    telemetry_migration = (
+        SERVICE / "migrations" / "0002_attempt_telemetry_checks.sql"
+    ).read_text(encoding="utf-8")
+    normalized_telemetry_migration = " ".join(telemetry_migration.split())
     runner = (SERVICE / "src/pilot_staging/migrate.py").read_text(encoding="utf-8")
     retention = (SERVICE / "src/pilot_staging/retention.py").read_text(
         encoding="utf-8"
@@ -178,6 +182,13 @@ def test_migration_has_checksum_runner_and_cascading_retention() -> None:
     ).read_text(encoding="utf-8")
     assert "ON DELETE CASCADE" in migration
     assert "pilot_events is append-only" in migration
+    for field in (
+        "model_call_count",
+        "model_requested_tool_call_count",
+        "backend_executed_tool_call_count",
+    ):
+        assert f"{field} IS NULL OR {field} >= 0" in normalized_telemetry_migration
+    assert telemetry_migration.count("VALIDATE CONSTRAINT") == 3
     assert "timedelta(days=6)" in retention
     assert "now + timedelta(days=1)" in retention
     assert "participant_id" not in re.search(
