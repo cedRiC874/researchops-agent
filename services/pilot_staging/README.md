@@ -158,9 +158,14 @@ external_validation_claim_allowed=false
 
 Reading the same campaign later through a staging-configured process cannot remove
 that blocker. Supervised records never enter the formal 3–5 participant / 20 interaction
-claim gate. The supervised pack hard-limits the campaign to two participants and 12
-Agent task executions (two people × six assignments); the formal pack remains five ×
-six / 30. These assignment limits do not claim a 12/30 upstream API-request or monetary
+claim gate. Historical `pilot_pack.supervised_v1.json` remains bound to the initial
+two-person / 12-assignment campaign. The active
+`pilot_pack.supervised_v2.json` is a one-person / six-assignment, same-participant UX
+regression after an accidental-withdrawal UI fix. Its six source tasks are different,
+already-public, internally reviewed public-regression tasks selected for three-dataset
+and six-scenario coverage—not for model performance. Its result cannot be counted as a
+second independent participant or aggregated with v1. The formal pack remains five ×
+six / 30. These assignment limits do not claim an upstream API-request or monetary
 ceiling, because one task may use multiple model turns.
 
 Before starting:

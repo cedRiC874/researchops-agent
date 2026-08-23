@@ -15,6 +15,11 @@ external_validation_claim_allowed=false
 professional_correctness_assessed=false
 ```
 
+当前 `pilot_pack.supervised_v2.json` 仅用于同一位参与者复核 accidental-withdrawal
+页面修复。它使用与 v1 不重叠的 6 道已公开、内部复核任务，目标人数固定为 1；不得把
+该参与者描述为第二位独立参与者，不得跨 v1/v2 campaign 聚合，也不得据此声称模型
+质量、外部验证或未知分布泛化。
+
 主持人不能评价答案正确性、提示期望行为、解释任务或替参与者作答。预试记录不能计入正式 pilot 的人数、20 次交互、覆盖或成功率。
 
 全程禁止录音、录像、录屏、自动会议转写和逐字记录。不得要求参与者提供 API Key，不得使用其个人、患者、机构或未公开研究数据。
