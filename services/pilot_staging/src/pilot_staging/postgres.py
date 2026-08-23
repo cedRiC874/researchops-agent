@@ -16,6 +16,7 @@ from .domain import (
     CampaignNotAvailable,
     CampaignStatus,
     CandidateResult,
+    ExecutionTelemetry,
     Feedback,
     InvalidTransition,
     InviteInvalid,
@@ -24,6 +25,7 @@ from .domain import (
     PilotTask,
     ProviderBudgetExhausted,
 )
+from .telemetry import execution_telemetry_sha256, summarize_provider_execution_telemetry
 
 
 class PostgresPilotStore:
@@ -327,11 +329,16 @@ class PostgresPilotStore:
                 raise CampaignNotAvailable("campaign 与当前部署 identity 不匹配。")
             if campaign["status"] not in {"frozen", "running"}:
                 raise CampaignNotAvailable("campaign 当前不可加入。")
-            participant_count = connection.execute(
-                text("SELECT count(*) FROM pilot_participants WHERE campaign_id=:id"),
+            redeemed_participant_count = connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id AND event_type='invite_redeemed'
+                    """
+                ),
                 {"id": campaign["campaign_id"]},
             ).scalar_one()
-            if participant_count >= campaign["target_participants"]:
+            if redeemed_participant_count >= campaign["target_participants"]:
                 raise CampaignNotAvailable("campaign 参与者名额已满。")
             connection.execute(
                 text("UPDATE pilot_invites SET used_at=:now WHERE invite_id=:id"),
@@ -630,22 +637,27 @@ class PostgresPilotStore:
             if row is None:
                 return None
             if row["status"] == "running":
-                connection.execute(
+                expired = connection.execute(
                     text(
                         """
                         UPDATE pilot_attempts
                         SET status='failed',provider_completed_at=:now,
                             error_code='provider_lease_expired',lease_owner=NULL,lease_expires_at=NULL
                         WHERE attempt_id=:id
+                        RETURNING *
                         """
                     ),
                     {"now": now, "id": row["attempt_id"]},
-                )
+                ).mappings().one()
                 self._append_event(
                     connection,
                     campaign_id=row["campaign_id"],
                     event_type="attempt_failed",
-                    payload={"attempt_id": str(row["attempt_id"]), "error_code": "provider_lease_expired"},
+                    payload={
+                        "attempt_id": str(row["attempt_id"]),
+                        "error_code": "provider_lease_expired",
+                        "execution_telemetry_sha256": execution_telemetry_sha256(expired),
+                    },
                     now=now,
                 )
                 return None
@@ -666,6 +678,13 @@ class PostgresPilotStore:
                     "id": row["attempt_id"],
                 },
             ).mappings().one()
+            self._append_event(
+                connection,
+                campaign_id=claimed["campaign_id"],
+                event_type="attempt_started",
+                payload={"attempt_id": str(claimed["attempt_id"])},
+                now=now,
+            )
             task = self._task_row(connection, row["campaign_id"], row["task_id"])
         return _attempt(claimed, task)
 
@@ -700,6 +719,9 @@ class PostgresPilotStore:
                         """
                         UPDATE pilot_attempts SET status='failed',provider_completed_at=:now,
                             safe_output=NULL,output_sha256=NULL,error_code='participant_withdrew',
+                            provider_latency_ms=NULL,outcome=NULL,
+                            model_call_count=NULL,model_requested_tool_call_count=NULL,
+                            backend_executed_tool_call_count=NULL,
                             lease_owner=NULL,lease_expires_at=NULL
                         WHERE attempt_id=CAST(:id AS uuid) AND status='running'
                           AND lease_owner=:worker
@@ -710,6 +732,17 @@ class PostgresPilotStore:
                 ).mappings().first()
                 if row is None:
                     raise InvalidTransition("attempt lease 已失效。")
+                self._append_event(
+                    connection,
+                    campaign_id=row["campaign_id"],
+                    event_type="attempt_failed",
+                    payload={
+                        "attempt_id": attempt_id,
+                        "error_code": "participant_withdrew",
+                        "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                    },
+                    now=now,
+                )
                 task = self._task_row(connection, row["campaign_id"], row["task_id"])
                 return _attempt(row, task)
             row = connection.execute(
@@ -747,7 +780,11 @@ class PostgresPilotStore:
                 connection,
                 campaign_id=row["campaign_id"],
                 event_type="attempt_succeeded",
-                payload={"attempt_id": attempt_id, "output_sha256": output_sha256},
+                payload={
+                    "attempt_id": attempt_id,
+                    "output_sha256": output_sha256,
+                    "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                },
                 now=now,
             )
             task = self._task_row(connection, row["campaign_id"], row["task_id"])
@@ -760,6 +797,7 @@ class PostgresPilotStore:
         worker_id: str,
         error_code: str,
         withheld: bool,
+        telemetry: ExecutionTelemetry | None,
         now: datetime,
     ) -> Attempt:
         target = "withheld" if withheld else "failed"
@@ -786,11 +824,18 @@ class PostgresPilotStore:
                 target = "failed"
                 error_code = "participant_withdrew"
                 withheld = False
+                telemetry = None
             row = connection.execute(
                 text(
                     """
                     UPDATE pilot_attempts SET status=:target,provider_completed_at=:now,
-                        error_code=:error,lease_owner=NULL,lease_expires_at=NULL
+                        safe_output=NULL,output_sha256=NULL,
+                        provider_latency_ms=:latency,outcome=:outcome,
+                        error_code=:error,
+                        model_call_count=:model_calls,
+                        model_requested_tool_call_count=:requested_calls,
+                        backend_executed_tool_call_count=:backend_calls,
+                        lease_owner=NULL,lease_expires_at=NULL
                     WHERE attempt_id=CAST(:id AS uuid) AND status='running'
                       AND lease_owner=:worker AND lease_expires_at>:now
                     RETURNING *
@@ -800,6 +845,23 @@ class PostgresPilotStore:
                     "target": target,
                     "now": now,
                     "error": error_code,
+                    "latency": (
+                        telemetry.provider_latency_ms if telemetry is not None else None
+                    ),
+                    "outcome": telemetry.outcome if telemetry is not None else None,
+                    "model_calls": (
+                        telemetry.model_call_count if telemetry is not None else None
+                    ),
+                    "requested_calls": (
+                        telemetry.model_requested_tool_call_count
+                        if telemetry is not None
+                        else None
+                    ),
+                    "backend_calls": (
+                        telemetry.backend_executed_tool_call_count
+                        if telemetry is not None
+                        else None
+                    ),
                     "id": attempt_id,
                     "worker": worker_id,
                 },
@@ -819,7 +881,11 @@ class PostgresPilotStore:
                 connection,
                 campaign_id=row["campaign_id"],
                 event_type="attempt_withheld" if withheld else "attempt_failed",
-                payload={"attempt_id": attempt_id, "error_code": error_code},
+                payload={
+                    "attempt_id": attempt_id,
+                    "error_code": error_code,
+                    "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                },
                 now=now,
             )
             task = self._task_row(connection, row["campaign_id"], row["task_id"])
@@ -985,7 +1051,11 @@ class PostgresPilotStore:
                 connection,
                 campaign_id=row["campaign_id"],
                 event_type="attempt_excluded",
-                payload={"attempt_id": attempt_id, "error_code": row["error_code"]},
+                payload={
+                    "attempt_id": attempt_id,
+                    "error_code": row["error_code"],
+                    "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                },
                 now=now,
             )
             task = self._task_row(connection, row["campaign_id"], row["task_id"])
@@ -1033,7 +1103,11 @@ class PostgresPilotStore:
                 connection,
                 campaign_id=row["campaign_id"],
                 event_type="attempt_skipped",
-                payload={"attempt_id": attempt_id},
+                payload={
+                    "attempt_id": attempt_id,
+                    "error_code": "participant_skipped",
+                    "execution_telemetry_sha256": execution_telemetry_sha256(row),
+                },
                 now=now,
             )
             task = self._task_row(connection, row["campaign_id"], row["task_id"])
@@ -1070,6 +1144,119 @@ class PostgresPilotStore:
                 payload={"withdrawal_recorded": True},
                 now=now,
             )
+
+    def purge_expired_records(
+        self,
+        *,
+        now: datetime,
+        retention_due_by: datetime,
+        withdrawal_before: datetime,
+        invite_retention_before: datetime,
+    ) -> Mapping[str, int | bool]:
+        with self.engine.begin() as connection:
+            due_participants = connection.execute(
+                text(
+                    """
+                    SELECT participant_id,campaign_id,delete_by,withdrawn_at
+                    FROM pilot_participants
+                    WHERE delete_by<=:retention_due_by
+                       OR (withdrawn_at IS NOT NULL AND withdrawn_at<=:withdrawal_before)
+                    ORDER BY campaign_id,participant_id
+                    FOR UPDATE
+                    """
+                ),
+                {
+                    "retention_due_by": retention_due_by,
+                    "withdrawal_before": withdrawal_before,
+                },
+            ).mappings().all()
+            deleted_participants = 0
+            for participant in due_participants:
+                connection.execute(
+                    text(
+                        "SELECT campaign_id FROM pilot_campaigns WHERE campaign_id=:id FOR UPDATE"
+                    ),
+                    {"id": participant["campaign_id"]},
+                ).one()
+                attempts = connection.execute(
+                    text(
+                        "SELECT * FROM pilot_attempts WHERE participant_id=:id ORDER BY attempt_id"
+                    ),
+                    {"id": participant["participant_id"]},
+                ).mappings().all()
+                campaign_attempts = connection.execute(
+                    text("SELECT * FROM pilot_attempts WHERE campaign_id=:id"),
+                    {"id": participant["campaign_id"]},
+                ).mappings().all()
+                pre_delete_binding_status = (
+                    "valid"
+                    if self._telemetry_integrity(
+                        participant["campaign_id"], campaign_attempts, connection
+                    )
+                    else "invalid"
+                )
+                deletion_reason = (
+                    "withdrawal_due"
+                    if participant["withdrawn_at"] is not None
+                    and participant["withdrawn_at"] <= withdrawal_before
+                    else "retention_due"
+                )
+                for attempt in attempts:
+                    self._append_event(
+                        connection,
+                        campaign_id=participant["campaign_id"],
+                        event_type="attempt_retention_deleted",
+                        payload={
+                            "attempt_id": str(attempt["attempt_id"]),
+                            "execution_telemetry_sha256": execution_telemetry_sha256(
+                                attempt
+                            ),
+                            "deletion_reason": deletion_reason,
+                            "worker_started": attempt["started_at"] is not None,
+                            "final_status": attempt["status"],
+                            "stable_error_code": attempt["error_code"],
+                            "pre_delete_binding_status": pre_delete_binding_status,
+                        },
+                        now=now,
+                    )
+                self._append_event(
+                    connection,
+                    campaign_id=participant["campaign_id"],
+                    event_type="participant_retention_deleted",
+                    payload={
+                        "deletion_reason": deletion_reason,
+                        "withdrawal_recorded": participant["withdrawn_at"] is not None,
+                    },
+                    now=now,
+                )
+                deleted = connection.execute(
+                    text(
+                        "DELETE FROM pilot_participants WHERE participant_id=:id RETURNING participant_id"
+                    ),
+                    {"id": participant["participant_id"]},
+                ).first()
+                deleted_participants += deleted is not None
+
+            deleted_invites = connection.execute(
+                text(
+                    """
+                    DELETE FROM pilot_invites
+                    WHERE expires_at<:now
+                      AND (used_at IS NULL OR used_at<:retention_before)
+                    RETURNING invite_id
+                    """
+                ),
+                {"now": now, "retention_before": invite_retention_before},
+            ).all()
+            connection.execute(
+                text("DELETE FROM pilot_rate_limits WHERE window_id<:window"),
+                {"window": int(now.timestamp()) // 60 - 1440},
+            )
+        return {
+            "participant_records_deleted": deleted_participants,
+            "invite_records_deleted": len(deleted_invites),
+            "secret_values_printed": False,
+        }
 
     def consume_rate_limit(
         self,
@@ -1223,9 +1410,28 @@ class PostgresPilotStore:
                 text("SELECT * FROM pilot_incidents WHERE campaign_id=:id"),
                 {"id": campaign_id},
             ).mappings().all()
+            retired_withdrawn_participants = connection.execute(
+                text(
+                    """
+                    SELECT count(*) FROM pilot_events
+                    WHERE campaign_id=:id
+                      AND event_type='participant_retention_deleted'
+                      AND payload->>'withdrawal_recorded'='true'
+                    """
+                ),
+                {"id": campaign_id},
+            ).scalar_one()
             audit_chain_valid = self._verify_audit_chain(campaign_id, connection)
             task_pack_integrity_valid = self._task_pack_integrity(
                 campaign_id, tasks, connection
+            )
+            telemetry_integrity_valid = self._telemetry_integrity(
+                campaign_id, attempts, connection
+            )
+            participant_projection_integrity_valid = (
+                self._participant_projection_integrity(
+                    campaign_id, participants, connection
+                )
             )
         qualifying_participants = {
             participant["participant_id"]
@@ -1237,6 +1443,15 @@ class PostgresPilotStore:
         feedback_rows = [
             row for row in feedback_rows if row["participant_id"] in qualifying_participants
         ]
+        qualifying_attempts = [
+            row for row in attempts if row["participant_id"] in qualifying_participants
+        ]
+        provider_execution_telemetry = summarize_provider_execution_telemetry(
+            qualifying_attempts
+        )
+        provider_execution_telemetry["append_only_event_binding_status"] = (
+            "valid" if telemetry_integrity_valid else "invalid"
+        )
         completed_by_participant = [
             sum(row["participant_id"] == participant["participant_id"] for row in feedback_rows)
             for participant in participants
@@ -1249,12 +1464,18 @@ class PostgresPilotStore:
             "eligible_participant_count": len(qualifying_participants),
             "started_participant_count": sum(p["withdrawn_at"] is None and p["status"] in {"active","completed"} for p in participants),
             "completed_participant_count": sum(p["withdrawn_at"] is None and p["status"] == "completed" for p in participants),
-            "withdrawn_participant_count": sum(p["status"] == "withdrawn" for p in participants),
+            "withdrawn_participant_count": sum(p["status"] == "withdrawn" for p in participants) + int(retired_withdrawn_participants),
             "planned_interaction_count": len(qualifying_participants) * len(tasks),
             "started_interaction_count": sum(a["participant_id"] in qualifying_participants and a["status"] != "assigned" for a in attempts),
             "answer_displayed_count": sum(a["participant_id"] in qualifying_participants and a["revealed_at"] is not None for a in attempts),
             "feedback_completed_count": len(feedback_rows),
-            "technical_failure_count": sum(a["participant_id"] in qualifying_participants and a["status"] in {"failed","withheld","excluded"} and a["error_code"] is not None and a["error_code"] != "participant_skipped" for a in attempts),
+            "technical_failure_count": sum(a["participant_id"] in qualifying_participants and a["status"] in {"failed","withheld","excluded"} and a["error_code"] is not None and a["error_code"] not in {"participant_skipped","pilot_output_safety_filter"} for a in attempts),
+            "provider_execution_telemetry": provider_execution_telemetry,
+            "telemetry_integrity_valid": telemetry_integrity_valid,
+            "participant_projection_integrity_valid": participant_projection_integrity_valid,
+            "participant_projection_binding_status": (
+                "valid" if participant_projection_integrity_valid else "invalid"
+            ),
             "dataset_count": len({row["dataset_id"] for row in feedback_rows}),
             "scenario_count": len({row["scenario"] for row in feedback_rows}),
             "dataset_counts": {dataset_id: sum(row["dataset_id"] == dataset_id for row in feedback_rows) for dataset_id in datasets},
@@ -1300,6 +1521,230 @@ class PostgresPilotStore:
                 return False
             previous = expected
         return bool(rows)
+
+    def _telemetry_integrity(
+        self,
+        campaign_id: str,
+        attempts: Sequence[Mapping[str, Any]],
+        connection: Connection,
+    ) -> bool:
+        event_rows = connection.execute(
+            text(
+                """
+                SELECT event_type,payload FROM pilot_events
+                WHERE campaign_id=:id
+                  AND event_type IN (
+                    'attempt_started','attempt_succeeded','attempt_failed',
+                    'attempt_withheld','attempt_excluded','attempt_skipped',
+                    'attempt_retention_deleted'
+                  )
+                ORDER BY sequence
+                """
+            ),
+            {"id": campaign_id},
+        ).mappings().all()
+        attempts_by_id = {str(attempt["attempt_id"]): attempt for attempt in attempts}
+        pre_delete_integrity_valid = True
+        terminal_statuses = {
+            "assigned",
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "withheld",
+            "excluded",
+            "completed",
+        }
+        retired_attempts: dict[str, Mapping[str, Any]] = {}
+        for event in event_rows:
+            if event["event_type"] != "attempt_retention_deleted":
+                continue
+            payload = dict(event["payload"])
+            attempt_id = payload.get("attempt_id")
+            digest = payload.get("execution_telemetry_sha256")
+            if (
+                not isinstance(attempt_id, str)
+                or attempt_id in retired_attempts
+                or attempt_id in attempts_by_id
+                or not isinstance(digest, str)
+                or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+                or payload.get("deletion_reason")
+                not in {"withdrawal_due", "retention_due"}
+                or payload.get("pre_delete_binding_status") not in {"valid", "invalid"}
+                or not isinstance(payload.get("worker_started"), bool)
+                or payload.get("final_status") not in terminal_statuses
+                or (
+                    payload.get("stable_error_code") is not None
+                    and (
+                        not isinstance(payload.get("stable_error_code"), str)
+                        or len(payload["stable_error_code"]) > 64
+                    )
+                )
+            ):
+                return False
+            if payload["pre_delete_binding_status"] == "invalid":
+                pre_delete_integrity_valid = False
+            retired_attempts[attempt_id] = payload
+        started_event_ids: set[str] = set()
+        latest_terminal_event: dict[str, tuple[str, Mapping[str, Any]]] = {}
+        for event in event_rows:
+            payload = dict(event["payload"])
+            attempt_id = payload.get("attempt_id")
+            if event["event_type"] == "attempt_retention_deleted":
+                continue
+            if not isinstance(attempt_id, str):
+                return False
+            if attempt_id not in attempts_by_id:
+                if attempt_id not in retired_attempts:
+                    return False
+                tombstone = retired_attempts[attempt_id]
+                digest = payload.get("execution_telemetry_sha256")
+                if digest is not None and digest != tombstone[
+                    "execution_telemetry_sha256"
+                ]:
+                    return False
+                if event["event_type"] == "attempt_started":
+                    if attempt_id in started_event_ids:
+                        return False
+                    started_event_ids.add(attempt_id)
+                else:
+                    latest_terminal_event[attempt_id] = (
+                        str(event["event_type"]),
+                        payload,
+                    )
+                continue
+            if event["event_type"] == "attempt_started":
+                if attempt_id in started_event_ids:
+                    return False
+                started_event_ids.add(attempt_id)
+                continue
+            digest = payload.get("execution_telemetry_sha256")
+            if not isinstance(digest, str) or digest != execution_telemetry_sha256(
+                attempts_by_id[attempt_id]
+            ):
+                return False
+            latest_terminal_event[attempt_id] = (str(event["event_type"]), payload)
+
+        database_started_ids = {
+            str(attempt["attempt_id"])
+            for attempt in attempts
+            if attempt["started_at"] is not None
+        }
+        if started_event_ids - set(retired_attempts) != database_started_ids:
+            return False
+
+        def terminal_matches(
+            status: str,
+            error_code: str | None,
+            event_type: str,
+            payload: Mapping[str, Any],
+        ) -> bool:
+            if event_type == "attempt_succeeded":
+                return status in {"succeeded", "completed"} and error_code is None
+            if event_type == "attempt_failed":
+                return status == "failed" and error_code == payload.get("error_code")
+            if event_type == "attempt_withheld":
+                return status == "withheld" and error_code == payload.get("error_code")
+            if event_type == "attempt_excluded":
+                return status == "excluded" and error_code == payload.get("error_code")
+            if event_type == "attempt_skipped":
+                return (
+                    status == "excluded"
+                    and error_code == "participant_skipped"
+                    and payload.get("error_code") == "participant_skipped"
+                )
+            return False
+
+        for attempt_id, tombstone in retired_attempts.items():
+            worker_started = bool(tombstone["worker_started"])
+            if worker_started != (attempt_id in started_event_ids):
+                return False
+            terminal_event = latest_terminal_event.get(attempt_id)
+            if terminal_event is None:
+                if worker_started and tombstone["final_status"] != "running":
+                    return False
+                continue
+            if not terminal_matches(
+                str(tombstone["final_status"]),
+                tombstone.get("stable_error_code"),
+                terminal_event[0],
+                terminal_event[1],
+            ):
+                return False
+
+        for attempt_id, attempt in attempts_by_id.items():
+            terminal_event = latest_terminal_event.get(attempt_id)
+            if attempt_id not in started_event_ids:
+                if terminal_event is None:
+                    continue
+                event_type, payload = terminal_event
+                if not terminal_matches(
+                    str(attempt["status"]),
+                    attempt["error_code"],
+                    event_type,
+                    payload,
+                ):
+                    return False
+                continue
+            if terminal_event is None:
+                if attempt["status"] != "running":
+                    return False
+                continue
+            event_type, payload = terminal_event
+            if not terminal_matches(
+                str(attempt["status"]),
+                attempt["error_code"],
+                event_type,
+                payload,
+            ):
+                return False
+        return pre_delete_integrity_valid
+
+    def _participant_projection_integrity(
+        self,
+        campaign_id: str,
+        participants: Sequence[Mapping[str, Any]],
+        connection: Connection,
+    ) -> bool:
+        rows = connection.execute(
+            text(
+                """
+                SELECT event_type,payload FROM pilot_events
+                WHERE campaign_id=:id
+                  AND event_type IN (
+                    'invite_redeemed','participant_withdrew',
+                    'participant_retention_deleted'
+                  )
+                """
+            ),
+            {"id": campaign_id},
+        ).mappings().all()
+        redeemed_count = sum(row["event_type"] == "invite_redeemed" for row in rows)
+        withdrawal_count = sum(
+            row["event_type"] == "participant_withdrew" for row in rows
+        )
+        retired_rows = [
+            dict(row["payload"])
+            for row in rows
+            if row["event_type"] == "participant_retention_deleted"
+        ]
+        if any(
+            payload.get("deletion_reason") not in {"withdrawal_due", "retention_due"}
+            or not isinstance(payload.get("withdrawal_recorded"), bool)
+            for payload in retired_rows
+        ):
+            return False
+        live_withdrawn = sum(
+            participant["status"] == "withdrawn" for participant in participants
+        )
+        retired_withdrawn = sum(
+            payload["withdrawal_recorded"] for payload in retired_rows
+        )
+        return (
+            redeemed_count == len(participants) + len(retired_rows)
+            and withdrawal_count == live_withdrawn + retired_withdrawn
+        )
 
     def _task_pack_integrity(
         self,
@@ -1469,6 +1914,9 @@ def _attempt(row: Mapping[str, Any], task_row: Mapping[str, Any]) -> Attempt:
         provider_latency_ms=row["provider_latency_ms"],
         outcome=row["outcome"],
         error_code=row["error_code"],
+        model_call_count=row["model_call_count"],
+        model_requested_tool_call_count=row["model_requested_tool_call_count"],
+        backend_executed_tool_call_count=row["backend_executed_tool_call_count"],
     )
 
 

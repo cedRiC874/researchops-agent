@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from pilot_staging.application import task_pack_commitment_sha256
 from pilot_staging.config import Settings
 from pilot_staging.domain import LOCKED_CANDIDATE_COMMITMENT
 
@@ -156,12 +157,97 @@ def test_contract_json_and_pack_are_parseable() -> None:
     assert supervised_pack["target_participants"] == 2
     assert supervised_pack["max_provider_runs"] == 12
     assert supervised_pack["tasks"] == pack["tasks"]
+    regression_pack = json.loads(
+        (SERVICE / "content" / "pilot_pack.supervised_v2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    review = json.loads(
+        (SERVICE / "content" / "pilot_pack.supervised_v2.review.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    public_tasks = {
+        item["task_id"]: item
+        for line in (ROOT / "evals" / "v2" / "public_tasks.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip()
+        for item in (json.loads(line),)
+    }
+    assert regression_pack["target_participants"] == 1
+    assert regression_pack["max_provider_runs"] == 6
+    regression_commitment = task_pack_commitment_sha256(regression_pack["tasks"])
+    assert re.fullmatch(r"[0-9a-f]{64}", regression_commitment)
+    assert regression_commitment != task_pack_commitment_sha256(supervised_pack["tasks"])
+    assert regression_pack["candidate_commitment_sha256"] == LOCKED_CANDIDATE_COMMITMENT
+    assert "same-participant" in regression_pack["title"]
+    regression_source_ids = {
+        item["source_task_id"] for item in regression_pack["tasks"]
+    }
+    assert len(regression_source_ids) == 6
+    assert regression_source_ids.isdisjoint(
+        {item["source_task_id"] for item in supervised_pack["tasks"]}
+    )
+    assert len({item["dataset_id"] for item in regression_pack["tasks"]}) == 3
+    assert {item["scenario"] for item in regression_pack["tasks"]} == {
+        "standard_analysis",
+        "clarification_required",
+        "safe_refusal",
+        "prompt_injection",
+        "unauthorized_resource",
+        "approval_pause",
+    }
+    for item in regression_pack["tasks"]:
+        source = public_tasks[item["source_task_id"]]
+        assert source["split"] == "public_regression"
+        assert source["lifecycle_status"] == "ready"
+        assert source["review_status"] == "internal_reviewed"
+        assert item["dataset_id"] == source["dataset_id"]
+        assert item["scenario"] == source["scenario"]
+        assert item["prompt_en"] == source["prompt"]
+        assert item["context"] == source["context"]
+        assert bool(item["prompt_zh"].strip())
+        assert item["clarification_expected"] is (
+            source["scenario"] == "clarification_required"
+        )
+    assert review["review_status"] == "internal_reviewed"
+    assert review["translation_review"] == {
+        "status": "internal_reviewed",
+        "english_prompt_exact": True,
+        "chinese_prompt_scope_preserving": True,
+    }
+    assert review["source_task_ids"] == [
+        item["source_task_id"] for item in regression_pack["tasks"]
+    ]
+    assert review["selection_policy"] == {
+        "public_regression_only": True,
+        "internal_reviewed_only": True,
+        "exclude_supervised_v1_tasks": True,
+        "dataset_and_scenario_coverage_precommitted": True,
+        "model_performance_used_for_selection": False,
+        "private_holdout_used": False,
+        "repo_local_holdout_used": False,
+    }
+    assert review["evidence_boundaries"][
+        "independent_participant_evidence_allowed"
+    ] is False
+    assert review["evidence_boundaries"]["cross_campaign_aggregation_allowed"] is False
+    composition = (SERVICE / "src" / "pilot_staging" / "composition.py").read_text(
+        encoding="utf-8"
+    )
+    assert "pilot_pack.supervised_v2.json" in composition
+    assert "pilot_pack.supervised_v1.json" not in composition
 
 
 def test_migration_has_checksum_runner_and_cascading_retention() -> None:
     migration = (SERVICE / "migrations" / "0001_pilot_staging.sql").read_text(
         encoding="utf-8"
     )
+    telemetry_migration = (
+        SERVICE / "migrations" / "0002_attempt_telemetry_checks.sql"
+    ).read_text(encoding="utf-8")
+    normalized_telemetry_migration = " ".join(telemetry_migration.split())
     runner = (SERVICE / "src/pilot_staging/migrate.py").read_text(encoding="utf-8")
     retention = (SERVICE / "src/pilot_staging/retention.py").read_text(
         encoding="utf-8"
@@ -178,6 +264,13 @@ def test_migration_has_checksum_runner_and_cascading_retention() -> None:
     ).read_text(encoding="utf-8")
     assert "ON DELETE CASCADE" in migration
     assert "pilot_events is append-only" in migration
+    for field in (
+        "model_call_count",
+        "model_requested_tool_call_count",
+        "backend_executed_tool_call_count",
+    ):
+        assert f"{field} IS NULL OR {field} >= 0" in normalized_telemetry_migration
+    assert telemetry_migration.count("VALIDATE CONSTRAINT") == 3
     assert "timedelta(days=6)" in retention
     assert "now + timedelta(days=1)" in retention
     assert "participant_id" not in re.search(

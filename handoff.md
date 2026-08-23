@@ -66,7 +66,7 @@ Eval v2 candidate 的 source bundle 覆盖整个 `src/researchops/*.py`，因此
 `main` 已包含完整 Eval v2/self-pilot、production slice 与 pilot staging；最新 Release 仍是
 v0.2.0，尚未为 Eval v2 或 pilot staging 新建 Release。
 
-## 1.1 当前 pilot-ready staging 状态（已合并、未上线）
+## 1.1 当前 pilot-ready staging 状态（main 基线已合并；最新 supervised 证据在 PR #8）
 
 独立服务位于 `services/pilot_staging/`，不把现有 localhost self-pilot 翻成
 external，也不改锁定 candidate。已实现：
@@ -105,6 +105,35 @@ Linux Docker image `sha256:24ab5d3dfae6fdbce6f9ae7e176a106f0e09c955086d03de4f730
 下进行，但不能进入正式 external claim。正式 3–5 人 campaign 前仍需托管 PostgreSQL TLS+backup/PITR、Secret Manager、镜像
 digest/部署 SHA、脱敏 telemetry/告警、外部 daily retention scheduler、回滚与伦理/IRB
 判断（如适用）。完整清单见 `services/pilot_staging/README.md`。
+
+### 最新 supervised UX regression（2026-08-23）
+
+- 当前分支：`codex/failure-telemetry`；本轮 campaign 的部署提交为
+  `fda5abfdafe1d7908af521b4595bd56bf2a796b3`。PR #8 在执行时以该 head 达到
+  `CLEAN`；post-campaign CI 修复提交为 `8dc67706e4ffec8e48057747020f8c8d82f66bb5`，
+  push/PR offline 与 pilot CI 均成功。后续 evidence-only 文档提交可以继续移动 PR
+  head。PR 尚未进入 `main` 或 Release。
+- 初始 supervised campaign 因完成页“退出”文案歧义被参与者误操作为正式 withdraw；
+  该参与者数据保持排除，campaign 已关闭，未恢复或重计。
+- 修复后用同一参与者、不同 6 道 public/internal-reviewed tasks 完成 v2 UX regression：
+  campaign `EXT-PILOT-15D41CA378E73503`，1 completed、0 withdrawn、6 terminal、
+  4 feedback、2 technical failures。
+- 两个失败均为 `controlled_failure / provider_output_incomplete`：`V2-PUB-003` 与
+  `V2-PUB-031`。Executor model requests / model-requested tool calls / backend executions
+  分别为 `9 / 3 / 2`，不能称为模型规划准确率或账户 API 总数。
+- Telemetry coverage `complete`，attempt event binding 与 participant projection binding
+  均为 `valid`，安全 incident 为 0。Campaign 已 `complete`；worker、API、Funnel 和
+  PostgreSQL container 已停止，volume 保留。Windows scheduled task
+  `ResearchOps-Pilot-Retention` 为 `Ready`，最近运行日期 2026-08-23、结果 0，下一次
+  计划日期为 2026-08-24。
+- 脱敏证据：
+  `docs/evidence/supervised-ux-regression-v2-20260823/README.md`；两个故障已分别登记在
+  同目录 `failures/`。不得使用本轮 6 题继续调 prompt，不得把同一参与者说成第二位
+  独立参与者，也不得跨 v1/v2 聚合或声称 external validation。
+- Post-campaign offline reruns 证明 Haswell/x86-v3 containment 仍依赖 hosted CPU；当前
+  branch 已固定 Nehalem/x86-v2，并将 Phase 5 当前 lineage 更新为 ANCOVA
+  `E-36034128278C`、chart `CH-6D27DA2CB989`、corpus SHA-256
+  `ffa82ef1…debf`。这不是新的模型评测，也没有修改 locked Eval v2 candidate。
 
 ## 2. 项目定位
 
@@ -496,6 +525,8 @@ DeepSeek ... 真实 smoke 尚未运行
   [docs/evidence/production-slice-linux-ci-main-v1/README.md](docs/evidence/production-slice-linux-ci-main-v1/README.md)
 - Main offline gate audit：
   [docs/evidence/main-offline-gate-20260822/README.md](docs/evidence/main-offline-gate-20260822/README.md)
+- Supervised 同一参与者 UX regression v2：
+  [docs/evidence/supervised-ux-regression-v2-20260823/README.md](docs/evidence/supervised-ux-regression-v2-20260823/README.md)
 - Production slice 服务：[services/production_slice/README.md](services/production_slice/README.md)
 - Provider 适配：[src/researchops/model_providers.py](src/researchops/model_providers.py)
 - Phase 6 Agent：[src/researchops/phase6_agent.py](src/researchops/phase6_agent.py)
@@ -510,9 +541,15 @@ DeepSeek ... 真实 smoke 尚未运行
 
 如果用户没有指定新的任务，先询问是否按以下顺序继续：
 
-1. 在本机按主持指南完成 1 名科研相关参与者的 supervised 6 题预试，不并入正式 claim；
-2. 复核去标识 summary、场次记录、撤回/跳题和 teardown，再决定是否邀请第 2 人；
-3. 继续明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets；随后推进
-   托管 staging、正式外部科研用户 pilot、第二 Provider 与 external private holdout。
+1. 阅读同一参与者 UX regression v2 的脱敏证据与两个 open diagnostics；本轮已经完成，
+   不再运行当前 v2 六题，也不得根据它们调 prompt；
+2. 若处理 `provider_output_incomplete`，只先用不含本题文本的 synthetic SDK fixtures
+   区分空白 final output 与 output-item incomplete status；任何 `src/researchops` 变更都要
+   建立新 candidate/version，不能继承旧在线成绩；
+3. 若推进正式 pilot，必须招募新的独立参与者，创建新的 campaign、任务/预算承诺和
+   operator eligibility 记录；不得把本轮同一参与者计作第二人或跨 campaign 聚合；
+4. 继续明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets；随后推进
+   托管 staging、第二 Provider 与 external private holdout。
 
-不要直接重新跑当前 4 题 holdout，也不要根据它继续调 prompt。
+不要直接重新跑当前 4 题 repo-local holdout 或本轮 v2 六题，也不要根据它们继续调
+prompt。

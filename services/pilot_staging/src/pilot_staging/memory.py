@@ -13,6 +13,7 @@ from .domain import (
     CampaignNotAvailable,
     CampaignStatus,
     CandidateResult,
+    ExecutionTelemetry,
     Feedback,
     InvalidTransition,
     InviteInvalid,
@@ -21,6 +22,7 @@ from .domain import (
     PilotTask,
     ProviderBudgetExhausted,
 )
+from .telemetry import summarize_provider_execution_telemetry
 
 
 class StaticDatasetCatalog:
@@ -38,6 +40,7 @@ class InMemoryPilotStore:
         self.campaigns: dict[str, Campaign] = {}
         self.tasks: dict[str, tuple[PilotTask, ...]] = {}
         self.invites: dict[str, dict[str, Any]] = {}
+        self.redeemed_invite_counts: dict[str, int] = {}
         self.participants: dict[str, ParticipantSession] = {}
         self.sessions: dict[str, str] = {}
         self.attempts: dict[str, Attempt] = {}
@@ -174,7 +177,10 @@ class InMemoryPilotStore:
                 raise CampaignNotAvailable("campaign 与当前部署 identity 不匹配。")
             if campaign.status not in {CampaignStatus.FROZEN, CampaignStatus.RUNNING}:
                 raise CampaignNotAvailable("campaign 当前不可加入。")
-            if sum(p.campaign_id == campaign.campaign_id for p in self.participants.values()) >= campaign.target_participants:
+            if (
+                self.redeemed_invite_counts.get(campaign.campaign_id, 0)
+                >= campaign.target_participants
+            ):
                 raise CampaignNotAvailable("campaign 参与者名额已满。")
             invite["used_at"] = now
             session = ParticipantSession(
@@ -189,6 +195,9 @@ class InMemoryPilotStore:
             )
             self.participants[participant_id] = session
             self.sessions[session_digest] = participant_id
+            self.redeemed_invite_counts[campaign.campaign_id] = (
+                self.redeemed_invite_counts.get(campaign.campaign_id, 0) + 1
+            )
             return session
 
     def get_session(
@@ -374,7 +383,12 @@ class InMemoryPilotStore:
                     provider_completed_at=now,
                     safe_output=None,
                     output_sha256=None,
+                    provider_latency_ms=None,
+                    outcome=None,
                     error_code="participant_withdrew",
+                    model_call_count=None,
+                    model_requested_tool_call_count=None,
+                    backend_executed_tool_call_count=None,
                 )
                 self.attempts[attempt_id] = discarded
                 self.leases.pop(attempt_id, None)
@@ -388,6 +402,9 @@ class InMemoryPilotStore:
                 provider_latency_ms=result.provider_latency_ms,
                 outcome=result.outcome,
                 error_code=None,
+                model_call_count=result.model_call_count,
+                model_requested_tool_call_count=result.model_requested_tool_call_count,
+                backend_executed_tool_call_count=result.backend_executed_tool_call_count,
             )
             self.attempts[attempt_id] = completed
             self.leases.pop(attempt_id, None)
@@ -400,6 +417,7 @@ class InMemoryPilotStore:
         worker_id: str,
         error_code: str,
         withheld: bool,
+        telemetry: ExecutionTelemetry | None,
         now: datetime,
     ) -> Attempt:
         with self._lock:
@@ -412,7 +430,12 @@ class InMemoryPilotStore:
                     provider_completed_at=now,
                     safe_output=None,
                     output_sha256=None,
+                    provider_latency_ms=None,
+                    outcome=None,
                     error_code="participant_withdrew",
+                    model_call_count=None,
+                    model_requested_tool_call_count=None,
+                    backend_executed_tool_call_count=None,
                 )
                 self.attempts[attempt_id] = failed
                 self.leases.pop(attempt_id, None)
@@ -421,7 +444,26 @@ class InMemoryPilotStore:
                 current,
                 status=AttemptStatus.WITHHELD if withheld else AttemptStatus.FAILED,
                 provider_completed_at=now,
+                safe_output=None,
+                output_sha256=None,
+                provider_latency_ms=(
+                    telemetry.provider_latency_ms if telemetry is not None else None
+                ),
+                outcome=telemetry.outcome if telemetry is not None else None,
                 error_code=error_code,
+                model_call_count=(
+                    telemetry.model_call_count if telemetry is not None else None
+                ),
+                model_requested_tool_call_count=(
+                    telemetry.model_requested_tool_call_count
+                    if telemetry is not None
+                    else None
+                ),
+                backend_executed_tool_call_count=(
+                    telemetry.backend_executed_tool_call_count
+                    if telemetry is not None
+                    else None
+                ),
             )
             self.attempts[attempt_id] = failed
             self.leases.pop(attempt_id, None)
@@ -629,6 +671,27 @@ class InMemoryPilotStore:
             if participant.participant_id in qualifying_participants
         ]
         incidents = [item for item in self.incidents if item["campaign_id"] == campaign_id]
+        qualifying_attempts = [
+            attempt
+            for attempt in attempts
+            if attempt.participant_id in qualifying_participants
+        ]
+        provider_execution_telemetry = summarize_provider_execution_telemetry(
+            [
+                {
+                    "started_at": attempt.started_at,
+                    "status": attempt.status.value,
+                    "error_code": attempt.error_code,
+                    "model_call_count": attempt.model_call_count,
+                    "model_requested_tool_call_count": attempt.model_requested_tool_call_count,
+                    "backend_executed_tool_call_count": attempt.backend_executed_tool_call_count,
+                }
+                for attempt in qualifying_attempts
+            ]
+        )
+        provider_execution_telemetry["append_only_event_binding_status"] = (
+            "not_applicable"
+        )
         return {
             "task_count": len(tasks),
             "eligible_participant_count": len(qualifying_participants),
@@ -660,9 +723,14 @@ class InMemoryPilotStore:
                 and a.status
                 in {AttemptStatus.FAILED, AttemptStatus.WITHHELD, AttemptStatus.EXCLUDED}
                 and a.error_code is not None
-                and a.error_code != "participant_skipped"
+                and a.error_code
+                not in {"participant_skipped", "pilot_output_safety_filter"}
                 for a in attempts
             ),
+            "provider_execution_telemetry": provider_execution_telemetry,
+            "telemetry_integrity_valid": True,
+            "participant_projection_integrity_valid": True,
+            "participant_projection_binding_status": "not_applicable",
             "dataset_count": len(
                 {attempt.task.dataset_id for attempt, _, _ in feedback_rows}
             ),

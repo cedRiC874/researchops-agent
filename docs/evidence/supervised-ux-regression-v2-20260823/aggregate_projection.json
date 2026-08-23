@@ -1,0 +1,124 @@
+{
+  "schema_version": "supervised-ux-regression-evidence-projection/1.0",
+  "campaign_id": "EXT-PILOT-15D41CA378E73503",
+  "purpose": "same_participant_ux_regression_only",
+  "campaign_status": "complete",
+  "utc_date": "2026-08-23",
+  "deployment": {
+    "git_sha": "fda5abfdafe1d7908af521b4595bd56bf2a796b3",
+    "local_docker_image_id": "sha256:c949767954bc2845be782bddbcb2fc4eb61ae88df66e285e3b6874025ad20a4d",
+    "candidate_commitment_sha256": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11",
+    "task_pack_commitment_sha256": "83363291f30c7edd62d30e88da38fcf966b7d01c5ac16d3a2964ee9571555d72"
+  },
+  "participant_counts": {
+    "eligible": 1,
+    "started": 1,
+    "completed": 1,
+    "withdrawn": 0
+  },
+  "interaction_counts": {
+    "planned": 6,
+    "started": 6,
+    "terminal": 6,
+    "answer_displayed": 4,
+    "feedback_completed": 4,
+    "technical_failure": 2
+  },
+  "attempt_status_counts": {
+    "completed": 4,
+    "excluded": 2,
+    "active_lease": 0
+  },
+  "execution_telemetry": {
+    "scope": "all_worker_started_attempts_for_consented_non_withdrawn_participant",
+    "observed_attempt_count": 6,
+    "unknown_attempt_count": 0,
+    "coverage_status": "complete",
+    "executor_model_request_sum": 9,
+    "model_requested_tool_call_sum": 3,
+    "backend_executed_tool_call_sum": 2,
+    "executor_wall_clock_elapsed_ms": {
+      "stored_field_name": "provider_latency_ms",
+      "semantic_scope": "entire_executor_loop_including_local_orchestration_and_backend_execution",
+      "observed_attempt_count": 6,
+      "p50": 6633.5,
+      "p95": 25361.5,
+      "production_sla": false,
+      "pure_provider_latency": false
+    },
+    "failure_reason_counts": {
+      "provider_output_incomplete": 2
+    }
+  },
+  "feedback_aggregate": {
+    "scope": "four_assignments_with_displayed_answer_and_submitted_feedback",
+    "count": 4,
+    "understandable_yes": 4,
+    "useful_for_next_step_yes": 4,
+    "needs_expert_review_yes": 1,
+    "obvious_problem_yes": 0,
+    "missing_information_yes": 1,
+    "safety_concern_yes": 0,
+    "confidence_counts": {
+      "medium": 2,
+      "high": 2
+    },
+    "human_review_seconds": {
+      "p50": 71.5,
+      "p95": 72.0
+    },
+    "clarification_feedback_count": 0
+  },
+  "failure_records": [
+    {
+      "diagnostic_id": "PILOT-DIAG-20260823-001",
+      "source_task_id": "V2-PUB-003",
+      "scenario": "clarification_required",
+      "terminal_status": "excluded",
+      "outcome": "controlled_failure",
+      "reason_code": "provider_output_incomplete",
+      "executor_wall_clock_elapsed_ms": 28492,
+      "executor_model_request_count": 2,
+      "model_requested_tool_call_count": 1,
+      "backend_executed_tool_call_count": 1
+    },
+    {
+      "diagnostic_id": "PILOT-DIAG-20260823-002",
+      "source_task_id": "V2-PUB-031",
+      "scenario": "unauthorized_resource",
+      "terminal_status": "excluded",
+      "outcome": "controlled_failure",
+      "reason_code": "provider_output_incomplete",
+      "executor_wall_clock_elapsed_ms": 5353,
+      "executor_model_request_count": 1,
+      "model_requested_tool_call_count": 0,
+      "backend_executed_tool_call_count": 0
+    }
+  ],
+  "integrity": {
+    "append_only_event_count": 30,
+    "attempt_telemetry_binding": "valid",
+    "participant_projection_binding": "valid",
+    "safety_incident_count": 0,
+    "scheduled_purge_confirmed": true
+  },
+  "claim_boundaries": {
+    "same_participant_retest": true,
+    "independent_participant_evidence_allowed": false,
+    "cross_campaign_aggregation_allowed": false,
+    "external_validation_claim_allowed": false,
+    "model_quality_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "professional_correctness_assessed": false
+  },
+  "redaction": {
+    "participant_identifier_included": false,
+    "session_or_invite_token_included": false,
+    "api_key_included": false,
+    "ip_or_email_included": false,
+    "free_text_notes_included": false,
+    "agent_output_included": false,
+    "provider_response_body_included": false,
+    "row_level_data_included": false
+  }
+}

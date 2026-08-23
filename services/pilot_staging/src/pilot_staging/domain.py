@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Mapping
+from typing import Any, ClassVar, Mapping
 
 
 LOCKED_CANDIDATE_COMMITMENT = (
@@ -105,6 +105,9 @@ class Attempt:
     provider_latency_ms: int | None
     outcome: str | None
     error_code: str | None
+    model_call_count: int | None = None
+    model_requested_tool_call_count: int | None = None
+    backend_executed_tool_call_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +119,52 @@ class CandidateResult:
     model_requested_tool_call_count: int | None
     backend_executed_tool_call_count: int
     error_code: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionTelemetry:
+    """Result metadata safe to persist without retaining Provider output text."""
+
+    provider_latency_ms: int | None
+    outcome: str | None
+    model_call_count: int | None
+    model_requested_tool_call_count: int | None
+    backend_executed_tool_call_count: int | None
+
+    _ALLOWED_OUTCOMES: ClassVar[frozenset[str]] = frozenset(
+        {
+            "completed",
+            "controlled_failure",
+            "waiting_approval",
+            "clarification_required",
+            "refused",
+        }
+    )
+
+    def __post_init__(self) -> None:
+        for name in (
+            "provider_latency_ms",
+            "model_call_count",
+            "model_requested_tool_call_count",
+            "backend_executed_tool_call_count",
+        ):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise ValueError(f"{name} 必须为 nullable non-negative integer。")
+        if self.outcome is not None and self.outcome not in self._ALLOWED_OUTCOMES:
+            raise ValueError("outcome 不属于 locked executor allowlist。")
+
+    @classmethod
+    def from_candidate_result(cls, result: CandidateResult) -> "ExecutionTelemetry":
+        return cls(
+            provider_latency_ms=result.provider_latency_ms,
+            outcome=result.outcome,
+            model_call_count=result.model_call_count,
+            model_requested_tool_call_count=result.model_requested_tool_call_count,
+            backend_executed_tool_call_count=result.backend_executed_tool_call_count,
+        )
 
 
 @dataclass(frozen=True, slots=True)

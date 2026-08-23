@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import threading
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -57,10 +59,16 @@ class FakeExecutor:
         *,
         forced_outcome: str | None = None,
         error_code: str | None = None,
+        model_call_count: int | None = 1,
+        model_requested_tool_call_count: int | None = 1,
+        backend_executed_tool_call_count: int = 1,
     ) -> None:
         self.output = output
         self.forced_outcome = forced_outcome
         self.error_code = error_code
+        self.model_call_count = model_call_count
+        self.model_requested_tool_call_count = model_requested_tool_call_count
+        self.backend_executed_tool_call_count = backend_executed_tool_call_count
         self.calls = 0
 
     def execute(self, task):
@@ -73,10 +81,39 @@ class FakeExecutor:
                 else "completed"
             ),
             provider_latency_ms=1250,
-            model_call_count=1,
+            model_call_count=self.model_call_count,
+            model_requested_tool_call_count=self.model_requested_tool_call_count,
+            backend_executed_tool_call_count=self.backend_executed_tool_call_count,
+            error_code=self.error_code,
+        )
+
+
+class RaisingExecutor:
+    def execute(self, task):
+        raise RuntimeError("SECRET_RAW_PROVIDER_BODY must never be persisted")
+
+
+class MalformedExecutor:
+    def execute(self, task):
+        return None
+
+
+class BlockingExecutor:
+    def __init__(self) -> None:
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def execute(self, task):
+        self.started.set()
+        if not self.release.wait(timeout=5):
+            raise RuntimeError("blocking test timed out")
+        return CandidateResult(
+            final_output="## English\nSafe aggregate answer.\n\n## 中文\n安全聚合回答。",
+            outcome="completed",
+            provider_latency_ms=900,
+            model_call_count=2,
             model_requested_tool_call_count=1,
             backend_executed_tool_call_count=1,
-            error_code=self.error_code,
         )
 
 
@@ -163,6 +200,9 @@ def build_system(
     output: str | None = None,
     forced_outcome: str | None = None,
     error_code: str | None = None,
+    model_call_count: int | None = 1,
+    model_requested_tool_call_count: int | None = 1,
+    backend_executed_tool_call_count: int = 1,
 ):
     clock = Clock()
     store = InMemoryPilotStore()
@@ -179,6 +219,9 @@ def build_system(
         output or "## English\nSafe answer.\n\n## 中文\n安全回答。",
         forced_outcome=forced_outcome,
         error_code=error_code,
+        model_call_count=model_call_count,
+        model_requested_tool_call_count=model_requested_tool_call_count,
+        backend_executed_tool_call_count=backend_executed_tool_call_count,
     )
     worker = PilotWorker(
         store=store,
@@ -255,6 +298,44 @@ def test_invite_is_one_time_and_consent_is_required() -> None:
     assert getattr(no_consent.value, "code", None) == "consent_required"
 
 
+def test_participant_cap_is_lifetime_even_after_projection_row_is_removed() -> None:
+    app, store, _, _, _, _ = build_system()
+    first_campaign = app.create_campaign(campaign_payload(target=3, budget=18))[
+        "campaign_id"
+    ]
+    app.freeze_campaign(first_campaign)
+    auth_rows = [
+        app.exchange_invite(app.create_invite(first_campaign)["invite_token"])
+        for _ in range(3)
+    ]
+    first_auth = auth_rows[0]
+    participant_id = next(
+        participant_id
+        for participant_id, session in store.participants.items()
+        if session.session_instance_id == first_auth["session_instance_id"]
+    )
+    session_digest = next(
+        digest for digest, value in store.sessions.items() if value == participant_id
+    )
+    del store.sessions[session_digest]
+    del store.participants[participant_id]
+
+    replacement_invite = app.create_invite(first_campaign)
+    with pytest.raises(Exception) as cap_reached:
+        app.exchange_invite(replacement_invite["invite_token"])
+    assert getattr(cap_reached.value, "code", None) == "campaign_not_available"
+    assert store.redeemed_invite_counts[first_campaign] == 3
+
+    new_campaign = app.create_campaign(campaign_payload(target=3, budget=18))[
+        "campaign_id"
+    ]
+    app.freeze_campaign(new_campaign)
+    replacement = app.exchange_invite(
+        app.create_invite(new_campaign)["invite_token"]
+    )
+    assert replacement["campaign"]["execution_environment"] == "local"
+
+
 def test_online_kill_switch_blocks_before_queue() -> None:
     app, store, _, _, _, _ = build_system(online=False)
     campaign_id = create_frozen_campaign(app)
@@ -285,6 +366,26 @@ def test_output_dlp_withholds_and_pauses_campaign() -> None:
     withheld = worker.process_one()
     assert withheld is not None and withheld.status.value == "withheld"
     assert store.campaigns[campaign_id].status is CampaignStatus.PAUSED
+    assert withheld.safe_output is None
+    assert withheld.output_sha256 is None
+    assert withheld.provider_latency_ms == 1250
+    assert withheld.model_call_count == 1
+    assert withheld.model_requested_tool_call_count == 1
+    assert withheld.backend_executed_tool_call_count == 1
+    telemetry = app.summary(campaign_id)["provider_execution_telemetry"]
+    assert telemetry["safety_withheld_attempt_count"] == 1
+    assert app.summary(campaign_id)["interactions"]["technical_failure_count"] == 0
+    assert telemetry["executor_model_call_count"]["observed_sum"] == 1
+    assert telemetry["telemetry_coverage_status"] == "complete"
+    serialized = json.dumps(
+        {
+            "attempt": repr(withheld),
+            "incidents": store.incidents,
+            "summary": app.summary(campaign_id),
+        },
+        default=str,
+    )
+    assert "researcher@example.org" not in serialized
     assert store.incidents[0]["status"] == "unresolved"
     incidents = app.list_incidents(campaign_id)
     assert len(incidents["incidents"]) == 1
@@ -303,6 +404,12 @@ def test_summary_is_fail_closed_and_never_claims_correctness() -> None:
     assert "eligible_participant_count_below_minimum" in summary["external_validation_claim_reason_codes"]
     assert summary["professional_correctness"]["claim_allowed"] is False
     assert summary["machine_contract"]["model_planning_accuracy_claim_allowed"] is False
+    telemetry = summary["provider_execution_telemetry"]
+    assert telemetry["worker_started_attempt_count"] == 0
+    assert telemetry["telemetry_coverage_status"] == "no_attempts"
+    assert telemetry["executor_model_call_count"]["observed_sum"] is None
+    assert telemetry["executor_model_call_count"]["coverage_rate"] is None
+    assert telemetry["upstream_api_request_total_claim_allowed"] is False
     assert summary["timing"]["latency_is_sla"] is False
 
 
@@ -312,11 +419,21 @@ def test_api_cookie_csrf_isolation_and_markdown_ui() -> None:
     assert response.status_code == 200
     assert "type=\"password\"" in response.text
     assert 'id="api-key"' not in response.text
+    assert "现在可以直接关闭此页面；无需点击任何按钮" in response.text
+    assert 'id="withdraw-complete"' in response.text
+    assert "撤回参与并排除已提交反馈" in response.text
+    assert "退出本次 Pilot" not in response.text
     script = client.get("/pilot/app.js").text
     assert "innerHTML=markdown" in script
     assert "researchops_pilot_csrf" in script
     assert "pollAttempt" in script
     assert "监督式预试运行" in script
+    assert (
+        "if(data.status==='complete'){show('login',false);show('consent',false);"
+        "show('task',false);show('complete');show('withdraw',false);return;}"
+    ) in script
+    assert "这不是“完成”或“关闭页面”" in script
+    assert "$('withdraw-complete').addEventListener('click',withdraw)" in script
 
     created = client.post("/v1/admin/campaigns", headers=ADMIN, json=campaign_payload())
     assert created.status_code == 200
@@ -447,7 +564,71 @@ def test_withdrawn_feedback_never_qualifies_for_claim_gate() -> None:
     assert summary["cohort"]["eligible_external_participant_count"] == 0
     assert summary["cohort"]["withdrawn_participant_count"] == 1
     assert summary["interactions"]["feedback_completed_count"] == 0
+    telemetry = summary["provider_execution_telemetry"]
+    assert telemetry["withdrawn_participant_attempts_included"] is False
+    assert telemetry["worker_started_attempt_count"] == 0
+    assert telemetry["executor_model_call_count"]["observed_sum"] is None
     assert summary["external_validation_claim_allowed"] is False
+
+
+def test_withdrawal_excludes_usability_but_preserves_safety_gate() -> None:
+    app, _, worker, _, _, _ = build_system()
+    campaign_id = create_frozen_campaign(app)
+    auth, session = exchange_and_consent(app, campaign_id)
+    attempt_id = app.state(session)["attempt"]["attempt_id"]
+    app.reveal(session, attempt_id)
+    worker.process_one()
+    app.reveal(session, attempt_id)
+    safety_feedback = feedback_payload()
+    safety_feedback["safety_concern"] = True
+    app.record_feedback(session, attempt_id, safety_feedback)
+    app.withdraw(session, auth["session_token"])
+
+    summary = app.summary(campaign_id)
+    assert summary["interactions"]["feedback_completed_count"] == 0
+    assert summary["provider_execution_telemetry"][
+        "worker_started_attempt_count"
+    ] == 0
+    assert summary["safety"]["unresolved_incident_count"] == 1
+    assert "unresolved_safety_incident" in summary[
+        "external_validation_claim_reason_codes"
+    ]
+    assert len(app.list_incidents(campaign_id)["incidents"]) == 1
+
+
+def test_withdrawal_during_execution_discards_late_telemetry() -> None:
+    app, store, _, _, clock, _ = build_system()
+    campaign_id = create_frozen_campaign(app)
+    auth, session = exchange_and_consent(app, campaign_id)
+    attempt_id = app.state(session)["attempt"]["attempt_id"]
+    app.reveal(session, attempt_id)
+    executor = BlockingExecutor()
+    worker = PilotWorker(
+        store=store,
+        executor=executor,
+        worker_id="worker-late-withdrawal",
+        clock=clock,
+    )
+    result: list[object] = []
+    thread = threading.Thread(target=lambda: result.append(worker.process_one()))
+    thread.start()
+    assert executor.started.wait(timeout=2)
+    app.withdraw(session, auth["session_token"])
+    executor.release.set()
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    assert len(result) == 1
+    discarded = store.attempts[attempt_id]
+    assert discarded.error_code == "participant_withdrew"
+    assert discarded.safe_output is None
+    assert discarded.output_sha256 is None
+    assert discarded.provider_latency_ms is None
+    assert discarded.outcome is None
+    assert discarded.model_call_count is None
+    assert discarded.model_requested_tool_call_count is None
+    assert discarded.backend_executed_tool_call_count is None
+    telemetry = app.summary(campaign_id)["provider_execution_telemetry"]
+    assert telemetry["worker_started_attempt_count"] == 0
 
 
 def test_withdrawal_wins_over_late_feedback_and_skip() -> None:
@@ -515,11 +696,146 @@ def test_provider_failure_can_be_excluded_without_rerun() -> None:
     app.reveal(session, attempt_id)
     failed = worker.process_one()
     assert failed is not None and failed.status.value == "failed"
+    assert failed.safe_output is None
+    assert failed.output_sha256 is None
+    assert failed.provider_latency_ms == 1250
+    assert failed.outcome == "completed"
+    assert failed.model_call_count == 1
+    assert failed.model_requested_tool_call_count == 1
+    assert failed.backend_executed_tool_call_count == 1
     excluded = app.exclude_failed_attempt(session, attempt_id)
     assert excluded["status"] == "excluded"
     assert excluded["next"]["attempt"]["sequence"] == 2
     assert executor.calls == 1
     assert store.campaign_summary_data(campaign_id)["technical_failure_count"] == 1
+    persisted = store.attempts[attempt_id]
+    assert persisted.model_call_count == 1
+    telemetry = app.summary(campaign_id)["provider_execution_telemetry"]
+    assert telemetry["worker_started_attempt_count"] == 1
+    assert telemetry["technical_failure_attempt_count"] == 1
+    assert telemetry["failure_reason_counts"] == [
+        {"reason_code": "provider_timeout", "attempt_count": 1}
+    ]
+    for name in (
+        "executor_model_call_count",
+        "model_requested_tool_call_count",
+        "backend_executed_tool_call_count",
+    ):
+        assert telemetry[name] == {
+            "observed_sum": 1,
+            "observed_attempt_count": 1,
+            "unknown_attempt_count": 0,
+            "coverage_rate": 1.0,
+        }
+
+
+def test_exception_and_explicit_zero_are_not_conflated() -> None:
+    app, store, _, _, clock, _ = build_system()
+    campaign_id = create_frozen_campaign(app)
+    _, session = exchange_and_consent(app, campaign_id)
+    attempt_id = app.state(session)["attempt"]["attempt_id"]
+    app.reveal(session, attempt_id)
+    raising_worker = PilotWorker(
+        store=store,
+        executor=RaisingExecutor(),
+        worker_id="worker-raising",
+        clock=clock,
+    )
+    failed = raising_worker.process_one()
+    assert failed is not None and failed.error_code == "provider_failed"
+    assert failed.provider_latency_ms is None
+    assert failed.outcome is None
+    assert failed.model_call_count is None
+    assert failed.model_requested_tool_call_count is None
+    assert failed.backend_executed_tool_call_count is None
+    assert "SECRET_RAW_PROVIDER_BODY" not in repr(failed)
+    telemetry = app.summary(campaign_id)["provider_execution_telemetry"]
+    assert telemetry["telemetry_coverage_status"] == "partial"
+    for name in (
+        "executor_model_call_count",
+        "model_requested_tool_call_count",
+        "backend_executed_tool_call_count",
+    ):
+        assert telemetry[name]["observed_sum"] is None
+        assert telemetry[name]["observed_attempt_count"] == 0
+        assert telemetry[name]["unknown_attempt_count"] == 1
+        assert telemetry[name]["coverage_rate"] == 0.0
+
+    app2, _, worker2, _, _, _ = build_system(
+        output="",
+        error_code="provider_output_incomplete",
+        model_call_count=None,
+        model_requested_tool_call_count=None,
+        backend_executed_tool_call_count=0,
+    )
+    campaign2 = create_frozen_campaign(app2)
+    _, session2 = exchange_and_consent(app2, campaign2)
+    second_id = app2.state(session2)["attempt"]["attempt_id"]
+    app2.reveal(session2, second_id)
+    partial = worker2.process_one()
+    assert partial is not None
+    assert partial.model_call_count is None
+    assert partial.model_requested_tool_call_count is None
+    assert partial.backend_executed_tool_call_count == 0
+    partial_summary = app2.summary(campaign2)["provider_execution_telemetry"]
+    assert partial_summary["backend_executed_tool_call_count"] == {
+        "observed_sum": 0,
+        "observed_attempt_count": 1,
+        "unknown_attempt_count": 0,
+        "coverage_rate": 1.0,
+    }
+
+    app3, _, worker3, _, _, _ = build_system(model_call_count=-1)
+    campaign3 = create_frozen_campaign(app3)
+    _, session3 = exchange_and_consent(app3, campaign3)
+    third_id = app3.state(session3)["attempt"]["attempt_id"]
+    app3.reveal(session3, third_id)
+    invalid_success = worker3.process_one()
+    assert invalid_success is not None
+    assert invalid_success.status.value == "failed"
+    assert invalid_success.error_code == "provider_failed"
+    assert invalid_success.model_call_count is None
+
+    app4, store4, worker4, _, _, _ = build_system(
+        output="Contact second@example.org", model_call_count=-1
+    )
+    campaign4 = create_frozen_campaign(app4)
+    _, session4 = exchange_and_consent(app4, campaign4)
+    fourth_id = app4.state(session4)["attempt"]["attempt_id"]
+    app4.reveal(session4, fourth_id)
+    invalid_dlp = worker4.process_one()
+    assert invalid_dlp is not None
+    assert invalid_dlp.status.value == "withheld"
+    assert invalid_dlp.model_call_count is None
+    assert store4.campaigns[campaign4].status is CampaignStatus.PAUSED
+
+    app5, _, worker5, _, _, _ = build_system(
+        output="", error_code="unsafe error SECRET_RAW_PROVIDER_BODY"
+    )
+    campaign5 = create_frozen_campaign(app5)
+    _, session5 = exchange_and_consent(app5, campaign5)
+    fifth_id = app5.state(session5)["attempt"]["attempt_id"]
+    app5.reveal(session5, fifth_id)
+    sanitized_error = worker5.process_one()
+    assert sanitized_error is not None
+    assert sanitized_error.error_code == "provider_failed"
+    assert "SECRET_RAW_PROVIDER_BODY" not in repr(sanitized_error)
+
+    app6, store6, _, _, clock6, _ = build_system()
+    campaign6 = create_frozen_campaign(app6)
+    _, session6 = exchange_and_consent(app6, campaign6)
+    sixth_id = app6.state(session6)["attempt"]["attempt_id"]
+    app6.reveal(session6, sixth_id)
+    malformed_worker = PilotWorker(
+        store=store6,
+        executor=MalformedExecutor(),
+        worker_id="worker-malformed-result",
+        clock=clock6,
+    )
+    malformed = malformed_worker.process_one()
+    assert malformed is not None
+    assert malformed.error_code == "provider_failed"
+    assert malformed.model_call_count is None
 
 
 def test_participant_can_skip_before_or_after_reveal_without_a_rerun() -> None:

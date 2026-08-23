@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import create_engine, text
-
 from .config import Settings
+from .postgres import PostgresPilotStore
 
 
 def purge_expired(settings: Settings | None = None) -> dict[str, int | bool]:
@@ -14,47 +13,19 @@ def purge_expired(settings: Settings | None = None) -> dict[str, int | bool]:
     # of headroom so a record is deleted no later than day 7/day 90.
     withdrawal_before = now - timedelta(days=6)
     retention_due_by = now + timedelta(days=1)
-    engine = create_engine(config.database_url(), pool_pre_ping=True)
+    store = PostgresPilotStore(config.database_url())
     try:
-        with engine.begin() as connection:
-            deleted_participants = connection.execute(
-                text(
-                    """
-                    DELETE FROM pilot_participants
-                    WHERE (delete_by<=:retention_due_by)
-                       OR (withdrawn_at IS NOT NULL AND withdrawn_at<=:withdrawal_before)
-                    RETURNING participant_id
-                    """
-                ),
-                {
-                    "retention_due_by": retention_due_by,
-                    "withdrawal_before": withdrawal_before,
-                },
-            ).all()
-            deleted_invites = connection.execute(
-                text(
-                    """
-                    DELETE FROM pilot_invites
-                    WHERE expires_at<:now AND (used_at IS NULL OR used_at<:retention_before)
-                    RETURNING invite_id
-                    """
-                ),
-                {
-                    "now": now,
-                    "retention_before": now - timedelta(days=config.retention_days),
-                },
-            ).all()
-            connection.execute(
-                text("DELETE FROM pilot_rate_limits WHERE window_id<:window"),
-                {"window": int(now.timestamp()) // 60 - 1440},
+        return dict(
+            store.purge_expired_records(
+                now=now,
+                retention_due_by=retention_due_by,
+                withdrawal_before=withdrawal_before,
+                invite_retention_before=now
+                - timedelta(days=config.retention_days),
             )
-        return {
-            "participant_records_deleted": len(deleted_participants),
-            "invite_records_deleted": len(deleted_invites),
-            "secret_values_printed": False,
-        }
+        )
     finally:
-        engine.dispose()
+        store.close()
 
 
 def main() -> None:

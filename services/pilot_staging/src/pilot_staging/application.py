@@ -25,6 +25,7 @@ from .domain import (
     CandidateResult,
     ConsentRequired,
     CsrfInvalid,
+    ExecutionTelemetry,
     Feedback,
     InvalidRequest,
     InvalidTransition,
@@ -39,10 +40,25 @@ from .domain import (
     public_attempt,
 )
 from .ports import CandidateExecutor, DatasetCatalog, PilotStore
+from .telemetry import validate_provider_execution_telemetry
 
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_LOCKED_PROVIDER_ERROR_CODES = frozenset(
+    {
+        "output_limit_suspected",
+        "provider_authentication_failed",
+        "provider_connection_error",
+        "provider_failed",
+        "provider_output_incomplete",
+        "provider_output_not_completed",
+        "provider_rate_limited",
+        "provider_runtime_error",
+        "provider_server_error",
+        "provider_timeout",
+    }
+)
 _SAFE_TASK_ID = re.compile(r"^PILOT-TASK-[A-Z0-9-]{3,48}$")
 _SCENARIOS = frozenset(
     {
@@ -634,7 +650,16 @@ class PilotApplication:
             blockers.append("unresolved_safety_incident")
         if int(raw["confirmed_incident_count"]) > 0:
             blockers.append("confirmed_safety_incident")
-        if not raw.get("audit_chain_valid") or not raw.get("task_pack_integrity_valid"):
+        if (
+            not raw.get("audit_chain_valid")
+            or not raw.get("task_pack_integrity_valid")
+            or not raw.get("telemetry_integrity_valid")
+            or not raw.get("participant_projection_integrity_valid")
+            or raw["provider_execution_telemetry"].get(
+                "append_only_event_binding_status"
+            )
+            != "valid"
+        ):
             blockers.append("artifact_integrity_invalid")
         if campaign.deployment_git_sha is None or campaign.deployment_image_digest is None:
             blockers.append("mixed_build_or_candidate_versions")
@@ -658,8 +683,10 @@ class PilotApplication:
         )
         latencies = [int(v) for v in raw["provider_latencies_ms"]]
         review_times = [int(v) for v in raw["human_review_seconds"]]
+        provider_execution_telemetry = dict(raw["provider_execution_telemetry"])
+        validate_provider_execution_telemetry(provider_execution_telemetry)
         return {
-            "schema_version": "external-pilot-summary/1.0",
+            "schema_version": "external-pilot-summary/1.1",
             "campaign_id": campaign.campaign_id,
             "status": campaign.status.value,
             "execution_environment": campaign.execution_environment,
@@ -716,6 +743,7 @@ class PilotApplication:
                 "seeded_count": feedback_completed,
                 "exploratory_count": 0,
             },
+            "provider_execution_telemetry": provider_execution_telemetry,
             "coverage": {
                 "dataset_count": int(raw["dataset_count"]),
                 "dataset_counts": dataset_counts,
@@ -758,6 +786,9 @@ class PilotApplication:
                 "participant_level_max_days": self._retention_days,
                 "withdrawal_deletion_sla_days": 7,
                 "scheduled_purge_confirmed": self._retention_schedule_confirmed,
+                "participant_projection_binding_status": raw[
+                    "participant_projection_binding_status"
+                ],
             },
             "boundaries": [
                 "professional_correctness_not_assessed",
@@ -858,33 +889,14 @@ class PilotWorker:
         if attempt is None:
             return None
         try:
-            result = self._executor.execute(attempt.task)
-            if result.error_code is not None or not result.final_output.strip():
-                return self._store.fail_attempt(
-                    attempt_id=attempt.attempt_id,
-                    worker_id=self._worker_id,
-                    error_code=result.error_code or "provider_output_incomplete",
-                    withheld=False,
-                    now=self._clock(),
-                )
-            _reject_prohibited_text(
-                result.final_output, label="provider_output", row_dump_check=True
-            )
-            digest = hashlib.sha256(result.final_output.encode("utf-8")).hexdigest()
-            return self._store.complete_attempt(
-                attempt_id=attempt.attempt_id,
-                worker_id=self._worker_id,
-                result=result,
-                safe_output=result.final_output,
-                output_sha256=digest,
-                now=self._clock(),
-            )
+            result = _validated_candidate_result(self._executor.execute(attempt.task))
         except ProhibitedDataDetected:
             return self._store.fail_attempt(
                 attempt_id=attempt.attempt_id,
                 worker_id=self._worker_id,
                 error_code="pilot_output_safety_filter",
                 withheld=True,
+                telemetry=None,
                 now=self._clock(),
             )
         except Exception:
@@ -893,8 +905,67 @@ class PilotWorker:
                 worker_id=self._worker_id,
                 error_code="provider_failed",
                 withheld=False,
+                telemetry=None,
                 now=self._clock(),
             )
+
+        if result.error_code is not None or not result.final_output.strip():
+            try:
+                telemetry = ExecutionTelemetry.from_candidate_result(result)
+            except ValueError:
+                telemetry = None
+                error_code = "provider_failed"
+            else:
+                error_code = _stable_failure_code(
+                    result.error_code or "provider_output_incomplete"
+                )
+            return self._store.fail_attempt(
+                attempt_id=attempt.attempt_id,
+                worker_id=self._worker_id,
+                error_code=error_code,
+                withheld=False,
+                telemetry=telemetry,
+                now=self._clock(),
+            )
+
+        try:
+            _reject_prohibited_text(
+                result.final_output, label="provider_output", row_dump_check=True
+            )
+        except ProhibitedDataDetected:
+            try:
+                telemetry = ExecutionTelemetry.from_candidate_result(result)
+            except ValueError:
+                telemetry = None
+            return self._store.fail_attempt(
+                attempt_id=attempt.attempt_id,
+                worker_id=self._worker_id,
+                error_code="pilot_output_safety_filter",
+                withheld=True,
+                telemetry=telemetry,
+                now=self._clock(),
+            )
+
+        try:
+            ExecutionTelemetry.from_candidate_result(result)
+        except ValueError:
+            return self._store.fail_attempt(
+                attempt_id=attempt.attempt_id,
+                worker_id=self._worker_id,
+                error_code="provider_failed",
+                withheld=False,
+                telemetry=None,
+                now=self._clock(),
+            )
+        digest = hashlib.sha256(result.final_output.encode("utf-8")).hexdigest()
+        return self._store.complete_attempt(
+            attempt_id=attempt.attempt_id,
+            worker_id=self._worker_id,
+            result=result,
+            safe_output=result.final_output,
+            output_sha256=digest,
+            now=self._clock(),
+        )
 
 
 def _parse_task(value: Any, sequence: int) -> PilotTask:
@@ -1094,6 +1165,22 @@ def _bounded_string(
     if (not allow_empty and not normalized) or len(normalized) > maximum:
         raise InvalidRequest(f"{label} 长度无效。")
     return normalized
+
+
+def _stable_failure_code(value: Any) -> str:
+    if isinstance(value, str) and value in _LOCKED_PROVIDER_ERROR_CODES:
+        return value
+    return "provider_failed"
+
+
+def _validated_candidate_result(value: Any) -> CandidateResult:
+    if not isinstance(value, CandidateResult):
+        raise ValueError("executor 必须返回 CandidateResult。")
+    if not isinstance(value.final_output, str):
+        raise ValueError("CandidateResult.final_output 必须为 string。")
+    if value.error_code is not None and not isinstance(value.error_code, str):
+        raise ValueError("CandidateResult.error_code 必须为 nullable string。")
+    return value
 
 
 def _safe_id(value: Any, label: str) -> str:

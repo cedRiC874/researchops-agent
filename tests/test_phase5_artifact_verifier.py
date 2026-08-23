@@ -39,11 +39,13 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
         self.assertNotIn(b"\r\n", corpus)
         self.assertEqual(
             hashlib.sha256(corpus).hexdigest(),
-            "dd591862542be96d1da095d7569d31716ad66025f66e21e45b81e30dce8f8e67",
+            "ffa82ef11ff3e030a9b62cfa7801deab4930e131f180ab67539e774a7d88debf",
         )
-        self.assertEqual(corpus.count(b"E-8EDFAE7ED8F0"), 19)
+        self.assertEqual(corpus.count(b"E-36034128278C"), 19)
         self.assertEqual(corpus.count(b"E-E5D03B8E6EB8"), 14)
-        self.assertEqual(corpus.count(b"CH-11F349FABC44"), 4)
+        self.assertEqual(corpus.count(b"CH-6D27DA2CB989"), 4)
+        self.assertNotIn(b"E-8EDFAE7ED8F0", corpus)
+        self.assertNotIn(b"CH-11F349FABC44", corpus)
         self.assertNotIn(b"E-7C87BB6C88EB", corpus)
         self.assertNotIn(b"E-B93CD9DC7751", corpus)
         self.assertNotIn(b"CH-F675F0E546C6", corpus)
@@ -136,6 +138,17 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
             encoding="utf-8"
         )
 
+        self.assertIn("OPENBLAS_CORETYPE: NEHALEM", workflow)
+        self.assertIn('OPENBLAS_NUM_THREADS: "1"', workflow)
+        self.assertIn('OMP_NUM_THREADS: "1"', workflow)
+        self.assertIn('MKL_NUM_THREADS: "1"', workflow)
+        self.assertIn('NUMEXPR_NUM_THREADS: "1"', workflow)
+        self.assertIn('NPY_DISABLE_CPU_FEATURES: "X86_V3,X86_V4"', workflow)
+        self.assertIn("phase5_blas_kernel_mismatch", workflow)
+        self.assertIn("Core:\\s*Nehalem", workflow)
+        self.assertIn("phase5_numeric_identity_mismatch", workflow)
+        self.assertIn("Canonical x86-v2 ANCOVA evidence identity verified", workflow)
+        self.assertIn("E-36034128278C", workflow)
         self.assertIn("--quality-profile phase5-ci-v1", workflow)
         self.assertIn("$evaluationExitCode = $LASTEXITCODE", workflow)
         self.assertIn("$verificationExitCode = $LASTEXITCODE", workflow)

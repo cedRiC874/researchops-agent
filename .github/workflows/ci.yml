@@ -12,6 +12,16 @@ jobs:
   offline-evaluation:
     runs-on: windows-latest
     timeout-minutes: 20
+    env:
+      # Evidence IDs bind numerical results. Pin the lowest supported numerical
+      # baseline shared by hosted runners so CPU dispatch cannot perturb the
+      # final floating-point bits used by the Phase 5 identity hash.
+      OPENBLAS_CORETYPE: NEHALEM
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      NPY_DISABLE_CPU_FEATURES: "X86_V3,X86_V4"
 
     steps:
       - name: Check out repository
@@ -29,6 +39,26 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.lock
+
+      - name: Verify deterministic numerical baseline
+        shell: pwsh
+        run: |
+          $env:OPENBLAS_VERBOSE = "2"
+          $probe = (& python -c "import numpy as np; np.linalg.svd(np.eye(4))" 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $probe -notmatch '(?im)^Core:\s*Nehalem\s*$') {
+            Write-Output "::error title=phase5_blas_kernel_mismatch::The pinned Nehalem OpenBLAS kernel was not activated."
+            exit 1
+          }
+          Write-Output "OpenBLAS core verified: Nehalem"
+          Remove-Item Env:OPENBLAS_VERBOSE
+
+          $env:PYTHONPATH = "src"
+          $identity = (& python -c "import json,pandas as pd; from pathlib import Path; from researchops.analysis_tools import run_ancova; from researchops.contracts import ResearchDesign; from researchops.data_quality import profile_csv; p=Path('data/synthetic_trial.csv'); f=pd.read_csv(p,encoding='utf-8-sig',low_memory=False); d=ResearchDesign.from_dict(json.loads(Path('data/synthetic_trial_design.json').read_text(encoding='utf-8'))); print(run_ancova(f,profile_csv(p),d).evidence_id)" | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $identity -ne "E-36034128278C") {
+            Write-Output "::error title=phase5_numeric_identity_mismatch::The canonical ANCOVA evidence identity was not reproduced."
+            exit 1
+          }
+          Write-Output "Canonical x86-v2 ANCOVA evidence identity verified."
 
       - name: Validate evaluation contracts
         shell: pwsh
