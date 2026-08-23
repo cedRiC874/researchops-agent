@@ -418,7 +418,7 @@ function Get-PilotContainerImageId {
 
 function Get-PilotLocalImageId {
     param([Parameter(Mandatory = $true)][string]$Service)
-    if ($Service -notin @("migrate", "api", "worker")) {
+    if ($Service -notin @("migrate", "api", "worker", "retention")) {
         throw "Unsupported pilot image service."
     }
     $imageName = "researchops-pilot-staging-$Service"
@@ -430,16 +430,27 @@ function Get-PilotLocalImageId {
 }
 
 function Prepare-PilotApplicationImages {
-    Invoke-PilotCompose -Arguments @(
-        "--profile", "online", "build", "migrate", "api", "worker"
-    )
+    # Compose assigns a different local tag to every service even though all four use
+    # the same Dockerfile and build context. Build exactly once, then bind every
+    # application service tag to that one immutable image ID. A later `up` omits
+    # `--build`, so Compose cannot silently replace any alias.
+    $null = Invoke-PilotCompose -Arguments @("build", "migrate")
+    $sourceImageName = "researchops-pilot-staging-migrate"
+    foreach ($service in @("api", "worker", "retention")) {
+        $targetImageName = "researchops-pilot-staging-$service"
+        & docker image tag $sourceImageName $targetImageName
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to bind pilot $service to the immutable migrate image."
+        }
+    }
     $images = @(
         (Get-PilotLocalImageId "migrate"),
         (Get-PilotLocalImageId "api"),
-        (Get-PilotLocalImageId "worker")
+        (Get-PilotLocalImageId "worker"),
+        (Get-PilotLocalImageId "retention")
     )
     if (@($images | Select-Object -Unique).Count -ne 1) {
-        throw "Pilot migrate/API/worker images do not share one immutable image ID."
+        throw "Pilot application services do not share one immutable image ID."
     }
     return $images[0]
 }

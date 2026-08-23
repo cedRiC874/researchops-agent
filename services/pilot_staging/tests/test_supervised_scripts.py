@@ -42,6 +42,11 @@ def test_start_is_explicit_online_foreground_by_default_and_identity_bound() -> 
     assert "Get-CleanDeploymentGitSha" in start
     assert "Set-PilotEnvironmentValuesAtomic" in start
     assert "Prepare-PilotApplicationImages" in start
+    assert '$null = Invoke-PilotCompose -Arguments @("build", "migrate")' in common
+    assert '@("api", "worker", "retention")' in common
+    assert "docker image tag $sourceImageName $targetImageName" in common
+    assert 'Get-PilotLocalImageId "retention"' in common
+    assert '"build", "migrate", "api", "worker"' not in common
     assert "SkipBuild" not in start
     assert "Wait-PilotWorkerHeartbeat" in start
     assert "Wait-PilotApiReady" in start
