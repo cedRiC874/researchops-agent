@@ -29,7 +29,10 @@
       "$ref": "#/$defs/logical_id"
     },
     "candidate_commitment_sha256": {
-      "const": "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+      "enum": [
+        "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11",
+        "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5"
+      ]
     },
     "participant_id": {
       "$ref": "#/$defs/participant_id"

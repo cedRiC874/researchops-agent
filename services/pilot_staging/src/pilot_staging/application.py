@@ -7,11 +7,13 @@ import math
 import re
 import secrets
 import uuid
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any, Callable, Literal, Mapping, Sequence
 
 from .domain import (
     CLAIM_SCOPE,
+    COMPLETION_FAILURE_SOURCES,
     LOCKED_CANDIDATE_COMMITMENT,
     Attempt,
     AttemptNotFound,
@@ -59,6 +61,12 @@ _LOCKED_PROVIDER_ERROR_CODES = frozenset(
         "provider_timeout",
     }
 )
+_COMPLETION_FAILURE_ERROR_BY_SOURCE = {
+    "final_output_missing": "provider_output_incomplete",
+    "response_output_item_incomplete": "provider_output_incomplete",
+    "response_not_completed": "provider_output_not_completed",
+    "output_limit_suspected": "output_limit_suspected",
+}
 _SAFE_TASK_ID = re.compile(r"^PILOT-TASK-[A-Z0-9-]{3,48}$")
 _SCENARIOS = frozenset(
     {
@@ -686,7 +694,7 @@ class PilotApplication:
         provider_execution_telemetry = dict(raw["provider_execution_telemetry"])
         validate_provider_execution_telemetry(provider_execution_telemetry)
         return {
-            "schema_version": "external-pilot-summary/1.1",
+            "schema_version": "external-pilot-summary/1.2",
             "campaign_id": campaign.campaign_id,
             "status": campaign.status.value,
             "execution_environment": campaign.execution_environment,
@@ -1180,6 +1188,28 @@ def _validated_candidate_result(value: Any) -> CandidateResult:
         raise ValueError("CandidateResult.final_output 必须为 string。")
     if value.error_code is not None and not isinstance(value.error_code, str):
         raise ValueError("CandidateResult.error_code 必须为 nullable string。")
+    source = value.completion_failure_source
+    if source is not None and (
+        not isinstance(source, str) or source not in COMPLETION_FAILURE_SOURCES
+    ):
+        raise ValueError("CandidateResult.completion_failure_source 不属于安全 allowlist。")
+    if (
+        source is not None
+        and value.error_code != _COMPLETION_FAILURE_ERROR_BY_SOURCE[source]
+    ):
+        raise ValueError("completion_failure_source 与 error_code 不一致。")
+    if source is not None and value.outcome != "controlled_failure":
+        raise ValueError("completion_failure_source 必须绑定 controlled_failure outcome。")
+    completion_errors = frozenset(_COMPLETION_FAILURE_ERROR_BY_SOURCE.values())
+    if source is None and value.error_code in completion_errors:
+        raise ValueError("completion failure 缺少安全 source。")
+    if source is None and value.error_code is None and not value.final_output.strip():
+        return replace(
+            value,
+            outcome="controlled_failure",
+            error_code="provider_output_incomplete",
+            completion_failure_source="final_output_missing",
+        )
     return value
 
 

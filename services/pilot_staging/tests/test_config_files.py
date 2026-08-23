@@ -137,7 +137,7 @@ def test_provider_lock_is_exact_and_docker_context_is_scoped() -> None:
 
 def test_contract_json_and_pack_are_parseable() -> None:
     contract_paths = sorted((SERVICE / "contracts").glob("*.schema.json"))
-    assert len(contract_paths) == 4
+    assert len(contract_paths) == 5
     for path in contract_paths:
         value = json.loads(path.read_text(encoding="utf-8"))
         assert value["$schema"] == "https://json-schema.org/draft/2020-12/schema"
@@ -148,7 +148,9 @@ def test_contract_json_and_pack_are_parseable() -> None:
     assert len(pack["tasks"]) == 6
     assert len({item["dataset_id"] for item in pack["tasks"]}) == 3
     assert len({item["scenario"] for item in pack["tasks"]}) >= 5
-    assert pack["candidate_commitment_sha256"] == LOCKED_CANDIDATE_COMMITMENT
+    assert pack["candidate_commitment_sha256"] == (
+        "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+    )
     supervised_pack = json.loads(
         (SERVICE / "content" / "pilot_pack.supervised_v1.json").read_text(
             encoding="utf-8"
@@ -158,12 +160,12 @@ def test_contract_json_and_pack_are_parseable() -> None:
     assert supervised_pack["max_provider_runs"] == 12
     assert supervised_pack["tasks"] == pack["tasks"]
     regression_pack = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v2.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v3.json").read_text(
             encoding="utf-8"
         )
     )
     review = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v2.review.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v3.review.json").read_text(
             encoding="utf-8"
         )
     )
@@ -236,7 +238,8 @@ def test_contract_json_and_pack_are_parseable() -> None:
     composition = (SERVICE / "src" / "pilot_staging" / "composition.py").read_text(
         encoding="utf-8"
     )
-    assert "pilot_pack.supervised_v2.json" in composition
+    assert "pilot_pack.supervised_v3.json" in composition
+    assert "pilot_pack.supervised_v2.json" not in composition
     assert "pilot_pack.supervised_v1.json" not in composition
 
 
@@ -248,6 +251,9 @@ def test_migration_has_checksum_runner_and_cascading_retention() -> None:
         SERVICE / "migrations" / "0002_attempt_telemetry_checks.sql"
     ).read_text(encoding="utf-8")
     normalized_telemetry_migration = " ".join(telemetry_migration.split())
+    completion_migration = (
+        SERVICE / "migrations" / "0003_completion_failure_source.sql"
+    ).read_text(encoding="utf-8")
     runner = (SERVICE / "src/pilot_staging/migrate.py").read_text(encoding="utf-8")
     retention = (SERVICE / "src/pilot_staging/retention.py").read_text(
         encoding="utf-8"
@@ -271,6 +277,15 @@ def test_migration_has_checksum_runner_and_cascading_retention() -> None:
     ):
         assert f"{field} IS NULL OR {field} >= 0" in normalized_telemetry_migration
     assert telemetry_migration.count("VALIDATE CONSTRAINT") == 3
+    for source in (
+        "final_output_missing",
+        "response_output_item_incomplete",
+        "response_not_completed",
+        "output_limit_suspected",
+    ):
+        assert source in completion_migration
+    assert "outcome = 'controlled_failure'" in completion_migration
+    assert completion_migration.count("VALIDATE CONSTRAINT") == 2
     assert "timedelta(days=6)" in retention
     assert "now + timedelta(days=1)" in retention
     assert "participant_id" not in re.search(

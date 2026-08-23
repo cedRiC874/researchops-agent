@@ -105,6 +105,7 @@ class LockedCandidateExecutor:
             model_requested_tool_call_count=result.model_requested_tool_call_count,
             backend_executed_tool_call_count=result.backend_executed_tool_call_count,
             error_code=result.error_code,
+            completion_failure_source=result.completion_failure_source,
         )
 
 
@@ -115,7 +116,7 @@ def validate_locked_candidate_files(project_root: str | Path) -> Mapping[str, ob
         candidate_path=resolved_root
         / "evals"
         / "v2"
-        / "public_regression_candidate.json",
+        / "public_regression_candidate_v2.json",
         verify_environment=False,
     )
     if validation["candidate_commitment_sha256"] != LOCKED_CANDIDATE_COMMITMENT:

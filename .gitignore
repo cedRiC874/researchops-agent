@@ -61,6 +61,7 @@ artifacts/phase6_dev_smoke_03/*
 !artifacts/eval_v2_public_regression/
 artifacts/eval_v2_public_regression/*
 !artifacts/eval_v2_public_regression/7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11.receipt.json
+!artifacts/eval_v2_public_regression/1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5.receipt.json
 !artifacts/eval_v2_public_regression/deepseek-v1/
 artifacts/eval_v2_public_regression/deepseek-v1/*
 !artifacts/eval_v2_public_regression/deepseek-v1/public_regression_summary.md

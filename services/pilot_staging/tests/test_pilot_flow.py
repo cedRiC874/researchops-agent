@@ -62,6 +62,7 @@ class FakeExecutor:
         model_call_count: int | None = 1,
         model_requested_tool_call_count: int | None = 1,
         backend_executed_tool_call_count: int = 1,
+        completion_failure_source: str | None = None,
     ) -> None:
         self.output = output
         self.forced_outcome = forced_outcome
@@ -69,6 +70,7 @@ class FakeExecutor:
         self.model_call_count = model_call_count
         self.model_requested_tool_call_count = model_requested_tool_call_count
         self.backend_executed_tool_call_count = backend_executed_tool_call_count
+        self.completion_failure_source = completion_failure_source
         self.calls = 0
 
     def execute(self, task):
@@ -85,6 +87,7 @@ class FakeExecutor:
             model_requested_tool_call_count=self.model_requested_tool_call_count,
             backend_executed_tool_call_count=self.backend_executed_tool_call_count,
             error_code=self.error_code,
+            completion_failure_source=self.completion_failure_source,
         )
 
 
@@ -203,6 +206,7 @@ def build_system(
     model_call_count: int | None = 1,
     model_requested_tool_call_count: int | None = 1,
     backend_executed_tool_call_count: int = 1,
+    completion_failure_source: str | None = None,
 ):
     clock = Clock()
     store = InMemoryPilotStore()
@@ -216,12 +220,17 @@ def build_system(
         clock=clock,
     )
     executor = FakeExecutor(
-        output or "## English\nSafe answer.\n\n## 中文\n安全回答。",
+        (
+            output
+            if output is not None
+            else "## English\nSafe answer.\n\n## 中文\n安全回答。"
+        ),
         forced_outcome=forced_outcome,
         error_code=error_code,
         model_call_count=model_call_count,
         model_requested_tool_call_count=model_requested_tool_call_count,
         backend_executed_tool_call_count=backend_executed_tool_call_count,
+        completion_failure_source=completion_failure_source,
     )
     worker = PilotWorker(
         store=store,
@@ -729,6 +738,80 @@ def test_provider_failure_can_be_excluded_without_rerun() -> None:
         }
 
 
+def test_completion_failure_source_contract_is_fail_closed() -> None:
+    cases = (
+        (
+            "## English\nSafe fallback.\n\n## 中文\n安全回退。",
+            "provider_output_incomplete",
+            "final_output_missing",
+            "controlled_failure",
+            "provider_output_incomplete",
+            "final_output_missing",
+            "controlled_failure",
+        ),
+        (
+            "non-empty incomplete output",
+            "provider_output_incomplete",
+            None,
+            "controlled_failure",
+            "provider_failed",
+            None,
+            None,
+        ),
+        (
+            "non-empty incomplete output",
+            "provider_output_incomplete",
+            "response_not_completed",
+            "controlled_failure",
+            "provider_failed",
+            None,
+            None,
+        ),
+        (
+            "",
+            None,
+            None,
+            "completed",
+            "provider_output_incomplete",
+            "final_output_missing",
+            "controlled_failure",
+        ),
+        (
+            "non-empty contradictory outcome",
+            "provider_output_incomplete",
+            "final_output_missing",
+            "completed",
+            "provider_failed",
+            None,
+            None,
+        ),
+    )
+    for (
+        output,
+        error_code,
+        source,
+        forced_outcome,
+        expected_error,
+        expected_source,
+        expected_outcome,
+    ) in cases:
+        app, _, worker, _, _, _ = build_system(
+            output=output,
+            forced_outcome=forced_outcome,
+            error_code=error_code,
+            completion_failure_source=source,
+        )
+        campaign_id = create_frozen_campaign(app)
+        _, session = exchange_and_consent(app, campaign_id)
+        attempt_id = app.state(session)["attempt"]["attempt_id"]
+        app.reveal(session, attempt_id)
+        failed = worker.process_one()
+        assert failed is not None
+        assert failed.error_code == expected_error
+        assert failed.completion_failure_source == expected_source
+        assert failed.outcome == expected_outcome
+
+
 def test_exception_and_explicit_zero_are_not_conflated() -> None:
     app, store, _, _, clock, _ = build_system()
     campaign_id = create_frozen_campaign(app)
@@ -763,7 +846,9 @@ def test_exception_and_explicit_zero_are_not_conflated() -> None:
 
     app2, _, worker2, _, _, _ = build_system(
         output="",
+        forced_outcome="controlled_failure",
         error_code="provider_output_incomplete",
+        completion_failure_source="final_output_missing",
         model_call_count=None,
         model_requested_tool_call_count=None,
         backend_executed_tool_call_count=0,
@@ -777,12 +862,27 @@ def test_exception_and_explicit_zero_are_not_conflated() -> None:
     assert partial.model_call_count is None
     assert partial.model_requested_tool_call_count is None
     assert partial.backend_executed_tool_call_count == 0
+    assert partial.completion_failure_source == "final_output_missing"
     partial_summary = app2.summary(campaign2)["provider_execution_telemetry"]
     assert partial_summary["backend_executed_tool_call_count"] == {
         "observed_sum": 0,
         "observed_attempt_count": 1,
         "unknown_attempt_count": 0,
         "coverage_rate": 1.0,
+    }
+    assert partial_summary["completion_failure_sources"] == {
+        "semantics_version": "pilot-completion-failure-source-v2",
+        "applicable_attempt_count": 1,
+        "observed_attempt_count": 1,
+        "unknown_attempt_count": 0,
+        "coverage_rate": 1.0,
+        "coverage_status": "complete",
+        "counts": [
+            {
+                "completion_failure_source": "final_output_missing",
+                "attempt_count": 1,
+            }
+        ],
     }
 
     app3, _, worker3, _, _, _ = build_system(model_call_count=-1)

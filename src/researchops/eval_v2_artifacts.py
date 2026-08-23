@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import shutil
 import tempfile
@@ -9,14 +10,24 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from .eval_v2_contracts import EvalV2ContractError
+from .eval_v2_runner import (
+    COMPLETION_FAILURE_SOURCES,
+    COMPLETION_TELEMETRY_CONTRACT_VERSION,
+)
 
 
-ARTIFACT_SCHEMA_VERSION = "2.0"
+ARTIFACT_SCHEMA_VERSION = "2.1"
 _FORBIDDEN_KEYS = frozenset(
     {
         "api_key",
         "authorization",
+        "credentials",
+        "direct_identifiers",
         "final_output",
+        "incomplete_details",
+        "provider_output_body",
+        "provider_response_body",
+        "provider_status_raw_value",
         "raw_data",
         "raw_rows",
         "records",
@@ -111,6 +122,9 @@ def aggregate_eval_v2_repetitions(
                 "task_order_sha256_by_repetition": [
                     item.get("task_order_sha256") for item in ordered
                 ],
+                "completion_telemetry": _aggregate_completion_telemetry_reports(
+                    ordered
+                ),
             }
         )
     return {
@@ -121,6 +135,7 @@ def aggregate_eval_v2_repetitions(
         "task_count_per_repetition": len(common_task_ids or ()),
         "task_alignment": "by_task_id",
         "model_quality_claim_allowed": False,
+        "completion_telemetry": _aggregate_completion_telemetry_reports(reports),
         "providers": provider_results,
     }
 
@@ -231,6 +246,246 @@ def _validate_report_for_aggregation(report: Mapping[str, Any]) -> None:
         raise EvalV2ContractError(
             "eval_v2_repetition_report_invalid", "未冻结 repetition 不得允许质量声明。"
         )
+    telemetry = report.get("completion_telemetry")
+    if telemetry is not None:
+        _parse_completion_telemetry(telemetry)
+
+
+def _aggregate_completion_telemetry_reports(
+    reports: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    source_counts = {source: 0 for source in COMPLETION_FAILURE_SOURCES}
+    eligible_failure_count = 0
+    classified_failure_count = 0
+    legacy_unknown_count = 0
+    structured_report_count = 0
+    for report in reports:
+        telemetry = report.get("completion_telemetry")
+        if telemetry is None:
+            continue
+        parsed = _parse_completion_telemetry(telemetry)
+        structured_report_count += 1
+        eligible_failure_count += parsed["eligible_failure_count"]
+        classified_failure_count += parsed["classified_failure_count"]
+        legacy_unknown_count += parsed["legacy_unknown_count"]
+        for source, count in parsed["source_counts"].items():
+            source_counts[source] += count
+
+    report_count = len(reports)
+    structured_report_coverage = (
+        structured_report_count / report_count if report_count else 1.0
+    )
+    coverage_complete = (
+        structured_report_count == report_count and legacy_unknown_count == 0
+    )
+    coverage_status = (
+        "partial"
+        if structured_report_count != report_count
+        else (
+            "no_applicable_failures"
+            if eligible_failure_count == 0
+            else ("complete" if coverage_complete else "partial")
+        )
+    )
+    aggregated = {
+        "contract_version": COMPLETION_TELEMETRY_CONTRACT_VERSION,
+        "diagnostic_only": True,
+        "counts_scope": "structured_reports_only",
+        "report_count": report_count,
+        "structured_report_count": structured_report_count,
+        "structured_report_coverage": structured_report_coverage,
+        "eligible_failure_count": eligible_failure_count,
+        "classified_failure_count": classified_failure_count,
+        "legacy_unknown_count": legacy_unknown_count,
+        "classified_failure_coverage": (
+            classified_failure_count / eligible_failure_count
+            if eligible_failure_count
+            else None
+        ),
+        "coverage_status": coverage_status,
+        "coverage_complete": coverage_complete,
+        "failure_source_counts": [
+            {"source": source, "case_count": source_counts[source]}
+            for source in COMPLETION_FAILURE_SOURCES
+            if source_counts[source]
+        ],
+    }
+    _parse_completion_telemetry(aggregated)
+    return aggregated
+
+
+def _parse_completion_telemetry(value: Any) -> dict[str, Any]:
+    if (
+        not isinstance(value, Mapping)
+        or value.get("contract_version")
+        != COMPLETION_TELEMETRY_CONTRACT_VERSION
+        or value.get("diagnostic_only") is not True
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_repetition_report_invalid",
+            "completion telemetry contract version 无效。",
+        )
+    count_names = (
+        "eligible_failure_count",
+        "classified_failure_count",
+        "legacy_unknown_count",
+    )
+    counts: dict[str, int] = {}
+    for name in count_names:
+        candidate = value.get(name)
+        if (
+            isinstance(candidate, bool)
+            or not isinstance(candidate, int)
+            or candidate < 0
+        ):
+            raise EvalV2ContractError(
+                "eval_v2_repetition_report_invalid",
+                "completion telemetry counts 无效。",
+            )
+        counts[name] = candidate
+    if (
+        counts["classified_failure_count"] + counts["legacy_unknown_count"]
+        != counts["eligible_failure_count"]
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_repetition_report_invalid",
+            "completion telemetry coverage counts 不一致。",
+        )
+
+    aggregate_report_count: int | None = None
+    aggregate_structured_count: int | None = None
+    if "report_count" in value or "structured_report_count" in value:
+        if value.get("counts_scope") != "structured_reports_only":
+            raise EvalV2ContractError(
+                "eval_v2_repetition_report_invalid",
+                "aggregated completion telemetry scope 无效。",
+            )
+        aggregate_report_count = value.get("report_count")
+        aggregate_structured_count = value.get("structured_report_count")
+        if (
+            isinstance(aggregate_report_count, bool)
+            or not isinstance(aggregate_report_count, int)
+            or aggregate_report_count < 0
+            or isinstance(aggregate_structured_count, bool)
+            or not isinstance(aggregate_structured_count, int)
+            or aggregate_structured_count < 0
+            or aggregate_structured_count > aggregate_report_count
+        ):
+            raise EvalV2ContractError(
+                "eval_v2_repetition_report_invalid",
+                "aggregated completion telemetry report counts 无效。",
+            )
+        expected_report_coverage = (
+            aggregate_structured_count / aggregate_report_count
+            if aggregate_report_count
+            else 1.0
+        )
+        observed_report_coverage = value.get("structured_report_coverage")
+        if (
+            isinstance(observed_report_coverage, bool)
+            or not isinstance(observed_report_coverage, (int, float))
+            or not math.isclose(
+                float(observed_report_coverage), expected_report_coverage
+            )
+        ):
+            raise EvalV2ContractError(
+                "eval_v2_repetition_report_invalid",
+                "aggregated completion telemetry report coverage 无效。",
+            )
+
+    raw_source_counts = value.get("failure_source_counts")
+    if not isinstance(raw_source_counts, list):
+        raise EvalV2ContractError(
+            "eval_v2_repetition_report_invalid",
+            "completion telemetry source counts 无效。",
+        )
+    source_counts = {source: 0 for source in COMPLETION_FAILURE_SOURCES}
+    seen: set[str] = set()
+    last_source_index = -1
+    for item in raw_source_counts:
+        if not isinstance(item, Mapping):
+            raise EvalV2ContractError(
+                "eval_v2_repetition_report_invalid",
+                "completion telemetry source count entry 无效。",
+            )
+        source = item.get("source")
+        count = item.get("case_count")
+        if (
+            source not in source_counts
+            or source in seen
+            or isinstance(count, bool)
+            or not isinstance(count, int)
+            or count < 1
+        ):
+            raise EvalV2ContractError(
+                "eval_v2_repetition_report_invalid",
+                "completion telemetry source allowlist/count 无效。",
+            )
+        source_index = COMPLETION_FAILURE_SOURCES.index(source)
+        if source_index <= last_source_index:
+            raise EvalV2ContractError(
+                "eval_v2_repetition_report_invalid",
+                "completion telemetry source counts 顺序无效。",
+            )
+        last_source_index = source_index
+        seen.add(source)
+        source_counts[source] = count
+    if sum(source_counts.values()) != counts["classified_failure_count"]:
+        raise EvalV2ContractError(
+            "eval_v2_repetition_report_invalid",
+            "completion telemetry classified/source counts 不一致。",
+        )
+
+    expected_failure_coverage = (
+        counts["classified_failure_count"] / counts["eligible_failure_count"]
+        if counts["eligible_failure_count"]
+        else None
+    )
+    observed_failure_coverage = value.get("classified_failure_coverage")
+    if expected_failure_coverage is None:
+        failure_coverage_valid = observed_failure_coverage is None
+    else:
+        failure_coverage_valid = (
+            not isinstance(observed_failure_coverage, bool)
+            and isinstance(observed_failure_coverage, (int, float))
+            and math.isclose(
+                float(observed_failure_coverage), expected_failure_coverage
+            )
+        )
+    if not failure_coverage_valid:
+        raise EvalV2ContractError(
+            "eval_v2_repetition_report_invalid",
+            "completion telemetry classified failure coverage 无效。",
+        )
+
+    expected_complete = counts["legacy_unknown_count"] == 0
+    if aggregate_report_count is not None and aggregate_structured_count is not None:
+        expected_complete = (
+            expected_complete
+            and aggregate_structured_count == aggregate_report_count
+        )
+    expected_status = (
+        "partial"
+        if aggregate_report_count is not None
+        and aggregate_structured_count != aggregate_report_count
+        else (
+            "no_applicable_failures"
+            if counts["eligible_failure_count"] == 0
+            else ("complete" if expected_complete else "partial")
+        )
+    )
+    if (
+        value.get("coverage_complete") is not expected_complete
+        or value.get("coverage_status") != expected_status
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_repetition_report_invalid",
+            "completion telemetry coverage status 无效。",
+        )
+    return {
+        **counts,
+        "source_counts": source_counts,
+    }
 
 
 def _validate_output_directory(project_root: Path, output_directory: Path) -> Path:
@@ -267,6 +522,17 @@ def _assert_sanitized(value: Any) -> None:
 
 def _render_summary(report: Mapping[str, Any]) -> str:
     provider = report.get("provider", {})
+    completion = report.get("completion_telemetry")
+    completion_line = (
+        "- Completion telemetry: `legacy/unavailable`"
+        if not isinstance(completion, Mapping)
+        else (
+            "- Completion telemetry: "
+            f"{completion.get('classified_failure_count')}/"
+            f"{completion.get('eligible_failure_count')} classified; "
+            f"coverage complete=`{str(bool(completion.get('coverage_complete'))).lower()}`"
+        )
+    )
     return "\n".join(
         [
             "# Eval v2 run summary",
@@ -277,6 +543,7 @@ def _render_summary(report: Mapping[str, Any]) -> str:
             f"- Repetition: {report.get('repetition_index')}/3",
             f"- Tasks: {report.get('passed')}/{report.get('task_count')} passed",
             f"- Safety violations: {report.get('safety_violation_count')}",
+            completion_line,
             "- Model quality claim allowed: `false`",
             "",
             "This is an unfrozen local harness artifact, not a published model-quality result.",

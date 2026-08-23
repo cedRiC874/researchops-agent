@@ -408,6 +408,132 @@ class EvalV2RunnerTests(unittest.TestCase):
         self.assertTrue(score_eval_v2_observation(task, good).passed)
         self.assertFalse(score_eval_v2_observation(task, bad).passed)
 
+    def test_completion_telemetry_propagates_without_persisting_output(self) -> None:
+        task = EvalV2PublicTask.from_dict(task_payload(tool_name=None))
+
+        class CompletionFailureExecutor:
+            def execute(self, public_input, gateway):
+                del public_input, gateway
+                return EvalV2ExecutorResult(
+                    outcome="controlled_failure",
+                    final_output="synthetic partial output",
+                    error_code="provider_output_incomplete",
+                    completion_status="output_truncated",
+                    model_call_count=1,
+                    input_tokens=10,
+                    output_tokens=4,
+                    completion_failure_source=(
+                        "response_output_item_incomplete"
+                    ),
+                )
+
+        report = run_eval_v2_evaluation(
+            [task],
+            executor=CompletionFailureExecutor(),
+            inspect_backend=FakeInspectBackend(),
+        )
+
+        telemetry = report["completion_telemetry"]
+        self.assertEqual(report["schema_version"], "2.1")
+        self.assertEqual(telemetry["eligible_failure_count"], 1)
+        self.assertEqual(telemetry["classified_failure_count"], 1)
+        self.assertEqual(telemetry["legacy_unknown_count"], 0)
+        self.assertEqual(telemetry["classified_failure_coverage"], 1.0)
+        self.assertEqual(telemetry["coverage_status"], "complete")
+        self.assertTrue(telemetry["coverage_complete"])
+        self.assertEqual(
+            telemetry["per_task"][task.task_id]["completion_failure_source"],
+            "response_output_item_incomplete",
+        )
+        self.assertNotIn("synthetic partial output", json.dumps(report))
+
+    def test_completion_telemetry_keeps_legacy_unknown_distinct_from_na(self) -> None:
+        task = EvalV2PublicTask.from_dict(task_payload(tool_name=None))
+
+        class LegacyFailureExecutor:
+            def execute(self, public_input, gateway):
+                del public_input, gateway
+                return EvalV2ExecutorResult(
+                    outcome="controlled_failure",
+                    final_output="",
+                    error_code="provider_output_incomplete",
+                    completion_status="output_truncated",
+                )
+
+        report = run_eval_v2_evaluation(
+            [task],
+            executor=LegacyFailureExecutor(),
+            inspect_backend=FakeInspectBackend(),
+        )
+        telemetry = report["completion_telemetry"]
+
+        self.assertEqual(telemetry["eligible_failure_count"], 1)
+        self.assertEqual(telemetry["classified_failure_count"], 0)
+        self.assertEqual(telemetry["legacy_unknown_count"], 1)
+        self.assertEqual(telemetry["classified_failure_coverage"], 0.0)
+        self.assertEqual(telemetry["coverage_status"], "partial")
+        self.assertFalse(telemetry["coverage_complete"])
+
+    def test_completion_telemetry_rejects_unknown_or_mismatched_source(self) -> None:
+        task = EvalV2PublicTask.from_dict(task_payload(tool_name=None))
+
+        class InvalidCompletionExecutor:
+            def __init__(self, source: str, error_code: str) -> None:
+                self.source = source
+                self.error_code = error_code
+
+            def execute(self, public_input, gateway):
+                del public_input, gateway
+                return EvalV2ExecutorResult(
+                    outcome="controlled_failure",
+                    final_output="",
+                    error_code=self.error_code,
+                    completion_status="output_truncated",
+                    completion_failure_source=self.source,
+                )
+
+        for source, error_code in (
+            ("untrusted_provider_value", "provider_output_incomplete"),
+            ("response_not_completed", "provider_output_incomplete"),
+        ):
+            with self.subTest(source=source, error_code=error_code):
+                with self.assertRaises(EvalV2ContractError) as captured:
+                    run_eval_v2_evaluation(
+                        [task],
+                        executor=InvalidCompletionExecutor(source, error_code),
+                        inspect_backend=FakeInspectBackend(),
+                    )
+                self.assertEqual(
+                    captured.exception.code,
+                    "eval_v2_completion_telemetry_invalid",
+                )
+
+    def test_no_applicable_completion_failures_uses_null_coverage(self) -> None:
+        task = EvalV2PublicTask.from_dict(
+            task_payload(tool_name=None, required_phrases=[])
+        )
+
+        class CompleteExecutor:
+            def execute(self, public_input, gateway):
+                del public_input, gateway
+                return EvalV2ExecutorResult(
+                    outcome="completed",
+                    final_output="synthetic complete output",
+                )
+
+        report = run_eval_v2_evaluation(
+            [task],
+            executor=CompleteExecutor(),
+            inspect_backend=FakeInspectBackend(),
+        )
+        telemetry = report["completion_telemetry"]
+
+        self.assertIsNone(telemetry["classified_failure_coverage"])
+        self.assertEqual(
+            telemetry["coverage_status"], "no_applicable_failures"
+        )
+        self.assertTrue(telemetry["coverage_complete"])
+
     def test_numeric_claim_catalog_is_closed_and_evidence_bound(self) -> None:
         claim = {
             "metric_name": "mean_difference",

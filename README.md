@@ -21,7 +21,8 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
 | Provider 适配 | 已验证 | OpenAI 与 DeepSeek 使用独立 Key/client；DeepSeek V4 模型 allowlist、固定 endpoint、零隐藏重试 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
-| Eval v2 public candidate | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
+| Eval v2 public candidate v1（历史） | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
+| Completion Telemetry v2 candidate | 离线实现已验证，未在线运行 | 四类受控 completion source、legacy coverage、双摘要 retention；新 commitment `1f6ac18e…e5ce5` 不继承 v1 结果 |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
 | External researcher pilot staging | PR #7/#8 已合并并通过当前 main CI；supervised UX regression 已完成 | `main` run 32640814963 为 45 个 offline contracts + 1 个真实 PostgreSQL contract；同一参与者 v2 为 1 completed、4 feedback、2 controlled failures，永久不进入正式 claim，也不算第二位独立参与者 |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
@@ -230,7 +231,7 @@ DeepSeek 会忽略 `parallel_tool_calls=False`，所以串行与审批安全由�
 
 Eval v2 新增独立 campaign contract 与公开 task schema，预注册 80 个 development、40 个 public regression 和至少 50 个 external private holdout 任务，并要求 3–5 个数据集、至少 2 个 Provider、每个 Provider 3 次重复、外部 golden 复核以及 R/SAS 独立统计交叉检查。
 
-当前已选择 Palmer Penguins、UCI Parkinsons Telemonitoring 和 UCI Heart Disease Cleveland；3 个数据集的官方许可、下载/asset SHA-256、bytes、行列和缺失计数已经核验，但外部专家 review 仍为 planned。受控准备器执行 hash 复核、固定转换、Parkinsons subject pseudonymization、原子非覆盖发布，并生成每次解析都重验路径/hash 的逻辑 registry。独立 inspect backend 只返回白名单聚合 profile，不返回路径、hash、样例值或行级内容。独立 runner 只向 executor 传递 public input，由 per-task gateway 再做参数授权；scorer 检查轨迹、outcome、evidence/numeric claims、审批、安全和 completion。Provider executor 复用隔离 ProviderAdapter，要求显式在线确认；artifact writer 原子发布脱敏 report/summary/manifest；重复聚合要求每个 Provider 恰好三次。80 development + 40 public regression 已全部 internal-ready；public candidate 已完成一次性 DeepSeek 三轮运行，但完整 campaign 仍为 `design_only`。private holdout 的题面、golden、task ID 和 locator 不得进入仓库；同一 freeze 只允许提交一次 private campaign。详见 [Eval v2 设计](evals/EVAL_V2.md)、[public-regression evidence](docs/evidence/eval-v2-public-regression-deepseek-v1/README.md)、[campaign manifest](evals/v2/campaign.json) 与 [external dataset manifest](evals/v2/external_datasets.json)。离线校验：
+当前已选择 Palmer Penguins、UCI Parkinsons Telemonitoring 和 UCI Heart Disease Cleveland；3 个数据集的官方许可、下载/asset SHA-256、bytes、行列和缺失计数已经核验，但外部专家 review 仍为 planned。受控准备器执行 hash 复核、固定转换、Parkinsons subject pseudonymization、原子非覆盖发布，并生成每次解析都重验路径/hash 的逻辑 registry。独立 inspect backend 只返回白名单聚合 profile，不返回路径、hash、样例值或行级内容。独立 runner 只向 executor 传递 public input，由 per-task gateway 再做参数授权；scorer 检查轨迹、outcome、evidence/numeric claims、审批、安全和 completion。Provider executor 复用隔离 ProviderAdapter，要求显式在线确认；artifact writer 原子发布脱敏 report/summary/manifest；重复聚合要求每个 Provider 恰好三次。80 development + 40 public regression 已全部 internal-ready；v1 public candidate 已完成一次性 DeepSeek 三轮运行，Completion Telemetry v2 candidate 仅完成离线验证且不继承结果，完整 campaign 仍为 `design_only`。private holdout 的题面、golden、task ID 和 locator 不得进入仓库；同一 freeze 只允许提交一次 private campaign。详见 [Eval v2 设计](evals/EVAL_V2.md)、[Completion Telemetry v2 RFC](docs/COMPLETION_TELEMETRY_V2_RFC.md)、[v1 public-regression evidence](docs/evidence/eval-v2-public-regression-deepseek-v1/README.md)、[campaign manifest](evals/v2/campaign.json) 与 [external dataset manifest](evals/v2/external_datasets.json)。离线校验：
 
 ```powershell
 .\.venv\Scripts\python.exe -m researchops.cli eval-v2-validate
@@ -238,7 +239,7 @@ Eval v2 新增独立 campaign contract 与公开 task schema，预注册 80 个 
   --verify-environment
 ```
 
-Public-regression 配置作为独立 `candidate_locked` 锁定，并未把完整 campaign 冒充为 frozen。Candidate commitment `7744770a…f0d11` 已一次性运行：Provider system 68/93（73.12%），三轮 23/31、22/31、23/31；deterministic fault harness 27/27，未归因模型、未合并进入模型分母。该结果属于 `DeepSeek + 锁定控制面`，不能称为 LLM 规划准确率或未知生产集泛化。
+Public-regression 配置作为独立 `candidate_locked` 锁定，并未把完整 campaign 冒充为 frozen。历史 v1 commitment `7744770a…f0d11` 已一次性运行：Provider system 68/93（73.12%），三轮 23/31、22/31、23/31；deterministic fault harness 27/27，未归因模型、未合并进入模型分母。Completion Telemetry v2 commitment `1f6ac18e…e5ce5` 只完成离线合同验证，没有调用 Provider，`prior_results_inherited=false`。v1 结果属于对应的 `DeepSeek + 锁定控制面`，不能称为 LLM 规划准确率或未知生产集泛化，也不能归给 v2。
 
 显式联网复核公开资产，不写入数据文件：
 
@@ -452,7 +453,7 @@ provenance 标量，加入 profile 阈值与退出码传播；push/PR clean runs
 - 当前主分析是 available-case，不是完整 ITT；缺失机制与差异性失访需要进一步研究。
 - Phase 5 只评测确定性组件和控制面，模型调用为 0。
 - Phase 6 的 4 题 holdout 位于仓库内、不具备抗污染能力且不含审批场景；4/4 不能外推到未知请求。
-- Eval v2 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明锁定 public system 的 68/93；private holdout、外部复核和第二 Provider仍未完成，不能声称未知生产集泛化。
+- Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明其锁定 public system 的 68/93；Completion Telemetry v2 尚无在线成绩。private holdout、外部复核和第二 Provider仍未完成，不能声称未知生产集泛化。
 - Production-like slice 已完成真实 PostgreSQL/MinIO/collector Compose E2E；它仍是单机 development 证据，不代表 HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量。
 - 旧 `main` run 32568017243 曾出现 44/50 却绿色的门禁缺陷；PR #3 与新 main run 32571384757 已恢复 50/50、21/21 并 fail-closed，旧历史成绩仍不能跨 source/data/manifest 冒充当前提交成绩。
 - DeepSeek development/holdout 是小样本顺序评测，不是生产负载或 SLA；成本因缺少完整价格表保持 unavailable。

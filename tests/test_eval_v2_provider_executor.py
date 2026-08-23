@@ -55,9 +55,16 @@ class FakeProvider:
 
 
 class CapturingRunner:
-    def __init__(self, final_output: str, *, output_tokens: int = 12) -> None:
+    def __init__(
+        self,
+        final_output: str,
+        *,
+        output_tokens: int = 12,
+        raw_responses=None,
+    ) -> None:
         self.final_output = final_output
         self.output_tokens = output_tokens
+        self.raw_responses = raw_responses
         self.called = False
         self.agent = None
         self.prompt = None
@@ -79,6 +86,7 @@ class CapturingRunner:
         return SimpleNamespace(
             final_output=self.final_output,
             context_wrapper=SimpleNamespace(usage=usage),
+            raw_responses=self.raw_responses,
         )
 
 
@@ -109,17 +117,25 @@ class DuplicateInspectRunner:
 
 
 class RawResponseRunner:
-    def __init__(self, *, status: str = "completed") -> None:
+    def __init__(
+        self,
+        *,
+        status: str = "completed",
+        response_status: str | None = None,
+    ) -> None:
         self.status = status
+        self.response_status = response_status
 
     async def run(self, agent, prompt, *, context, max_turns, run_config):
         del agent, prompt, context, max_turns, run_config
         raw_responses = [
             SimpleNamespace(
+                status=self.response_status,
                 output=[SimpleNamespace(status=self.status)],
                 usage=SimpleNamespace(output_tokens=1200),
             ),
             SimpleNamespace(
+                status="completed",
                 output=[SimpleNamespace(status="completed")],
                 usage=SimpleNamespace(output_tokens=1200),
             ),
@@ -323,6 +339,9 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
         self.assertEqual(result.outcome, "controlled_failure")
         self.assertEqual(result.error_code, "output_limit_suspected")
         self.assertEqual(result.completion_status, "output_truncated")
+        self.assertEqual(
+            result.completion_failure_source, "output_limit_suspected"
+        )
 
     def test_refusal_uses_short_policy_budget_instead_of_web_limit(self) -> None:
         provider = FakeProvider()
@@ -492,7 +511,17 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
 
     def test_synthetic_blank_final_output_preserves_zero_tool_telemetry(self) -> None:
         task = synthetic_completion_diagnostic_task(expects_inspection=False)
-        runner = CapturingRunner("", output_tokens=0)
+        runner = CapturingRunner(
+            "",
+            output_tokens=0,
+            raw_responses=[
+                SimpleNamespace(
+                    status="failed",
+                    output=[SimpleNamespace(status="incomplete")],
+                    usage=SimpleNamespace(output_tokens=10000),
+                )
+            ],
+        )
         executor = EvalV2ProviderExecutor(
             provider=FakeProvider(),
             model_id="deepseek-v4-flash",
@@ -510,6 +539,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
         self.assertEqual(result.outcome, "controlled_failure")
         self.assertEqual(result.error_code, "provider_output_incomplete")
         self.assertEqual(result.completion_status, "output_truncated")
+        self.assertEqual(result.completion_failure_source, "final_output_missing")
         self.assertEqual(result.model_call_count, 1)
         self.assertEqual(result.input_tokens, 30)
         self.assertEqual(result.output_tokens, 0)
@@ -543,6 +573,10 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
         self.assertEqual(result.outcome, "controlled_failure")
         self.assertEqual(result.error_code, "provider_output_incomplete")
         self.assertEqual(result.completion_status, "output_truncated")
+        self.assertEqual(
+            result.completion_failure_source,
+            "response_output_item_incomplete",
+        )
         self.assertEqual(result.model_call_count, 2)
         self.assertEqual(result.input_tokens, 80)
         self.assertEqual(result.output_tokens, 16)
@@ -583,13 +617,39 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             ).execute(task.public_input(), EvalV2ToolGateway(task, FakeInspectBackend()))
 
         complete = execute(RawResponseRunner())
-        incomplete = execute(RawResponseRunner(status="incomplete"))
+        incomplete = execute(
+            RawResponseRunner(status="incomplete", response_status="failed")
+        )
+        not_completed = execute(
+            RawResponseRunner(status="completed", response_status="in_progress")
+        )
+        response_incomplete = execute(
+            RawResponseRunner(status="completed", response_status="incomplete")
+        )
 
         self.assertEqual(complete.completion_status, "complete")
         self.assertIsNone(complete.error_code)
+        self.assertIsNone(complete.completion_failure_source)
         self.assertEqual(complete.output_tokens, 2400)
         self.assertEqual(incomplete.outcome, "controlled_failure")
         self.assertEqual(incomplete.error_code, "provider_output_incomplete")
+        self.assertEqual(
+            incomplete.completion_failure_source,
+            "response_output_item_incomplete",
+        )
+        self.assertEqual(
+            not_completed.error_code, "provider_output_not_completed"
+        )
+        self.assertEqual(
+            not_completed.completion_failure_source, "response_not_completed"
+        )
+        self.assertEqual(
+            response_incomplete.error_code, "provider_output_incomplete"
+        )
+        self.assertEqual(
+            response_incomplete.completion_failure_source,
+            "response_output_item_incomplete",
+        )
 
     def test_publish_context_exposes_only_publish_tool(self) -> None:
         payload = next(

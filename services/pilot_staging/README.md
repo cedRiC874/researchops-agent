@@ -15,7 +15,7 @@ one-time invite -> pseudonymous Secure/HttpOnly session -> explicit consent
 It uses the locked candidate commitment:
 
 ```text
-7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11
+1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5
 ```
 
 The frozen Provider identity is DeepSeek `deepseek-v4-flash` through the
@@ -119,11 +119,17 @@ The API container does not mount the Provider secret. The prepared formal pack r
 30 **Agent task executions** (five people × six assignments), and assignments are never
 automatically retried or overwritten. This is not a 30-request or currency cap: one
 task can require multiple model turns (the locked executor allows up to eight), while
-summary schema 1.1 reports observed sums and observed/unknown attempt coverage separately
+summary schema 1.2 reports observed sums and observed/unknown attempt coverage separately
 for executor model calls, model-requested tool calls and backend executions. Controlled
 failures retain these counts without retaining failed output text; exceptions remain
 unknown rather than becoming zero. Token/cost and total upstream HTTP-request coverage
 remain unavailable, and none of these counters is model planning accuracy.
+Completion failures additionally carry one of four allowlisted local observation
+sources, with an independent applicable/observed/unknown coverage denominator. Historical
+rows remain `unknown`; no source is inferred from an old error code. New append-only
+terminal events and retention tombstones bind both the frozen v1 digest and a versioned
+v2 digest, without persisting Provider bodies or raw status details. These labels are
+diagnostic observations, not causal Provider root-cause claims.
 The telemetry scope includes only consented, non-withdrawn participants: withdrawal
 removes their attempts from both observed sums and unknown denominators. Campaign-level
 safety incidents remain aggregated and can still block a claim after withdrawal, so the
@@ -160,7 +166,7 @@ Reading the same campaign later through a staging-configured process cannot remo
 that blocker. Supervised records never enter the formal 3–5 participant / 20 interaction
 claim gate. Historical `pilot_pack.supervised_v1.json` remains bound to the initial
 two-person / 12-assignment campaign. The active
-`pilot_pack.supervised_v2.json` is a one-person / six-assignment, same-participant UX
+`pilot_pack.supervised_v3.json` is a one-person / six-assignment, same-participant UX
 regression after an accidental-withdrawal UI fix. Its six source tasks are different,
 already-public, internally reviewed public-regression tasks selected for three-dataset
 and six-scenario coverage—not for model performance. Its result cannot be counted as a

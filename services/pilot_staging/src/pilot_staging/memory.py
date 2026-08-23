@@ -389,6 +389,7 @@ class InMemoryPilotStore:
                     model_call_count=None,
                     model_requested_tool_call_count=None,
                     backend_executed_tool_call_count=None,
+                    completion_failure_source=None,
                 )
                 self.attempts[attempt_id] = discarded
                 self.leases.pop(attempt_id, None)
@@ -405,6 +406,7 @@ class InMemoryPilotStore:
                 model_call_count=result.model_call_count,
                 model_requested_tool_call_count=result.model_requested_tool_call_count,
                 backend_executed_tool_call_count=result.backend_executed_tool_call_count,
+                completion_failure_source=result.completion_failure_source,
             )
             self.attempts[attempt_id] = completed
             self.leases.pop(attempt_id, None)
@@ -436,6 +438,7 @@ class InMemoryPilotStore:
                     model_call_count=None,
                     model_requested_tool_call_count=None,
                     backend_executed_tool_call_count=None,
+                    completion_failure_source=None,
                 )
                 self.attempts[attempt_id] = failed
                 self.leases.pop(attempt_id, None)
@@ -461,6 +464,11 @@ class InMemoryPilotStore:
                 ),
                 backend_executed_tool_call_count=(
                     telemetry.backend_executed_tool_call_count
+                    if telemetry is not None
+                    else None
+                ),
+                completion_failure_source=(
+                    telemetry.completion_failure_source
                     if telemetry is not None
                     else None
                 ),
@@ -682,9 +690,11 @@ class InMemoryPilotStore:
                     "started_at": attempt.started_at,
                     "status": attempt.status.value,
                     "error_code": attempt.error_code,
+                    "outcome": attempt.outcome,
                     "model_call_count": attempt.model_call_count,
                     "model_requested_tool_call_count": attempt.model_requested_tool_call_count,
                     "backend_executed_tool_call_count": attempt.backend_executed_tool_call_count,
+                    "completion_failure_source": attempt.completion_failure_source,
                 }
                 for attempt in qualifying_attempts
             ]

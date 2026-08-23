@@ -1,0 +1,53 @@
+{
+  "schema_version": "2.0",
+  "contract_id": "completion-telemetry-v2",
+  "status": "offline_implemented_candidate",
+  "diagnostic_only": true,
+  "causal_root_cause_claim_allowed": false,
+  "failure_sources": [
+    {
+      "source": "final_output_missing",
+      "error_code": "provider_output_incomplete",
+      "description": "The normalized Provider result had no non-whitespace final output."
+    },
+    {
+      "source": "response_output_item_incomplete",
+      "error_code": "provider_output_incomplete",
+      "description": "A response or response output item reported an incomplete completion status."
+    },
+    {
+      "source": "response_not_completed",
+      "error_code": "provider_output_not_completed",
+      "description": "A response or output item reported another non-completed status."
+    },
+    {
+      "source": "output_limit_suspected",
+      "error_code": "output_limit_suspected",
+      "description": "Observed output-token usage reached the configured output limit."
+    }
+  ],
+  "precedence": [
+    "final_output_missing",
+    "response_output_item_incomplete",
+    "response_not_completed",
+    "output_limit_suspected"
+  ],
+  "legacy_null_semantics": {
+    "completion_error": "unobserved_legacy_source",
+    "non_completion_error": "not_applicable"
+  },
+  "persistence_allowlist": [
+    "completion_failure_source",
+    "error_code",
+    "completion_status",
+    "aggregate_counts_and_coverage"
+  ],
+  "persistence_forbidden": [
+    "provider_response_body",
+    "provider_output_body",
+    "provider_status_raw_value",
+    "incomplete_details",
+    "credentials",
+    "direct_identifiers"
+  ]
+}

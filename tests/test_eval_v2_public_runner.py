@@ -19,6 +19,8 @@ from researchops.eval_v2_public_runner import (
     _apply_provider_usage,
     _atomic_write_json,
     _bind_candidate_receipt,
+    _build_report,
+    _case_record_sha256,
     _execute_and_checkpoint_case,
     _initialize_or_resume_state,
     _provider_start_guard,
@@ -144,11 +146,16 @@ def test_all_nine_fault_tasks_pass_without_a_model_call() -> None:
             backend_executed_tool_call_count=(
                 gateway.backend_executed_tool_call_count
             ),
+            completion_failure_source=result.completion_failure_source,
         )
         score = score_eval_v2_observation(task, observation)
         assert score.passed, (task.task_id, score.failures)
         assert result.model_call_count == 0
         assert result.side_effect_occurred is False
+        if task.scenario == "output_truncation":
+            assert result.completion_failure_source == "output_limit_suspected"
+        else:
+            assert result.completion_failure_source is None
 
 
 def test_missing_provider_usage_stops_before_another_case() -> None:
@@ -189,6 +196,12 @@ def test_atomic_writer_rejects_outputs_and_credentials(tmp_path: Path) -> None:
     for payload in (
         {"final_output": "answer"},
         {"nested": {"value": "sk-this-is-a-test-secret-value"}},
+        {"provider_response_body": "raw body"},
+        {"provider_output_body": "raw output"},
+        {"provider_status_raw_value": "future-provider-status"},
+        {"incomplete_details": {"reason": "raw"}},
+        {"credentials": "secret"},
+        {"direct_identifiers": ["participant@example.invalid"]},
     ):
         with _raises(EvalV2ContractError) as captured:
             _atomic_write_json(target, payload)
@@ -359,6 +372,72 @@ def test_resume_detects_score_tampering_with_case_hash_chain(tmp_path: Path) -> 
             output_created=False,
         )
     assert captured.value.code == "eval_v2_public_resume_case_chain_invalid"
+
+
+def test_legacy_checkpoint_without_completion_source_is_unknown_not_complete(
+    tmp_path: Path,
+) -> None:
+    manifest = load_eval_v2_dataset_manifest(
+        PROJECT_ROOT / "evals" / "v2" / "external_datasets.json"
+    )
+    task = next(
+        item
+        for item in load_eval_v2_public_tasks(
+            PROJECT_ROOT / "evals" / "v2" / "public_tasks.jsonl", manifest
+        )
+        if item.scenario == "output_truncation"
+        and item.split == "public_regression"
+    )
+    output = tmp_path / "run"
+    output.mkdir()
+    state_path = output / "public_regression_state.json"
+    spec = _minimal_state_spec()
+    spec["execution_plan"]["orders"]["deterministic_fault_injection"]["1"] = [
+        task.task_id
+    ]
+    state = _initialize_or_resume_state(
+        output=output,
+        state_path=state_path,
+        state_spec=spec,
+        resume=False,
+        output_created=True,
+    )
+    _execute_and_checkpoint_case(
+        state=state,
+        state_path=state_path,
+        channel="deterministic_fault_injection",
+        repetition_index=1,
+        task=task,
+        executor=DeterministicFaultExecutor(task.scenario),
+        inspect_backend=_AggregateOnlyBackend(),
+    )
+
+    legacy = json.loads(state_path.read_text(encoding="utf-8"))
+    entry = legacy["completed_cases"][0]
+    assert entry["diagnostics"].pop("completion_failure_source") == (
+        "output_limit_suspected"
+    )
+    entry["case_record_sha256"] = _case_record_sha256(entry)
+    legacy["case_chain_head_sha256"] = entry["case_record_sha256"]
+    _atomic_write_json(state_path, legacy)
+
+    resumed = _initialize_or_resume_state(
+        output=output,
+        state_path=state_path,
+        state_spec=spec,
+        resume=True,
+        output_created=False,
+    )
+    telemetry = _build_report(resumed)["deterministic_fault_injection"][
+        "completion_telemetry"
+    ]
+
+    assert telemetry["eligible_failure_count"] == 1
+    assert telemetry["classified_failure_count"] == 0
+    assert telemetry["legacy_unknown_count"] == 1
+    assert telemetry["classified_failure_coverage"] == 0.0
+    assert telemetry["coverage_status"] == "partial"
+    assert telemetry["coverage_complete"] is False
 
 
 def test_public_runner_cli_has_budget_but_no_api_key_argument() -> None:

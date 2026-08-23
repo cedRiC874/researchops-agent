@@ -147,7 +147,8 @@ sequenceDiagram
 | Phase 6 scripted/replay | Agent 工具轨迹采集、评分器和审批暂停协议 | 20 题语料校验与无网络 SDK 回归测试 | 真实 provider 的质量、延迟或成本 |
 | `online_agents_sdk` + `provider=openai` | OpenAI 模型的工具选择、参数、证据回答 | adapter 已验证；在线因 OpenAI API 计费条件阻塞 | 在线成功率、真实 token 成本或线上延迟 |
 | `online_agents_sdk` + `provider=deepseek` | DeepSeek V4 的同一 20 题行为合同 | 冻结版 development 16/16、repo-local holdout 4/4；usage、延迟、manifest 与审计索引已保存 | 抗污染泛化、生产 SLA 或未知成本为零 |
-| Eval v2 public candidate | schema、准备器、registry、inspect backend、Provider executor、runner/scorer、三次预承诺顺序、按 task-ID 聚合、工具请求/去重/backend telemetry、原子 artifacts 与 single-use receipt | 一次性 DeepSeek public run：Provider system 68/93；fault harness 27/27；完整 campaign仍 `design_only` | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
+| Eval v2 public candidate v1（历史） | schema、准备器、registry、inspect backend、Provider executor、runner/scorer、三次预承诺顺序、按 task-ID 聚合、工具请求/去重/backend telemetry、原子 artifacts 与 single-use receipt | 一次性 DeepSeek public run：Provider system 68/93；fault harness 27/27；完整 campaign仍 `design_only` | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
+| Completion Telemetry v2 candidate | 四类安全 failure source、legacy unknown coverage、versioned checkpoint/aggregation、pilot PostgreSQL migration 与 v1/v2 双摘要 retention | root 258 tests、pilot 离线 contracts 与真实 PostgreSQL contract；无 Provider 调用，且不继承 v1 成绩 | Provider 因果根因、模型质量提升、在线通过率或生产泛化 |
 
 Provider 是显式安全边界：OpenAI 与 DeepSeek 使用不同环境变量和独立 client，不允许任意 base URL，也不会修改 SDK 全局 Key。DeepSeek 会忽略 `parallel_tool_calls=False`，因此工具串行、调用预算和每运行单发布提案上限均由本地控制面强制执行，而不是依赖模型服务。
 

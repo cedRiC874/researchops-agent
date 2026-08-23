@@ -2,7 +2,7 @@
 
 > 状态：staging protocol，尚不构成已完成 pilot 的证据
 > Pilot 类型：邀请制、独立外部科研用户、非专家可用性评估
-> Eval v2 candidate 承诺：`7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11`
+> Eval v2 candidate 承诺：`1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5`
 
 ## 1. 目的与声明边界
 
@@ -17,10 +17,12 @@
 运行前冻结任务包、展示文案、模型/Provider 配置、反馈字段、纳入规则、门槛和本协议。模型执行部分绑定以下 Eval v2 candidate SHA-256 承诺值：
 
 ```text
-7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11
+1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5
 ```
 
 每个 manifest、同意记录、任务反馈和汇总均必须保存字段名明确的 `candidate_commitment_sha256`；协议、同意文档、任务包、反馈 schema、数据集 manifest、部署 Git SHA 和镜像 digest 另存各自的 commitment，不能用 candidate hash 冒充这些文件的 hash。上述值不是安全认证或第三方签名，只用于证明一轮 pilot 使用同一冻结定义。开始收集后不得挑题、改字段、改纳入标准或静默更换模型。任何实质变更都必须停止当前轮、生成新 campaign 并重新冻结；旧记录保持原承诺且不得混入新一轮汇总。
+
+该 candidate 新增 Completion Telemetry v2，仅记录四个 allowlisted 本地观测分支及覆盖率。它不保存 Provider 原始响应，也不把诊断标签称为因果根因。旧 candidate 的 pilot/public-regression 结果不继承到本轮；本协议本身也不授权在线或付费运行。
 
 ## 3. 招募、邀请与人数
 

@@ -1,0 +1,40 @@
+{
+  "schema_version": "supervised-pilot-pack-review/1.1",
+  "review_status": "internal_reviewed",
+  "pack_file": "pilot_pack.supervised_v3.json",
+  "purpose": "completion_telemetry_v2_supervised_usability_only",
+  "predecessor_pack_file": "pilot_pack.supervised_v2.json",
+  "task_selection_changed": false,
+  "source_pool": "evals/v2/public_tasks.jsonl",
+  "translation_review": {
+    "status": "internal_reviewed",
+    "english_prompt_exact": true,
+    "chinese_prompt_scope_preserving": true
+  },
+  "source_task_ids": [
+    "V2-PUB-028",
+    "V2-PUB-003",
+    "V2-PUB-027",
+    "V2-PUB-031",
+    "V2-PUB-006",
+    "V2-PUB-023"
+  ],
+  "selection_policy": {
+    "public_regression_only": true,
+    "internal_reviewed_only": true,
+    "exclude_supervised_v1_tasks": true,
+    "dataset_and_scenario_coverage_precommitted": true,
+    "model_performance_used_for_selection": false,
+    "private_holdout_used": false,
+    "repo_local_holdout_used": false
+  },
+  "evidence_boundaries": {
+    "independent_participant_evidence_allowed": false,
+    "cross_campaign_aggregation_allowed": false,
+    "prior_pilot_results_inherited": false,
+    "external_validation_claim_allowed": false,
+    "model_quality_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "online_run_performed_for_v2_candidate": false
+  }
+}

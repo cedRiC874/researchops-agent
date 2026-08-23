@@ -1,5 +1,9 @@
 # Pilot Staging Verification Snapshot
 
+> Historical note: the clean runs below verify predecessor candidate
+> `7744770a…f0d11`. Completion Telemetry v2 candidate `1f6ac18e…e5ce5` has only
+> offline local verification in this change and inherits none of those results.
+
 Date: 2026-08-23 (Asia/Shanghai)
 
 This is a local and GitHub clean-CI engineering verification snapshot. It is not an external participant

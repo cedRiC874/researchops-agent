@@ -14,7 +14,25 @@ from .eval_v2_inspect_backend import EvalV2InspectDatasetBackend
 from .eval_v2_public import EvalV2NumericClaim, EvalV2PublicTask
 
 
-EVAL_V2_RUNNER_VERSION = "1.1"
+EVAL_V2_RUNNER_VERSION = "1.2"
+COMPLETION_TELEMETRY_CONTRACT_VERSION = "completion-telemetry-v2"
+COMPLETION_FAILURE_SOURCES = (
+    "final_output_missing",
+    "response_output_item_incomplete",
+    "response_not_completed",
+    "output_limit_suspected",
+)
+COMPLETION_FAILURE_SOURCE_TO_ERROR_CODE = MappingProxyType(
+    {
+        "final_output_missing": "provider_output_incomplete",
+        "response_output_item_incomplete": "provider_output_incomplete",
+        "response_not_completed": "provider_output_not_completed",
+        "output_limit_suspected": "output_limit_suspected",
+    }
+)
+COMPLETION_FAILURE_ERROR_CODES = frozenset(
+    COMPLETION_FAILURE_SOURCE_TO_ERROR_CODE.values()
+)
 _EVIDENCE_ID_PATTERN = re.compile(r"\bE-[A-F0-9]{12}\b")
 _CLAIM_PATTERN = re.compile(
     r"\[CLAIM\s+metric=(?P<metric>[A-Za-z0-9_-]+)\s+"
@@ -144,6 +162,7 @@ class EvalV2ExecutorResult:
     deduplicated_tool_call_count: int | None = None
     gateway_dispatched_tool_call_count: int | None = None
     backend_executed_tool_call_count: int | None = None
+    completion_failure_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -169,6 +188,7 @@ class EvalV2Observation:
     deduplicated_tool_call_count: int | None = None
     gateway_dispatched_tool_call_count: int = 0
     backend_executed_tool_call_count: int = 0
+    completion_failure_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -380,6 +400,7 @@ def run_eval_v2_evaluation(
                 "executor 必须返回 EvalV2ExecutorResult。",
             )
         _validate_tool_telemetry(result)
+        _validate_completion_telemetry(result)
         observations.append(
             EvalV2Observation(
                 task_id=task.task_id,
@@ -409,6 +430,7 @@ def run_eval_v2_evaluation(
                 backend_executed_tool_call_count=(
                     gateway.backend_executed_tool_call_count
                 ),
+                completion_failure_source=result.completion_failure_source,
             )
         )
     return build_eval_v2_report(
@@ -577,6 +599,13 @@ def build_eval_v2_report(
         raise EvalV2ContractError(
             "eval_v2_observation_scope_mismatch", "observation scope 与 tasks 不一致。"
         )
+    for observation in observations:
+        _validate_completion_failure_metadata(
+            outcome=observation.outcome,
+            error_code=observation.error_code,
+            completion_status=observation.completion_status,
+            completion_failure_source=observation.completion_failure_source,
+        )
     scores = [
         score_eval_v2_observation(task, observations_by_id[task.task_id])
         for task in tasks
@@ -608,7 +637,7 @@ def build_eval_v2_report(
             "provider_online repetition 必须记录 provider/model/transport。",
         )
     return {
-        "schema_version": "2.0",
+        "schema_version": "2.1",
         "runner_version": EVAL_V2_RUNNER_VERSION,
         "evaluation_mode": evaluation_mode,
         "evidence_status": (
@@ -692,6 +721,25 @@ def build_eval_v2_report(
                     "backend_executed_tool_call_count": (
                         item.backend_executed_tool_call_count
                     ),
+                }
+                for item in observations
+            },
+        },
+        "completion_telemetry": {
+            **summarize_completion_telemetry(
+                [
+                    {
+                        "error_code": item.error_code,
+                        "completion_failure_source": item.completion_failure_source,
+                    }
+                    for item in observations
+                ]
+            ),
+            "per_task": {
+                item.task_id: {
+                    "error_code": item.error_code,
+                    "completion_status": item.completion_status,
+                    "completion_failure_source": item.completion_failure_source,
                 }
                 for item in observations
             },
@@ -820,6 +868,102 @@ def _validate_tool_telemetry(result: EvalV2ExecutorResult) -> None:
             "eval_v2_tool_telemetry_invalid",
             "Tool telemetry 计数关系无效。",
         )
+
+
+def _validate_completion_telemetry(result: EvalV2ExecutorResult) -> None:
+    _validate_completion_failure_metadata(
+        outcome=result.outcome,
+        error_code=result.error_code,
+        completion_status=result.completion_status,
+        completion_failure_source=result.completion_failure_source,
+    )
+
+
+def _validate_completion_failure_metadata(
+    *,
+    outcome: str,
+    error_code: str | None,
+    completion_status: str,
+    completion_failure_source: str | None,
+) -> None:
+    if completion_failure_source is None:
+        # A missing source on an eligible failure is a supported legacy-unknown
+        # observation. New v2 executors are responsible for populating it.
+        return
+    expected_error = COMPLETION_FAILURE_SOURCE_TO_ERROR_CODE.get(
+        completion_failure_source
+    )
+    if expected_error is None:
+        raise EvalV2ContractError(
+            "eval_v2_completion_telemetry_invalid",
+            "completion_failure_source 不属于固定 allowlist。",
+        )
+    if (
+        error_code != expected_error
+        or outcome != "controlled_failure"
+        or completion_status != "output_truncated"
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_completion_telemetry_invalid",
+            "completion_failure_source 与 completion failure 不一致。",
+        )
+
+
+def summarize_completion_telemetry(
+    records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    for record in records:
+        source = record.get("completion_failure_source")
+        if source is None:
+            continue
+        expected_error = COMPLETION_FAILURE_SOURCE_TO_ERROR_CODE.get(source)
+        if expected_error is None or record.get("error_code") != expected_error:
+            raise EvalV2ContractError(
+                "eval_v2_completion_telemetry_invalid",
+                "completion telemetry record source/error_code 不一致。",
+            )
+    eligible_failure_count = sum(
+        record.get("error_code") in COMPLETION_FAILURE_ERROR_CODES
+        for record in records
+    )
+    source_counts = {
+        source: sum(
+            record.get("completion_failure_source") == source for record in records
+        )
+        for source in COMPLETION_FAILURE_SOURCES
+    }
+    classified_failure_count = sum(source_counts.values())
+    legacy_unknown_count = eligible_failure_count - classified_failure_count
+    if legacy_unknown_count < 0:
+        raise EvalV2ContractError(
+            "eval_v2_completion_telemetry_invalid",
+            "classified completion failures 超过 eligible failures。",
+        )
+    coverage_complete = legacy_unknown_count == 0
+    coverage_status = (
+        "no_applicable_failures"
+        if eligible_failure_count == 0
+        else ("complete" if coverage_complete else "partial")
+    )
+    return {
+        "contract_version": COMPLETION_TELEMETRY_CONTRACT_VERSION,
+        "diagnostic_only": True,
+        "eligible_failure_count": eligible_failure_count,
+        "classified_failure_count": classified_failure_count,
+        "legacy_unknown_count": legacy_unknown_count,
+        "classified_failure_coverage": (
+            classified_failure_count / eligible_failure_count
+            if eligible_failure_count
+            else None
+        ),
+        "coverage_status": coverage_status,
+        "coverage_complete": coverage_complete,
+        "failure_source_counts": [
+            {"source": source, "case_count": source_counts[source]}
+            for source in COMPLETION_FAILURE_SOURCES
+            if source_counts[source]
+        ],
+    }
 
 
 def _normalize_text(value: str) -> str:

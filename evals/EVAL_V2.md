@@ -1,6 +1,6 @@
 # Eval v2：外部留出、多数据集与重复运行
 
-> 当前状态：完整 campaign 仍为 `design_only`；独立 DeepSeek public-regression candidate 已于 2026-08-21 一次性运行完成。本页不代表 private holdout、第二 Provider 或外部复核已经完成。
+> 当前状态：完整 campaign 仍为 `design_only`；DeepSeek v1 public-regression candidate 已于 2026-08-21 一次性运行完成。Completion Telemetry v2 是新的离线 candidate，尚未在线运行且不继承 v1 结果。本页不代表 private holdout、第二 Provider 或外部复核已经完成。
 
 Eval v2 的目标是解决 Phase 6 小样本、repo-local holdout 可见、单 Provider 和单数据集证据不足的问题。它不会覆盖或重新解释现有 Phase 5/6 成绩，也不会再次使用当前 4 题 holdout 调整 prompt。
 
@@ -137,11 +137,13 @@ Campaign 保留 5 个逻辑数据集槽位：当前仓库内 synthetic trial、3
 - 未知工具、参数替换和第二个发布提案 fail closed，并进入观察轨迹；
 - 当前仅支持 `injected_offline` / `scripted_regression`，报告固定 `evidence_status=harness_regression_only` 与 `model_quality_claim_allowed=false`。
 
-Runner/scorer `1.1` 检查完整工具顺序、精确参数、outcome、required/forbidden 文本、evidence ID、closed numeric claim catalog、审批旁路、安全状态和 completion integrity。Forbidden phrases 保持严格 literal；forbidden assertions 逐次检查明确的局部否定，避免把 “not a continuous outcome” 当作正向断言，同时双重否定或后续未限定正向断言仍 fail closed。`provider_timeout`、`output_truncation`、`side_effect_outcome_unknown` 必须分别匹配稳定错误码与 completion 状态。报告按 split、scenario、dataset 聚合成功率，并记录工具/参数准确率、审批控制、P50/P95 和 usage 完整性。
+Runner/scorer `1.2` 检查完整工具顺序、精确参数、outcome、required/forbidden 文本、evidence ID、closed numeric claim catalog、审批旁路、安全状态和 completion integrity。Forbidden phrases 保持严格 literal；forbidden assertions 逐次检查明确的局部否定，避免把 “not a continuous outcome” 当作正向断言，同时双重否定或后续未限定正向断言仍 fail closed。`provider_timeout`、`output_truncation`、`side_effect_outcome_unknown` 必须分别匹配稳定错误码与 completion 状态。报告按 split、scenario、dataset 聚合成功率，并记录工具/参数准确率、审批控制、P50/P95 和 usage 完整性。
+
+Completion Telemetry v2 为 completion failure 增加 `completion_failure_source`，只允许 `final_output_missing`、`response_output_item_incomplete`、`response_not_completed` 和 `output_limit_suspected`。分类顺序固定，source 必须与稳定 `error_code` 配对；旧 artifact 缺字段时记为 legacy unknown，并显式报告 applicable/observed/unknown coverage。逐题 checkpoint、重复运行和跨 Provider 聚合只保存安全标签及计数，不保存 Provider body、raw status 或 incomplete details。这些标签是本地诊断分支，不是因果根因。
 
 当前同时具有离线 runner/scorer/backend 证据与一次性 public candidate 在线证据。Provider-behavior 为 68/93，三轮 23/31、22/31、23/31；本地 fault harness 为 27/27，未归因模型、未进入模型分母。这不是完整 120 题 × 3 Provider campaign，也不是 private holdout 或未知生产集成绩。
 
-Provider executor `1.1` 已按锁定的 Agents SDK 0.21 接口接入现有 `ProviderAdapter`：每次运行显式绑定 provider/model/transport 和独立 client，要求 `--confirm-online` 等价的显式确认，不记录或输出 Key；第三方 Provider 强制关闭 OpenAI tracing。SDK Agent 在工具创建前区分明显的拒绝、澄清、正常检查和发布请求：匹配的危险/未授权请求与待澄清设计不暴露工具，拒绝由本地输出合同补齐稳定 reason；合法检查缓存相同 dataset 的执行结果；发布上下文只暴露 publish。未被预分类的请求仍受逻辑 registry/gateway 参数授权与零副作用审批边界保护。该策略是 control-plane guardrail，public 结果归因于“模型 + 锁定控制面”，不应称为模型一次规划正确。
+Provider executor `1.2` 已按锁定的 Agents SDK 0.21 接口接入现有 `ProviderAdapter`：每次运行显式绑定 provider/model/transport 和独立 client，要求 `--confirm-online` 等价的显式确认，不记录或输出 Key；第三方 Provider 强制关闭 OpenAI tracing。SDK Agent 在工具创建前区分明显的拒绝、澄清、正常检查和发布请求：匹配的危险/未授权请求与待澄清设计不暴露工具，拒绝由本地输出合同补齐稳定 reason；合法检查缓存相同 dataset 的执行结果；发布上下文只暴露 publish。未被预分类的请求仍受逻辑 registry/gateway 参数授权与零副作用审批边界保护。该策略是 control-plane guardrail，public 结果归因于“模型 + 锁定控制面”，不应称为模型一次规划正确。
 
 拒绝与澄清使用独立短预算：refusal 512 tokens、clarification 768 tokens；普通任务继续使用运行配置值。因果澄清由本地确定性双语模板规范化，固定说明数据是 `observational`、不能识别因果效应，并询问是否改写为 `association analysis`。原始 Provider 空输出或达到策略上限仍是 controlled failure，本地模板不得掩盖完成性失败。
 
@@ -153,14 +155,14 @@ Public-regression candidate 使用三份预承诺 seed/task order；三次排列
 
 ## 3.4 Public-regression candidate lock
 
-[`public_regression_candidate.json`](v2/public_regression_candidate.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它绑定 source、prompt contract、scorer、tool contract、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`，并生成总 commitment。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`。
+历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json) 保留 v1 commitment 和既有一次性结果。当前 [`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它绑定 source、prompt contract、scorer、tool contract、Completion Telemetry v2 contract、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`，并生成新的总 commitment。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
 
 ```powershell
 .\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-public-freeze `
   --verify-environment
 ```
 
-`requirements.lock` 的 58 个版本全部精确 pin 且当前环境 58/58 匹配，但没有 wheel/sdist artifact hashes；因此只能证明版本清单未漂移，不能证明供应链包文件字节相同。候选 commitment `7744770a…f0d11` 已完成一次性 public-regression；完整 campaign 仍非 frozen。
+`requirements.lock` 的 58 个版本全部精确 pin 且当前环境 58/58 匹配，但没有 wheel/sdist artifact hashes；因此只能证明版本清单未漂移，不能证明供应链包文件字节相同。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；Completion Telemetry v2 commitment `1f6ac18e…e5ce5` 仅完成离线验证，未运行 Provider，也不继承历史 68/93。完整 campaign 仍非 frozen。
 
 原子 artifact writer 只写脱敏 `eval_v2_report.json`、`eval_v2_summary.md`、可选 repetition aggregation 和带 SHA-256/size/source-tree hash 的 manifest。目标必须是 `artifacts/` 下不存在的新目录；先在同父目录 staging 中生成并复核，再原子 rename。路径、API Key/Authorization、final output、raw rows、sample values 和 traceback 字段均被拒绝。所有未冻结产物固定 `model_quality_claim_allowed=false`。
 
@@ -248,11 +250,11 @@ Public-regression candidate 使用三份预承诺 seed/task order；三次排列
 - 已注册数据集 1/3，非 synthetic 0/3；
 - 已完成来源与哈希核验的外部数据集 3 个，但外部专家复核为 0/3；
 - 已注册 Provider 1/2；
-- Public candidate hashes/commitment 已生成并在运行后保持有效；完整 private campaign freeze 尚未生成；
+- 历史 v1 public candidate 及结果保持可追溯；Completion Telemetry v2 candidate hashes/commitment 已离线生成但尚未在线运行，完整 private campaign freeze 尚未生成；
 - private corpus commitment 尚未提供；
 - 外部 golden review 和统计交叉检查尚未完成。
 
-因此当前可声称“Eval v2 设计合同、离线校验和一次性 DeepSeek public candidate run 已完成”；不能声称完整 Eval v2 campaign 已 frozen、已有 private holdout、跨 Provider 或未知生产泛化。
+因此当前可声称“Eval v2 设计合同、Completion Telemetry v2 离线实现/校验，以及历史一次性 DeepSeek v1 public candidate run 已完成”；不能把历史结果归给 v2，也不能声称完整 Eval v2 campaign 已 frozen、已有 private holdout、跨 Provider 或未知生产泛化。
 
 ## 9. 下一实现批次
 

@@ -15,10 +15,10 @@ external_validation_claim_allowed=false
 professional_correctness_assessed=false
 ```
 
-当前 `pilot_pack.supervised_v2.json` 仅用于同一位参与者复核 accidental-withdrawal
-页面修复。它使用与 v1 不重叠的 6 道已公开、内部复核任务，目标人数固定为 1；不得把
-该参与者描述为第二位独立参与者，不得跨 v1/v2 campaign 聚合，也不得据此声称模型
-质量、外部验证或未知分布泛化。
+当前 `pilot_pack.supervised_v3.json` 绑定 Completion Telemetry v2 candidate，沿用 v2
+内部复核的 6 道公开任务，但不继承 v1/v2 的参与者或结果。目标人数固定为 1；不得跨
+campaign 聚合，也不得据此声称模型质量、外部验证或未知分布泛化。当前离线实现阶段
+尚未授权或执行该 pack 的在线运行。
 
 主持人不能评价答案正确性、提示期望行为、解释任务或替参与者作答。预试记录不能计入正式 pilot 的人数、20 次交互、覆盖或成功率。
 
@@ -32,7 +32,7 @@ professional_correctness_assessed=false
 - [ ] 联系方式、排期和补偿信息保存在 pilot 系统之外；场次材料中只有随机假名 ID。
 - [ ] 使用 supervised 专用 campaign/session，未复用正式 pilot session。
 - [ ] 固定 protocol、同意文案、6 题顺序、Provider/model 和部署版本已记录。
-- [ ] Candidate commitment 为 `7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11`。
+- [ ] Candidate commitment 为 `1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5`。
 - [ ] Provider Key 只在服务端 secret 中；浏览器和参与者无需输入 Key。
 - [ ] 没有启用录音、录像、录屏或会议自动转写。
 - [ ] 单场记录模板已经创建，但不含姓名、邮箱、机构、IP 或其他直接身份信息。

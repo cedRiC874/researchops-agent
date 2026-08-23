@@ -87,18 +87,34 @@ def test_application_summary_matches_published_schema() -> None:
     application.freeze_campaign(campaign["campaign_id"])
     summary = application.summary(campaign["campaign_id"])
     schema = json.loads(
-        (SERVICE / "contracts" / "pilot_summary.schema.json").read_text(encoding="utf-8")
+        (SERVICE / "contracts" / "pilot_summary.v1.2.schema.json").read_text(
+            encoding="utf-8"
+        )
     )
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema).validate(summary)
+    migrated_v1_campaign_summary = deepcopy(summary)
+    migrated_v1_campaign_summary["commitments"][
+        "candidate_commitment_sha256"
+    ] = "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+    Draft202012Validator(schema).validate(migrated_v1_campaign_summary)
     assert summary["external_validation_claim_allowed"] is False
     assert summary["pilot_success_criteria_met"] is None
-    assert summary["schema_version"] == "external-pilot-summary/1.1"
+    assert summary["schema_version"] == "external-pilot-summary/1.2"
     telemetry = summary["provider_execution_telemetry"]
     assert telemetry["telemetry_coverage_status"] == "no_attempts"
     assert telemetry["executor_model_call_count"]["observed_sum"] is None
     assert telemetry["model_planning_accuracy_claim_allowed"] is False
     assert telemetry["append_only_event_binding_status"] == "not_applicable"
+    assert telemetry["completion_failure_sources"] == {
+        "semantics_version": "pilot-completion-failure-source-v2",
+        "applicable_attempt_count": 0,
+        "observed_attempt_count": 0,
+        "unknown_attempt_count": 0,
+        "coverage_rate": None,
+        "coverage_status": "no_applicable_failures",
+        "counts": [],
+    }
     assert summary["retention_status"][
         "participant_projection_binding_status"
     ] == "not_applicable"
@@ -109,6 +125,27 @@ def test_application_summary_matches_published_schema() -> None:
     invalid_telemetry["executor_model_call_count"]["unknown_attempt_count"] = 1
     with pytest.raises(ValueError, match="denominator mismatch"):
         validate_provider_execution_telemetry(invalid_telemetry)
+
+    invalid_completion = deepcopy(telemetry)
+    invalid_completion["completion_failure_sources"]["unknown_attempt_count"] = 1
+    with pytest.raises(ValueError, match="denominator mismatch"):
+        validate_provider_execution_telemetry(invalid_completion)
+
+    historical_schema = json.loads(
+        (SERVICE / "contracts" / "pilot_summary.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    historical_summary = deepcopy(summary)
+    historical_summary["schema_version"] = "external-pilot-summary/1.1"
+    historical_summary["commitments"]["candidate_commitment_sha256"] = (
+        "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+    )
+    del historical_summary["provider_execution_telemetry"][
+        "completion_failure_sources"
+    ]
+    Draft202012Validator.check_schema(historical_schema)
+    Draft202012Validator(historical_schema).validate(historical_summary)
 
     positive = deepcopy(summary)
     positive["status"] = "complete"
