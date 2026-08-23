@@ -52,6 +52,23 @@ projection 只选择任务/scenario、稳定状态/reason、计数与 duration�
 [`aggregate_projection.json`](aggregate_projection.json)，SHA-256
 `e4cdce88a649b3773fb9b3b65e1d4ffe89661f503f147ff134115f6d89953545`。
 
+Campaign 完成后的 evidence-only CI rerun 又暴露了 Windows hosted CPU dispatch 对
+raw-float evidence identity 的敏感性。该问题没有改变本 campaign 的部署源码或数据库
+事实。后续提交 `8dc67706e4ffec8e48057747020f8c8d82f66bb5` 将 Phase 5 重建固定到
+Nehalem/x86-v2 数值基线，并以实际 canonical ANCOVA ID 而不是 NumPy 内部 feature flag
+作为前置门禁；当前 Phase 5 corpus lineage 为 ANCOVA `E-36034128278C`、chart
+`CH-6D27DA2CB989`、corpus SHA-256
+`ffa82ef11ff3e030a9b62cfa7801deab4930e131f180ab67539e774a7d88debf`。以下
+post-campaign runs 均为 `success`：
+
+- [push offline run 32639815327](https://github.com/cedRiC874/researchops-agent/actions/runs/32639815327)；
+- [pull-request offline run 32639817573](https://github.com/cedRiC874/researchops-agent/actions/runs/32639817573)；
+- [pilot-staging-ci run 32639817571](https://github.com/cedRiC874/researchops-agent/actions/runs/32639817571)。
+
+这次 lineage 更新没有修改 `src/researchops`、prompt、scorer 或 Eval v2 candidate；
+candidate commitment 仍为 `7744770a…f0d11`。它也不把历史 Phase 5 50/50 称为 LLM
+规划准确率。
+
 ## 冻结任务与终态
 
 6 个 source tasks 全部来自 `public_regression + ready + internal_reviewed`，与 v1 的

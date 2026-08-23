@@ -110,7 +110,9 @@ digest/部署 SHA、脱敏 telemetry/告警、外部 daily retention scheduler�
 
 - 当前分支：`codex/failure-telemetry`；本轮 campaign 的部署提交为
   `fda5abfdafe1d7908af521b4595bd56bf2a796b3`。PR #8 在执行时以该 head 达到
-  `CLEAN`；后续 evidence-only 文档提交可以移动 PR head。PR 尚未进入 `main` 或 Release。
+  `CLEAN`；post-campaign CI 修复提交为 `8dc67706e4ffec8e48057747020f8c8d82f66bb5`，
+  push/PR offline 与 pilot CI 均成功。后续 evidence-only 文档提交可以继续移动 PR
+  head。PR 尚未进入 `main` 或 Release。
 - 初始 supervised campaign 因完成页“退出”文案歧义被参与者误操作为正式 withdraw；
   该参与者数据保持排除，campaign 已关闭，未恢复或重计。
 - 修复后用同一参与者、不同 6 道 public/internal-reviewed tasks 完成 v2 UX regression：
@@ -128,6 +130,10 @@ digest/部署 SHA、脱敏 telemetry/告警、外部 daily retention scheduler�
   `docs/evidence/supervised-ux-regression-v2-20260823/README.md`；两个故障已分别登记在
   同目录 `failures/`。不得使用本轮 6 题继续调 prompt，不得把同一参与者说成第二位
   独立参与者，也不得跨 v1/v2 聚合或声称 external validation。
+- Post-campaign offline reruns 证明 Haswell/x86-v3 containment 仍依赖 hosted CPU；当前
+  branch 已固定 Nehalem/x86-v2，并将 Phase 5 当前 lineage 更新为 ANCOVA
+  `E-36034128278C`、chart `CH-6D27DA2CB989`、corpus SHA-256
+  `ffa82ef1…debf`。这不是新的模型评测，也没有修改 locked Eval v2 candidate。
 
 ## 2. 项目定位
 
