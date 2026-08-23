@@ -48,7 +48,7 @@ accuracy 1；workflow 分别保存 evaluation/verifier 的 native exit code，�
 
 Phase 5 evidence ID 会绑定统计结果的完整数值。Windows hosted runner 的不同 CPU
 可能选择不同 OpenBLAS kernel，并在数值仍处于评分容差内时产生末位浮点差异。CI
-因此固定 `OPENBLAS_CORETYPE=HASWELL`、单线程 OpenBLAS 和单线程 OMP；这只固定
+因此固定 `OPENBLAS_CORETYPE=GENERIC`、单线程 OpenBLAS 和单线程 OMP；这只固定
 重建环境，不修改 golden、scorer 或被测组件。任一 50/50 或 21/21 偏差仍由上述
 quality profile fail-closed。
 

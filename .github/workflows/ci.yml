@@ -16,7 +16,7 @@ jobs:
       # Evidence IDs bind numerical results. Pin one supported BLAS kernel and
       # one reduction thread so hosted-runner CPU differences cannot perturb
       # the final floating-point bits used by the Phase 5 identity hash.
-      OPENBLAS_CORETYPE: HASWELL
+      OPENBLAS_CORETYPE: GENERIC
       OPENBLAS_NUM_THREADS: "1"
       OMP_NUM_THREADS: "1"
 
