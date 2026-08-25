@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from .analysis_tools import AnalysisExecutionError
+from .anthropic_preflight import run_anthropic_models_preflight
 from .audit import AuditError, AuditLedger
 from .contracts import ResearchDesign
 from .data_quality import CsvValidationError, profile_csv
@@ -28,6 +29,7 @@ from .eval_v2_public_runner import run_public_regression_online
 from .eval_v2_public import validate_eval_v2_suite
 from .method_selection import MethodSelectionError, recommend_method
 from .model_providers import (
+    ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
     SUPPORTED_PROVIDER_IDS,
     ProviderConfigurationError,
     get_provider,
@@ -163,6 +165,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--provider", choices=SUPPORTED_PROVIDER_IDS, default="openai"
     )
 
+    anthropic_preflight_parser = subparsers.add_parser(
+        "anthropic-models-preflight",
+        help="对 exact allowlisted Anthropic model 执行一次固定 Models API metadata 预检",
+    )
+    anthropic_preflight_parser.add_argument("--model", required=True)
+    anthropic_preflight_parser.add_argument(
+        "--confirm-online", action="store_true"
+    )
+
     phase6_validate_parser = subparsers.add_parser(
         "phase6-validate", help="严格验证第六阶段 Agent 行为评测集与 split 清单"
     )
@@ -281,7 +292,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_freeze_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate_v3.json"),
+        default=Path("evals/v2/public_regression_candidate_v4.json"),
     )
     eval_v2_freeze_parser.add_argument(
         "--verify-environment", action="store_true"
@@ -294,7 +305,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_public_run_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate_v3.json"),
+        default=Path("evals/v2/public_regression_candidate_v4.json"),
     )
     eval_v2_public_run_parser.add_argument("--registry", type=Path, required=True)
     eval_v2_public_run_parser.add_argument("--output-dir", type=Path, required=True)
@@ -500,6 +511,18 @@ def main() -> int:
                 )
             )
             return 0
+        elif args.command == "anthropic-models-preflight":
+            result = asyncio.run(
+                run_anthropic_models_preflight(
+                    provider_id="anthropic",
+                    model_id=args.model,
+                    api_key=None,
+                    confirm_online=args.confirm_online,
+                    _key_loader=lambda: os.environ.get("ANTHROPIC_API_KEY"),
+                )
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["status"] == "verified" else 4
         elif args.command == "phase6-validate":
             result = validate_phase6_suite(args.tasks, args.splits)
             print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -628,6 +651,11 @@ def main() -> int:
                 raise EvalV2ContractError(
                     "eval_v2_online_confirmation_required",
                     "Self-pilot Provider 运行需要 --confirm-online。",
+                )
+            if args.provider == "anthropic":
+                raise EvalV2ContractError(
+                    ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+                    "Generic self-pilot Anthropic 入口未获受控 pilot 授权；Models preflight receipt 不授权运行。",
                 )
             project_root = Path(__file__).resolve().parents[2]
             provider = get_provider(args.provider)

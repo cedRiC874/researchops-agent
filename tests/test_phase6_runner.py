@@ -46,6 +46,39 @@ def _usage() -> AgentUsage:
 
 
 class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
+    async def test_generic_anthropic_entrypoint_denies_before_key_output_or_runner(self) -> None:
+        class ForbiddenEnvironment(dict[str, str]):
+            def get(self, key, default=None):
+                del key, default
+                raise AssertionError("Anthropic generic gate must precede Key lookup")
+
+        async def forbidden_runner(request, backend, **kwargs):
+            del request, backend, kwargs
+            raise AssertionError("runner must not start")
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            output = Path(directory) / "anthropic-generic-denied"
+            with self.assertRaises(Phase6RunError) as caught:
+                await run_phase6_online_evaluation(
+                    project_root=ROOT,
+                    tasks_path=CORPUS,
+                    split_manifest_path=SPLITS,
+                    output_directory=output,
+                    provider="anthropic",
+                    model="claude-sonnet-5",
+                    split="development",
+                    max_cases=1,
+                    confirm_online=True,
+                    environment=ForbiddenEnvironment(),
+                    agent_runner=forbidden_runner,
+                )
+
+        self.assertEqual(
+            caught.exception.code, "anthropic_generic_online_entrypoint_disabled"
+        )
+        self.assertTrue(caught.exception.not_run)
+        self.assertFalse(output.exists())
+
     async def test_confirmation_and_key_gates_precede_output_and_runner(self) -> None:
         calls: list[LogicalAgentRequest] = []
 
@@ -220,7 +253,11 @@ class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             anthropic_ready["online_run_status"],
-            "ready_requires_explicit_confirmation",
+            "not_run",
+        )
+        self.assertEqual(
+            anthropic_ready["not_run_reason"],
+            "anthropic_generic_online_entrypoint_disabled",
         )
         self.assertTrue(anthropic_ready["sdk"]["api_key_configured"])
         with patch.dict(
@@ -519,7 +556,7 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertTrue(manifest["audit"]["all_chains_valid"])
             self.assertEqual(manifest["schema_version"], "1.1")
-            self.assertEqual(manifest["runner_version"], "1.7.0")
+            self.assertEqual(manifest["runner_version"], "1.8.0")
             self.assertEqual(manifest["selection"]["max_output_tokens"], 2000)
             self.assertEqual(manifest["provider"], "openai")
             self.assertEqual(manifest["transport"], "openai_responses")

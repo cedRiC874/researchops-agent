@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -145,6 +146,32 @@ def test_contract_json_and_pack_are_parseable() -> None:
         value = json.loads(path.read_text(encoding="utf-8"))
         assert value["$schema"] == "https://json-schema.org/draft/2020-12/schema"
         assert value["additionalProperties"] is False
+    historical_v3 = "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9"
+    current_v4 = LOCKED_CANDIDATE_COMMITMENT
+
+    def candidate_enums(value):
+        matches = []
+        if isinstance(value, dict):
+            enum = value.get("enum")
+            if isinstance(enum, list) and current_v4 in enum:
+                matches.append(enum)
+            for child in value.values():
+                matches.extend(candidate_enums(child))
+        elif isinstance(value, list):
+            for child in value:
+                matches.extend(candidate_enums(child))
+        return matches
+
+    for name in (
+        "participant_lifecycle.schema.json",
+        "pilot_manifest.schema.json",
+        "pilot_summary.v1.2.schema.json",
+        "task_feedback.schema.json",
+    ):
+        schema = json.loads((SERVICE / "contracts" / name).read_text(encoding="utf-8"))
+        enums = candidate_enums(schema)
+        assert len(enums) == 1
+        assert historical_v3 in enums[0]
     pack = json.loads(
         (SERVICE / "content" / "pilot_pack.public_v1.json").read_text(encoding="utf-8")
     )
@@ -159,21 +186,27 @@ def test_contract_json_and_pack_are_parseable() -> None:
             encoding="utf-8"
         )
     )
+    assert hashlib.sha256(
+        (SERVICE / "content" / "pilot_pack.supervised_v4.json").read_bytes()
+    ).hexdigest() == "f764786a984a4b65bacf7f403019057c4230535e0f7c6849f3461c35cc74125d"
+    assert hashlib.sha256(
+        (SERVICE / "content" / "pilot_pack.supervised_v4.review.json").read_bytes()
+    ).hexdigest() == "cc077115a4ba92362350456a4ab8301fce0080502b1e35e8842ffae991a49db5"
     assert supervised_pack["target_participants"] == 2
     assert supervised_pack["max_provider_runs"] == 12
     assert supervised_pack["tasks"] == pack["tasks"]
     regression_pack = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v4.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v5.json").read_text(
             encoding="utf-8"
         )
     )
     review = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v4.review.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v5.review.json").read_text(
             encoding="utf-8"
         )
     )
     predecessor_pack = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v3.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v4.json").read_text(
             encoding="utf-8"
         )
     )
@@ -191,7 +224,7 @@ def test_contract_json_and_pack_are_parseable() -> None:
     assert re.fullmatch(r"[0-9a-f]{64}", regression_commitment)
     assert regression_commitment != task_pack_commitment_sha256(supervised_pack["tasks"])
     assert regression_pack["candidate_commitment_sha256"] == LOCKED_CANDIDATE_COMMITMENT
-    assert "multi-provider-adapter" in regression_pack["title"]
+    assert "Anthropic Models preflight" in regression_pack["title"]
     assert regression_pack["provider"] == predecessor_pack["provider"]
     assert regression_pack["tasks"] == predecessor_pack["tasks"]
     assert (
@@ -228,7 +261,11 @@ def test_contract_json_and_pack_are_parseable() -> None:
             source["scenario"] == "clarification_required"
         )
     assert review["review_status"] == "internal_reviewed"
-    assert review["predecessor_pack_file"] == "pilot_pack.supervised_v3.json"
+    assert review["pack_file"] == "pilot_pack.supervised_v5.json"
+    assert review["purpose"] == (
+        "anthropic_models_preflight_successor_supervised_usability_only"
+    )
+    assert review["predecessor_pack_file"] == "pilot_pack.supervised_v4.json"
     assert review["task_selection_changed"] is False
     assert review["translation_review"] == {
         "status": "internal_reviewed",
@@ -251,10 +288,15 @@ def test_contract_json_and_pack_are_parseable() -> None:
         "independent_participant_evidence_allowed"
     ] is False
     assert review["evidence_boundaries"]["cross_campaign_aggregation_allowed"] is False
+    assert review["evidence_boundaries"]["prior_pilot_results_inherited"] is False
+    assert review["evidence_boundaries"]["online_run_performed_for_v4_candidate"] is False
+    assert review["evidence_boundaries"]["anthropic_models_preflight_live_call_performed"] is False
+    assert review["evidence_boundaries"]["anthropic_online_run_performed"] is False
     composition = (SERVICE / "src" / "pilot_staging" / "composition.py").read_text(
         encoding="utf-8"
     )
-    assert "pilot_pack.supervised_v4.json" in composition
+    assert "pilot_pack.supervised_v5.json" in composition
+    assert "pilot_pack.supervised_v4.json" not in composition
     assert "pilot_pack.supervised_v3.json" not in composition
     assert "pilot_pack.supervised_v2.json" not in composition
     assert "pilot_pack.supervised_v1.json" not in composition

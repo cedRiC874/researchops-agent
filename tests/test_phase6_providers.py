@@ -150,6 +150,54 @@ class Phase6ProviderTests(unittest.TestCase):
                     provider.validate_model(value)
                 self.assertEqual(caught.exception.code, "provider_model_not_allowed")
 
+    def test_anthropic_public_transport_requires_single_use_private_capability(self) -> None:
+        provider = AnthropicProvider()
+
+        async def denied_without_capability() -> None:
+            async with provider.open_model(
+                model_id="claude-sonnet-5",
+                api_key="must-not-be-used",
+            ):
+                self.fail("context body must not run")
+
+        with patch(
+            "researchops.model_providers._load_litellm_transport"
+        ) as load_transport:
+            with self.assertRaises(ProviderConfigurationError) as denied:
+                asyncio.run(denied_without_capability())
+        self.assertEqual(
+            denied.exception.code, "anthropic_generic_online_entrypoint_disabled"
+        )
+        load_transport.assert_not_called()
+
+        authorization = provider_module._anthropic_offline_test_authorization()
+
+        async def consume_with_missing_key() -> None:
+            async with provider.open_model(
+                model_id="claude-sonnet-5",
+                api_key="  ",
+                _authorization=authorization,
+            ):
+                self.fail("context body must not run")
+
+        with self.assertRaises(ProviderConfigurationError) as missing:
+            asyncio.run(consume_with_missing_key())
+        self.assertEqual(missing.exception.code, "provider_api_key_missing")
+
+        async def denied_on_reuse() -> None:
+            async with provider.open_model(
+                model_id="claude-sonnet-5",
+                api_key="must-not-be-used",
+                _authorization=authorization,
+            ):
+                self.fail("context body must not run")
+
+        with self.assertRaises(ProviderConfigurationError) as reused:
+            asyncio.run(denied_on_reuse())
+        self.assertEqual(
+            reused.exception.code, "anthropic_generic_online_entrypoint_disabled"
+        )
+
     def test_openai_builds_concrete_model_without_base_url_and_closes(self) -> None:
         provider = OpenAIProvider()
 
@@ -205,7 +253,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with provider.open_model(
-                model_id="claude-sonnet-5", api_key="test-anthropic-key"
+                model_id="claude-sonnet-5",
+                api_key="test-anthropic-key",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ) as bound:
                 self.assertEqual(bound.provider_id, "anthropic")
                 self.assertEqual(
@@ -255,6 +305,7 @@ class Phase6ProviderTests(unittest.TestCase):
                 model_id="claude-sonnet-5",
                 api_key="test-anthropic-key",
                 timeout_seconds=17.0,
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ) as bound:
                 result = await bound.sdk_model._fetch_response(
                     system_instructions=None,
@@ -309,7 +360,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with AnthropicProvider().open_model(
-                model_id="claude-sonnet-5", api_key="GLOBAL-RETENTION-CANARY"
+                model_id="claude-sonnet-5",
+                api_key="GLOBAL-RETENTION-CANARY",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ) as bound:
                 await bound.sdk_model._fetch_response(
                     system_instructions=None,
@@ -361,7 +414,11 @@ class Phase6ProviderTests(unittest.TestCase):
         provider = AnthropicProvider()
 
         async def exercise() -> None:
-            async with provider.open_model(model_id="claude-sonnet-5", api_key="  "):
+            async with provider.open_model(
+                model_id="claude-sonnet-5",
+                api_key="  ",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
+            ):
                 self.fail("context body must not run")
 
         with patch(
@@ -378,6 +435,7 @@ class Phase6ProviderTests(unittest.TestCase):
                 model_id="claude-sonnet-5",
                 api_key="offline-placeholder",
                 timeout_seconds=0,
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -407,7 +465,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with AnthropicProvider().open_model(
-                model_id="claude-sonnet-5", api_key="offline-placeholder"
+                model_id="claude-sonnet-5",
+                api_key="offline-placeholder",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -430,7 +490,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with AnthropicProvider().open_model(
-                model_id="claude-sonnet-5", api_key="test-anthropic-key"
+                model_id="claude-sonnet-5",
+                api_key="test-anthropic-key",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -456,7 +518,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with AnthropicProvider().open_model(
-                model_id="claude-sonnet-5", api_key="test-anthropic-key"
+                model_id="claude-sonnet-5",
+                api_key="test-anthropic-key",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -482,7 +546,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with AnthropicProvider().open_model(
-                model_id="claude-sonnet-5", api_key="test-anthropic-key"
+                model_id="claude-sonnet-5",
+                api_key="test-anthropic-key",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -507,7 +573,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with AnthropicProvider().open_model(
-                model_id="claude-sonnet-5", api_key="test-anthropic-key"
+                model_id="claude-sonnet-5",
+                api_key="test-anthropic-key",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -532,7 +600,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with AnthropicProvider().open_model(
-                model_id="claude-sonnet-5", api_key="test-anthropic-key"
+                model_id="claude-sonnet-5",
+                api_key="test-anthropic-key",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -560,7 +630,9 @@ class Phase6ProviderTests(unittest.TestCase):
 
         async def exercise() -> None:
             async with AnthropicProvider().open_model(
-                model_id="claude-sonnet-5", api_key="offline-placeholder"
+                model_id="claude-sonnet-5",
+                api_key="offline-placeholder",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -594,6 +666,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="offline-construction-only",
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ) as bound:
                 return (
                     bound.provider_id,
@@ -633,6 +706,7 @@ class Phase6ProviderTests(unittest.TestCase):
                 model_id="claude-sonnet-5",
                 api_key=key_canary,
                 timeout_seconds=1,
+                _authorization=provider_module._anthropic_offline_test_authorization(),
             ) as bound:
                 await bound.sdk_model._fetch_response(
                     system_instructions=None,

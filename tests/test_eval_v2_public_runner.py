@@ -7,6 +7,7 @@ import unittest
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from researchops.cli import build_parser
 from researchops.eval_v2_contracts import EvalV2ContractError
@@ -59,6 +60,26 @@ class _Raises:
             return False
         self.value = exc
         return True
+
+
+def test_public_preflight_rejects_anthropic_before_event_loop_or_client() -> None:
+    provider = SimpleNamespace(
+        provider_id="anthropic",
+        base_url="https://api.anthropic.com",
+    )
+    with patch(
+        "researchops.eval_v2_public_runner.asyncio.get_running_loop",
+        side_effect=AssertionError("event loop must not be inspected"),
+    ):
+        with _Raises(EvalV2ContractError) as caught:
+            _verify_provider_model_access(
+                provider=provider,
+                model_id="claude-sonnet-5",
+                api_key="must-not-be-forwarded",
+                timeout_seconds=5.0,
+            )
+
+    assert caught.value.code == "eval_v2_provider_preflight_provider_invalid"
 
 
 def _raises(expected: type[BaseException]) -> _Raises:

@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from .anthropic_preflight import anthropic_models_preflight_contract
 from .eval_v2_contracts import EvalV2ContractError
 from .eval_v2_provider_executor import eval_v2_prompt_contract
 from .eval_v2_public import (
@@ -17,13 +18,16 @@ from .eval_v2_public import (
 from .eval_v2_runner import eval_v2_tool_contract
 
 
-PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION = "3.0"
+PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION = "4.0"
 COMPLETION_TELEMETRY_CONTRACT_ID = "completion-telemetry-v2"
 HISTORICAL_V1_CANDIDATE_COMMITMENT_SHA256 = (
     "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
 )
-PREDECESSOR_V2_CANDIDATE_COMMITMENT_SHA256 = (
+HISTORICAL_V2_CANDIDATE_COMMITMENT_SHA256 = (
     "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5"
+)
+PREDECESSOR_V3_CANDIDATE_COMMITMENT_SHA256 = (
+    "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9"
 )
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _EXACT_REQUIREMENT = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[^\s]+)$")
@@ -45,6 +49,7 @@ _CANDIDATE_FIELDS = frozenset(
         "predecessor_candidate_commitment_sha256",
         "prior_results_inherited",
         "completion_telemetry_contract_id",
+        "anthropic_models_preflight_contract_id",
         "execution_policy",
         "provider_config",
         "hash_algorithm",
@@ -95,6 +100,7 @@ _COMPONENT_KEYS = frozenset(
         "requirements_lock_sha256",
         "completion_telemetry_contract_sha256",
         "anthropic_provider_contract_sha256",
+        "anthropic_models_preflight_contract_sha256",
         "campaign_sha256",
     }
 )
@@ -160,6 +166,9 @@ def build_public_regression_component_hashes(
         "anthropic_provider_contract_sha256": _sha256_file(
             root / "evals" / "v2" / "anthropic_provider_contract.json"
         ),
+        "anthropic_models_preflight_contract_sha256": _sha256_file(
+            root / "evals" / "v2" / "anthropic_models_preflight_contract.json"
+        ),
         "campaign_sha256": _sha256_file(root / "evals" / "v2" / "campaign.json"),
     }
 
@@ -182,10 +191,12 @@ def validate_public_regression_candidate(
         or candidate["private_holdout_access_authorized"] is not False
         or candidate["model_quality_claim_allowed"] is not False
         or candidate["predecessor_candidate_commitment_sha256"]
-        != PREDECESSOR_V2_CANDIDATE_COMMITMENT_SHA256
+        != PREDECESSOR_V3_CANDIDATE_COMMITMENT_SHA256
         or candidate["prior_results_inherited"] is not False
         or candidate["completion_telemetry_contract_id"]
         != COMPLETION_TELEMETRY_CONTRACT_ID
+        or candidate["anthropic_models_preflight_contract_id"]
+        != "eval-v2-anthropic-models-preflight-v1"
         or candidate["hash_algorithm"] != "sha256-bundle-v1"
     ):
         raise EvalV2ContractError(
@@ -273,6 +284,10 @@ def validate_public_regression_candidate(
         root / "evals" / "v2" / "anthropic_provider_contract.json",
         "Anthropic provider contract",
     )
+    anthropic_preflight_snapshot = _load_json_object(
+        root / "evals" / "v2" / "anthropic_models_preflight_contract.json",
+        "Anthropic Models preflight contract",
+    )
     if prompt_snapshot != eval_v2_prompt_contract():
         raise EvalV2ContractError(
             "eval_v2_public_candidate_prompt_drift",
@@ -298,6 +313,11 @@ def validate_public_regression_candidate(
         raise EvalV2ContractError(
             "eval_v2_anthropic_provider_contract_invalid",
             "Anthropic offline Provider contract 状态或声明边界无效。",
+        )
+    if anthropic_preflight_snapshot != anthropic_models_preflight_contract():
+        raise EvalV2ContractError(
+            "eval_v2_anthropic_models_preflight_contract_invalid",
+            "Anthropic Models preflight contract 与实现不一致。",
         )
 
     split = _validate_public_regression_split(root)
@@ -349,12 +369,19 @@ def validate_public_regression_candidate(
         "private_holdout_access_authorized": False,
         "model_quality_claim_allowed": False,
         "predecessor_candidate_commitment_sha256": (
-            PREDECESSOR_V2_CANDIDATE_COMMITMENT_SHA256
+            PREDECESSOR_V3_CANDIDATE_COMMITMENT_SHA256
         ),
         "prior_results_inherited": False,
         "completion_telemetry_contract_id": COMPLETION_TELEMETRY_CONTRACT_ID,
         "anthropic_provider_contract_id": anthropic_snapshot["contract_id"],
         "anthropic_provider_status": "offline_contract_only",
+        "anthropic_models_preflight_contract_id": (
+            anthropic_preflight_snapshot["contract_id"]
+        ),
+        "anthropic_models_preflight_status": (
+            anthropic_preflight_snapshot["implementation_status"]
+        ),
+        "anthropic_models_preflight_live_calls_performed": False,
         "anthropic_campaign_registered": False,
         "anthropic_online_calls_performed": False,
         "public_regression_task_count": 40,

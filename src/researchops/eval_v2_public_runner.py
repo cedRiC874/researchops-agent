@@ -239,7 +239,8 @@ def run_public_regression_online(
     provider = get_provider(str(provider_config["provider_id"]))
     model_id = provider.validate_model(str(provider_config["model_id"]))
     if (
-        provider.transport_id != provider_config["transport_id"]
+        provider.provider_id != "deepseek"
+        or provider.transport_id != provider_config["transport_id"]
         or int(execution_policy["repetitions_per_provider"])
         != _EXPECTED_REPETITIONS
     ):
@@ -1298,6 +1299,11 @@ def _verify_provider_model_access(
     api_key: str,
     timeout_seconds: float,
 ) -> dict[str, Any]:
+    if getattr(provider, "provider_id", None) != "deepseek":
+        raise EvalV2ContractError(
+            "eval_v2_provider_preflight_provider_invalid",
+            "Public-regression model preflight 只允许锁定的 DeepSeek Provider。",
+        )
     try:
         asyncio.get_running_loop()
     except RuntimeError:
@@ -1322,6 +1328,11 @@ async def _verify_provider_model_access_async(
     api_key: str,
     timeout_seconds: float,
 ) -> dict[str, Any]:
+    if getattr(provider, "provider_id", None) != "deepseek":
+        raise EvalV2ContractError(
+            "eval_v2_provider_preflight_provider_invalid",
+            "Public-regression model preflight 只允许锁定的 DeepSeek Provider。",
+        )
     try:
         from openai import AsyncOpenAI
     except ImportError as exc:

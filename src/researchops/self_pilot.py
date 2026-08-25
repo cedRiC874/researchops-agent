@@ -21,7 +21,10 @@ from .eval_v2_public import (
     load_eval_v2_public_tasks,
 )
 from .eval_v2_runner import EvalV2TaskExecutor, run_eval_v2_evaluation
-from .model_providers import ProviderAdapter
+from .model_providers import (
+    ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+    ProviderAdapter,
+)
 
 
 SELF_PILOT_SCHEMA_VERSION = "1.1"
@@ -275,6 +278,11 @@ def run_self_pilot_task(
     bilingual_output: bool = False,
     max_output_tokens: int = 2000,
 ) -> dict[str, Any]:
+    if provider.provider_id == "anthropic":
+        raise EvalV2ContractError(
+            ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+            "Generic self-pilot Anthropic 入口未获受控 pilot 授权；Models preflight receipt 不授权运行。",
+        )
     session = _load_session(project_root, session_directory)
     state_path = session / "pilot_state.json"
     state = _load_json(state_path)

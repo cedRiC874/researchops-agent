@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import researchops.cli as cli_module
+import researchops.self_pilot_web as self_pilot_web_module
 from researchops.eval_v2_contracts import EvalV2ContractError
 from researchops.model_providers import ProviderModel
 from researchops.self_pilot import create_self_pilot_session
@@ -60,6 +61,15 @@ class FakeProvider:
             transport_id=self.transport_id,
             sdk_model="fake-model",
         )
+
+
+class FakeAnthropicProvider:
+    provider_id = "anthropic"
+    api_key_env = "ANTHROPIC_API_KEY"
+    transport_id = "litellm_anthropic_chat_completions"
+
+    def validate_model(self, model_id: str) -> str:
+        return model_id
 
 
 class FakeRunner:
@@ -128,6 +138,44 @@ class FakeModelsClient:
 
 
 class SelfPilotWebTests(unittest.TestCase):
+    def test_anthropic_models_list_helper_denies_before_client_construction(self) -> None:
+        with patch(
+            "openai.AsyncOpenAI",
+            side_effect=AssertionError("OpenAI client must not receive Anthropic Key"),
+        ):
+            with self.assertRaises(EvalV2ContractError) as caught:
+                verify_provider_model_access(
+                    FakeAnthropicProvider(),
+                    "claude-sonnet-5",
+                    "must-not-be-forwarded",
+                    5.0,
+                )
+
+        self.assertEqual(
+            caught.exception.code, "anthropic_generic_online_entrypoint_disabled"
+        )
+
+    def test_anthropic_web_configuration_denies_before_key_normalization(self) -> None:
+        session = self._create_session()
+        controller = self._controller(session, preconfigured=False)
+        with patch.object(
+            self_pilot_web_module,
+            "_normalize_api_key",
+            side_effect=AssertionError("Key must not be normalized"),
+        ):
+            with self.assertRaises(EvalV2ContractError) as caught:
+                controller.configure(
+                    {
+                        "provider_id": "anthropic",
+                        "model_id": "claude-sonnet-5",
+                        "api_key": "must-not-be-read",
+                    }
+                )
+
+        self.assertEqual(
+            caught.exception.code, "anthropic_generic_online_entrypoint_disabled"
+        )
+
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)

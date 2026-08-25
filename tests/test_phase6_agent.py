@@ -161,6 +161,38 @@ def _result(*, final_output="done", new_items=(), interruptions=()):
 
 
 class Phase6AgentTests(unittest.TestCase):
+    def test_direct_anthropic_agent_entrypoint_denies_before_model_key_or_runner(self) -> None:
+        class ForbiddenAnthropicProvider:
+            provider_id = "anthropic"
+            transport_id = "litellm_anthropic_chat_completions"
+            api_key_env = "ANTHROPIC_API_KEY"
+
+            def validate_model(self, model_id):
+                del model_id
+                raise AssertionError("model validation must not run")
+
+            def open_model(self, **kwargs):
+                del kwargs
+                raise AssertionError("transport must not open")
+
+        runner = _CapturingRunner(SimpleNamespace())
+        with self.assertRaises(Phase6AgentError) as caught:
+            asyncio.run(
+                run_phase6_agent(
+                    self.request,
+                    self.backend,
+                    api_key="must-not-be-used",
+                    model="claude-sonnet-5",
+                    provider=ForbiddenAnthropicProvider(),
+                    runner=runner,
+                )
+            )
+
+        self.assertEqual(
+            caught.exception.code, "anthropic_generic_online_entrypoint_disabled"
+        )
+        self.assertFalse(runner.called)
+
     def test_positive_request_with_all_zero_tokens_is_unavailable(self) -> None:
         usage = phase6_module._usage_from_object(
             SimpleNamespace(

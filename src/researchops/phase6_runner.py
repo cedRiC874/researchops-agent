@@ -20,7 +20,12 @@ from typing import Any
 
 from .artifact_security import ArtifactPermissionError, enable_parent_acl_inheritance
 from .audit import AuditLedger, safe_audit_value, sha256_json
-from .model_providers import ProviderAdapter, get_provider, provider_transport_status
+from .model_providers import (
+    ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+    ProviderAdapter,
+    get_provider,
+    provider_transport_status,
+)
 from .phase6_agent import (
     PHASE6_MAX_OUTPUT_TOKENS,
     AgentRunRecord,
@@ -43,7 +48,7 @@ from .phase6_eval import (
 from .tool_runtime import ControlledToolExecutor, build_project_tool_registry
 
 
-PHASE6_RUNNER_VERSION = "1.7.0"
+PHASE6_RUNNER_VERSION = "1.8.0"
 PHASE6_EVALUATION_MODE = "online_agents_sdk"
 PHASE6_SUBJECT_UNDER_TEST = "agent_planning_tool_trace_and_final_answer"
 _SPLITS = {"development", "holdout"}
@@ -121,6 +126,9 @@ def phase6_status(
     elif not configured:
         online_status = "not_run"
         reason = "api_key_missing"
+    elif adapter.provider_id == "anthropic":
+        online_status = "not_run"
+        reason = ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE
     else:
         online_status = "ready_requires_explicit_confirmation"
         reason = None
@@ -185,6 +193,12 @@ async def run_phase6_online_evaluation(
 
     _require_online_confirmation(confirm_online)
     adapter = get_provider(provider)
+    if adapter.provider_id == "anthropic":
+        raise Phase6RunError(
+            ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+            "Generic Phase 6 Anthropic 入口未获受控 pilot 授权；Models preflight receipt 不授权运行。",
+            not_run=True,
+        )
     normalized_model = adapter.validate_model(_validate_model(model))
     api_key = _environment_api_key(adapter, environment)
     normalized_split = _validate_split(split)

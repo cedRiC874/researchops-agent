@@ -13,7 +13,11 @@ from .eval_v2_runner import (
     EvalV2ExecutorResult,
     EvalV2ToolGateway,
 )
-from .model_providers import ProviderAdapter, ProviderConfigurationError
+from .model_providers import (
+    ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+    ProviderAdapter,
+    ProviderConfigurationError,
+)
 
 
 PROVIDER_EXECUTOR_VERSION = "1.3"
@@ -167,6 +171,11 @@ class EvalV2ProviderExecutor:
         bilingual_output: bool = False,
         max_output_tokens: int = _DEFAULT_MAX_OUTPUT_TOKENS,
     ) -> None:
+        if provider.provider_id == "anthropic":
+            raise EvalV2ContractError(
+                ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+                "Generic Eval v2 Provider executor 不接受 Anthropic；受控 pilot capability 尚未实现。",
+            )
         self._provider = provider
         self._model_id = provider.validate_model(model_id)
         if not isinstance(api_key, str) or not api_key.strip():

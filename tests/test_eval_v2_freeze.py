@@ -20,12 +20,15 @@ from researchops.eval_v2_runner import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v3.json"
+CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v4.json"
 HISTORICAL_V1_CANDIDATE_PATH = (
     REPO_ROOT / "evals" / "v2" / "public_regression_candidate.json"
 )
 HISTORICAL_V2_CANDIDATE_PATH = (
     REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v2.json"
+)
+HISTORICAL_V3_CANDIDATE_PATH = (
+    REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v3.json"
 )
 SPLIT_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_split_manifest.json"
 
@@ -49,13 +52,22 @@ class EvalV2FreezeTests(unittest.TestCase):
         )
         self.assertEqual(
             result["predecessor_candidate_commitment_sha256"],
-            "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5",
+            "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9",
         )
         self.assertEqual(
             result["anthropic_provider_contract_id"],
             "eval-v2-anthropic-provider-offline-v1",
         )
         self.assertEqual(result["anthropic_provider_status"], "offline_contract_only")
+        self.assertEqual(
+            result["anthropic_models_preflight_contract_id"],
+            "eval-v2-anthropic-models-preflight-v1",
+        )
+        self.assertEqual(
+            result["anthropic_models_preflight_status"],
+            "implemented_offline_tested_not_run",
+        )
+        self.assertFalse(result["anthropic_models_preflight_live_calls_performed"])
         self.assertFalse(result["anthropic_campaign_registered"])
         self.assertFalse(result["anthropic_online_calls_performed"])
         self.assertEqual(result["provider_behavior_task_count"], 31)
@@ -91,6 +103,23 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertEqual(
             historical["candidate_commitment_sha256"],
             "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5",
+        )
+        self.assertEqual(
+            candidate_commitment_sha256(historical),
+            historical["candidate_commitment_sha256"],
+        )
+
+    def test_historical_v3_candidate_is_preserved_without_result_inheritance(self) -> None:
+        raw = HISTORICAL_V3_CANDIDATE_PATH.read_bytes()
+        historical = json.loads(raw)
+
+        self.assertEqual(
+            hashlib.sha256(raw).hexdigest(),
+            "ba44823e9827c6c05e080dae69958ede27530002233f782b84dccc0944fcc3ee",
+        )
+        self.assertEqual(
+            historical["candidate_commitment_sha256"],
+            "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9",
         )
         self.assertEqual(
             candidate_commitment_sha256(historical),

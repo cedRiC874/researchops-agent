@@ -70,8 +70,30 @@ jobs:
           python -m researchops.cli phase6-status
           python -m researchops.cli eval-v2-validate
           python -m researchops.cli eval-v2-verify-public-freeze `
-            --candidate evals/v2/public_regression_candidate_v3.json `
+            --candidate evals/v2/public_regression_candidate_v4.json `
             --verify-environment
+          $nativeErrorPreference = $PSNativeCommandUseErrorActionPreference
+          try {
+            $PSNativeCommandUseErrorActionPreference = $false
+            $anthropicPreflightRaw = (& python -m researchops.cli `
+              anthropic-models-preflight --model claude-sonnet-5 | Out-String)
+            $anthropicPreflightExit = $LASTEXITCODE
+          } finally {
+            $PSNativeCommandUseErrorActionPreference = $nativeErrorPreference
+          }
+          if ($anthropicPreflightExit -ne 4) {
+            Write-Output "::error title=anthropic_preflight_cli_failed::Unexpected CLI exit code."
+            exit 1
+          }
+          $anthropicPreflight = $anthropicPreflightRaw | ConvertFrom-Json
+          if ($anthropicPreflight.status -ne "not_run" -or
+              $anthropicPreflight.error_code -ne "anthropic_preflight_confirmation_required" -or
+              $anthropicPreflight.network_calls -ne 0 -or
+              $anthropicPreflight.model_token_calls -ne 0 -or
+              $anthropicPreflight.authorizes_model_run) {
+            Write-Output "::error title=anthropic_preflight_contract_invalid::Unconfirmed preflight must remain offline and non-authorizing."
+            exit 1
+          }
           $anthropic = (python -m researchops.cli phase6-status `
             --provider anthropic | ConvertFrom-Json)
           if ($LASTEXITCODE -ne 0 -or $anthropic.provider -ne "anthropic" -or

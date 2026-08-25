@@ -55,6 +55,15 @@ class FakeProvider:
         )
 
 
+class FakeAnthropicProvider:
+    provider_id = "anthropic"
+    api_key_env = "ANTHROPIC_API_KEY"
+    transport_id = "litellm_anthropic_chat_completions"
+
+    def validate_model(self, model_id: str) -> str:
+        return model_id
+
+
 class FakeRunner:
     def __init__(self, output: str = "Pilot aggregate answer") -> None:
         self.output = output
@@ -71,6 +80,29 @@ class FakeRunner:
 
 
 class SelfPilotTests(unittest.TestCase):
+    def test_generic_anthropic_core_entrypoint_denies_before_session_or_executor(self) -> None:
+        with patch(
+            "researchops.self_pilot._load_session",
+            side_effect=AssertionError("session must not be loaded"),
+        ):
+            with self.assertRaises(EvalV2ContractError) as caught:
+                run_self_pilot_task(
+                    project_root=REPO_ROOT,
+                    session_directory=REPO_ROOT / "artifacts" / "missing-session",
+                    tasks_path=TASKS_PATH,
+                    dataset_manifest_path=DATASETS_PATH,
+                    registry_path=REPO_ROOT / "artifacts" / "missing-registry.json",
+                    provider=FakeAnthropicProvider(),
+                    model_id="claude-sonnet-5",
+                    api_key="must-not-be-used",
+                    task_id=None,
+                    confirm_online=True,
+                )
+
+        self.assertEqual(
+            caught.exception.code, "anthropic_generic_online_entrypoint_disabled"
+        )
+
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
@@ -377,6 +409,47 @@ class SelfPilotTests(unittest.TestCase):
         )
         self.assertEqual(parsed.provider, "anthropic")
         self.assertEqual(parsed.model, "claude-sonnet-5")
+
+    def test_cli_self_pilot_anthropic_denies_before_provider_or_key_lookup(self) -> None:
+        class ForbiddenEnvironment(dict[str, str]):
+            def get(self, key, default=None):
+                del key, default
+                raise AssertionError("Key must not be read")
+
+        output = io.StringIO()
+        arguments = [
+            "researchops",
+            "self-pilot-run",
+            "--session-dir",
+            "artifacts/anthropic-generic-denied",
+            "--registry",
+            "artifacts/anthropic-generic-denied-registry.json",
+            "--provider",
+            "anthropic",
+            "--model",
+            "claude-sonnet-5",
+            "--confirm-online",
+        ]
+        parsed = cli_module.build_parser().parse_args(arguments[1:])
+        fixed_parser = SimpleNamespace(parse_args=lambda: parsed)
+        with (
+            patch.object(sys, "argv", arguments),
+            patch.object(cli_module, "build_parser", return_value=fixed_parser),
+            patch.object(
+                cli_module,
+                "get_provider",
+                side_effect=AssertionError("provider must not resolve"),
+            ),
+            patch.object(cli_module.os, "environ", ForbiddenEnvironment()),
+            redirect_stdout(output),
+        ):
+            exit_code = cli_module.main()
+
+        payload = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 4)
+        self.assertEqual(
+            payload["error_code"], "anthropic_generic_online_entrypoint_disabled"
+        )
 
 
 if __name__ == "__main__":
