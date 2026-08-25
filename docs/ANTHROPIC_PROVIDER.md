@@ -70,13 +70,34 @@ These commands do not call Anthropic:
 
 Online commands remain gated by an explicit `--confirm-online` and `ANTHROPIC_API_KEY`. Do not run
 them until a separate budget, retention policy and one-time evaluation authorization are approved.
+The current generic `phase6-run-online` and `self-pilot-run` gates do not themselves enforce a capped
+budget, single-use authorization or the proposed Models preflight, and generic self-pilot uses repo
+public tasks. They are not the controlled Anthropic pilot and must not be used as one.
+
+## Models API preflight design
+
+The proposed Anthropic-specific availability check is specified in
+[Anthropic Models API zero-generation-token preflight design](ANTHROPIC_MODELS_API_PREFLIGHT.md).
+It uses one fixed `GET /v1/models/{exact_model_id}` metadata request to verify Models API
+authentication and exact allowlisted model visibility. It does not call Messages/Completions or
+produce model output tokens, but it is still an online authenticated request and is not evidence of
+tool compatibility, usage/error semantics, cost, availability SLA or model quality.
+
+The design is not implemented and no live preflight was run. `phase6-status` remains offline,
+self-pilot Web and the Eval v2 public runner remain disabled for Anthropic, and campaign registration
+remains false.
 
 ## Gates before campaign registration
 
-1. Authenticate the exact model through an Anthropic-specific Models API preflight without a model
-   token call.
+1. Implement and separately authorize the fixed-origin Anthropic Models API metadata preflight;
+   require exact returned model identity, zero retries/fallbacks, sanitized output and no
+   Messages/Completions call.
 2. Run a small, budgeted tool/usage/error-semantics pilot that is not used to tune the frozen public
-   tasks.
+   tasks, only after the user supplies a Key, capped budget and one-time authorization.
 3. Add provider-specific price/coverage handling to the public runner or keep it fail-closed.
 4. Freeze the exact Provider/model/transport/config hash in a successor campaign.
-5. Only then change the campaign slot from `planned` to `registered`.
+5. Complete external domain-expert review, an independent R/SAS cross-check and the external
+   custodian's actual private-50 evaluation plus compliant aggregate completion before
+   considering—not automatically changing—the campaign slot from `planned` to `registered` or
+   enabling non-synthetic private evaluation. The current synthetic-only kit cannot yet satisfy this
+   condition.
