@@ -74,6 +74,33 @@ jobs:
           $env:PYTHONPATH = "src"
           python -m unittest discover -s tests -v
 
+      - name: Validate private-holdout custodian kit
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          $kit = (python scripts/eval_v2_private_custodian.py verify-kit `
+            --project-root . | ConvertFrom-Json)
+          if ($LASTEXITCODE -ne 0 -or $kit.status -ne "valid" -or
+              $kit.current_private_request_allowed -or
+              $kit.current_private_access_authorized -or
+              $kit.non_synthetic_release_supported -or
+              $kit.repository_private_content_scan_performed -or
+              $kit.repository_private_content_absence_claimed -or
+              $kit.network_calls -ne 0) {
+            Write-Output "::error title=private_custodian_kit_invalid::The offline kit or current claim boundary is invalid."
+            exit 1
+          }
+
+          $status = (python scripts/eval_v2_private_custodian.py status `
+            --project-root . | ConvertFrom-Json)
+          if ($LASTEXITCODE -ne 0 -or $status.status -ne "not_authorized" -or
+              $status.private_request_allowed -or
+              $status.private_access_authorized -or
+              $status.network_calls -ne 0) {
+            Write-Output "::error title=private_campaign_premature_authorization::Current design-only campaign must remain fail-closed."
+            exit 1
+          }
+
       - name: Rebuild the 50-task offline evaluation
         shell: pwsh
         run: |

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/private/commitment-statement-v1.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "document_type", "synthetic", "statement_id",
+    "created_at_utc", "freeze_request_sha256", "candidate_commitment_sha256",
+    "corpus_commitment_algorithm", "corpus_canonicalization_version",
+    "minimum_salt_bytes", "salted_corpus_commitment_sha256", "private_case_count",
+    "dataset_count", "non_synthetic_dataset_count", "metric_eligible_case_counts",
+    "cell_commitments", "provider_order_commitments", "goldens_frozen_before_results",
+    "qualified_reviewer_count", "reviewer_conflicts_declared", "statistical_crosscheck",
+    "pilot_participant_derived_data_present", "direct_or_quasi_identifier_data_present",
+    "private_content_included", "task_ids_included", "locator_included",
+    "document_sha256", "signatures"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.1"},
+    "document_type": {"const": "commitment_statement"},
+    "synthetic": {"type": "boolean"},
+    "statement_id": {"type": "string", "pattern": "^PCS-[A-F0-9]{16}$"},
+    "created_at_utc": {"$ref": "#/$defs/timestamp"},
+    "freeze_request_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "candidate_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "corpus_commitment_algorithm": {"const": "secret-salted-canonical-bundle-sha256-v1"},
+    "corpus_canonicalization_version": {"const": "eval-v2-private-corpus-v1"},
+    "minimum_salt_bytes": {"type": "integer", "minimum": 32, "maximum": 1024},
+    "salted_corpus_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "private_case_count": {"type": "integer", "minimum": 50, "maximum": 10000},
+    "dataset_count": {"type": "integer", "minimum": 3, "maximum": 1000},
+    "non_synthetic_dataset_count": {"type": "integer", "minimum": 3, "maximum": 1000},
+    "metric_eligible_case_counts": {"$ref": "#/$defs/metric_counts"},
+    "cell_commitments": {
+      "type": "array", "minItems": 4, "maxItems": 1000,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["cell_type", "cell_ordinal", "eligible_case_count"],
+        "properties": {
+          "cell_type": {"enum": ["dataset", "scenario"]},
+          "cell_ordinal": {"type": "integer", "minimum": 1, "maximum": 1000},
+          "eligible_case_count": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "provider_order_commitments": {
+      "type": "array", "minItems": 6, "maxItems": 24,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["provider_id", "config_sha256", "repetition_index", "order_sha256"],
+        "properties": {
+          "provider_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,31}$"},
+          "config_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "repetition_index": {"type": "integer", "minimum": 1, "maximum": 3},
+          "order_sha256": {"$ref": "#/$defs/nonzero_sha256"}
+        }
+      }
+    },
+    "goldens_frozen_before_results": {"const": true},
+    "qualified_reviewer_count": {"type": "integer", "minimum": 2, "maximum": 100},
+    "reviewer_conflicts_declared": {"const": true},
+    "statistical_crosscheck": {"enum": ["R", "SAS"]},
+    "pilot_participant_derived_data_present": {"const": false},
+    "direct_or_quasi_identifier_data_present": {"const": false},
+    "private_content_included": {"const": false},
+    "task_ids_included": {"const": false},
+    "locator_included": {"const": false},
+    "document_sha256": {"$ref": "#/$defs/sha256"},
+    "signatures": {
+      "type": "array", "minItems": 1, "maxItems": 1,
+      "items": {"$ref": "#/$defs/signature"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "metric_counts": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "task_success_rate", "tool_selection_accuracy", "tool_argument_accuracy",
+        "evidence_citation_accuracy", "numeric_claim_accuracy",
+        "clarification_refusal_accuracy", "approval_bypass_rate",
+        "unexpected_tool_error_rate", "completion_integrity_rate"
+      ],
+      "properties": {
+        "task_success_rate": {"type": "integer", "minimum": 1},
+        "tool_selection_accuracy": {"type": "integer", "minimum": 1},
+        "tool_argument_accuracy": {"type": "integer", "minimum": 1},
+        "evidence_citation_accuracy": {"type": "integer", "minimum": 1},
+        "numeric_claim_accuracy": {"type": "integer", "minimum": 1},
+        "clarification_refusal_accuracy": {"type": "integer", "minimum": 1},
+        "approval_bypass_rate": {"type": "integer", "minimum": 1},
+        "unexpected_tool_error_rate": {"type": "integer", "minimum": 1},
+        "completion_integrity_rate": {"type": "integer", "minimum": 1}
+      }
+    },
+    "signature": {
+      "type": "object", "additionalProperties": false,
+      "required": ["role", "key_id", "algorithm", "signed_sha256", "signature_b64"],
+      "properties": {
+        "role": {"const": "custodian"},
+        "key_id": {"type": "string", "pattern": "^KEY-[A-F0-9]{16}$"},
+        "algorithm": {"const": "ed25519"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    }
+  }
+}

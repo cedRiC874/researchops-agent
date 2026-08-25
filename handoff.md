@@ -6,14 +6,16 @@
 
 ## 最新 supervised campaign 状态：Completion Telemetry v2
 
-- GitHub `main` 为 `950a473e860d9987e96be87d2bb3fab51acb4c7b`；PR #11/#12 已 regular merge，main clean runs offline `32650036143` 与 pilot `32650036133` 均为 `success`。
+- GitHub `main` 为 `462303afb54bfe123e228cb5500eb7fb43ca9d12`；PR #11/#12/#13 已 regular merge，最新 evidence main run `32819431108` 为 `success`。
 - Campaign `EXT-PILOT-01A605022746D203` 已于 2026-08-25 完成，绑定 candidate `1f6ac18e…e5ce5`、v3 pack file SHA `90e81bbc…8346`、deployment image `sha256:70581518…3dc5c`。
 - 聚合 lifecycle：1 completed、0 withdrawn；6/6 terminal，4 completed + feedback，2 excluded technical failures；operator independence 未 adjudicate，不主张新独立参与者增量。
 - Completion Telemetry v2：2/2 applicable failures 均 observed，unknown 0，source 为 `response_output_item_incomplete × 2`；这是安全本地 observation，不是 Provider 因果根因，也不回填 predecessor records。
 - Executor model requests / model-requested tools / backend executions 为 `9 / 3 / 2`；这些不是规划准确率、账户 API 总数或成本。
 - 四个成功展示答案的非专家 feedback 为 understandable/useful `4/4`，明显问题、信息缺失、专家复核需求与安全担忧均 `0/4`；不评价专业正确性。
 - campaign 完成后 worker、API、Funnel 已停止，容器/network 已移除，PostgreSQL volume 保留；安全 incidents 0，telemetry/participant binding 均 valid。
-- evidence-only 分支：`codex/supervised-completion-v2-evidence`；脱敏证据位于 [supervised Completion Telemetry v2 20260825](docs/evidence/supervised-completion-telemetry-v2-20260825/README.md)。不得用这六题继续调 prompt/scorer，也不得与旧 campaign 聚合。
+- Retention 已于 2026-08-25 实际复核：Scheduled Task `Ready`、daily/StartWhenAvailable/IgnoreNew、手动运行 result 0、snapshot `NumberOfMissedRuns=0`；1 个 participant 与 4 条 feedback deadline 均为 90 天上限，当前 due 0，未提前删除。见 [retention verification](docs/evidence/supervised-completion-telemetry-v2-20260825/retention-verification-20260825.md)。
+- private-holdout custodian kit v1.1 分支：`codex/private-holdout-custodian-kit`；synthetic conformance 包含不同 Ed25519 keys、调用方提供的外部 anchors、两阶段 ledger、aggregate/budget verifier。真实 private release 固定拒绝；当前 `design_only / private 0/50 / Provider 1/2 / not_authorized` 不变，不能声称已有 private corpus、授权或运行。
+- 脱敏 supervised 证据位于 [supervised Completion Telemetry v2 20260825](docs/evidence/supervised-completion-telemetry-v2-20260825/README.md)。不得用这六题继续调 prompt/scorer，也不得与旧 campaign 聚合。
 - 下文更早状态如有冲突，以本节为准。
 
 ## 0. 新会话首先执行
@@ -29,9 +31,9 @@
 
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
-- 当前 evidence 分支：`codex/supervised-completion-v2-evidence`，从 `origin/main` 的
-  `950a473e860d9987e96be87d2bb3fab51acb4c7b` 创建。
-- GitHub `main`：`950a473e860d9987e96be87d2bb3fab51acb4c7b`；PR #11/#12 已 regular merge。
+- 当前实现分支：`codex/private-holdout-custodian-kit`，从 `origin/main` 的
+  `462303afb54bfe123e228cb5500eb7fb43ca9d12` 创建。
+- GitHub `main`：`462303afb54bfe123e228cb5500eb7fb43ca9d12`；PR #11/#12/#13 已 regular merge。
 - 版本：`0.2.0`
 - Annotated tag：`phase6-deepseek-v1`，仍指向 `80ad08e…`，不是当前 `main`
 - Release：https://github.com/cedRiC874/researchops-agent/releases/tag/phase6-deepseek-v1

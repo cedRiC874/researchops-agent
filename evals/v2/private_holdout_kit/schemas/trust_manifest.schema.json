@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/private/trust-manifest-v1.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "document_type", "synthetic", "manifest_id",
+    "created_at_utc", "keys", "manifest_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.1"},
+    "document_type": {"const": "trust_manifest"},
+    "synthetic": {"type": "boolean"},
+    "manifest_id": {"type": "string", "pattern": "^TRUST-[A-F0-9]{16}$"},
+    "created_at_utc": {"$ref": "#/$defs/timestamp"},
+    "keys": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": [
+          "role", "key_id", "algorithm", "public_key_b64", "valid_from_utc",
+          "valid_until_utc", "revoked", "organization_commitment_sha256"
+        ],
+        "properties": {
+          "role": {"enum": ["freeze_authority", "custodian"]},
+          "key_id": {"type": "string", "pattern": "^KEY-[A-F0-9]{16}$"},
+          "algorithm": {"const": "ed25519"},
+          "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+          "valid_from_utc": {"$ref": "#/$defs/timestamp"},
+          "valid_until_utc": {"$ref": "#/$defs/timestamp"},
+          "revoked": {"const": false},
+          "organization_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"}
+        }
+      }
+    },
+    "manifest_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"}
+  }
+}

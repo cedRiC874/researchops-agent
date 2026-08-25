@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/private/aggregate-results-v1.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "document_type", "synthetic", "result_id", "completed_at_utc",
+    "terminal_status", "freeze_request_sha256", "commitment_statement_sha256",
+    "authorization_grant_sha256", "candidate_commitment_sha256",
+    "salted_corpus_commitment_sha256", "run_commitment_sha256",
+    "access_reservation_entry_sha256", "expected_private_case_count",
+    "expected_total_case_executions", "completed_total_case_executions",
+    "budget_actual", "provider_results", "aggregate_cells", "small_cell_threshold",
+    "private_content_included", "task_ids_included", "task_order_included",
+    "locators_included", "per_case_results_included", "raw_provider_content_included",
+    "performance_claim_allowed", "model_quality_claim_allowed",
+    "unknown_distribution_generalization_claim_allowed", "document_sha256", "signatures"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.1"},
+    "document_type": {"const": "aggregate_results"},
+    "synthetic": {"type": "boolean"},
+    "result_id": {"type": "string", "pattern": "^PAR-[A-F0-9]{16}$"},
+    "completed_at_utc": {"$ref": "#/$defs/timestamp"},
+    "terminal_status": {"enum": ["complete", "stopped", "aborted"]},
+    "freeze_request_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "commitment_statement_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "authorization_grant_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "candidate_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "salted_corpus_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "run_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "access_reservation_entry_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "expected_private_case_count": {"type": "integer", "minimum": 50},
+    "expected_total_case_executions": {"type": "integer", "minimum": 300},
+    "completed_total_case_executions": {"type": "integer", "minimum": 0},
+    "budget_actual": {"$ref": "#/$defs/usage"},
+    "provider_results": {
+      "type": "array", "minItems": 2, "maxItems": 8,
+      "items": {"$ref": "#/$defs/provider_result"}
+    },
+    "aggregate_cells": {
+      "type": "array", "minItems": 24, "maxItems": 24000,
+      "items": {"$ref": "#/$defs/aggregate_cell"}
+    },
+    "small_cell_threshold": {"type": "integer", "minimum": 5, "maximum": 100},
+    "private_content_included": {"const": false},
+    "task_ids_included": {"const": false},
+    "task_order_included": {"const": false},
+    "locators_included": {"const": false},
+    "per_case_results_included": {"const": false},
+    "raw_provider_content_included": {"const": false},
+    "performance_claim_allowed": {"const": false},
+    "model_quality_claim_allowed": {"const": false},
+    "unknown_distribution_generalization_claim_allowed": {"const": false},
+    "document_sha256": {"$ref": "#/$defs/sha256"},
+    "signatures": {
+      "type": "array", "minItems": 1, "maxItems": 1,
+      "items": {"$ref": "#/$defs/signature"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "rate": {"type": "string", "pattern": "^(0|1)\\.[0-9]{6}$"},
+    "money": {"type": "string", "pattern": "^(0|[1-9][0-9]{0,8})\\.[0-9]{6}$"},
+    "usage": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "model_calls", "input_tokens", "output_tokens", "cost_decimal", "currency",
+        "pricing_commitment_sha256", "coverage_numerator", "coverage_denominator",
+        "coverage_rate", "coverage_status"
+      ],
+      "properties": {
+        "model_calls": {"type": ["integer", "null"], "minimum": 0},
+        "input_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "output_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "cost_decimal": {"oneOf": [{"$ref": "#/$defs/money"}, {"type": "null"}]},
+        "currency": {"const": "USD"},
+        "pricing_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "coverage_numerator": {"type": "integer", "minimum": 0},
+        "coverage_denominator": {"type": "integer", "minimum": 1},
+        "coverage_rate": {"$ref": "#/$defs/rate"},
+        "coverage_status": {"enum": ["complete", "partial", "unavailable"]}
+      }
+    },
+    "metric": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "metric_id", "direction", "eligible_count", "evaluated_count", "numerator",
+        "rate", "coverage_rate", "suppressed", "ci_method", "ci_lower", "ci_upper"
+      ],
+      "properties": {
+        "metric_id": {"enum": [
+          "task_success_rate", "tool_selection_accuracy", "tool_argument_accuracy",
+          "evidence_citation_accuracy", "numeric_claim_accuracy",
+          "clarification_refusal_accuracy", "approval_bypass_rate",
+          "unexpected_tool_error_rate", "completion_integrity_rate"
+        ]},
+        "direction": {"enum": ["higher_is_better", "lower_is_better"]},
+        "eligible_count": {"type": "integer", "minimum": 1},
+        "evaluated_count": {"type": "integer", "minimum": 0},
+        "numerator": {"type": ["integer", "null"], "minimum": 0},
+        "rate": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]},
+        "coverage_rate": {"$ref": "#/$defs/rate"},
+        "suppressed": {"type": "boolean"},
+        "ci_method": {"enum": ["wilson_95", "suppressed", "not_applicable"]},
+        "ci_lower": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]},
+        "ci_upper": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]}
+      }
+    },
+    "repetition": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "repetition_index", "expected_case_count", "completed_case_count", "metrics",
+        "approval_bypass_count", "unexpected_tool_error_count", "usage",
+        "latency_p50_ms", "latency_p95_ms", "latency_is_production_sla"
+      ],
+      "properties": {
+        "repetition_index": {"type": "integer", "minimum": 1, "maximum": 3},
+        "expected_case_count": {"type": "integer", "minimum": 50},
+        "completed_case_count": {"type": "integer", "minimum": 0},
+        "metrics": {"type": "array", "minItems": 9, "maxItems": 9, "items": {"$ref": "#/$defs/metric"}},
+        "approval_bypass_count": {"type": "integer", "minimum": 0},
+        "unexpected_tool_error_count": {"type": "integer", "minimum": 0},
+        "usage": {"$ref": "#/$defs/usage"},
+        "latency_p50_ms": {"type": ["integer", "null"], "minimum": 0},
+        "latency_p95_ms": {"type": ["integer", "null"], "minimum": 0},
+        "latency_is_production_sla": {"const": false}
+      }
+    },
+    "provider_result": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "provider_id", "model_id", "transport_id", "config_sha256", "repetitions",
+        "common_completed_case_count", "stable_case_count", "stability_rate",
+        "all_repetitions_pass_count", "all_repetitions_pass_rate"
+      ],
+      "properties": {
+        "provider_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,31}$"},
+        "model_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "transport_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,63}$"},
+        "config_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "repetitions": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/repetition"}},
+        "common_completed_case_count": {"type": "integer", "minimum": 0},
+        "stable_case_count": {"type": "integer", "minimum": 0},
+        "stability_rate": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]},
+        "all_repetitions_pass_count": {"type": "integer", "minimum": 0},
+        "all_repetitions_pass_rate": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]}
+      }
+    },
+    "aggregate_cell": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "provider_id", "config_sha256", "repetition_index", "cell_type", "cell_ordinal",
+        "eligible_count", "evaluated_count", "numerator", "rate", "suppressed"
+      ],
+      "properties": {
+        "provider_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,31}$"},
+        "config_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "repetition_index": {"type": "integer", "minimum": 1, "maximum": 3},
+        "cell_type": {"enum": ["dataset", "scenario"]},
+        "cell_ordinal": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "eligible_count": {"type": "integer", "minimum": 1},
+        "evaluated_count": {"type": "integer", "minimum": 0},
+        "numerator": {"type": ["integer", "null"], "minimum": 0},
+        "rate": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]},
+        "suppressed": {"type": "boolean"}
+      }
+    },
+    "signature": {
+      "type": "object", "additionalProperties": false,
+      "required": ["role", "key_id", "algorithm", "signed_sha256", "signature_b64"],
+      "properties": {
+        "role": {"const": "custodian"},
+        "key_id": {"type": "string", "pattern": "^KEY-[A-F0-9]{16}$"},
+        "algorithm": {"const": "ed25519"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    }
+  }
+}

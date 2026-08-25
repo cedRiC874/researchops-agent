@@ -208,6 +208,17 @@ Public-regression candidate 使用三份预承诺 seed/task order；三次排列
 
 如果仍有任一 readiness gap，schema 会拒绝 `status=frozen`，防止把计划写成完成证据。
 
+仓库现提供 [private-holdout custodian kit v1.1](v2/private_holdout_kit/README.md) 与
+[操作指南](../docs/PRIVATE_HOLDOUT_CUSTODIAN_KIT.md)。当前是 synthetic conformance 实现：
+不同 Ed25519 keys、调用方显式提供的 trust/freeze/candidate/ledger anchors、预访问
+`access_reserved` 与 terminal 两阶段 ledger、预承诺 denominator、budget、rate/CI、cell
+coverage 和 small-cell suppression 均由离线 verifier 检查，网络调用为 0。
+
+Kit 当前只证明离线协议实现，不改变本页 readiness：campaign 仍为 `design_only`、private
+0/50、Provider 1/2、private commitment/authorization 不存在，外部 review 和 R/SAS
+cross-check 未完成。`synthetic=false` release 固定拒绝；`check-private-root` 只是时点 metadata
+快照，不是持续的访问隔离或授权，`.gitignore` 也不能作为访问授权。
+
 ## 6. 外部复核
 
 外部复核至少包含：

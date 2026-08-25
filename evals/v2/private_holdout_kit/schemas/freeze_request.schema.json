@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/private/freeze-request-v1.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "document_type", "synthetic", "request_id", "campaign_id",
+    "created_at_utc", "expires_at_utc", "campaign_status", "full_campaign_frozen",
+    "candidate_commitment_algorithm", "candidate_commitment_sha256",
+    "lineage_predecessor_commitment_sha256", "component_hashes",
+    "trust_manifest_sha256", "protocol_sha256", "provider_plan",
+    "private_case_count_target", "repetitions_per_provider", "private_campaign_limit",
+    "randomized_case_order", "precommitted_order_required", "metric_contract_version",
+    "small_cell_threshold", "ledger_id", "ledger_base_sequence",
+    "ledger_base_head_sha256", "budget_policy", "retention_policy",
+    "private_access_authorized", "model_quality_claim_allowed",
+    "document_sha256", "signatures"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.1"},
+    "document_type": {"const": "freeze_request"},
+    "synthetic": {"type": "boolean"},
+    "request_id": {"type": "string", "pattern": "^PFR-[A-F0-9]{16}$"},
+    "campaign_id": {"type": "string", "pattern": "^EVALV2-PRIVATE-[A-F0-9]{16}$"},
+    "created_at_utc": {"$ref": "#/$defs/timestamp"},
+    "expires_at_utc": {"$ref": "#/$defs/timestamp"},
+    "campaign_status": {"const": "frozen"},
+    "full_campaign_frozen": {"const": true},
+    "candidate_commitment_algorithm": {"const": "researchops-private-candidate-v1"},
+    "candidate_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "lineage_predecessor_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "component_hashes": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "source_sha256", "prompt_sha256", "tool_schema_sha256", "scorer_sha256",
+        "dependency_lock_sha256", "dataset_manifest_sha256", "split_manifest_sha256",
+        "reporter_sha256", "sanitizer_sha256", "completion_telemetry_sha256",
+        "private_protocol_sha256", "private_schema_bundle_sha256",
+        "private_verifier_sha256"
+      ],
+      "properties": {
+        "source_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "prompt_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "tool_schema_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "scorer_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "dependency_lock_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "dataset_manifest_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "split_manifest_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "reporter_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "sanitizer_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "completion_telemetry_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "private_protocol_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "private_schema_bundle_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "private_verifier_sha256": {"$ref": "#/$defs/nonzero_sha256"}
+      }
+    },
+    "trust_manifest_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "protocol_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "provider_plan": {
+      "type": "array", "minItems": 2, "maxItems": 8,
+      "items": {"$ref": "#/$defs/provider"}
+    },
+    "private_case_count_target": {"type": "integer", "minimum": 50, "maximum": 10000},
+    "repetitions_per_provider": {"const": 3},
+    "private_campaign_limit": {"const": 1},
+    "randomized_case_order": {"const": true},
+    "precommitted_order_required": {"const": true},
+    "metric_contract_version": {"const": "eval-v2-required-metrics-v1"},
+    "small_cell_threshold": {"type": "integer", "minimum": 5, "maximum": 100},
+    "ledger_id": {"type": "string", "pattern": "^LEDGER-[A-F0-9]{16}$"},
+    "ledger_base_sequence": {"type": "integer", "minimum": 0},
+    "ledger_base_head_sha256": {"$ref": "#/$defs/sha256"},
+    "budget_policy": {"$ref": "#/$defs/budget_policy"},
+    "retention_policy": {"$ref": "#/$defs/retention_policy"},
+    "private_access_authorized": {"const": false},
+    "model_quality_claim_allowed": {"const": false},
+    "document_sha256": {"$ref": "#/$defs/sha256"},
+    "signatures": {
+      "type": "array", "minItems": 1, "maxItems": 1,
+      "items": {"$ref": "#/$defs/signature"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "money": {"type": "string", "pattern": "^(0|[1-9][0-9]{0,8})\\.[0-9]{6}$"},
+    "provider": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider_id", "model_id", "transport_id", "config_sha256"],
+      "properties": {
+        "provider_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,31}$"},
+        "model_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "transport_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,63}$"},
+        "config_sha256": {"$ref": "#/$defs/nonzero_sha256"}
+      }
+    },
+    "budget_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "currency", "pricing_commitment_sha256", "maximum_model_calls",
+        "maximum_input_tokens", "maximum_output_tokens", "maximum_cost_decimal",
+        "complete_usage_required_for_complete_status"
+      ],
+      "properties": {
+        "currency": {"const": "USD"},
+        "pricing_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "maximum_model_calls": {"type": "integer", "minimum": 1},
+        "maximum_input_tokens": {"type": "integer", "minimum": 1},
+        "maximum_output_tokens": {"type": "integer", "minimum": 1},
+        "maximum_cost_decimal": {"$ref": "#/$defs/money"},
+        "complete_usage_required_for_complete_status": {"const": true}
+      }
+    },
+    "retention_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "pilot_participant_derived_data_allowed", "direct_or_quasi_identifier_data_allowed",
+        "maximum_plaintext_retention_hours", "provider_log_attestation_required",
+        "proxy_log_attestation_required", "backup_attestation_required"
+      ],
+      "properties": {
+        "pilot_participant_derived_data_allowed": {"const": false},
+        "direct_or_quasi_identifier_data_allowed": {"const": false},
+        "maximum_plaintext_retention_hours": {"type": "integer", "minimum": 1, "maximum": 72},
+        "provider_log_attestation_required": {"const": true},
+        "proxy_log_attestation_required": {"const": true},
+        "backup_attestation_required": {"const": true}
+      }
+    },
+    "signature": {
+      "type": "object", "additionalProperties": false,
+      "required": ["role", "key_id", "algorithm", "signed_sha256", "signature_b64"],
+      "properties": {
+        "role": {"const": "freeze_authority"},
+        "key_id": {"type": "string", "pattern": "^KEY-[A-F0-9]{16}$"},
+        "algorithm": {"const": "ed25519"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    }
+  }
+}

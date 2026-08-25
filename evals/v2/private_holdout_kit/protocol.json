@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.1",
+  "protocol_id": "eval-v2-private-holdout-custodian-v1",
+  "status": "kit_ready_not_authorized",
+  "verification_scope": "synthetic_conformance_and_supplied_external_anchors_only",
+  "non_synthetic_release_supported": false,
+  "canonicalization": "researchops-canonical-json-v1",
+  "document_hash": "sha256-domain-separated-v1",
+  "signature": "ed25519-over-domain-separated-document-hash-v1",
+  "trust_roles": ["freeze_authority", "custodian"],
+  "document_types": [
+    "freeze_request",
+    "commitment_statement",
+    "authorization_grant",
+    "aggregate_results",
+    "consumption_receipt",
+    "signed_ledger",
+    "release_manifest"
+  ],
+  "minimum_private_case_count": 50,
+  "minimum_provider_count": 2,
+  "repetitions_per_provider": 3,
+  "maximum_private_campaigns_per_freeze": 1,
+  "minimum_domain_expert_reviewers": 2,
+  "independent_statistical_crosscheck_required": true,
+  "accepted_statistical_crosschecks": ["R", "SAS"],
+  "small_cell_threshold": 5,
+  "rate_decimal_places": 6,
+  "confidence_interval": "wilson_95",
+  "private_access": {
+    "must_occur_in_custodian_environment": true,
+    "authorization_consumed_before_access": true,
+    "two_stage_ledger_required": true,
+    "external_ledger_anchors_required": true,
+    "repository_private_content_allowed": false,
+    "project_receives_private_content": false,
+    "single_campaign_per_freeze": true,
+    "ambiguous_inflight_replay_allowed": false,
+    "same_run_resume_requires_identical_commitments": true
+  },
+  "release_policy": {
+    "aggregate_only": true,
+    "task_ids_allowed": false,
+    "task_order_allowed": false,
+    "prompts_allowed": false,
+    "goldens_allowed": false,
+    "locators_allowed": false,
+    "per_case_results_allowed": false,
+    "raw_provider_content_allowed": false,
+    "free_text_allowed": false,
+    "unsigned_release_allowed": false
+  },
+  "retention_policy": {
+    "pilot_participant_derived_data_allowed": false,
+    "direct_or_quasi_identifier_data_allowed": false,
+    "custodian_plaintext_disposition_required": true,
+    "provider_proxy_backup_attestations_required": true
+  },
+  "claim_defaults": {
+    "private_holdout_claim_allowed": false,
+    "model_quality_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "production_sla_claim_allowed": false,
+    "causal_provider_root_cause_claim_allowed": false
+  },
+  "current_repository_state": {
+    "campaign_status": "design_only",
+    "private_registered_case_count": 0,
+    "registered_provider_count": 1,
+    "private_corpus_commitment_present": false,
+    "private_access_authorized": false
+  },
+  "limitations": [
+    "The verifier checks supplied external anchor values but cannot prove that their channel is independent or that a custodian did not conceal a fork.",
+    "Version 1.1 accepts synthetic conformance releases only; non-synthetic private releases fail closed until a separately reviewed full-candidate and external-ledger activation is implemented.",
+    "The release scanner rejects strict-schema violations and configured sensitive patterns; it is not a universal PII or steganography detector.",
+    "No private corpus, private commitment, authorization, private run, second Provider, expert review, or statistical cross-check exists in this repository."
+  ]
+}
