@@ -1141,7 +1141,7 @@ class PrivateCustodianKitTests(unittest.TestCase):
 
             def injecting_reader(path: Path, label: str) -> bytes:
                 nonlocal injected
-                if not injected and path.parent == release:
+                if not injected and path.name in private.RELEASE_FILES.values():
                     injected = True
                     (release / "PRIVATE-EXTRA.txt").write_text(
                         "PRIVATE@example.org", encoding="utf-8"
@@ -1168,9 +1168,13 @@ class PrivateCustodianKitTests(unittest.TestCase):
 
             def mutating_reader(path: Path, label: str) -> bytes:
                 nonlocal trust_was_read, mutated
-                if path.parent == release and path.name == "trust_manifest.json":
+                if path.name == "trust_manifest.json":
                     trust_was_read = True
-                elif path.parent == release and trust_was_read and not mutated:
+                elif (
+                    path.name in private.RELEASE_FILES.values()
+                    and trust_was_read
+                    and not mutated
+                ):
                     mutated = True
                     (release / "trust_manifest.json").write_text(
                         "PRIVATE@example.org", encoding="utf-8"
