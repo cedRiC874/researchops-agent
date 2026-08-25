@@ -16,7 +16,7 @@
 | `protocol_version` | `external-researcher-pilot-protocol-v1` |
 | `moderator_guide_version` | `supervised-pilot-moderator-v1` |
 | `recruitment_checklist_version` | `supervised-pilot-recruitment-v1` |
-| `candidate_commitment_sha256` | `22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9` |
+| `candidate_commitment_sha256` | `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` |
 | `deployment_git_sha` | `________________________________________` |
 | `task_pack_sha256` | `________________________________________________________________` |
 | `consent_document_sha256` | `________________________________________________________________` |
