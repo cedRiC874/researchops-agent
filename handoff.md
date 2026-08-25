@@ -1,18 +1,20 @@
 # ResearchOps Agent 跨会话交接
 
-> 更新时间：2026-08-23（Asia/Shanghai）
+> 更新时间：2026-08-25（Asia/Shanghai）
 > 目标：让一个没有历史上下文的新 Codex 会话安全、准确地继续本项目。
 > 语言偏好：中文；先给结论，再给可执行步骤；不要夸大评测或生产化程度。
 
-## 最新 main 状态：Completion Telemetry v2
+## 最新 supervised campaign 状态：Completion Telemetry v2
 
-- PR #11 已 regular merge；GitHub `main` 为 `094cb9b173e5d153f1aff9db2ce8a25e50a57f7d`，feature 与 merge tree 完全一致。
-- `main` clean runs：offline `32648925769`、pilot `32648925679`、production slice `32648925726`，三者均为 `success`。
-- RFC、machine contract、root runner/provider/public artifact 与 pilot staging/PostgreSQL 已贯通四类 `completion_failure_source`。
-- v1 candidate manifest 字节保持不变，历史 commitment 仍为 `7744770a…f0d11`；v2 commitment 为 `1f6ac18e…e5ce5`，明确 `prior_results_inherited=false`。
-- 验证：root 258/258；pilot 51 个 offline contracts + 1 个真实 PostgreSQL contract；production slice 18/18 + 真实 Compose E2E；网络/模型调用 0。
-- 本轮没有读取 Key、调用 Provider 或运行付费评测。repo-local `services/pilot_staging/.env` 未自动升级；未来启用 v2 前必须显式更新 commitment、重建镜像并创建新 campaign，不能续用或回填旧结果。
-- 长期证据位于 [Completion Telemetry v2 main CI v1](docs/evidence/completion-telemetry-v2-main-ci-v1/README.md)。下文更早状态如有冲突，以本节为准。
+- GitHub `main` 为 `950a473e860d9987e96be87d2bb3fab51acb4c7b`；PR #11/#12 已 regular merge，main clean runs offline `32650036143` 与 pilot `32650036133` 均为 `success`。
+- Campaign `EXT-PILOT-01A605022746D203` 已于 2026-08-25 完成，绑定 candidate `1f6ac18e…e5ce5`、v3 pack file SHA `90e81bbc…8346`、deployment image `sha256:70581518…3dc5c`。
+- 聚合 lifecycle：1 completed、0 withdrawn；6/6 terminal，4 completed + feedback，2 excluded technical failures；operator independence 未 adjudicate，不主张新独立参与者增量。
+- Completion Telemetry v2：2/2 applicable failures 均 observed，unknown 0，source 为 `response_output_item_incomplete × 2`；这是安全本地 observation，不是 Provider 因果根因，也不回填 predecessor records。
+- Executor model requests / model-requested tools / backend executions 为 `9 / 3 / 2`；这些不是规划准确率、账户 API 总数或成本。
+- 四个成功展示答案的非专家 feedback 为 understandable/useful `4/4`，明显问题、信息缺失、专家复核需求与安全担忧均 `0/4`；不评价专业正确性。
+- campaign 完成后 worker、API、Funnel 已停止，容器/network 已移除，PostgreSQL volume 保留；安全 incidents 0，telemetry/participant binding 均 valid。
+- evidence-only 分支：`codex/supervised-completion-v2-evidence`；脱敏证据位于 [supervised Completion Telemetry v2 20260825](docs/evidence/supervised-completion-telemetry-v2-20260825/README.md)。不得用这六题继续调 prompt/scorer，也不得与旧 campaign 聚合。
+- 下文更早状态如有冲突，以本节为准。
 
 ## 0. 新会话首先执行
 
@@ -27,9 +29,9 @@
 
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
-- 当前 evidence 分支：`codex/completion-telemetry-v2-main-evidence`，从 `origin/main` 的
-  `094cb9b173e5d153f1aff9db2ce8a25e50a57f7d` 创建。
-- GitHub `main`：`094cb9b173e5d153f1aff9db2ce8a25e50a57f7d`；PR #11 已 regular merge。
+- 当前 evidence 分支：`codex/supervised-completion-v2-evidence`，从 `origin/main` 的
+  `950a473e860d9987e96be87d2bb3fab51acb4c7b` 创建。
+- GitHub `main`：`950a473e860d9987e96be87d2bb3fab51acb4c7b`；PR #11/#12 已 regular merge。
 - 版本：`0.2.0`
 - Annotated tag：`phase6-deepseek-v1`，仍指向 `80ad08e…`，不是当前 `main`
 - Release：https://github.com/cedRiC874/researchops-agent/releases/tag/phase6-deepseek-v1
