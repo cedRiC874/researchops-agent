@@ -39,6 +39,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.lock
+          python -m pip check
 
       - name: Verify deterministic numerical baseline
         shell: pwsh
@@ -67,6 +68,20 @@ jobs:
           python -m researchops.cli eval-validate
           python -m researchops.cli phase6-validate
           python -m researchops.cli phase6-status
+          python -m researchops.cli eval-v2-validate
+          python -m researchops.cli eval-v2-verify-public-freeze `
+            --candidate evals/v2/public_regression_candidate_v3.json `
+            --verify-environment
+          $anthropic = (python -m researchops.cli phase6-status `
+            --provider anthropic | ConvertFrom-Json)
+          if ($LASTEXITCODE -ne 0 -or $anthropic.provider -ne "anthropic" -or
+              $anthropic.online_run_status -ne "not_run" -or
+              $anthropic.not_run_reason -ne "api_key_missing" -or
+              -not $anthropic.sdk.provider_transport_ready -or
+              $anthropic.network_calls -ne 0) {
+            Write-Output "::error title=anthropic_offline_contract_invalid::Anthropic must be locally ready but remain offline without a key."
+            exit 1
+          }
 
       - name: Run unit and integration tests
         shell: pwsh

@@ -149,8 +149,9 @@ sequenceDiagram
 | `online_agents_sdk` + `provider=deepseek` | DeepSeek V4 的同一 20 题行为合同 | 冻结版 development 16/16、repo-local holdout 4/4；usage、延迟、manifest 与审计索引已保存 | 抗污染泛化、生产 SLA 或未知成本为零 |
 | Eval v2 public candidate v1（历史） | schema、准备器、registry、inspect backend、Provider executor、runner/scorer、三次预承诺顺序、按 task-ID 聚合、工具请求/去重/backend telemetry、原子 artifacts 与 single-use receipt | 一次性 DeepSeek public run：Provider system 68/93；fault harness 27/27；完整 campaign仍 `design_only` | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
 | Completion Telemetry v2 candidate | 四类安全 failure source、legacy unknown coverage、versioned checkpoint/aggregation、pilot PostgreSQL migration 与 v1/v2 双摘要 retention | root 258 tests、pilot 离线 contracts 与真实 PostgreSQL contract；无 Provider 调用，且不继承 v1 成绩 | Provider 因果根因、模型质量提升、在线通过率或生产泛化 |
+| Anthropic Provider offline contract / candidate v3 | exact model allowlist、LiteLLM compatibility pin、每运行 client、timeout/zero-retry/no-fallback、usage unknown 边界；public-run 与 pilot Provider 仍为 DeepSeek | 注入与真实 SDK 的无网络构造测试；candidate `22c985e9…b2a9` 只完成离线验证 | Anthropic 已注册、真实 API/工具兼容、成本、质量或继承 DeepSeek 结果 |
 
-Provider 是显式安全边界：OpenAI 与 DeepSeek 使用不同环境变量和独立 client，不允许任意 base URL，也不会修改 SDK 全局 Key。DeepSeek 会忽略 `parallel_tool_calls=False`，因此工具串行、调用预算和每运行单发布提案上限均由本地控制面强制执行，而不是依赖模型服务。
+Provider 是显式安全边界：OpenAI 与 DeepSeek 使用不同环境变量和独立 client，不允许任意 base URL，也不会修改 SDK 全局 Key。Anthropic 通过 exact-pinned LiteLLM Chat Completions adapter 提供 CLI/offline contract：固定官方 base URL、每运行独立 HTTP handler、并发 fail-closed、零 Provider-managed retry/无 fallback/alias、丢弃 LiteLLM 全局请求日志、第三方 tracing 关闭、全零 token usage 视为 unknown；它尚未注册 campaign、接入 Web preflight 或执行在线评测。DeepSeek 会忽略 `parallel_tool_calls=False`，因此工具串行、调用预算和每运行单发布提案上限均由本地控制面强制执行，而不是依赖模型服务。
 
 ## Production-like vertical slice
 

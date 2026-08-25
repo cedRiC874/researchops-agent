@@ -27,7 +27,11 @@ from .eval_v2_freeze import validate_public_regression_candidate
 from .eval_v2_public_runner import run_public_regression_online
 from .eval_v2_public import validate_eval_v2_suite
 from .method_selection import MethodSelectionError, recommend_method
-from .model_providers import ProviderConfigurationError, get_provider
+from .model_providers import (
+    SUPPORTED_PROVIDER_IDS,
+    ProviderConfigurationError,
+    get_provider,
+)
 from .offline_agent import (
     decide_phase4_call,
     resume_phase4_call,
@@ -156,7 +160,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="检查第六阶段在线评测就绪状态（不导入 Runner、不联网）",
     )
     phase6_status_parser.add_argument(
-        "--provider", choices=("openai", "deepseek"), default="openai"
+        "--provider", choices=SUPPORTED_PROVIDER_IDS, default="openai"
     )
 
     phase6_validate_parser = subparsers.add_parser(
@@ -171,7 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     phase6_run_parser = subparsers.add_parser(
         "phase6-run-online",
-        help="显式确认后，顺序运行真实 OpenAI Agents SDK 行为评测",
+        help="显式确认后，顺序运行真实 Agents SDK Provider 行为评测",
     )
     phase6_run_parser.add_argument(
         "--tasks", type=Path, default=Path("evals/phase6_agent_tasks.jsonl")
@@ -181,7 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     phase6_run_parser.add_argument("--output-dir", type=Path, required=True)
     phase6_run_parser.add_argument(
-        "--provider", choices=("openai", "deepseek"), required=True
+        "--provider", choices=SUPPORTED_PROVIDER_IDS, required=True
     )
     phase6_run_parser.add_argument("--model", required=True)
     phase6_run_parser.add_argument(
@@ -277,7 +281,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_freeze_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate_v2.json"),
+        default=Path("evals/v2/public_regression_candidate_v3.json"),
     )
     eval_v2_freeze_parser.add_argument(
         "--verify-environment", action="store_true"
@@ -290,7 +294,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_public_run_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate_v2.json"),
+        default=Path("evals/v2/public_regression_candidate_v3.json"),
     )
     eval_v2_public_run_parser.add_argument("--registry", type=Path, required=True)
     eval_v2_public_run_parser.add_argument("--output-dir", type=Path, required=True)
@@ -345,7 +349,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("evals/v2/external_datasets.json"),
     )
     pilot_run_parser.add_argument(
-        "--provider", choices=("openai", "deepseek"), required=True
+        "--provider", choices=SUPPORTED_PROVIDER_IDS, required=True
     )
     pilot_run_parser.add_argument("--model", required=True)
     pilot_run_parser.add_argument("--task-id")

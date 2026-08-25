@@ -361,6 +361,23 @@ class SelfPilotTests(unittest.TestCase):
         self.assertEqual(exit_code, 4)
         self.assertEqual(payload["error_code"], "self_pilot_session_invalid")
 
+    def test_cli_self_pilot_run_accepts_controlled_anthropic_choice(self) -> None:
+        parsed = cli_module.build_parser().parse_args(
+            [
+                "self-pilot-run",
+                "--session-dir",
+                "artifacts/offline-anthropic-session",
+                "--registry",
+                "artifacts/offline-anthropic-registry.json",
+                "--provider",
+                "anthropic",
+                "--model",
+                "claude-sonnet-5",
+            ]
+        )
+        self.assertEqual(parsed.provider, "anthropic")
+        self.assertEqual(parsed.model, "claude-sonnet-5")
+
 
 if __name__ == "__main__":
     unittest.main()

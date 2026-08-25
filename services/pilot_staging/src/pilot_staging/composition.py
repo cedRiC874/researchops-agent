@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
             / "services"
             / "pilot_staging"
             / "content"
-            / "pilot_pack.supervised_v3.json"
+            / "pilot_pack.supervised_v4.json"
         ).read_text(encoding="utf-8")
     )
     supervised_task_pack_sha256 = task_pack_commitment_sha256(

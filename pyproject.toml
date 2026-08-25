@@ -9,7 +9,8 @@ description = "A controlled scientific data analysis agent, built incrementally.
 requires-python = ">=3.11"
 dependencies = [
   "matplotlib>=3.8,<4.0",
-  "openai-agents>=0.21,<0.22",
+  "openai-agents[litellm]>=0.21,<0.22",
+  "litellm==1.83.0",
   "pandas>=2.0,<4.0",
   "scipy>=1.11,<2.0",
   "statsmodels>=0.14,<1.0",

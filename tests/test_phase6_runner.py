@@ -195,6 +195,34 @@ class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(openai_missing["online_run_status"], "not_run")
         self.assertFalse(openai_missing["sdk"]["api_key_configured"])
+
+        anthropic_missing = phase6_status(
+            provider="anthropic",
+            environment={"DEEPSEEK_API_KEY": "deepseek-only"},
+        )
+        self.assertEqual(anthropic_missing["provider"], "anthropic")
+        self.assertEqual(
+            anthropic_missing["transport"],
+            "litellm_anthropic_chat_completions",
+        )
+        self.assertEqual(anthropic_missing["online_run_status"], "not_run")
+        self.assertEqual(anthropic_missing["not_run_reason"], "api_key_missing")
+        self.assertTrue(anthropic_missing["sdk"]["provider_transport_ready"])
+        self.assertEqual(
+            anthropic_missing["sdk"]["api_key_environment_variable"],
+            "ANTHROPIC_API_KEY",
+        )
+        self.assertEqual(anthropic_missing["network_calls"], 0)
+
+        anthropic_ready = phase6_status(
+            provider="anthropic",
+            environment={"ANTHROPIC_API_KEY": "offline-status-placeholder"},
+        )
+        self.assertEqual(
+            anthropic_ready["online_run_status"],
+            "ready_requires_explicit_confirmation",
+        )
+        self.assertTrue(anthropic_ready["sdk"]["api_key_configured"])
         with patch.dict(
             os.environ,
             {"OPENAI_API_KEY": "ambient-openai", "DEEPSEEK_API_KEY": "ambient-ds"},
@@ -205,6 +233,45 @@ class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(explicit_empty["sdk"]["api_key_configured"])
         with self.assertRaises(ProviderConfigurationError):
             phase6_status(provider="unknown", environment={})
+
+    def test_anthropic_status_fails_closed_on_transport_missing_or_drift(self) -> None:
+        from importlib.metadata import PackageNotFoundError
+
+        def missing_litellm(name: str) -> str:
+            if name == "openai-agents":
+                return "0.21.0"
+            raise PackageNotFoundError(name)
+
+        with patch(
+            "researchops.model_providers.importlib.metadata.version",
+            side_effect=missing_litellm,
+        ):
+            missing = phase6_status(
+                provider="anthropic",
+                environment={"ANTHROPIC_API_KEY": "offline-placeholder"},
+            )
+        self.assertEqual(
+            missing["not_run_reason"], "provider_transport_not_installed"
+        )
+        self.assertFalse(missing["sdk"]["provider_transport_ready"])
+        self.assertEqual(missing["network_calls"], 0)
+
+        def drifted_litellm(name: str) -> str:
+            return {"openai-agents": "0.21.0", "litellm": "1.98.0"}[name]
+
+        with patch(
+            "researchops.model_providers.importlib.metadata.version",
+            side_effect=drifted_litellm,
+        ):
+            drifted = phase6_status(
+                provider="anthropic",
+                environment={"ANTHROPIC_API_KEY": "offline-placeholder"},
+            )
+        self.assertEqual(
+            drifted["not_run_reason"], "provider_transport_dependency_drift"
+        )
+        self.assertFalse(drifted["sdk"]["provider_transport_ready"])
+        self.assertEqual(drifted["network_calls"], 0)
 
     async def test_deepseek_preflight_rejects_model_key_and_legacy_pricing_before_output(self) -> None:
         calls: list[LogicalAgentRequest] = []
@@ -297,6 +364,23 @@ class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
         self.assertEqual(online.provider, "deepseek")
+        anthropic = build_parser().parse_args(
+            [
+                "phase6-run-online",
+                "--output-dir",
+                "artifacts/test-provider-cli",
+                "--provider",
+                "anthropic",
+                "--model",
+                "claude-sonnet-5",
+                "--split",
+                "development",
+                "--max-cases",
+                "1",
+            ]
+        )
+        self.assertEqual(anthropic.provider, "anthropic")
+        self.assertEqual(anthropic.model, "claude-sonnet-5")
         with self.assertRaises(SystemExit):
             build_parser().parse_args(
                 [
@@ -435,7 +519,7 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertTrue(manifest["audit"]["all_chains_valid"])
             self.assertEqual(manifest["schema_version"], "1.1")
-            self.assertEqual(manifest["runner_version"], "1.6.0")
+            self.assertEqual(manifest["runner_version"], "1.7.0")
             self.assertEqual(manifest["selection"]["max_output_tokens"], 2000)
             self.assertEqual(manifest["provider"], "openai")
             self.assertEqual(manifest["transport"], "openai_responses")

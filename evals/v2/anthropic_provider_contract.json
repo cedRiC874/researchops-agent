@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "eval-v2-anthropic-provider-offline-v1",
+  "implementation_status": "offline_contract_only",
+  "provider": {
+    "provider_id": "anthropic",
+    "default_model_id": "claude-sonnet-5",
+    "allowed_model_ids": [
+      "claude-sonnet-5",
+      "claude-opus-4-8",
+      "claude-haiku-4-5-20251001"
+    ],
+    "transport_id": "litellm_anthropic_chat_completions",
+    "api_base": "https://api.anthropic.com",
+    "api_key_environment_variable": "ANTHROPIC_API_KEY"
+  },
+  "dependency_contract": {
+    "openai_agents_version": "0.21.0",
+    "litellm_version": "1.83.0",
+    "compatibility_pin_exact": true,
+    "artifact_hashes_in_lock": false
+  },
+  "execution_controls": {
+    "owned_http_client_per_run": true,
+    "single_process_run_policy": "fail_closed_on_concurrent_anthropic_run",
+    "dependency_pin_checked_at_execution": true,
+    "request_timeout_seconds_source": "explicit_run_timeout",
+    "outer_run_timeout_required": true,
+    "provider_managed_retries": 0,
+    "fallbacks_allowed": false,
+    "global_callbacks_allowed": false,
+    "global_cache_allowed": false,
+    "global_model_aliases_allowed": false,
+    "global_error_log_retention_allowed": false,
+    "message_logging_disabled_during_run": true,
+    "external_tracing_disabled": true,
+    "include_usage_requested": true,
+    "usage_missing_policy": "positive_request_with_all_zero_tokens_is_unavailable",
+    "api_key_persisted_or_logged": false
+  },
+  "entry_points": {
+    "phase6_cli_enabled": true,
+    "self_pilot_cli_enabled": true,
+    "self_pilot_web_enabled": false,
+    "eval_v2_public_runner_enabled": false
+  },
+  "evaluation_boundary": {
+    "campaign_registered": false,
+    "public_candidate_authorized": false,
+    "private_access_authorized": false,
+    "online_calls_performed": false,
+    "model_quality_claim_allowed": false,
+    "prior_deepseek_results_inherited": false
+  },
+  "official_model_reference": "https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions",
+  "official_model_ids_verified_at_utc": "2026-08-25T00:00:00Z"
+}

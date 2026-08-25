@@ -155,14 +155,14 @@ Public-regression candidate 使用三份预承诺 seed/task order；三次排列
 
 ## 3.4 Public-regression candidate lock
 
-历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json) 保留 v1 commitment 和既有一次性结果。当前 [`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它绑定 source、prompt contract、scorer、tool contract、Completion Telemetry v2 contract、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`，并生成新的总 commitment。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
+历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json) 与 [`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json) 分别保留 v1 一次性结果和 Completion Telemetry v2 离线 commitment。当前 [`public_regression_candidate_v3.json`](v2/public_regression_candidate_v3.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它继续把 public-run Provider 固定为 DeepSeek，同时绑定 Anthropic offline adapter contract、campaign planned slot、source、prompt/scorer/tool、Completion Telemetry、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
 
 ```powershell
 .\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-public-freeze `
   --verify-environment
 ```
 
-`requirements.lock` 的 58 个版本全部精确 pin 且当前环境 58/58 匹配，但没有 wheel/sdist artifact hashes；因此只能证明版本清单未漂移，不能证明供应链包文件字节相同。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；Completion Telemetry v2 commitment `1f6ac18e…e5ce5` 仅完成离线验证，未运行 Provider，也不继承历史 68/93。完整 campaign 仍非 frozen。
+`requirements.lock` 的 82 个版本全部精确 pin；新增 `openai-agents[litellm]` 与 exact `litellm==1.83.0` compatibility pin，但仍没有 wheel/sdist artifact hashes。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；v2 commitment `1f6ac18e…e5ce5` 和 v3 commitment `22c985e9…b2a9` 均只完成离线验证，不继承历史 68/93。Anthropic 仍为 `offline_contract_only / campaign_registered=false / online_calls_performed=false`，完整 campaign 仍非 frozen；实现与使用边界见 [Anthropic Provider 指南](../docs/ANTHROPIC_PROVIDER.md)。
 
 原子 artifact writer 只写脱敏 `eval_v2_report.json`、`eval_v2_summary.md`、可选 repetition aggregation 和带 SHA-256/size/source-tree hash 的 manifest。目标必须是 `artifacts/` 下不存在的新目录；先在同父目录 staging 中生成并复核，再原子 rename。路径、API Key/Authorization、final output、raw rows、sample values 和 traceback 字段均被拒绝。所有未冻结产物固定 `model_quality_claim_allowed=false`。
 
@@ -260,8 +260,8 @@ cross-check 未完成。`synthetic=false` release 固定拒绝；`check-private-
 - private holdout 0/50；
 - 已注册数据集 1/3，非 synthetic 0/3；
 - 已完成来源与哈希核验的外部数据集 3 个，但外部专家复核为 0/3；
-- 已注册 Provider 1/2；
-- 历史 v1 public candidate 及结果保持可追溯；Completion Telemetry v2 candidate hashes/commitment 已离线生成但尚未在线运行，完整 private campaign freeze 尚未生成；
+- 已注册 Provider 1/2；Anthropic adapter 已完成离线合同，但第二 Provider campaign slot 仍为 `planned`；
+- 历史 v1/v2 public candidates 保持可追溯；v3 hashes/commitment 已离线生成但尚未在线运行，完整 private campaign freeze 尚未生成；
 - private corpus commitment 尚未提供；
 - 外部 golden review 和统计交叉检查尚未完成。
 

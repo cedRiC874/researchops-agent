@@ -161,6 +161,23 @@ def _result(*, final_output="done", new_items=(), interruptions=()):
 
 
 class Phase6AgentTests(unittest.TestCase):
+    def test_positive_request_with_all_zero_tokens_is_unavailable(self) -> None:
+        usage = phase6_module._usage_from_object(
+            SimpleNamespace(
+                requests=1,
+                input_tokens=0,
+                output_tokens=0,
+                total_tokens=0,
+                input_tokens_details=SimpleNamespace(cached_tokens=0),
+            )
+        )
+        self.assertEqual(usage.requests, 1)
+        self.assertIsNone(usage.input_tokens)
+        self.assertIsNone(usage.output_tokens)
+        self.assertIsNone(usage.total_tokens)
+        self.assertIsNone(usage.cached_input_tokens)
+        self.assertFalse(usage.complete)
+
     def test_provider_error_classification_is_stable_and_body_free(self) -> None:
         class ProviderFailure(RuntimeError):
             def __init__(self, status_code: int) -> None:

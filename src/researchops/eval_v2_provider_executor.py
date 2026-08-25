@@ -16,7 +16,7 @@ from .eval_v2_runner import (
 from .model_providers import ProviderAdapter, ProviderConfigurationError
 
 
-PROVIDER_EXECUTOR_VERSION = "1.2"
+PROVIDER_EXECUTOR_VERSION = "1.3"
 _DEFAULT_MAX_OUTPUT_TOKENS = 2000
 _MAX_CONFIGURABLE_OUTPUT_TOKENS = 10000
 _REFUSAL_MAX_OUTPUT_TOKENS = 512
@@ -599,6 +599,8 @@ def _build_provider_agent(
             parallel_tool_calls=False,
             max_tokens=max_output_tokens,
             store=False,
+            include_usage=True,
+            preserve_raw_usage=True,
         ),
         instructions=(
             "Use only logical IDs in Authorized context. Never request or emit file paths, "
@@ -792,6 +794,14 @@ def _extract_usage(result: Any) -> dict[str, int | None]:
     requests = _optional_nonnegative_int(getattr(usage, "requests", None))
     input_tokens = _optional_nonnegative_int(getattr(usage, "input_tokens", None))
     output_tokens = _optional_nonnegative_int(getattr(usage, "output_tokens", None))
+    if (
+        requests is not None
+        and requests > 0
+        and input_tokens == 0
+        and output_tokens == 0
+    ):
+        input_tokens = None
+        output_tokens = None
     return {
         "requests": requests or 0,
         "input_tokens": input_tokens,

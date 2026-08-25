@@ -12,7 +12,8 @@ WORKDIR /app
 COPY services/production_slice/requirements.runtime.lock /app/locks/base.lock
 COPY services/pilot_staging/requirements.provider.lock /app/locks/provider.lock
 RUN python -m pip install -r /app/locks/base.lock \
-    && python -m pip install -r /app/locks/provider.lock
+    && python -m pip install -r /app/locks/provider.lock \
+    && python -m pip check
 
 COPY pyproject.toml requirements.lock /app/core/
 COPY src /app/core/src

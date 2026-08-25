@@ -15,13 +15,15 @@ one-time invite -> pseudonymous Secure/HttpOnly session -> explicit consent
 It uses the locked candidate commitment:
 
 ```text
-1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5
+22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9
 ```
 
-The frozen Provider identity is DeepSeek `deepseek-v4-flash` through the
-OpenAI-compatible Responses transport. Changing the Provider/model requires a new
-candidate and a new campaign. The service verifies the candidate source commitment
-before its worker starts. It does not modify the frozen prompt, scorer or tool schema.
+The frozen pilot Provider identity remains DeepSeek `deepseek-v4-flash` through the
+OpenAI-compatible Responses transport. Candidate v3 adds an Anthropic offline adapter
+contract but does not authorize or register Anthropic for this pilot. Changing the
+pilot Provider/model still requires a new candidate and campaign. The service verifies
+the candidate source commitment before its worker starts and does not modify the
+frozen prompt, scorer or tool schema.
 
 ## What is implemented
 
@@ -165,11 +167,11 @@ external_validation_claim_allowed=false
 Reading the same campaign later through a staging-configured process cannot remove
 that blocker. Supervised records never enter the formal 3–5 participant / 20 interaction
 claim gate. Historical `pilot_pack.supervised_v1.json` remains bound to the initial
-two-person / 12-assignment campaign. The active
-`pilot_pack.supervised_v3.json` is a one-person / six-assignment, same-participant UX
-regression after an accidental-withdrawal UI fix. Its six source tasks are different,
-already-public, internally reviewed public-regression tasks selected for three-dataset
-and six-scenario coverage—not for model performance. Its result cannot be counted as a
+two-person / 12-assignment campaign. Historical
+`pilot_pack.supervised_v3.json` remains the completed same-participant UX regression.
+The active `pilot_pack.supervised_v4.json` binds the v3 candidate while preserving
+the same six public tasks and translations; no online v3 run or participant evidence
+exists yet, and no predecessor result is inherited. Neither pack can be counted as a
 second independent participant or aggregated with v1. The formal pack remains five ×
 six / 30. These assignment limits do not claim an upstream API-request or monetary
 ceiling, because one task may use multiple model turns.

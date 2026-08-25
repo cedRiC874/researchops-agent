@@ -2,7 +2,7 @@
 
 > 状态：staging protocol，尚不构成已完成 pilot 的证据
 > Pilot 类型：邀请制、独立外部科研用户、非专家可用性评估
-> Eval v2 candidate 承诺：`1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5`
+> Eval v2 candidate 承诺：`22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9`
 
 ## 1. 目的与声明边界
 
@@ -17,12 +17,15 @@
 运行前冻结任务包、展示文案、模型/Provider 配置、反馈字段、纳入规则、门槛和本协议。模型执行部分绑定以下 Eval v2 candidate SHA-256 承诺值：
 
 ```text
-1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5
+22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9
 ```
 
 每个 manifest、同意记录、任务反馈和汇总均必须保存字段名明确的 `candidate_commitment_sha256`；协议、同意文档、任务包、反馈 schema、数据集 manifest、部署 Git SHA 和镜像 digest 另存各自的 commitment，不能用 candidate hash 冒充这些文件的 hash。上述值不是安全认证或第三方签名，只用于证明一轮 pilot 使用同一冻结定义。开始收集后不得挑题、改字段、改纳入标准或静默更换模型。任何实质变更都必须停止当前轮、生成新 campaign 并重新冻结；旧记录保持原承诺且不得混入新一轮汇总。
 
-该 candidate 新增 Completion Telemetry v2，仅记录四个 allowlisted 本地观测分支及覆盖率。它不保存 Provider 原始响应，也不把诊断标签称为因果根因。旧 candidate 的 pilot/public-regression 结果不继承到本轮；本协议本身也不授权在线或付费运行。
+该 candidate 保留 Completion Telemetry v2，并新增 Anthropic offline adapter contract。当前
+pilot Provider 仍固定为 DeepSeek；Anthropic 未注册到 campaign、未完成模型目录预检、
+未运行在线任务。它不保存 Provider 原始响应，也不把诊断标签称为因果根因。旧 candidate
+的 pilot/public-regression 结果不继承到本轮；本协议本身也不授权在线或付费运行。
 
 ## 3. 招募、邀请与人数
 
@@ -156,7 +159,7 @@ JSON Schema 只能验证记录形状和服务端已经计算出的固定 gate �
 - `pilot_manifest.schema.json`：冻结配置、邀请制、server-side key、人数和覆盖常量；
 - `participant_lifecycle.schema.json`：资格、主动同意、撤回与删除期限；
 - `task_feedback.schema.json`：单次运行和非专家反馈；
-- `pilot_summary.schema.json`：服务端聚合结果、门槛判定及 claim 边界。
+- `pilot_summary.v1.2.schema.json`：当前服务端聚合结果、Completion Telemetry、门槛判定及 claim 边界；旧 `pilot_summary.schema.json` 仅保留历史 v1 兼容。
 
 所有对象默认拒绝未知字段。客户端不得提交汇总对象；汇总必须由能够读取原始记录的受信服务端生成，并在报告前按本协议重新计算。
 

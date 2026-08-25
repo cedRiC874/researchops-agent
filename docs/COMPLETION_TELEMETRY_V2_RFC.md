@@ -84,6 +84,9 @@ inherited. This RFC authorizes no private-holdout access and no online or paid r
 
 The locked offline candidate is `evals/v2/public_regression_candidate_v2.json`,
 commitment `1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5`.
+This v2 artifact remains immutable historical lineage. Its offline-only successor is
+`public_regression_candidate_v3.json` (`22c985e9…b2a9`), which adds the Anthropic
+offline adapter contract without inheriting v2 results or registering Anthropic.
 
 ## 6. Verification requirements
 

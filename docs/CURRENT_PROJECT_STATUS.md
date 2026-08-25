@@ -1,5 +1,11 @@
 # ResearchOps Agent 当前项目状态
 
+> 2026-08-25 successor note：本文件主体保留 2026-08-22 历史快照。当前分支新增
+> public candidate v3 `22c985e9…b2a9` 与 Anthropic CLI/offline adapter contract；
+> public-run 与 pilot Provider 仍为 DeepSeek，Anthropic campaign slot 仍为 `planned`，没有
+> Anthropic Key、在线调用、结果或模型质量证据。最新跨会话状态以仓库根目录
+> `handoff.md` 为准。
+
 > 状态快照：2026-08-22（Asia/Shanghai）
 > 用途：集中记录当前已经完成、已经验证、尚未完成以及可以/不可以对外声称的事实。
 > 重要说明：已发布的 `v0.2.0 / phase6-deepseek-v1`、已合并但尚未发布新 Release 的 production slice，以及已在本地提交但尚未 push/release 的 Eval v2 工作必须分开表述。
