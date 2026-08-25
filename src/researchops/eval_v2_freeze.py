@@ -17,10 +17,13 @@ from .eval_v2_public import (
 from .eval_v2_runner import eval_v2_tool_contract
 
 
-PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION = "2.0"
+PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION = "3.0"
 COMPLETION_TELEMETRY_CONTRACT_ID = "completion-telemetry-v2"
-HISTORICAL_CANDIDATE_COMMITMENT_SHA256 = (
+HISTORICAL_V1_CANDIDATE_COMMITMENT_SHA256 = (
     "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
+)
+PREDECESSOR_V2_CANDIDATE_COMMITMENT_SHA256 = (
+    "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5"
 )
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _EXACT_REQUIREMENT = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[^\s]+)$")
@@ -91,6 +94,8 @@ _COMPONENT_KEYS = frozenset(
         "pyproject_sha256",
         "requirements_lock_sha256",
         "completion_telemetry_contract_sha256",
+        "anthropic_provider_contract_sha256",
+        "campaign_sha256",
     }
 )
 
@@ -152,6 +157,10 @@ def build_public_regression_component_hashes(
         "completion_telemetry_contract_sha256": _sha256_file(
             root / "evals" / "v2" / "completion_telemetry_contract.json"
         ),
+        "anthropic_provider_contract_sha256": _sha256_file(
+            root / "evals" / "v2" / "anthropic_provider_contract.json"
+        ),
+        "campaign_sha256": _sha256_file(root / "evals" / "v2" / "campaign.json"),
     }
 
 
@@ -173,7 +182,7 @@ def validate_public_regression_candidate(
         or candidate["private_holdout_access_authorized"] is not False
         or candidate["model_quality_claim_allowed"] is not False
         or candidate["predecessor_candidate_commitment_sha256"]
-        != HISTORICAL_CANDIDATE_COMMITMENT_SHA256
+        != PREDECESSOR_V2_CANDIDATE_COMMITMENT_SHA256
         or candidate["prior_results_inherited"] is not False
         or candidate["completion_telemetry_contract_id"]
         != COMPLETION_TELEMETRY_CONTRACT_ID
@@ -192,6 +201,28 @@ def validate_public_regression_candidate(
         raise EvalV2ContractError(
             "eval_v2_public_candidate_campaign_mismatch",
             "Candidate 与 design-only campaign 不匹配。",
+        )
+    run_policy = campaign.get("run_policy")
+    provider_slots = (
+        run_policy.get("providers") if isinstance(run_policy, Mapping) else None
+    )
+    if provider_slots != [
+        {
+            "provider_id": "deepseek",
+            "status": "registered",
+            "model_id": "deepseek-v4-flash",
+            "transport_id": "openai_compatible_responses",
+        },
+        {
+            "provider_id": "second_provider",
+            "status": "planned",
+            "model_id": None,
+            "transport_id": None,
+        },
+    ]:
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_provider_plan_invalid",
+            "Anthropic offline adapter 不得冒充已注册 campaign Provider。",
         )
 
     execution = _strict_object(
@@ -238,6 +269,10 @@ def validate_public_regression_candidate(
         root / "evals" / "v2" / "completion_telemetry_contract.json",
         "completion telemetry contract",
     )
+    anthropic_snapshot = _load_json_object(
+        root / "evals" / "v2" / "anthropic_provider_contract.json",
+        "Anthropic provider contract",
+    )
     if prompt_snapshot != eval_v2_prompt_contract():
         raise EvalV2ContractError(
             "eval_v2_public_candidate_prompt_drift",
@@ -258,6 +293,11 @@ def validate_public_regression_candidate(
         raise EvalV2ContractError(
             "eval_v2_public_candidate_completion_contract_invalid",
             "Completion telemetry contract 状态或声明边界无效。",
+        )
+    if anthropic_snapshot != _expected_anthropic_provider_contract():
+        raise EvalV2ContractError(
+            "eval_v2_anthropic_provider_contract_invalid",
+            "Anthropic offline Provider contract 状态或声明边界无效。",
         )
 
     split = _validate_public_regression_split(root)
@@ -309,10 +349,14 @@ def validate_public_regression_candidate(
         "private_holdout_access_authorized": False,
         "model_quality_claim_allowed": False,
         "predecessor_candidate_commitment_sha256": (
-            HISTORICAL_CANDIDATE_COMMITMENT_SHA256
+            PREDECESSOR_V2_CANDIDATE_COMMITMENT_SHA256
         ),
         "prior_results_inherited": False,
         "completion_telemetry_contract_id": COMPLETION_TELEMETRY_CONTRACT_ID,
+        "anthropic_provider_contract_id": anthropic_snapshot["contract_id"],
+        "anthropic_provider_status": "offline_contract_only",
+        "anthropic_campaign_registered": False,
+        "anthropic_online_calls_performed": False,
         "public_regression_task_count": 40,
         "provider_behavior_task_count": 31,
         "deterministic_fault_injection_task_count": 9,
@@ -320,6 +364,73 @@ def validate_public_regression_candidate(
         "task_order_sha256": split["task_order_sha256"],
         "dependency_lock": lock_summary,
         "network_calls": 0,
+    }
+
+
+def _expected_anthropic_provider_contract() -> dict[str, Any]:
+    return {
+        "schema_version": "1.0",
+        "contract_id": "eval-v2-anthropic-provider-offline-v1",
+        "implementation_status": "offline_contract_only",
+        "provider": {
+            "provider_id": "anthropic",
+            "default_model_id": "claude-sonnet-5",
+            "allowed_model_ids": [
+                "claude-sonnet-5",
+                "claude-opus-4-8",
+                "claude-haiku-4-5-20251001",
+            ],
+            "transport_id": "litellm_anthropic_chat_completions",
+            "api_base": "https://api.anthropic.com",
+            "api_key_environment_variable": "ANTHROPIC_API_KEY",
+        },
+        "dependency_contract": {
+            "openai_agents_version": "0.21.0",
+            "litellm_version": "1.83.0",
+            "compatibility_pin_exact": True,
+            "artifact_hashes_in_lock": False,
+        },
+        "execution_controls": {
+            "owned_http_client_per_run": True,
+            "single_process_run_policy": (
+                "fail_closed_on_concurrent_anthropic_run"
+            ),
+            "dependency_pin_checked_at_execution": True,
+            "request_timeout_seconds_source": "explicit_run_timeout",
+            "outer_run_timeout_required": True,
+            "provider_managed_retries": 0,
+            "fallbacks_allowed": False,
+            "global_callbacks_allowed": False,
+            "global_cache_allowed": False,
+            "global_model_aliases_allowed": False,
+            "global_error_log_retention_allowed": False,
+            "message_logging_disabled_during_run": True,
+            "external_tracing_disabled": True,
+            "include_usage_requested": True,
+            "usage_missing_policy": (
+                "positive_request_with_all_zero_tokens_is_unavailable"
+            ),
+            "api_key_persisted_or_logged": False,
+        },
+        "entry_points": {
+            "phase6_cli_enabled": True,
+            "self_pilot_cli_enabled": True,
+            "self_pilot_web_enabled": False,
+            "eval_v2_public_runner_enabled": False,
+        },
+        "evaluation_boundary": {
+            "campaign_registered": False,
+            "public_candidate_authorized": False,
+            "private_access_authorized": False,
+            "online_calls_performed": False,
+            "model_quality_claim_allowed": False,
+            "prior_deepseek_results_inherited": False,
+        },
+        "official_model_reference": (
+            "https://platform.claude.com/docs/en/about-claude/models/"
+            "model-ids-and-versions"
+        ),
+        "official_model_ids_verified_at_utc": "2026-08-25T00:00:00Z",
     }
 
 

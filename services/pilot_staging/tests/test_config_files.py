@@ -126,8 +126,11 @@ def test_provider_lock_is_exact_and_docker_context_is_scoped() -> None:
     assert all(EXACT.fullmatch(line) for line in lines)
     assert len(lines) == len(set(lines))
     assert "openai-agents==0.21.0" in lines
+    assert "litellm==1.83.0" in lines
+    assert "propcache==0.5.2" in lines
     dockerfile = (SERVICE / "Dockerfile").read_text(encoding="utf-8")
     assert "pip install --no-deps /app/core" in dockerfile
+    assert "python -m pip check" in dockerfile
     assert "USER 10002:10002" in dockerfile
     rules = (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
     assert rules[0] == "**"
@@ -160,12 +163,17 @@ def test_contract_json_and_pack_are_parseable() -> None:
     assert supervised_pack["max_provider_runs"] == 12
     assert supervised_pack["tasks"] == pack["tasks"]
     regression_pack = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v3.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v4.json").read_text(
             encoding="utf-8"
         )
     )
     review = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v3.review.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v4.review.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    predecessor_pack = json.loads(
+        (SERVICE / "content" / "pilot_pack.supervised_v3.json").read_text(
             encoding="utf-8"
         )
     )
@@ -183,7 +191,13 @@ def test_contract_json_and_pack_are_parseable() -> None:
     assert re.fullmatch(r"[0-9a-f]{64}", regression_commitment)
     assert regression_commitment != task_pack_commitment_sha256(supervised_pack["tasks"])
     assert regression_pack["candidate_commitment_sha256"] == LOCKED_CANDIDATE_COMMITMENT
-    assert "same-participant" in regression_pack["title"]
+    assert "multi-provider-adapter" in regression_pack["title"]
+    assert regression_pack["provider"] == predecessor_pack["provider"]
+    assert regression_pack["tasks"] == predecessor_pack["tasks"]
+    assert (
+        regression_pack["candidate_commitment_sha256"]
+        != predecessor_pack["candidate_commitment_sha256"]
+    )
     regression_source_ids = {
         item["source_task_id"] for item in regression_pack["tasks"]
     }
@@ -214,6 +228,8 @@ def test_contract_json_and_pack_are_parseable() -> None:
             source["scenario"] == "clarification_required"
         )
     assert review["review_status"] == "internal_reviewed"
+    assert review["predecessor_pack_file"] == "pilot_pack.supervised_v3.json"
+    assert review["task_selection_changed"] is False
     assert review["translation_review"] == {
         "status": "internal_reviewed",
         "english_prompt_exact": True,
@@ -238,7 +254,8 @@ def test_contract_json_and_pack_are_parseable() -> None:
     composition = (SERVICE / "src" / "pilot_staging" / "composition.py").read_text(
         encoding="utf-8"
     )
-    assert "pilot_pack.supervised_v3.json" in composition
+    assert "pilot_pack.supervised_v4.json" in composition
+    assert "pilot_pack.supervised_v3.json" not in composition
     assert "pilot_pack.supervised_v2.json" not in composition
     assert "pilot_pack.supervised_v1.json" not in composition
 

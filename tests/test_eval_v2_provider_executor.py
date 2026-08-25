@@ -13,11 +13,12 @@ from researchops.eval_v2_provider_executor import (
     EvalV2ProviderExecutor,
     _apply_pretool_output_contract,
     _classify_pretool_policy,
+    _extract_usage,
     _policy_output_limit,
 )
 from researchops.eval_v2_public import EvalV2PublicTask
 from researchops.eval_v2_runner import EvalV2ToolGateway, run_eval_v2_evaluation
-from researchops.model_providers import ProviderModel
+from researchops.model_providers import AnthropicProvider, ProviderModel
 
 
 DATASET_ID = "palmer_penguins_v0_1_0"
@@ -182,6 +183,19 @@ class IncompleteAfterInspectRunner:
 class FakeInspectBackend:
     def inspect_dataset(self, dataset_id: str):
         return {"dataset": {"dataset_id": dataset_id, "row_count": 344}}
+
+
+class UsageBoundaryTests(unittest.TestCase):
+    def test_positive_request_with_all_zero_tokens_is_unavailable(self) -> None:
+        result = SimpleNamespace(
+            context_wrapper=SimpleNamespace(
+                usage=SimpleNamespace(requests=1, input_tokens=0, output_tokens=0)
+            )
+        )
+        self.assertEqual(
+            _extract_usage(result),
+            {"requests": 1, "input_tokens": None, "output_tokens": None},
+        )
 
 
 def refusal_task() -> EvalV2PublicTask:
@@ -366,6 +380,9 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
         self.assertEqual(result.outcome, "refused")
         self.assertEqual(result.completion_status, "complete")
         self.assertEqual(runner.agent.model_settings.max_tokens, 512)
+        self.assertTrue(runner.agent.model_settings.include_usage)
+        self.assertTrue(runner.agent.model_settings.preserve_raw_usage)
+        self.assertIsNone(runner.agent.model_settings.extra_args)
         self.assertEqual(_policy_output_limit("clarify_causal", 10000), 768)
         self.assertEqual(_policy_output_limit("normal", 10000), 10000)
 
@@ -380,6 +397,17 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             )
 
         self.assertEqual(context.exception.code, "eval_v2_external_tracing_denied")
+        with self.assertRaises(EvalV2ContractError) as anthropic:
+            EvalV2ProviderExecutor(
+                provider=AnthropicProvider(),
+                model_id="claude-sonnet-5",
+                api_key="SECRET-TEST-KEY",
+                confirm_online=True,
+                tracing_disabled=False,
+            )
+        self.assertEqual(
+            anthropic.exception.code, "eval_v2_external_tracing_denied"
+        )
 
     def test_bilingual_mode_adds_presentation_contract_without_a_second_run(self) -> None:
         provider = FakeProvider()

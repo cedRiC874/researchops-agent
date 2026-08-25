@@ -2048,7 +2048,7 @@ def _validate_repository_state(project_root: Path) -> dict[str, Any]:
         )
         candidate = validate_public_regression_candidate(
             project_root=project_root,
-            candidate_path=project_root / "evals" / "v2" / "public_regression_candidate_v2.json",
+            candidate_path=project_root / "evals" / "v2" / "public_regression_candidate_v3.json",
             verify_environment=False,
         )
     except Exception as exc:

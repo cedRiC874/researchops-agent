@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Mapping
 
 
 LOCKED_CANDIDATE_COMMITMENT = (
-    "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5"
+    "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9"
 )
 CLAIM_SCOPE = "external_researcher_usability_on_prepared_public_data"
 COMPLETION_FAILURE_SOURCES = frozenset(

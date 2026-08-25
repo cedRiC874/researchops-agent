@@ -1,5 +1,10 @@
 # Pilot Staging Verification Snapshot
 
+> Successor note (2026-08-25): branch candidate v3 commitment
+> `22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9` migrates the live preflight to
+> `pilot_pack.supervised_v4.json` while keeping the pilot Provider as DeepSeek.
+> Anthropic remains offline-contract-only; no v3 Provider or participant run is claimed.
+
 > Current note: Completion Telemetry v2 candidate `1f6ac18e…e5ce5` 已进入
 > `main@094cb9b1` 并通过无 Provider Key clean CI；它不继承 predecessor
 > `7744770a…f0d11` 的任何结果。

@@ -116,7 +116,7 @@ def validate_locked_candidate_files(project_root: str | Path) -> Mapping[str, ob
         candidate_path=resolved_root
         / "evals"
         / "v2"
-        / "public_regression_candidate_v2.json",
+        / "public_regression_candidate_v3.json",
         verify_environment=False,
     )
     if validation["candidate_commitment_sha256"] != LOCKED_CANDIDATE_COMMITMENT:

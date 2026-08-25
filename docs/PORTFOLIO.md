@@ -14,6 +14,7 @@
 | Phase 6 DeepSeek 在线 | 冻结版 development 16/16；repo-local non-secret holdout 4/4 | 在固定 runner/source/corpus/split 下的任务级质量、usage、延迟与安全证据 | 抗污染泛化、生产 SLA 或实际账单成本 |
 | Eval v2 public candidate v1（历史） | Provider system 68/93；三轮 23/31、22/31、23/31；fault harness 27/27 | 锁定 `DeepSeek + 控制面` 在公开任务上的重复表现、usage、成本与失败分层 | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
 | Completion Telemetry v2 | 新 commitment `1f6ac18e…e5ce5`；离线 root/pilot/PostgreSQL 合同通过；0 次 Provider 调用 | 可区分安全 completion 分支并显式报告 legacy unknown coverage | 因果根因、在线模型质量、继承 v1 68/93 或未知生产泛化 |
+| Anthropic Provider offline contract | `claude-sonnet-5` exact ID、LiteLLM exact pin、独立 client/timeout/zero-retry/usage fail-closed tests | 证明第二 Provider adapter 已可在 CLI 中离线构造并保持安全边界 | 已注册第二 Provider、真实 API 可用性、工具兼容性、成本或模型质量 |
 | Production-like slice | 18/18 + 真实单机 Compose E2E；`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 | FastAPI/worker、PG lease queue、MinIO artifact、event hash chain、幂等与 API→worker Trace ID 的真实纵切 | HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量 |
 
 对外推荐状态标签：

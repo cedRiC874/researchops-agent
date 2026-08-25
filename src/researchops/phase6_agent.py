@@ -1478,6 +1478,17 @@ def _usage_from_object(usage: Any) -> AgentUsage:
     total_tokens = _optional_nonnegative_int(getattr(usage, "total_tokens", None))
     details = getattr(usage, "input_tokens_details", None)
     cached = getattr(details, "cached_tokens", None)
+    if (
+        requests is not None
+        and requests > 0
+        and input_tokens == 0
+        and output_tokens == 0
+        and total_tokens == 0
+    ):
+        input_tokens = None
+        output_tokens = None
+        total_tokens = None
+        cached = None
     return AgentUsage(
         requests=requests,
         input_tokens=input_tokens,
@@ -1507,6 +1518,10 @@ def _request_usage_entries(usage: Any) -> tuple[AgentRequestUsage, ...]:
         total_tokens = _optional_nonnegative_int(
             getattr(entry, "total_tokens", None)
         )
+        if input_tokens == 0 and output_tokens == 0 and total_tokens == 0:
+            input_tokens = None
+            output_tokens = None
+            total_tokens = None
         input_details = getattr(entry, "input_tokens_details", None)
         output_details = getattr(entry, "output_tokens_details", None)
         output.append(

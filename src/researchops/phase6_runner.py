@@ -20,7 +20,7 @@ from typing import Any
 
 from .artifact_security import ArtifactPermissionError, enable_parent_acl_inheritance
 from .audit import AuditLedger, safe_audit_value, sha256_json
-from .model_providers import ProviderAdapter, get_provider
+from .model_providers import ProviderAdapter, get_provider, provider_transport_status
 from .phase6_agent import (
     PHASE6_MAX_OUTPUT_TOKENS,
     AgentRunRecord,
@@ -43,7 +43,7 @@ from .phase6_eval import (
 from .tool_runtime import ControlledToolExecutor, build_project_tool_registry
 
 
-PHASE6_RUNNER_VERSION = "1.6.0"
+PHASE6_RUNNER_VERSION = "1.7.0"
 PHASE6_EVALUATION_MODE = "online_agents_sdk"
 PHASE6_SUBJECT_UNDER_TEST = "agent_planning_tool_trace_and_final_answer"
 _SPLITS = {"development", "holdout"}
@@ -96,17 +96,28 @@ def phase6_status(
     configured_value = environment_source.get(adapter.api_key_env)
     configured = isinstance(configured_value, str) and bool(configured_value.strip())
     sdk = phase6_sdk_status()
+    transport_status = provider_transport_status(adapter)
     sdk.update(
         {
             "api_key_configured": configured,
             "api_key_environment_variable": adapter.api_key_env,
             "provider": adapter.provider_id,
             "transport": adapter.transport_id,
+            "provider_transport": transport_status,
+            "provider_transport_ready": (
+                transport_status["installed"] and transport_status["compatible"]
+            ),
         }
     )
     if not sdk["installed"]:
         online_status = "not_run"
         reason = "sdk_not_installed"
+    elif not transport_status["installed"]:
+        online_status = "not_run"
+        reason = "provider_transport_not_installed"
+    elif not transport_status["compatible"]:
+        online_status = "not_run"
+        reason = "provider_transport_dependency_drift"
     elif not configured:
         online_status = "not_run"
         reason = "api_key_missing"

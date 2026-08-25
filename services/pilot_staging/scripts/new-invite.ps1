@@ -35,7 +35,7 @@ if (-not $CampaignId) {
         "--admin-token-file", "/run/secrets/admin_token",
         "bootstrap",
         "--project-root", "/app/core",
-        "--pack", "/app/core/services/pilot_staging/content/pilot_pack.supervised_v3.json",
+        "--pack", "/app/core/services/pilot_staging/content/pilot_pack.supervised_v4.json",
         "--deployment-git-sha", $configuration.DeploymentGitSha,
         "--deployment-image-digest", $configuration.DeploymentImageDigest
     ) -Capture

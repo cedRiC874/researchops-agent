@@ -20,9 +20,12 @@ from researchops.eval_v2_runner import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v2.json"
-HISTORICAL_CANDIDATE_PATH = (
+CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v3.json"
+HISTORICAL_V1_CANDIDATE_PATH = (
     REPO_ROOT / "evals" / "v2" / "public_regression_candidate.json"
+)
+HISTORICAL_V2_CANDIDATE_PATH = (
+    REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v2.json"
 )
 SPLIT_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_split_manifest.json"
 
@@ -44,13 +47,24 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertEqual(
             result["completion_telemetry_contract_id"], "completion-telemetry-v2"
         )
+        self.assertEqual(
+            result["predecessor_candidate_commitment_sha256"],
+            "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5",
+        )
+        self.assertEqual(
+            result["anthropic_provider_contract_id"],
+            "eval-v2-anthropic-provider-offline-v1",
+        )
+        self.assertEqual(result["anthropic_provider_status"], "offline_contract_only")
+        self.assertFalse(result["anthropic_campaign_registered"])
+        self.assertFalse(result["anthropic_online_calls_performed"])
         self.assertEqual(result["provider_behavior_task_count"], 31)
         self.assertEqual(result["deterministic_fault_injection_task_count"], 9)
-        self.assertEqual(result["dependency_lock"]["exact_pin_count"], 58)
+        self.assertEqual(result["dependency_lock"]["exact_pin_count"], 82)
         self.assertFalse(result["dependency_lock"]["artifact_hashes_included"])
 
     def test_historical_v1_candidate_is_preserved_without_result_inheritance(self) -> None:
-        raw = HISTORICAL_CANDIDATE_PATH.read_bytes()
+        raw = HISTORICAL_V1_CANDIDATE_PATH.read_bytes()
         historical = json.loads(raw)
 
         self.assertEqual(
@@ -64,6 +78,49 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertEqual(
             candidate_commitment_sha256(historical),
             historical["candidate_commitment_sha256"],
+        )
+
+    def test_historical_v2_candidate_is_preserved_without_result_inheritance(self) -> None:
+        raw = HISTORICAL_V2_CANDIDATE_PATH.read_bytes()
+        historical = json.loads(raw)
+
+        self.assertEqual(
+            hashlib.sha256(raw).hexdigest(),
+            "89b317f00a4d9a4f8f81ee59fb6d82e7ca225fd5d00fac450499ee2ce73b9a38",
+        )
+        self.assertEqual(
+            historical["candidate_commitment_sha256"],
+            "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5",
+        )
+        self.assertEqual(
+            candidate_commitment_sha256(historical),
+            historical["candidate_commitment_sha256"],
+        )
+
+    def test_current_public_candidate_remains_deepseek_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = json.loads(CANDIDATE_PATH.read_text(encoding="utf-8"))
+            payload["provider_config"].update(
+                {
+                    "provider_id": "anthropic",
+                    "model_id": "claude-sonnet-5",
+                    "transport_id": "litellm_anthropic_chat_completions",
+                }
+            )
+            payload["candidate_commitment_sha256"] = candidate_commitment_sha256(
+                payload
+            )
+            path = Path(temporary) / "candidate.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+            with self.assertRaises(EvalV2ContractError) as caught:
+                validate_public_regression_candidate(
+                    project_root=REPO_ROOT,
+                    candidate_path=path,
+                )
+
+        self.assertEqual(
+            caught.exception.code, "eval_v2_public_candidate_provider_invalid"
         )
 
     def test_completion_telemetry_machine_contract_matches_runtime_allowlist(self) -> None:
