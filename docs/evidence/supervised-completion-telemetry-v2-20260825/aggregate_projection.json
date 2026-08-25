@@ -1,0 +1,179 @@
+{
+  "schema_version": "supervised-completion-telemetry-evidence-projection/1.0",
+  "campaign_id": "EXT-PILOT-01A605022746D203",
+  "purpose": "completion_telemetry_v2_supervised_usability_only",
+  "campaign_status": "complete",
+  "utc_date": "2026-08-25",
+  "deployment": {
+    "git_sha": "950a473e860d9987e96be87d2bb3fab51acb4c7b",
+    "local_docker_image_id": "sha256:7058151885e5b979690a4b3284854e7865866e978d03bf0b83e8293f6f13dc5c",
+    "candidate_commitment_sha256": "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5",
+    "candidate_manifest_sha256": "89b317f00a4d9a4f8f81ee59fb6d82e7ca225fd5d00fac450499ee2ce73b9a38",
+    "completion_telemetry_contract_id": "completion-telemetry-v2",
+    "completion_telemetry_contract_sha256": "65e0feb9186cb8134b5d695f1977d193963387f41cfe81916089fff124431832",
+    "prior_results_inherited": false,
+    "task_pack_file": "pilot_pack.supervised_v3.json",
+    "task_pack_file_sha256": "90e81bbc282e4eabb490c00795e62aa2938977cde6b85f7d880251b45f848346",
+    "task_list_commitment_sha256": "83363291f30c7edd62d30e88da38fcf966b7d01c5ac16d3a2964ee9571555d72",
+    "provider_id": "deepseek",
+    "model_id": "deepseek-v4-flash",
+    "transport_id": "openai_compatible_responses"
+  },
+  "participant_relationship": {
+    "operator_independence_adjudicated": false,
+    "same_participant_retest_asserted": false,
+    "independent_participant_increment_claimed": 0
+  },
+  "participant_counts": {
+    "summary_eligible": 1,
+    "started": 1,
+    "completed": 1,
+    "withdrawn": 0
+  },
+  "interaction_counts": {
+    "planned": 6,
+    "started": 6,
+    "terminal": 6,
+    "answer_displayed": 4,
+    "feedback_completed": 4,
+    "technical_failure": 2,
+    "seeded": 4,
+    "exploratory": 0
+  },
+  "attempt_status_counts": {
+    "completed": 4,
+    "excluded": 2,
+    "active_lease": 0
+  },
+  "execution_telemetry": {
+    "counter_semantics_version": "pilot-provider-telemetry-v1",
+    "scope": "consented_non_withdrawn_participants_only",
+    "worker_started_attempt_count": 6,
+    "terminal_attempt_count": 6,
+    "observed_attempt_count": 6,
+    "unknown_attempt_count": 0,
+    "coverage_status": "complete",
+    "executor_model_request_sum": 9,
+    "model_requested_tool_call_sum": 3,
+    "backend_executed_tool_call_sum": 2,
+    "failure_reason_counts": {
+      "provider_output_incomplete": 2
+    },
+    "completion_failure_sources": {
+      "semantics_version": "pilot-completion-failure-source-v2",
+      "applicable_attempt_count": 2,
+      "observed_attempt_count": 2,
+      "unknown_attempt_count": 0,
+      "coverage_rate": 1.0,
+      "coverage_status": "complete",
+      "counts": {
+        "response_output_item_incomplete": 2
+      },
+      "causal_root_cause_claim_allowed": false
+    },
+    "executor_wall_clock_elapsed_seconds": {
+      "stored_field_name": "provider_latency_ms",
+      "semantic_scope": "entire_executor_loop_including_local_orchestration_and_backend_execution",
+      "observed_attempt_count": 6,
+      "p50_rounded": 5.5,
+      "p95_rounded": 20.3,
+      "production_sla": false,
+      "pure_provider_latency": false
+    },
+    "token_usage_collection_status": "not_collected",
+    "cost_coverage_status": "unavailable",
+    "upstream_api_request_total_claim_allowed": false,
+    "campaign_wide_billing_total_claim_allowed": false,
+    "model_planning_accuracy_claim_allowed": false
+  },
+  "feedback_aggregate": {
+    "scope": "four_assignments_with_displayed_answer_and_submitted_feedback",
+    "count": 4,
+    "understandable_yes": 4,
+    "useful_for_next_step_yes": 4,
+    "needs_expert_review_yes": 0,
+    "obvious_problem_yes": 0,
+    "missing_information_yes": 0,
+    "safety_concern_yes": 0,
+    "confidence_counts": {
+      "high": 4
+    },
+    "human_review_seconds": {
+      "p50_rounded": 92,
+      "p95_rounded": 94
+    },
+    "clarification_feedback_count": 0
+  },
+  "failure_records": [
+    {
+      "diagnostic_id": "PILOT-CTV2-20260825-001",
+      "source_task_id": "V2-PUB-003",
+      "dataset_id": "palmer_penguins_v0_1_0",
+      "scenario": "clarification_required",
+      "terminal_status": "excluded",
+      "outcome": "controlled_failure",
+      "reason_code": "provider_output_incomplete",
+      "completion_failure_source": "response_output_item_incomplete",
+      "executor_wall_clock_elapsed_seconds_rounded": 23.1,
+      "executor_model_request_count": 2,
+      "model_requested_tool_call_count": 1,
+      "backend_executed_tool_call_count": 1
+    },
+    {
+      "diagnostic_id": "PILOT-CTV2-20260825-002",
+      "source_task_id": "V2-PUB-027",
+      "dataset_id": "uci_parkinsons_telemonitoring_189",
+      "scenario": "safe_refusal",
+      "terminal_status": "excluded",
+      "outcome": "controlled_failure",
+      "reason_code": "provider_output_incomplete",
+      "completion_failure_source": "response_output_item_incomplete",
+      "executor_wall_clock_elapsed_seconds_rounded": 4.9,
+      "executor_model_request_count": 1,
+      "model_requested_tool_call_count": 0,
+      "backend_executed_tool_call_count": 0
+    }
+  ],
+  "integrity": {
+    "append_only_event_count": 30,
+    "terminal_event_digest_version": "pilot-execution-telemetry-v2",
+    "terminal_event_count_with_v2_digest": 8,
+    "attempt_telemetry_binding": "valid",
+    "participant_projection_binding": "valid",
+    "safety_incident_count": 0,
+    "scheduled_purge_confirmed": true
+  },
+  "operational_stop_state": {
+    "worker_stopped": true,
+    "api_stopped": true,
+    "funnel_stop_confirmed": true,
+    "containers_removed": true,
+    "postgres_volume_deleted": false
+  },
+  "claim_boundaries": {
+    "supervised_pretest_only": true,
+    "same_participant_retest": null,
+    "independent_participant_evidence_allowed": false,
+    "cross_campaign_aggregation_allowed": false,
+    "external_validation_claim_allowed": false,
+    "model_quality_claim_allowed": false,
+    "professional_correctness_assessed": false,
+    "private_holdout_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "production_sla_claim_allowed": false,
+    "causal_provider_root_cause_claim_allowed": false
+  },
+  "redaction": {
+    "participant_identifier_included": false,
+    "attempt_identifier_included": false,
+    "session_or_invite_token_included": false,
+    "api_key_included": false,
+    "ip_or_email_included": false,
+    "free_text_notes_included": false,
+    "agent_output_included": false,
+    "provider_response_body_included": false,
+    "provider_raw_status_included": false,
+    "row_level_data_included": false,
+    "absolute_path_included": false
+  }
+}
