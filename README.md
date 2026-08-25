@@ -23,6 +23,7 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
 | Eval v2 public candidate v1（历史） | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
 | Completion Telemetry v2 candidate | 已进入 main 并通过 clean CI，未在线运行 | PR #11；四类受控 completion source、legacy coverage、v1/v2 双 telemetry digest retention；commitment `1f6ac18e…e5ce5` 不继承 v1 结果 |
+| Eval v2 private custodian kit v1.1 | synthetic conformance 已实现，真实 private release 仍 fail-closed | 不同 Ed25519 角色、外部 anchors、两阶段 ledger、预承诺 denominator/budget 与 aggregate-only verifier；private 0/50、Provider 1/2，仍为 `design_only / not_authorized` |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
 | External researcher pilot staging | PR #11 已合并并通过当前 main CI；历史 supervised UX regression 已完成 | `main` run 32648925679 为 51 个 offline contracts + 1 个真实 PostgreSQL contract；同一参与者 supervised UX regression v2（运行于 predecessor candidate）为 1 completed、4 feedback、2 controlled failures，永久不进入正式 claim，也不算第二位独立参与者 |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
@@ -469,6 +470,7 @@ provenance 标量，加入 profile 阈值与退出码传播；push/PR clean runs
 ## 作品集与面试材料
 
 - [Completion Telemetry v2 main CI 证据](docs/evidence/completion-telemetry-v2-main-ci-v1/README.md)
+- [Private Holdout Custodian Guide](docs/PRIVATE_HOLDOUT_CUSTODIAN_KIT.md)
 - [30 秒介绍、5 分钟演示和面试问答](docs/PORTFOLIO.md)
 - [架构与安全边界](docs/ARCHITECTURE.md)
 - [声明到证据的映射](docs/EVIDENCE.md)

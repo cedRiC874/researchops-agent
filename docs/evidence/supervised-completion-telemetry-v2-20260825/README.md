@@ -128,6 +128,9 @@ body、raw status object 或 finish metadata；因此仍不能说明“为什么
 - pilot containers/network 已移除，PostgreSQL volume 保留；
 - `secret_values_printed=false`。
 
+2026-08-25 的 Scheduled Task、90 天 deadline 与实际 maintenance run 证据见
+[`retention-verification-20260825.md`](retention-verification-20260825.md)。
+
 内部 event/digest binding 不是外部数字签名，也不证明云级不可篡改、HA、备份恢复、生产
 安全或 SLA。
 
