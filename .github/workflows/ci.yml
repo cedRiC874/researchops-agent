@@ -70,7 +70,7 @@ jobs:
           python -m researchops.cli phase6-status
           python -m researchops.cli eval-v2-validate
           python -m researchops.cli eval-v2-verify-public-freeze `
-            --candidate evals/v2/public_regression_candidate_v4.json `
+            --candidate evals/v2/public_regression_candidate_v5.json `
             --verify-environment
           $nativeErrorPreference = $PSNativeCommandUseErrorActionPreference
           try {
@@ -92,6 +92,28 @@ jobs:
               $anthropicPreflight.model_token_calls -ne 0 -or
               $anthropicPreflight.authorizes_model_run) {
             Write-Output "::error title=anthropic_preflight_contract_invalid::Unconfirmed preflight must remain offline and non-authorizing."
+            exit 1
+          }
+          try {
+            $PSNativeCommandUseErrorActionPreference = $false
+            $kimiPreflightRaw = (& python -m researchops.cli `
+              kimi-models-preflight --model kimi-k3 | Out-String)
+            $kimiPreflightExit = $LASTEXITCODE
+          } finally {
+            $PSNativeCommandUseErrorActionPreference = $nativeErrorPreference
+          }
+          if ($kimiPreflightExit -ne 4) {
+            Write-Output "::error title=kimi_preflight_cli_failed::Unexpected CLI exit code."
+            exit 1
+          }
+          $kimiPreflight = $kimiPreflightRaw | ConvertFrom-Json
+          if ($kimiPreflight.status -ne "not_run" -or
+              $kimiPreflight.error_code -ne "kimi_preflight_confirmation_required" -or
+              $kimiPreflight.network_calls -ne 0 -or
+              $kimiPreflight.model_token_calls -ne 0 -or
+              $kimiPreflight.authorizes_model_run -or
+              $kimiPreflight.authorizes_provider_registration) {
+            Write-Output "::error title=kimi_preflight_contract_invalid::Unconfirmed Kimi preflight must remain offline and non-authorizing."
             exit 1
           }
           $anthropic = (python -m researchops.cli phase6-status `

@@ -112,7 +112,8 @@ def test_invite_defaults_to_two_hours_and_never_persists_link() -> None:
     assert "Mandatory = $true" not in invite.split("[int]$TtlHours", 1)[0]
     assert "Test-PilotFunnelActive" in invite
     assert '"researchops-pilot-admin"' in invite
-    assert "pilot_pack.supervised_v5.json" in invite
+    assert "pilot_pack.supervised_v6.json" in invite
+    assert "pilot_pack.supervised_v5.json" not in invite
     assert "pilot_pack.supervised_v3.json" not in invite
     assert "pilot_pack.supervised_v2.json" not in invite
     assert "pilot_pack.supervised_v1.json" not in invite

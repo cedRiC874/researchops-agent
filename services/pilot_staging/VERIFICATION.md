@@ -1,11 +1,25 @@
 # Pilot Staging Verification Snapshot
 
-> Current note (2026-08-26): PR #19 regular-merged candidate v4 commitment
-> `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` and
-> `pilot_pack.supervised_v5.json` to `main@77911226`, while keeping the pilot Provider as DeepSeek.
-> Main pilot run 32930473989 passed 51 offline contracts, 1 real PostgreSQL contract and
-> no-Provider-secret Compose. Anthropic remains offline-contract-only; no live Models preflight,
-> Anthropic Provider run or v5 participant run is claimed.
+> Current working-tree note (2026-08-26): candidate v5 commitment
+> `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc` and
+> `pilot_pack.supervised_v6.json` are locally bound while keeping the pilot Provider as DeepSeek.
+> Kimi Models preflight was `implemented_offline_tested_not_run` at candidate lock, so the frozen
+> candidate/pilot snapshot retains `live_models_preflight_performed=false`. After that lock, one
+> separately authorized metadata GET completed at `2026-08-26T09:41:49.967Z`: HTTP 200,
+> attempts/network calls `1/1`, requested/returned model `kimi-k3`, exact visibility true, zero model
+> tokens and cost `null`. The receipt is not inherited by candidate v5 or pilot v6. It does not
+> authorize Chat, tools, model quality, Provider registration or private evaluation. The one-time
+> authorization is consumed and the request must not be retried; any new request requires fresh
+> explicit authorization. No Kimi Chat/tool/model call or predecessor result exists. The successor
+> candidate/pilot state itself has offline verification only and is not described here as merged main
+> or participant evidence.
+
+> Historical PR #19 note: candidate v4 commitment
+> `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` and historical
+> `pilot_pack.supervised_v5.json` regular-merged to `main@77911226`, while keeping the pilot
+> Provider as DeepSeek. Main pilot run 32930473989 passed 51 offline contracts, 1 real PostgreSQL
+> contract and no-Provider-secret Compose. Anthropic remained offline-contract-only; that run did
+> not perform a live Models preflight, Anthropic Provider run or v5-pack participant run.
 
 > Historical predecessor note: Completion Telemetry v2 candidate `1f6ac18e…e5ce5` 已进入
 > `main@094cb9b1` 并通过无 Provider Key clean CI；它不继承 predecessor
@@ -17,7 +31,7 @@ This is a local and GitHub clean-CI engineering verification snapshot. It is not
 result, a production deployment attestation, a security certification or a Provider
 quality rerun.
 
-## Current main integration
+## Historical PR #19 main integration
 
 PR #19 已 regular merge 至
 `main@77911226b0e2a7e7d15ac5be9c2aafc19c5ea335`。该精确 commit 的：
@@ -56,11 +70,21 @@ PR #11 已 regular merge 至
 
 ## Frozen boundary
 
-- Current candidate v4 status: `candidate_locked / valid`
-- Current candidate v4 commitment:
+- Current candidate v5 status: `candidate_locked / valid`
+- Current candidate v5 commitment:
+  `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`
+- Predecessor v4 commitment:
   `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`
-- Predecessor v3 commitment:
+- Historical predecessor v3 commitment:
   `22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9`
+- Active supervised pack: `pilot_pack.supervised_v6.json`
+- Historical v4-bound pack: `pilot_pack.supervised_v5.json`
+- Kimi Models preflight: `implemented_offline_tested_not_run`
+- Kimi live preflight recorded in candidate/pilot v6 snapshot: `false`
+- Separate post-lock metadata observation: `verified / HTTP 200 / attempts 1 / network 1 /
+  exact kimi-k3 visible / model tokens 0 / cost null`
+- Post-lock receipt inherited or authorizing: `false`
+- Kimi Chat/tool/model calls performed: `false`
 - Anthropic Models preflight: `implemented_offline_tested_not_run`
 - Public/pilot execution Provider: still `deepseek / deepseek-v4-flash`
 - Historical v1 commitment:
@@ -72,7 +96,7 @@ PR #11 已 regular merge 至
 - Paid/model network calls made by this verification: 0
 - Provider API Key read, printed or stored: no
 
-## Current main CI results
+## Historical PR #19 main CI results
 
 | Layer | Result | Network/model behavior |
 | --- | ---: | --- |
@@ -97,7 +121,7 @@ created no persistent volume and was stopped after the test.
 ## Historical local Linux image (Completion Telemetry v2 baseline)
 
 The predecessor snapshot's final local image built successfully and `pip check` reported no broken
-requirements. This digest is not a candidate v4 image or deployment identity:
+requirements. This digest is not a candidate v4 or v5 image or deployment identity:
 
 ```text
 researchops-pilot-staging:supervised-local

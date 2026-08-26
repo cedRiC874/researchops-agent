@@ -15,9 +15,13 @@ external_validation_claim_allowed=false
 professional_correctness_assessed=false
 ```
 
-当前 `pilot_pack.supervised_v5.json` 绑定 Models-preflight successor v4 candidate，原样
-沿用 historical `pilot_pack.supervised_v4.json` 的 6 道公开任务与翻译，但不继承任何旧参与者或结果。Pilot
-Provider 仍为 DeepSeek；Anthropic preflight 只完成 offline fixtures，未注册、未 live 预检、未在线运行。
+当前 `pilot_pack.supervised_v6.json` 绑定 Kimi Models-preflight successor v5 candidate，
+原样沿用 historical `pilot_pack.supervised_v5.json` 的 6 道公开任务、翻译与 DeepSeek
+Provider，但不继承任何旧参与者或结果。历史 v5 pack 继续绑定 predecessor v4
+candidate，不得改写。Candidate/Pilot snapshot 中 Kimi preflight 为
+`implemented_offline_tested_not_run`，live preflight/online model run 字段为 `false`；另有一次
+post-lock metadata verification，但它不回填本 snapshot、不授权在线 pilot，Kimi 仍未注册为
+pilot Provider。
 目标人数固定为 1；不得跨 campaign 聚合，也不得据此声称模型质量、外部验证或未知分布
 泛化。当前尚未授权或执行该 pack 的在线运行。
 
@@ -33,7 +37,8 @@ Provider 仍为 DeepSeek；Anthropic preflight 只完成 offline fixtures，未�
 - [ ] 联系方式、排期和补偿信息保存在 pilot 系统之外；场次材料中只有随机假名 ID。
 - [ ] 使用 supervised 专用 campaign/session，未复用正式 pilot session。
 - [ ] 固定 protocol、同意文案、6 题顺序、Provider/model 和部署版本已记录。
-- [ ] Candidate commitment 为 `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`。
+- [ ] Candidate commitment 为 `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`。
+- [ ] Task pack 为 `pilot_pack.supervised_v6.json`，Provider 仍为 DeepSeek。
 - [ ] Provider Key 只在服务端 secret 中；浏览器和参与者无需输入 Key。
 - [ ] 没有启用录音、录像、录屏或会议自动转写。
 - [ ] 单场记录模板已经创建，但不含姓名、邮箱、机构、IP 或其他直接身份信息。

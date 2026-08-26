@@ -19,7 +19,7 @@ $datasetRoot = Join-Path $selfPilotDataRoot "run-01"
 $evalsRoot = Join-Path $projectRoot "evals"
 $evalV2Root = Join-Path $evalsRoot "v2"
 $manifestPath = Join-Path $evalV2Root "external_datasets.json"
-$candidateCommitment = "1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7"
+$candidateCommitment = "105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc"
 
 foreach ($target in @($envPath, $secretRoot, $datasetRoot)) {
     if (Test-Path -LiteralPath $target) {

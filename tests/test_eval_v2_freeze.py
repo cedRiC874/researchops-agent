@@ -4,8 +4,11 @@ import hashlib
 import json
 import tempfile
 import unittest
+from copy import deepcopy
 from pathlib import Path
+from unittest.mock import patch
 
+from researchops import eval_v2_freeze as freeze_module
 from researchops.eval_v2_contracts import EvalV2ContractError
 from researchops.eval_v2_freeze import (
     candidate_commitment_sha256,
@@ -20,7 +23,7 @@ from researchops.eval_v2_runner import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v4.json"
+CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v5.json"
 HISTORICAL_V1_CANDIDATE_PATH = (
     REPO_ROOT / "evals" / "v2" / "public_regression_candidate.json"
 )
@@ -29,6 +32,9 @@ HISTORICAL_V2_CANDIDATE_PATH = (
 )
 HISTORICAL_V3_CANDIDATE_PATH = (
     REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v3.json"
+)
+HISTORICAL_V4_CANDIDATE_PATH = (
+    REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v4.json"
 )
 SPLIT_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_split_manifest.json"
 
@@ -52,7 +58,7 @@ class EvalV2FreezeTests(unittest.TestCase):
         )
         self.assertEqual(
             result["predecessor_candidate_commitment_sha256"],
-            "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9",
+            "1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7",
         )
         self.assertEqual(
             result["anthropic_provider_contract_id"],
@@ -70,6 +76,25 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertFalse(result["anthropic_models_preflight_live_calls_performed"])
         self.assertFalse(result["anthropic_campaign_registered"])
         self.assertFalse(result["anthropic_online_calls_performed"])
+        self.assertEqual(
+            result["kimi_provider_contract_id"],
+            "eval-v2-moonshot-kimi-provider-design-v1",
+        )
+        self.assertEqual(
+            result["kimi_provider_status"],
+            "preflight_implemented_offline_tested_not_run",
+        )
+        self.assertEqual(
+            result["kimi_models_preflight_contract_id"],
+            "eval-v2-kimi-models-preflight-v1",
+        )
+        self.assertEqual(
+            result["kimi_models_preflight_status"],
+            "implemented_offline_tested_not_run",
+        )
+        self.assertFalse(result["kimi_models_preflight_live_calls_performed"])
+        self.assertFalse(result["kimi_campaign_registered"])
+        self.assertFalse(result["kimi_online_calls_performed"])
         self.assertEqual(result["provider_behavior_task_count"], 31)
         self.assertEqual(result["deterministic_fault_injection_task_count"], 9)
         self.assertEqual(result["dependency_lock"]["exact_pin_count"], 82)
@@ -126,6 +151,23 @@ class EvalV2FreezeTests(unittest.TestCase):
             historical["candidate_commitment_sha256"],
         )
 
+    def test_historical_v4_candidate_is_preserved_without_result_inheritance(self) -> None:
+        raw = HISTORICAL_V4_CANDIDATE_PATH.read_bytes()
+        historical = json.loads(raw)
+
+        self.assertEqual(
+            hashlib.sha256(raw).hexdigest(),
+            "22c635e210a1d699acd2cdff06d97683a5824d2405f24ee9698c990731346c9d",
+        )
+        self.assertEqual(
+            historical["candidate_commitment_sha256"],
+            "1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7",
+        )
+        self.assertEqual(
+            candidate_commitment_sha256(historical),
+            historical["candidate_commitment_sha256"],
+        )
+
     def test_current_public_candidate_remains_deepseek_only(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = json.loads(CANDIDATE_PATH.read_text(encoding="utf-8"))
@@ -151,6 +193,109 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertEqual(
             caught.exception.code, "eval_v2_public_candidate_provider_invalid"
         )
+
+    def test_kimi_provider_contract_cannot_optimistically_rewrite_unknowns(self) -> None:
+        mutations = (
+            (
+                "privacy_and_retention_review",
+                "input_output_or_feedback_model_optimization_license_present",
+                False,
+            ),
+            (
+                "privacy_and_retention_review",
+                "request_body_retention_days",
+                0,
+            ),
+            (
+                "time_bounded_public_snapshot",
+                "agreements_future_dated_at_review",
+                False,
+            ),
+            (
+                "time_bounded_public_snapshot",
+                "snapshot_must_be_refreshed_before_chat_completions_or_pilot",
+                False,
+            ),
+            (
+                "time_bounded_public_snapshot",
+                "account_rate_limits",
+                {
+                    "status": "verified",
+                    "concurrency": 100,
+                    "requests_per_minute": 500,
+                    "tokens_per_minute": 300000,
+                    "tokens_per_day": 1500000,
+                },
+            ),
+            (
+                "time_bounded_public_snapshot",
+                "snapshot_is_spend_authorization",
+                True,
+            ),
+            (
+                "privacy_and_retention_review",
+                "personal_information_allowed",
+                True,
+            ),
+            (
+                "privacy_and_retention_review",
+                "file_upload_allowed",
+                True,
+            ),
+            (
+                "audit_activity",
+                "models_preflight_requests_performed",
+                1,
+            ),
+            (
+                "metadata_preflight_design",
+                "authorization_consumption_ledger_implemented",
+                True,
+            ),
+            (
+                "metadata_preflight_design",
+                "success_authorizes_pilot",
+                True,
+            ),
+            (
+                "future_runtime_controls",
+                "trust_environment_allowed",
+                True,
+            ),
+            (
+                "future_candidate_requirement",
+                "minimum_chat_completions_successor_version",
+                "v5",
+            ),
+        )
+        real_loader = freeze_module._load_json_object
+
+        for section, field, value in mutations:
+            with self.subTest(section=section, field=field):
+                def load_with_mutation(path: Path, label: str):
+                    payload = real_loader(path, label)
+                    if Path(path).name == "kimi_provider_contract.json":
+                        payload = deepcopy(payload)
+                        payload[section][field] = value
+                    return payload
+
+                with (
+                    patch.object(
+                        freeze_module,
+                        "_load_json_object",
+                        side_effect=load_with_mutation,
+                    ),
+                    self.assertRaises(EvalV2ContractError) as caught,
+                ):
+                    validate_public_regression_candidate(
+                        project_root=REPO_ROOT,
+                        candidate_path=CANDIDATE_PATH,
+                    )
+
+                self.assertEqual(
+                    caught.exception.code,
+                    "eval_v2_kimi_provider_contract_invalid",
+                )
 
     def test_completion_telemetry_machine_contract_matches_runtime_allowlist(self) -> None:
         contract = json.loads(

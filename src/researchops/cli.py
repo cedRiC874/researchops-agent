@@ -27,6 +27,7 @@ from .eval_v2_inspect_backend import EvalV2InspectDatasetBackend
 from .eval_v2_freeze import validate_public_regression_candidate
 from .eval_v2_public_runner import run_public_regression_online
 from .eval_v2_public import validate_eval_v2_suite
+from .kimi_preflight import run_kimi_models_preflight
 from .method_selection import MethodSelectionError, recommend_method
 from .model_providers import (
     ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
@@ -174,6 +175,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--confirm-online", action="store_true"
     )
 
+    kimi_preflight_parser = subparsers.add_parser(
+        "kimi-models-preflight",
+        help="对 Kimi 中国区 exact allowlisted model 执行一次固定 Models API metadata 预检",
+    )
+    kimi_preflight_parser.add_argument("--model", required=True)
+    kimi_preflight_parser.add_argument("--confirm-online", action="store_true")
+
     phase6_validate_parser = subparsers.add_parser(
         "phase6-validate", help="严格验证第六阶段 Agent 行为评测集与 split 清单"
     )
@@ -292,7 +300,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_freeze_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate_v4.json"),
+        default=Path("evals/v2/public_regression_candidate_v5.json"),
     )
     eval_v2_freeze_parser.add_argument(
         "--verify-environment", action="store_true"
@@ -305,7 +313,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_public_run_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate_v4.json"),
+        default=Path("evals/v2/public_regression_candidate_v5.json"),
     )
     eval_v2_public_run_parser.add_argument("--registry", type=Path, required=True)
     eval_v2_public_run_parser.add_argument("--output-dir", type=Path, required=True)
@@ -519,6 +527,18 @@ def main() -> int:
                     api_key=None,
                     confirm_online=args.confirm_online,
                     _key_loader=lambda: os.environ.get("ANTHROPIC_API_KEY"),
+                )
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["status"] == "verified" else 4
+        elif args.command == "kimi-models-preflight":
+            result = asyncio.run(
+                run_kimi_models_preflight(
+                    provider_id="moonshot_kimi",
+                    model_id=args.model,
+                    api_key=None,
+                    confirm_online=args.confirm_online,
+                    _key_loader=lambda: os.environ.get("MOONSHOT_API_KEY"),
                 )
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
