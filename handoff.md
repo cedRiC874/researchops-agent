@@ -1,16 +1,16 @@
 # ResearchOps Agent 跨会话交接
 
-> 更新时间：2026-08-25（Asia/Shanghai）
+> 更新时间：2026-08-26（Asia/Shanghai）
 > 目标：让一个没有历史上下文的新 Codex 会话安全、准确地继续本项目。
 > 语言偏好：中文；先给结论，再给可执行步骤；不要夸大评测或生产化程度。
 
 ## 最新 main / candidate v4 / supervised 状态
 
-- GitHub `main` 为 `9eabf43455e37d87116f403fbb349a6ba4106ea1`；PR #17/#18 已 regular merge，merge commits 分别为 `07768d5f…` 与 `9eabf434…`。两次合并后的 main offline runs `32844609973` 与 `32844911180` 均为 `success`。
+- GitHub `main` 为 `77911226b0e2a7e7d15ac5be9c2aafc19c5ea335`；PR #19 已 regular merge，PR head 为 `3694aa6d…`，merge tree 与 head tree 均为 `3db2b3c…a65d`。合并后的 main runs `32930474006`（offline）、`32930473989`（pilot）与 `32930473976`（production）均为 `success`。
 - Candidate v4 commitment 为 `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`，predecessor v3 为 `22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9`；`prior_results_inherited=false`，完整 campaign 仍为 `design_only`。
 - 本地实现 commit `329a6dc…` 与 PR #16 远端 head `7079af08…` 的 tree 均为 `710ef581f2e1355e33d9af135325468b4db1c095`；commit SHA 不同来自 Git Data API 发布，不是文件内容漂移。最终 merge tree 另含 PR #15，不能与 PR head tree 混为一谈。
 - Anthropic 固定 Models metadata preflight 已实现并只用 MockTransport 离线验证，状态为 `implemented_offline_tested_not_run`；generic Phase 6/self-pilot/Web/public-runner Anthropic 入口 fail closed，`campaign_registered=false`、`online_calls_performed=false`、`model_quality_claim_allowed=false`，public-run 与 pilot Provider 仍为 DeepSeek。
-- 历史 v1/v2/v3 candidates、supervised v1–v4 packs/reviews 与既有 evidence 均保持不变；successor supervised v5 pack 沿用 v4 的六题/翻译/DeepSeek Provider，未在线运行或继承历史结果。
+- 历史 v1/v2/v3 candidates、supervised v1–v4 packs/reviews 与既有 evidence 均保持不变；supervised v5 pack 已随 PR #19 进入 main，沿用 v4 的六题/翻译/DeepSeek Provider，未在线运行或继承历史结果。
 - Campaign `EXT-PILOT-01A605022746D203` 已于 2026-08-25 完成，绑定 candidate `1f6ac18e…e5ce5`、v3 pack file SHA `90e81bbc…8346`、deployment image `sha256:70581518…3dc5c`。
 - 聚合 lifecycle：1 completed、0 withdrawn；6/6 terminal，4 completed + feedback，2 excluded technical failures；operator independence 未 adjudicate，不主张新独立参与者增量。
 - Completion Telemetry v2：2/2 applicable failures 均 observed，unknown 0，source 为 `response_output_item_incomplete × 2`；这是安全本地 observation，不是 Provider 因果根因，也不回填 predecessor records。
@@ -18,7 +18,7 @@
 - 四个成功展示答案的非专家 feedback 为 understandable/useful `4/4`，明显问题、信息缺失、专家复核需求与安全担忧均 `0/4`；不评价专业正确性。
 - campaign 完成后 worker、API、Funnel 已停止，容器/network 已移除，PostgreSQL volume 保留；安全 incidents 0，telemetry/participant binding 均 valid。
 - Retention 已于 2026-08-25 实际复核：Scheduled Task `Ready`、daily/StartWhenAvailable/IgnoreNew、手动运行 result 0、snapshot `NumberOfMissedRuns=0`；1 个 participant 与 4 条 feedback deadline 均为 90 天上限，当前 due 0，未提前删除。见 [retention verification](docs/evidence/supervised-completion-telemetry-v2-20260825/retention-verification-20260825.md)。
-- private-holdout custodian kit v1.1 已由 PR #14 进入 `main`；synthetic conformance 包含不同 Ed25519 keys、调用方提供的 external anchors、两阶段 ledger、aggregate/budget verifier。真实 private release 固定拒绝；当前 `design_only / private 0/50 / Provider 1/2 / not_authorized` 不变，不能声称已有 private corpus、授权或运行。长期快照见 [private custodian main CI evidence](docs/evidence/eval-v2-private-custodian-main-ci-v1/README.md)。PR #15/#16 与当前 main 的长期快照见 [Anthropic offline adapter main CI evidence](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)。
+- private-holdout custodian kit v1.1 已由 PR #14 进入 `main`；synthetic conformance 包含不同 Ed25519 keys、调用方提供的 external anchors、两阶段 ledger、aggregate/budget verifier。真实 private release 固定拒绝；当前 `design_only / private 0/50 / Provider 1/2 / not_authorized` 不变，不能声称已有 private corpus、授权或运行。长期快照见 [private custodian main CI evidence](docs/evidence/eval-v2-private-custodian-main-ci-v1/README.md)。PR #15/#16 historical candidate v3 快照见 [Anthropic offline adapter main CI evidence](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)；PR #19 与当前 main 快照见 [Anthropic Models preflight main CI evidence](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
 - 脱敏 supervised 证据位于 [supervised Completion Telemetry v2 20260825](docs/evidence/supervised-completion-telemetry-v2-20260825/README.md)。不得用这六题继续调 prompt/scorer，也不得与旧 campaign 聚合。
 - 下文更早状态如有冲突，以本节为准。
 
@@ -35,9 +35,9 @@
 
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
-- 当前实现分支：`codex/anthropic-models-preflight-impl`，从 `origin/main` 的
-  `9eabf43455e37d87116f403fbb349a6ba4106ea1` 创建。
-- GitHub `main`：`9eabf43455e37d87116f403fbb349a6ba4106ea1`；PR #11–#18 已 regular merge。
+- 当前证据分支：`codex/anthropic-preflight-main-evidence`，从 `origin/main` 的
+  `77911226b0e2a7e7d15ac5be9c2aafc19c5ea335` 创建。
+- GitHub `main`：`77911226b0e2a7e7d15ac5be9c2aafc19c5ea335`；PR #11–#19 已 regular merge。
 - 版本：`0.2.0`
 - Annotated tag：`phase6-deepseek-v1`，仍指向 `80ad08e…`，不是当前 `main`
 - Release：https://github.com/cedRiC874/researchops-agent/releases/tag/phase6-deepseek-v1
@@ -58,12 +58,12 @@ PR #5 已用 regular merge 合并 pilot staging 两个提交：`ce40353`（实�
 production run `32585792929`。长期 pilot CI 证据位于
 `docs/evidence/pilot-staging-linux-ci-main-v1/`。
 
-本次实现 PR 目标边界为固定 Anthropic Models API metadata preflight、generic Anthropic
-online 入口 fail closed、successor candidate v4 与 supervised v5 pack。它不改 prompt、scorer、
+PR #19 的实现边界为固定 Anthropic Models API metadata preflight、generic Anthropic
+online 入口 fail closed、candidate v4 与 supervised v5 pack。它不改 prompt、scorer、
 tool schema、public tasks、campaign 注册、private授权、旧 candidates/packs/reviews 或历史
 evidence，也不执行任何 Anthropic 请求。
 
-本次实现直接锁定 `httpx==0.28.1`，所有 Provider 路径测试均使用 MockTransport/injected
+PR #19 直接锁定 `httpx==0.28.1`，所有 Provider 路径测试均使用 MockTransport/injected
 runner；没有读取任何 API Key、运行付费 Provider或使用 repo-local/已运行公开题调参。
 原有用户文件均已保留。PR #4 的本地提交边界曾为：
 
@@ -346,18 +346,20 @@ Repo-local non-secret holdout：
 
 ## 6. 当前自动化验证
 
-2026-08-25 的当前 `main@9eabf434` 分层验证：
+2026-08-26 的当前 `main@77911226` 分层验证：
 
 ```text
-main offline run 32844911180: 301 root tests OK; Phase 5 50/50; evidence 21/21; profile valid; network calls 0
-latest pilot main run 32840171287: 51 offline contracts + 1 real PostgreSQL contract; no-key offline Compose success
-latest production main run 32840171312: 18 contracts + real PostgreSQL/MinIO/OTel E2E success
+main offline run 32930474006: 334 root tests OK; candidate v4 valid; Phase 5 50/50; evidence 21/21; profile valid; network calls 0
+main pilot run 32930473989: 51 offline contracts + 1 real PostgreSQL contract; no-key offline Compose success
+main production run 32930473976: 18 contracts + real PostgreSQL/MinIO/OTel E2E success
 ```
 
-当前 successor implementation branch 本机无网络验证：334 项 root tests `OK`（1 项平台
-symlink skip）、15 项 public-runner pytest、51 项 pilot offline contracts 均通过；candidate
-v4 verifier 为 `valid / network_calls=0`。未配置真实 PostgreSQL URL，所以 1 项 pilot
-PostgreSQL integration 本机跳过，仍需 PR Linux CI 执行。
+三条 runs 均绑定精确 head SHA `77911226…` 并为 `completed / success`。Offline 日志固定
+Anthropic preflight 为 `implemented_offline_tested_not_run`，live preflight、campaign 注册与
+online calls 均为 `false`；pilot 日志固定 `provider_secret_created=false`、
+`secret_values_printed=false`。这只证明 clean-main 离线合同与相邻服务回归，不是 Anthropic
+API 可用性、tool/usage/error semantics、成本或模型质量证据。长期快照见
+[docs/evidence/anthropic-models-preflight-main-ci-v1/](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
 
 重要 P1 历史事实：run 32568017243 的 workflow conclusion 虽为 `success`，其新重建
 Phase 5 实际只有 44/50、evidence citations 10/21。根因已定位为 clean checkout
@@ -435,17 +437,7 @@ $env:PYTHONPATH = "src"
 4. 明确 `output/pdf/` 是否作为作品集产物纳入仓库；
 5. 有意 stage 指定文件，不要直接 `git add -A`。
 
-## 8. 已知文档与实现问题
-
-### 必须修正文档
-
-`docs/ARCHITECTURE.md` 约第 149 行仍写：
-
-```text
-DeepSeek ... 真实 smoke 尚未运行
-```
-
-这已经与冻结 development 16/16 和 holdout 4/4 不一致。下一次文档提交应修正，但必须继续保留 repo-local、小样本、非生产泛化限制。
+## 8. 已知实现与生产化问题
 
 ### 已知 P2
 
@@ -583,17 +575,18 @@ DeepSeek ... 真实 smoke 尚未运行
 
 ## 13. 新会话接手时的推荐第一项工作
 
-如果用户没有指定新的任务，先询问是否按以下顺序继续：
+如果用户没有指定新的任务，先说明 Models preflight 已实现、PR #19 与三条 main checks
+已完成，但 Anthropic 仍未 live preflight、未调用、未注册。随后按以下门禁询问：
 
-1. 阅读同一参与者 UX regression v2 的脱敏证据与两个 open diagnostics；本轮已经完成，
-   不再运行当前 v2 六题，也不得根据它们调 prompt；
-2. 若处理 `provider_output_incomplete`，只先用不含本题文本的 synthetic SDK fixtures
-   区分空白 final output 与 output-item incomplete status；任何 `src/researchops` 变更都要
-   建立新 candidate/version，不能继承旧在线成绩；
-3. 若推进正式 pilot，必须招募新的独立参与者，创建新的 campaign、任务/预算承诺和
-   operator eligibility 记录；不得把本轮同一参与者计作第二人或跨 campaign 聚合；
-4. 继续明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets；随后推进
-   托管 staging、第二 Provider 与 external private holdout。
+1. 任何真实 Models metadata preflight 都必须由用户显式提供 Key 与一次性联网授权；它只
+   验证认证和 exact model visibility，成功 receipt 也不授权 Messages/tools；
+2. 只有用户明确提供 Key、封顶预算和一次性授权后，才运行预承诺的小规模
+   tool/usage/error-semantics pilot；不得用结果调 prompt/scorer/tool/candidate，不并入既有
+   Eval 成绩，也不使用 repo-local holdout、已运行公开题或本轮 supervised 六题；
+3. 只有外部领域专家复核、R/SAS 独立 cross-check 与 external custodian 的真实 private 50
+   题评测和合规 aggregate completion 完成后，才考虑（不是自动）正式注册第二 Provider
+   或启用 non-synthetic private evaluation；
+4. 继续明确排除并保留 `output/`、sessions/data、`tmp/`、`.env` 与 secrets。
 
-不要直接重新跑当前 4 题 repo-local holdout 或本轮 v2 六题，也不要根据它们继续调
-prompt。
+不要自动运行在线 preflight/pilot，不要直接重跑当前 4 题 repo-local holdout 或本轮六题，
+也不要根据任何已运行题继续调 prompt。
