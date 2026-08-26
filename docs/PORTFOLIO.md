@@ -1,13 +1,13 @@
 # ResearchOps Agent：作品集展示与面试演示手册
 
-> 状态快照：2026-08-26。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行。candidate v2/v3/v4/v5 均无新模型成绩且不继承 v1；PR #21 candidate v5 是 Kimi Models preflight 的 pre-call snapshot。Post-lock 一次 metadata GET verified 认证与 exact model visibility，但不回填 v5，也未验证或授权 Chat、tools、usage/cost semantics、质量、注册或 private。OpenAI API 当前不可用，不影响既有 DeepSeek 与离线证据。
+> 状态快照：2026-08-26。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行。PR #21 已 regular merge 至 `main@c65ff65c`，candidate v5 仍是 Kimi Models preflight 的 pre-call snapshot且不继承 post-lock receipt。一次 metadata GET 只 verified 认证与 exact model visibility；它不验证或授权 Chat、tools、usage/cost semantics、质量、注册或 private。长期边界见 [Kimi Models preflight main CI v1](evidence/kimi-models-preflight-main-ci-v1/README.md)。
 
 ## 先说清楚：这个项目现在证明了什么
 
 | 证据层 | 当前状态 | 可以得出的结论 | 不能得出的结论 |
 | --- | --- | --- | --- |
-| 单元与集成测试 | `main@3dfb0a36` 的 offline/pilot runs 32932614962、32932614805 成功；最近 production run 32930473976 也成功；main 根测试 334/334 | 统计计算、策略、审批、审计、provider、Eval v2 与相邻服务路径通过相应 clean-main tests | 真实生产负载、HA 或云基础设施 E2E |
-| Phase 5 | 当前 main run 32932614962 为 50/50、21/21、profile valid；旧 44/50 事故保留 | LF golden、版本化 fail-closed profile、双退出码与审计链已由 clean main 复核 | LLM 规划成功率，或脱离 source/data/manifest 复用成绩 |
+| 单元与集成测试 | `main@c65ff65c` 的 offline/pilot/production runs 32957003253、32957003191、32957003204 均成功；main 根测试 368/368 | 统计计算、策略、审批、审计、provider、Eval v2 与相邻服务路径通过相应 clean-main tests | 真实生产负载、HA 或云基础设施 E2E |
+| Phase 5 | 当前 main run 32957003253 为 50/50、21/21、profile valid；旧 44/50 事故保留 | LF golden、版本化 fail-closed profile、双退出码与审计链已由 clean main 复核 | LLM 规划成功率，或脱离 source/data/manifest 复用成绩 |
 | Phase 6 行为合同 | 20 题：development 16、repo-local holdout 4；语料合同 20/20 有效 | 工具轨迹、精确参数、证据 grounding、澄清/拒绝和审批暂停都有明确评分口径 | 对未知生产请求的无偏泛化 |
 | Phase 6 scripted/replay | 注入 runner、scripted model 和构造轨迹的离线回归已覆盖 | 真实 Agents SDK 循环、工具调用提取、审批中断、usage/cost 空值处理和产物发布链路可测试 | scripted/replay 的通过率等同于真实模型质量 |
 | Provider 层 | Anthropic adapter 与固定 Models metadata preflight 均有离线合同；preflight 使用 exact allowlist、owned httpx、一次 GET、零 retry/fallback/redirect，generic online 入口禁用 | adapter/preflight 的无网络安全边界可复核；DeepSeek 另有既有在线证据 | Anthropic API 可用、Messages/tool/usage/cost/质量或正式第二 Provider |
@@ -15,13 +15,15 @@
 | Eval v2 public candidate v1（历史） | Provider system 68/93；三轮 23/31、22/31、23/31；fault harness 27/27 | 锁定 `DeepSeek + 控制面` 在公开任务上的重复表现、usage、成本与失败分层 | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
 | Completion Telemetry v2 | 新 commitment `1f6ac18e…e5ce5`；离线 root/pilot/PostgreSQL 合同通过；0 次 Provider 调用 | 可区分安全 completion 分支并显式报告 legacy unknown coverage | 因果根因、在线模型质量、继承 v1 68/93 或未知生产泛化 |
 | Candidate v4 / Anthropic Models preflight | 已随 PR #19 进入 `main@77911226`；commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；冻结 contract 仅有离线证据，post-lock 错误 CCTK token 尝试为 403/0 model tokens | 固定 Models metadata request、strict receipt 与 generic fail-closed 可由 clean-main fixtures 验证 | live preflight 已验证、官方 Anthropic Key 可用、已授权 pilot、已注册第二 Provider、成本或质量 |
-| Candidate v5 / Kimi 中国区 Models preflight | PR #21 pre-call snapshot commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`；post-lock metadata receipt 不继承 | Fixtures 验证 bodyless GET、credential 隔离与错误 taxonomy；一次 post-lock GET 为 HTTP 200、1/1 call、exact `kimi-k3` visible、0 model tokens、cost null | Chat/Responses/tools、usage/cost semantics、质量、non-synthetic/private、已注册第二 Provider |
-| Production-like slice | 当前 main run 32930473976：18/18 + 真实单机 Compose E2E | FastAPI/worker、PG lease queue、MinIO artifact、event hash chain、幂等与 API→worker Trace ID 的真实纵切 | HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量 |
+| Candidate v5 / Kimi 中国区 Models preflight | PR #21 已进入 `main@c65ff65c`；pre-call commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`，post-lock metadata receipt 不继承 | Clean-main fixtures 验证 bodyless GET、credential 隔离与错误 taxonomy；一次 post-lock GET 为 HTTP 200、1/1 call、exact `kimi-k3` visible、0 model tokens、cost null | Chat/Responses/tools、usage/cost semantics、质量、non-synthetic/private、已注册第二 Provider |
+| Production-like slice | 当前 main run 32957003204：18/18 + 真实单机 Compose E2E | FastAPI/worker、PG lease queue、MinIO artifact、event hash chain、幂等与 API→worker Trace ID 的真实纵切 | HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量 |
 
 PR #15/#16、同 tree 发布关系和三个最终 main checks 的长期证据见
 [Anthropic offline adapter main CI v1](evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)。
 PR #19、candidate v4 与 `main@77911226` 三条最终 checks 的长期证据见
 [Anthropic Models preflight main CI v1](evidence/anthropic-models-preflight-main-ci-v1/README.md)。
+PR #21、candidate v5、post-lock receipt 与 `main@c65ff65c` 三条最终 checks 的长期证据见
+[Kimi Models preflight main CI v1](evidence/kimi-models-preflight-main-ci-v1/README.md)。
 
 对外推荐状态标签：
 

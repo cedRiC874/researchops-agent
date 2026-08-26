@@ -1,8 +1,9 @@
 # Pilot Staging Verification Snapshot
 
-> Current working-tree note (2026-08-26): candidate v5 commitment
+> Current main note (2026-08-26): candidate v5 commitment
 > `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc` and
-> `pilot_pack.supervised_v6.json` are locally bound while keeping the pilot Provider as DeepSeek.
+> `pilot_pack.supervised_v6.json` are bound in `main@c65ff65c` while keeping the pilot Provider as
+> DeepSeek.
 > Kimi Models preflight was `implemented_offline_tested_not_run` at candidate lock, so the frozen
 > candidate/pilot snapshot retains `live_models_preflight_performed=false`. After that lock, one
 > separately authorized metadata GET completed at `2026-08-26T09:41:49.967Z`: HTTP 200,
@@ -11,8 +12,10 @@
 > authorize Chat, tools, model quality, Provider registration or private evaluation. The one-time
 > authorization is consumed and the request must not be retried; any new request requires fresh
 > explicit authorization. No Kimi Chat/tool/model call or predecessor result exists. The successor
-> candidate/pilot state itself has offline verification only and is not described here as merged main
-> or participant evidence.
+> candidate/pilot state itself has offline verification only. PR #21 regular-merged it to
+> `main@c65ff65c`; this remains engineering evidence, not participant evidence. The exact merge and
+> final main runs are recorded in the
+> [`Kimi Models preflight main CI snapshot`](../../docs/evidence/kimi-models-preflight-main-ci-v1/README.md).
 
 > Historical PR #19 note: candidate v4 commitment
 > `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` and historical
@@ -30,6 +33,23 @@ Date: 2026-08-26 (Asia/Shanghai)
 This is a local and GitHub clean-CI engineering verification snapshot. It is not an external participant
 result, a production deployment attestation, a security certification or a Provider
 quality rerun.
+
+## PR #21 main integration
+
+PR #21 已 regular merge 至
+`main@c65ff65c0cbb67205956ddae991768ba9fca9293`。该精确 commit 的：
+
+- [`offline-quality-gate` run 32957003253](https://github.com/cedRiC874/researchops-agent/actions/runs/32957003253)
+  通过 368 个根测试、candidate v5 verifier、Phase 5 50/50、evidence 21/21 与
+  `phase5-ci-v1=valid`，CI `network_calls=0`；
+- [`pilot-staging-ci` run 32957003191](https://github.com/cedRiC874/researchops-agent/actions/runs/32957003191)
+  通过 51 个 offline contracts、1 个真实 PostgreSQL contract、无 Provider Key Compose
+  startup/teardown 与最终 gate；
+- [`production-slice-e2e` run 32957003204](https://github.com/cedRiC874/researchops-agent/actions/runs/32957003204)
+  通过 18 个 contracts 与真实 PostgreSQL/MinIO/OTel E2E。
+
+这些 runs 没有调用 Kimi。Candidate 锁定后的一次 metadata receipt 是独立 observation，
+不回填 v5/v6，也不授权 Kimi Pilot、Provider 注册或模型质量声明。
 
 ## Historical PR #19 main integration
 

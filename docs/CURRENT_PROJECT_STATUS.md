@@ -1,14 +1,15 @@
 # ResearchOps Agent 当前项目状态
 
-> 2026-08-26 current note：本文件主体保留 2026-08-22 历史快照。PR #20 已 regular merge 至
-> `main@3dfb0a36`。PR #21 implementation head `ca0e0380…` 的 4 条 checks 成功；PR disposition
-> 与 current-head checks 必须从 GitHub 实时核验，本快照不冒充 post-merge main 证据。Candidate v5
+> 2026-08-26 current note：本文件主体保留 2026-08-22 历史快照。PR #21 已 regular merge 至
+> `main@c65ff65c`；offline run 32957003253、pilot run 32957003191 与 production run
+> 32957003204 均为 `completed / success`。Candidate v5
 > `105b7def…5165dffc` 是 Kimi 中国区 pre-call frozen snapshot。锁定后一次独立授权 metadata
 > GET 于 `2026-08-26T09:41:49.967Z` verified：HTTP 200、attempts/network calls 1/1、exact
 > `kimi-k3` visible、0 model tokens、cost null；receipt 不进入 candidate。一次性授权已消耗，
 > 不得重试。Kimi Chat/通用在线入口关闭，Provider 仍 1/2，private 仍 0/50。Anthropic
-> post-lock metadata 尝试曾因错误 CCTK token 返回 403/0 model tokens。最新跨会话状态以
-> 仓库根目录 `handoff.md` 为准。
+> post-lock metadata 尝试曾因错误 CCTK token 返回 403/0 model tokens。PR #21 的长期边界见
+> [Kimi Models preflight main CI 快照](evidence/kimi-models-preflight-main-ci-v1/README.md)，最新
+> 跨会话状态以仓库根目录 `handoff.md` 为准。
 
 > 状态快照：2026-08-22（Asia/Shanghai）
 > 用途：集中记录当前已经完成、已经验证、尚未完成以及可以/不可以对外声称的事实。
