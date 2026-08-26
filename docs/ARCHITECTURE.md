@@ -143,13 +143,13 @@ sequenceDiagram
 
 | 模式 | 被测对象 | 当前证据 | 不能声称什么 |
 | --- | --- | --- | --- |
-| `offline_deterministic` | 数据质量、方法选择、统计工具、报告、重试、审批和审计控制面 | PR #3 已合并；当前 main run 32571384757 为 50/50、21/21、profile valid；旧 44/50 事故保留审计 | 真实 LLM 的规划成功率，或脱离 source/data/manifest 复用成绩 |
+| `offline_deterministic` | 数据质量、方法选择、统计工具、报告、重试、审批和审计控制面 | `main@77911226` run 32930474006 为 50/50、21/21、profile valid；旧 44/50 事故保留审计 | 真实 LLM 的规划成功率，或脱离 source/data/manifest 复用成绩 |
 | Phase 6 scripted/replay | Agent 工具轨迹采集、评分器和审批暂停协议 | 20 题语料校验与无网络 SDK 回归测试 | 真实 provider 的质量、延迟或成本 |
 | `online_agents_sdk` + `provider=openai` | OpenAI 模型的工具选择、参数、证据回答 | adapter 已验证；在线因 OpenAI API 计费条件阻塞 | 在线成功率、真实 token 成本或线上延迟 |
 | `online_agents_sdk` + `provider=deepseek` | DeepSeek V4 的同一 20 题行为合同 | 冻结版 development 16/16、repo-local holdout 4/4；usage、延迟、manifest 与审计索引已保存 | 抗污染泛化、生产 SLA 或未知成本为零 |
 | Eval v2 public candidate v1（历史） | schema、准备器、registry、inspect backend、Provider executor、runner/scorer、三次预承诺顺序、按 task-ID 聚合、工具请求/去重/backend telemetry、原子 artifacts 与 single-use receipt | 一次性 DeepSeek public run：Provider system 68/93；fault harness 27/27；完整 campaign仍 `design_only` | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
-| Completion Telemetry v2 candidate | 四类安全 failure source、legacy unknown coverage、versioned checkpoint/aggregation、pilot PostgreSQL migration 与 v1/v2 双摘要 retention | root 258 tests、pilot 离线 contracts 与真实 PostgreSQL contract；无 Provider 调用，且不继承 v1 成绩 | Provider 因果根因、模型质量提升、在线通过率或生产泛化 |
-| Anthropic Models preflight / candidate v4 | 固定 official-origin GET、exact model identity、owned httpx、一次 attempt、零 retry/fallback/redirect、64 KiB decoded cap、strict receipt；generic Anthropic online 入口 fail closed，public/pilot Provider 仍为 DeepSeek | MockTransport 无网络测试；candidate `1741c2b0…f6399c7` 只完成离线验证且不继承 v3 | live Models/Messages API 可用性、工具兼容、成本、质量或正式第二 Provider |
+| Completion Telemetry v2 candidate | 四类安全 failure source、legacy unknown coverage、versioned checkpoint/aggregation、pilot PostgreSQL migration 与 v1/v2 双摘要 retention | PR #11 historical clean-main 为 root 258 tests、pilot 离线 contracts 与真实 PostgreSQL contract；无 Provider 调用，且不继承 v1 成绩 | Provider 因果根因、模型质量提升、在线通过率或生产泛化 |
+| Anthropic Models preflight / candidate v4 | 固定 official-origin GET、exact model identity、owned httpx、一次 attempt、零 retry/fallback/redirect、64 KiB decoded cap、strict receipt；generic Anthropic online 入口 fail closed，public/pilot Provider 仍为 DeepSeek | PR #19 已进入 `main@77911226`；MockTransport 无网络测试与三条 clean-main checks 通过，candidate `1741c2b0…f6399c7` 不继承 v3 | live Models/Messages API 可用性、工具兼容、成本、质量或正式第二 Provider |
 
 Provider 是显式安全边界：OpenAI 与 DeepSeek 使用不同环境变量和独立 client，不允许任意 base URL，也不会修改 SDK 全局 Key。Anthropic adapter 继续通过 exact-pinned LiteLLM Chat Completions 提供隔离的 offline contract；独立 Models preflight 则只用 fixed-origin direct httpx metadata GET，不经过 LiteLLM。Generic Phase 6/self-pilot/Web/public-runner Anthropic 入口均在 Key/client 前拒绝，只有专用 preflight CLI 可在显式确认后发出一次 metadata request。它尚未注册 campaign、执行 live preflight 或运行在线评测。DeepSeek 会忽略 `parallel_tool_calls=False`，因此工具串行、调用预算和每运行单发布提案上限均由本地控制面强制执行，而不是依赖模型服务。
 

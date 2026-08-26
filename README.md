@@ -8,29 +8,29 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 
 ## Evidence at a glance
 
-当前验证快照：2026-08-25。
+当前验证快照：2026-08-26。
 
 | 层 | 状态 | 可复核结果 |
 | --- | --- | --- |
 | 模拟科研分析 | 已验证 | 240 行模拟 RCT；ANCOVA 与 Welch 均生成数值、样本流、诊断、证据 ID 和聚合图表 |
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
 | Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
-| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@9eabf434` run 32844911180：根测试 301/301，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
+| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@77911226` run 32930474006：根测试 334/334，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | successor branch 334 项 root tests `OK`（其中 1 项平台 skip）；pilot staging 51 个 offline contracts 通过（PostgreSQL integration 本机无 URL 时 skip）；`main@9eabf434` offline run 32844911180 与最近 production E2E 均成功 |
+| 自动化测试 | 已验证 | `main@77911226` 的 offline run 32930474006、pilot run 32930473989 与 production run 32930473976 均成功；334 项 root tests、51 项 pilot offline contracts + 1 项真实 PostgreSQL contract、18 项 production contracts + 真实 Compose E2E 均通过 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
 | Provider 适配 | 分层验证 | Anthropic 固定 Models API preflight 已实现并仅通过 MockTransport 离线测试；generic Anthropic online entrypoints fail closed，仍未注册、未在线调用 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
 | Eval v2 public candidate v1（历史） | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
 | Completion Telemetry v2 candidate | 已进入 main 并通过 clean CI，未在线运行 | PR #11；四类受控 completion source、legacy coverage、v1/v2 双 telemetry digest retention；commitment `1f6ac18e…e5ce5` 不继承 v1 结果 |
 | Eval v2 public candidate v3（历史） | 已进入 main 并通过 clean CI，未在线运行 | commitment `22c985e9…b2a9`、predecessor `1f6ac18e…e5ce5`；文件与 commitment 保持不变 |
-| Eval v2 public candidate v4 | successor candidate locked，未在线运行 | commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；绑定 Models preflight 与 generic fail-closed，public/pilot Provider 仍为 DeepSeek，历史结果不继承 |
+| Eval v2 public candidate v4 | 已进入 main，未在线运行 | commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；绑定 Models preflight 与 generic fail-closed，public/pilot Provider 仍为 DeepSeek，历史结果不继承 |
 | Eval v2 private custodian kit v1.1 | 已进入 main 并通过 clean CI；真实 private release 仍 fail-closed | PR #14；不同 Ed25519 角色、外部 anchors、两阶段 ledger、预承诺 denominator/budget 与 aggregate-only verifier；private 0/50、Provider 1/2，仍为 `design_only / not_authorized` |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
-| External researcher pilot staging | 当前工程合同通过；历史 supervised UX regression 已完成 | successor v5 pack 绑定 candidate v4，仍使用 DeepSeek且未在线运行；历史 v4 pack/review不改，历史同一参与者结果永久不进入正式 claim |
+| External researcher pilot staging | 当前 main 工程合同通过；历史 supervised UX regression 已完成 | v5 pack 绑定 candidate v4，仍使用 DeepSeek且未在线运行；历史 v4 pack/review不改，历史同一参与者结果永久不进入正式 claim |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
-离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@9eabf434` run 32844911180 为 50/50、21/21、`phase5-ci-v1=valid`。PR #15/#16 与 historical candidate v3 证据仍见 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)；successor v4 没有继承该证据。
+离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@77911226` run 32930474006 为 50/50、21/21、`phase5-ci-v1=valid`。PR #19 与 candidate v4 的 clean-main 证据见 [Anthropic Models preflight main CI 快照](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)；PR #15/#16 与 historical candidate v3 证据继续见 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)，v4 没有继承任何 predecessor 结果。
 
 ## 一键离线演示
 
@@ -232,7 +232,7 @@ DeepSeek 会忽略 `parallel_tool_calls=False`，所以串行与审批安全由�
 
 ### Anthropic Models API preflight
 
-Successor candidate v4 新增固定 `GET /v1/models/{exact_model_id}` metadata preflight：official
+Candidate v4 已随 PR #19 进入 main，并新增固定 `GET /v1/models/{exact_model_id}` metadata preflight：official
 origin/version、exact allowlist、owned `httpx==0.28.1`、一次 attempt、零 retry/fallback/redirect、
 64 KiB decoded response cap 与 strict non-authorizing receipt 均由 MockTransport 离线测试覆盖。
 不确认联网时可安全查看 `not_run` 合同：
@@ -442,9 +442,10 @@ GitHub Actions 当前有三条独立 workflow。
   campaign 环境持久化、audit chain 与 task-pack integrity；
 - 构建并启动 offline API Compose，验证页面与 readiness 后无 `down -v` 退出。
 
-`main@9eabf434` offline run 32844911180 验证 root offline gate；较早同一实现 lineage 的
-三条 runs 32840171286、32840171287 与 32840171312 分别验证 offline、pilot
-PostgreSQL/Compose 和 production-slice E2E；长期审计见
+`main@77911226` 的三条 runs 32930474006、32930473989 与 32930473976 分别验证
+offline root gate、pilot PostgreSQL/Compose 和 production-slice E2E；长期审计见
+[Anthropic Models preflight main CI 快照](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
+较早 PR #15/#16 与 candidate v3 的 main lineage 继续保留在
 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)。
 
 较早 PR #5 合并后的 `main@a20fdfd8` 已由

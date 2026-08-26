@@ -1,23 +1,41 @@
 # Pilot Staging Verification Snapshot
 
-> Successor note (2026-08-25): branch candidate v4 commitment
-> `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` migrates the locked candidate to the offline-tested Anthropic Models
-> preflight successor and `pilot_pack.supervised_v5.json`, while keeping the pilot Provider as DeepSeek.
-> Anthropic remains offline-contract-only; no live Models preflight, v4 Provider or participant run is claimed.
-> Successor local verification: 334 root tests `OK` (1 platform skip), 51 pilot offline
-> contracts passed (real PostgreSQL contract skipped locally without its explicit URL), network calls 0.
+> Current note (2026-08-26): PR #19 regular-merged candidate v4 commitment
+> `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` and
+> `pilot_pack.supervised_v5.json` to `main@77911226`, while keeping the pilot Provider as DeepSeek.
+> Main pilot run 32930473989 passed 51 offline contracts, 1 real PostgreSQL contract and
+> no-Provider-secret Compose. Anthropic remains offline-contract-only; no live Models preflight,
+> Anthropic Provider run or v5 participant run is claimed.
 
-> Current note: Completion Telemetry v2 candidate `1f6ac18e…e5ce5` 已进入
+> Historical predecessor note: Completion Telemetry v2 candidate `1f6ac18e…e5ce5` 已进入
 > `main@094cb9b1` 并通过无 Provider Key clean CI；它不继承 predecessor
 > `7744770a…f0d11` 的任何结果。
 
-Date: 2026-08-23 (Asia/Shanghai)
+Date: 2026-08-26 (Asia/Shanghai)
 
 This is a local and GitHub clean-CI engineering verification snapshot. It is not an external participant
 result, a production deployment attestation, a security certification or a Provider
 quality rerun.
 
 ## Current main integration
+
+PR #19 已 regular merge 至
+`main@77911226b0e2a7e7d15ac5be9c2aafc19c5ea335`。该精确 commit 的：
+
+- [`offline-quality-gate` run 32930474006](https://github.com/cedRiC874/researchops-agent/actions/runs/32930474006)
+  通过 334 个根测试、candidate v4 verifier、Phase 5 50/50、evidence 21/21 与
+  `phase5-ci-v1=valid`，Anthropic preflight 保持 `not_run / network_calls=0`；
+- [`pilot-staging-ci` run 32930473989](https://github.com/cedRiC874/researchops-agent/actions/runs/32930473989)
+  通过 51 个 offline contracts、1 个真实 PostgreSQL contract、无 Provider Key
+  Compose startup/teardown 与最终 gate；
+- [`production-slice-e2e` run 32930473976](https://github.com/cedRiC874/researchops-agent/actions/runs/32930473976)
+  通过 18 个 contracts 与真实 PostgreSQL/MinIO/OTel E2E；这是相邻服务回归，
+  不是 Anthropic API 或模型质量成绩。
+
+长期步骤级证据见
+[`docs/evidence/anthropic-models-preflight-main-ci-v1/README.md`](../../docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
+
+### Historical Completion Telemetry v2 baseline
 
 PR #11 已 regular merge 至
 `main@094cb9b173e5d153f1aff9db2ce8a25e50a57f7d`。该精确 commit 的：
@@ -38,6 +56,13 @@ PR #11 已 regular merge 至
 
 ## Frozen boundary
 
+- Current candidate v4 status: `candidate_locked / valid`
+- Current candidate v4 commitment:
+  `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`
+- Predecessor v3 commitment:
+  `22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9`
+- Anthropic Models preflight: `implemented_offline_tested_not_run`
+- Public/pilot execution Provider: still `deepseek / deepseek-v4-flash`
 - Historical v1 commitment:
   `7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11`
 - Completion Telemetry v2 status: `candidate_locked / valid`
@@ -47,17 +72,19 @@ PR #11 已 regular merge 至
 - Paid/model network calls made by this verification: 0
 - Provider API Key read, printed or stored: no
 
-## Test results
+## Current main CI results
 
 | Layer | Result | Network/model behavior |
 | --- | ---: | --- |
-| Root repository suite | 258 passed | full root suite; not 258 telemetry-only tests |
+| Root repository suite | 334 passed | full root suite; not 334 Anthropic- or pilot-only tests |
 | Pilot offline contracts | 51 passed | in-memory/fake executor plus config/schema/PowerShell/workflow checks; no network |
-| Real PostgreSQL integration | 1 passed | local PostgreSQL 17.6 container; fake executor |
+| Real PostgreSQL integration | 1 passed | PostgreSQL 17.6 container; fake executor |
 | Existing production slice | 18 passed | process-level test suite |
 | GitHub pilot-staging CI | success | 51 offline contracts plus 1 real PostgreSQL contract; no Provider key/worker/model call |
 
-The PostgreSQL integration applied the real migration, completed a six-task participant
+### Historical local PostgreSQL integration detail
+
+The earlier local PostgreSQL integration applied the real migration, completed a six-task participant
 lifecycle, verified consent replay remained idempotent after campaign completion,
 verified the supervised environment marker survives a differently configured reader,
 enforced the supervised one-to-two participant database bound and exercised a
@@ -67,10 +94,10 @@ read snapshot, applied the checksum-aware migration runner twice, and confirmed 
 forged stored migration checksum fails closed. The temporary container used `--rm`,
 created no persistent volume and was stopped after the test.
 
-## Linux image
+## Historical local Linux image (Completion Telemetry v2 baseline)
 
-The final local image built successfully and `pip check` reported no broken
-requirements:
+The predecessor snapshot's final local image built successfully and `pip check` reported no broken
+requirements. This digest is not a candidate v4 image or deployment identity:
 
 ```text
 researchops-pilot-staging:supervised-local
@@ -82,7 +109,7 @@ secret or network call. This is a local Docker content digest, not a signed regi
 artifact or deployment proof. Rebuilding or changing any copied file creates a new
 digest and requires a new campaign commitment.
 
-## GitHub clean CI
+## Historical GitHub clean CI (PR #5 baseline)
 
 PR #5 was regular-merged as
 `a20fdfd8ff6a2e4e29881aa6693589655e307e72`. The exact `main` commit passed

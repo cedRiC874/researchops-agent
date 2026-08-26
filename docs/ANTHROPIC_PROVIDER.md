@@ -17,6 +17,11 @@ default, and CLI/service paths cannot obtain the offline-test capability.
 No Anthropic API Key, authenticated model-catalog check, model request, result, pass rate or cost
 evidence exists. Existing DeepSeek public/pilot results are not inherited.
 
+PR #19 regular-merged this offline implementation to `main@77911226`; all three clean-main workflows
+passed without a Provider Key or model call. The merge provenance, exact run links and non-authorizing
+claim boundary are recorded in
+[Anthropic Models preflight main CI v1](evidence/anthropic-models-preflight-main-ci-v1/README.md).
+
 Machine-readable boundaries:
 
 - predecessor adapter contract:
@@ -106,7 +111,8 @@ unsafe Key header values and HTTP debug logging before client creation, rejects 
 bounds identity bodies to 64 KiB and emits a strict non-authorizing receipt. It has only offline fixture evidence; no live
 Models request, Messages/tool request, token/cost observation or quality result exists.
 
-Successor candidate v4 binds the source and machine contract without modifying or inheriting v3.
+Candidate v4 is integrated into main and binds the source and machine contract without modifying or
+inheriting v3.
 `phase6-status` remains offline, generic Anthropic runs remain disabled, and campaign registration
 remains false.
 
