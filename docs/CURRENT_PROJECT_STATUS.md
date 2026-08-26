@@ -1,11 +1,12 @@
 # ResearchOps Agent 当前项目状态
 
-> 2026-08-26 current note：本文件主体保留 2026-08-22 历史快照。PR #19 已将 public
-> candidate v4 `1741c2b0…f6399c7` 与固定 Anthropic Models API metadata preflight regular
-> merge 至 `main@77911226`；三条 main workflows 均成功。Preflight 仍只完成 MockTransport
-> 离线验证，generic Anthropic online 入口 fail closed，public-run 与 pilot Provider 仍为
-> DeepSeek，campaign slot 仍为 `planned`，没有 Anthropic Key 读取、live preflight、在线调用、
-> 结果或模型质量证据。最新跨会话状态以仓库根目录 `handoff.md` 为准。
+> 2026-08-26 current note：本文件主体保留 2026-08-22 历史快照。PR #20 已 regular merge 至
+> `main@3dfb0a36`，main offline/pilot checks 成功。本地 successor candidate v5
+> `105b7def…5165dffc` 绑定 Kimi 中国区 fixed-origin Models preflight，当前仅有 MockTransport
+> 离线证据；Kimi Chat/通用在线入口关闭，public-run 与 pilot Provider 仍为 DeepSeek，campaign
+> slot 仍为 `planned`。Anthropic post-lock metadata 尝试曾因错误 CCTK token 返回 403/0 model
+> tokens，不构成官方 Anthropic或CCTK可用性证据。最新跨会话状态以仓库根目录
+> `handoff.md` 为准。
 
 > 状态快照：2026-08-22（Asia/Shanghai）
 > 用途：集中记录当前已经完成、已经验证、尚未完成以及可以/不可以对外声称的事实。

@@ -3,8 +3,10 @@
 ## Status
 
 Anthropic remains an **offline-contract-only** third Provider adapter. A fixed-origin Models API
-metadata preflight is now implemented and covered only by injected `httpx.MockTransport` tests; no
-live preflight was performed. Generic Phase 6/self-pilot Anthropic online entrypoints, direct Agent/
+metadata preflight is implemented and covered by injected `httpx.MockTransport` tests. After candidate
+v4 was locked, one separately authorized request used a CCTK gateway token against the official origin
+and returned HTTP 403 with one network call and zero model tokens; it did not verify an official
+Anthropic credential or CCTK. Generic Phase 6/self-pilot Anthropic online entrypoints, direct Agent/
 Provider-executor calls and public `AnthropicProvider.open_model` now fail closed before reading a
 Key. Adapter internals remain testable only through a module-private, single-use offline-test
 capability; no production authorization factory exists. Self-pilot Web, Eval v2 public runner and a
@@ -14,8 +16,9 @@ Underscored Python test seams are not claimed as a security boundary; arbitrary 
 source-level access is outside this entrypoint threat model. Supported public methods deny by
 default, and CLI/service paths cannot obtain the offline-test capability.
 
-No Anthropic API Key, authenticated model-catalog check, model request, result, pass rate or cost
-evidence exists. Existing DeepSeek public/pilot results are not inherited.
+No official Anthropic API Key, authenticated model-catalog check, model request, result, pass rate or
+cost evidence exists. The CCTK route has been abandoned, and existing DeepSeek public/pilot results are
+not inherited.
 
 PR #19 regular-merged this offline implementation to `main@77911226`; all three clean-main workflows
 passed without a Provider Key or model call. The merge provenance, exact run links and non-authorizing
@@ -108,8 +111,9 @@ The implementation owns a direct `httpx==0.28.1` client with exact `httpcore==1.
 fixes origin/version/headers, performs at
 most one GET, disables retries/fallbacks/redirects/environment proxies/TLS key logging, rejects
 unsafe Key header values and HTTP debug logging before client creation, rejects compressed responses,
-bounds identity bodies to 64 KiB and emits a strict non-authorizing receipt. It has only offline fixture evidence; no live
-Models request, Messages/tool request, token/cost observation or quality result exists.
+bounds identity bodies to 64 KiB and emits a strict non-authorizing receipt. Its only live observation
+is the post-lock 403 credential-origin mismatch described above; no verified Models result,
+Messages/tool request, token/cost observation or quality result exists.
 
 Candidate v4 is integrated into main and binds the source and machine contract without modifying or
 inheriting v3.
@@ -118,8 +122,9 @@ remains false.
 
 ## Gates before campaign registration
 
-1. Before any live use, separately authorize the implemented fixed-origin Models metadata preflight;
-   an unrun or successful receipt still does not authorize Messages/tools.
+1. The Anthropic track is paused. Any future attempt requires a direct official Anthropic Key and a new
+   one-time authorization; the prior CCTK token must never be reused. A successful receipt still would
+   not authorize Messages/tools.
 2. Run a small, budgeted tool/usage/error-semantics pilot that is not used to tune the frozen public
    tasks, only after the user supplies a Key, capped budget and one-time authorization.
 3. Add provider-specific price/coverage handling to the public runner or keep it fail-closed.

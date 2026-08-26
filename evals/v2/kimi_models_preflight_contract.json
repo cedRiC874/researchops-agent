@@ -1,0 +1,187 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "eval-v2-kimi-models-preflight-v1",
+  "implementation_status": "implemented_offline_tested_not_run",
+  "provider": {
+    "provider_id": "moonshot_kimi",
+    "provider_owner": "Moonshot AI",
+    "allowed_model_ids": [
+      "kimi-k3"
+    ],
+    "api_origin": "https://api.moonshot.cn",
+    "api_key_environment_variable": "MOONSHOT_API_KEY",
+    "china_platform_only": true,
+    "international_platform_key_compatible": false
+  },
+  "request_contract": {
+    "method": "GET",
+    "path": "/v1/models",
+    "required_application_headers": {
+      "accept": "application/json",
+      "accept-encoding": "identity",
+      "authorization": "Bearer memory_only_secret",
+      "user-agent": "researchops-agent/0.2.0 kimi-models-preflight/1.0"
+    },
+    "forbidden_application_headers": [
+      "content-type",
+      "x-api-key"
+    ],
+    "body_absent": true,
+    "exact_model_id": "kimi-k3",
+    "chat_completions_called": false,
+    "responses_called": false,
+    "model_token_calls": 0
+  },
+  "response_contract": {
+    "success_media_type": "application/json",
+    "charset_parameter_allowed": true,
+    "missing_or_non_json_success_media_type_allowed": false,
+    "documented_429_classification_requires_json_media_type": true
+  },
+  "runtime_controls": {
+    "httpx_version": "0.28.1",
+    "certifi_version": "2026.7.22",
+    "httpcore_version": "1.0.9",
+    "h11_version": "0.16.0",
+    "owned_client_per_preflight": true,
+    "trust_env": false,
+    "tls_verification_required": true,
+    "follow_redirects": false,
+    "http_attempts_max": 1,
+    "provider_managed_retries": 0,
+    "fallbacks_allowed": false,
+    "response_streamed": true,
+    "max_decoded_body_bytes": 65536,
+    "timeouts_seconds": {
+      "connect": 5.0,
+      "read": 10.0,
+      "write": 5.0,
+      "pool": 5.0,
+      "request_total": 15.0,
+      "cleanup_close": 5.0
+    },
+    "external_tracing_or_callbacks_allowed": false,
+    "http_debug_logging_allowed": false,
+    "http_debug_logger_names": [
+      "httpx",
+      "httpcore",
+      "httpcore.connection",
+      "httpcore.http11",
+      "httpcore.http2",
+      "httpcore.proxy",
+      "httpcore.socks"
+    ],
+    "non_identity_content_encoding_allowed": false,
+    "raw_success_or_error_body_persisted_or_logged": false,
+    "api_key_persisted_logged_or_unkeyed_hashed": false,
+    "api_key_loaded_after_local_gates": true,
+    "online_transport_default_denied": true,
+    "offline_test_transport_factory_single_use": false,
+    "external_authorization_consumption_ledger_implemented": false,
+    "private_python_test_seams_are_security_boundary": false
+  },
+  "receipt_contract": {
+    "schema_version": "kimi-models-preflight/1.0",
+    "fields": [
+      "schema_version",
+      "status",
+      "provider_id",
+      "requested_model_id",
+      "returned_model_id",
+      "verification_method",
+      "api_origin",
+      "checked_at_utc",
+      "latency_ms",
+      "http_status",
+      "http_attempts",
+      "network_calls",
+      "model_token_calls",
+      "token_usage",
+      "cost",
+      "models_api_authenticated",
+      "exact_model_visible",
+      "chat_completions_verified",
+      "responses_api_verified",
+      "tool_calling_verified",
+      "usage_semantics_verified",
+      "model_quality_claim_allowed",
+      "authorizes_model_run",
+      "authorizes_provider_registration",
+      "request_id_sha256",
+      "error_code"
+    ],
+    "statuses": [
+      "not_run",
+      "verified",
+      "failed"
+    ],
+    "invalid_model_requested_model_id_is_null": true,
+    "token_usage": null,
+    "cost": null,
+    "authorizes_model_run": false,
+    "authorizes_provider_registration": false,
+    "raw_request_id_persisted": false,
+    "request_id_hash_scope": "local_correlation_only",
+    "stable_error_codes": [
+      "kimi_preflight_confirmation_required",
+      "kimi_preflight_key_missing",
+      "kimi_preflight_key_invalid",
+      "kimi_preflight_model_not_allowed",
+      "kimi_preflight_configuration_invalid",
+      "kimi_preflight_redirect_denied",
+      "kimi_preflight_invalid_request",
+      "kimi_preflight_auth_failed",
+      "kimi_preflight_billing_blocked",
+      "kimi_preflight_permission_denied",
+      "kimi_preflight_resource_not_found",
+      "kimi_preflight_provider_timeout",
+      "kimi_preflight_conflict",
+      "kimi_preflight_protocol_failed",
+      "kimi_preflight_client_closed_request",
+      "kimi_preflight_engine_overloaded",
+      "kimi_preflight_quota_exceeded",
+      "kimi_preflight_rate_limited",
+      "kimi_preflight_rate_or_quota_limited",
+      "kimi_preflight_provider_unavailable",
+      "kimi_preflight_timeout",
+      "kimi_preflight_network_failed",
+      "kimi_preflight_identity_mismatch",
+      "kimi_preflight_model_not_visible",
+      "kimi_preflight_response_invalid",
+      "kimi_preflight_client_close_failed",
+      "kimi_preflight_failed"
+    ]
+  },
+  "capability_boundary": {
+    "list_models_is_account_specific": true,
+    "models_visibility_verifies_chat_completions": false,
+    "models_visibility_verifies_responses": false,
+    "models_visibility_verifies_tool_calling": false,
+    "models_visibility_verifies_usage_semantics": false,
+    "responses_api_documented": false
+  },
+  "entry_points": {
+    "models_preflight_cli_enabled": true,
+    "generic_phase6_kimi_enabled": false,
+    "generic_self_pilot_kimi_enabled": false,
+    "eval_v2_public_runner_kimi_enabled": false,
+    "controlled_kimi_pilot_enabled": false
+  },
+  "evaluation_boundary": {
+    "live_models_preflight_performed": false,
+    "chat_completions_or_tool_calls_performed": false,
+    "campaign_registered": false,
+    "public_candidate_authorized": false,
+    "private_access_authorized": false,
+    "online_calls_performed": false,
+    "model_quality_claim_allowed": false,
+    "prior_results_inherited": false,
+    "offline_test_network_calls": 0
+  },
+  "official_references": {
+    "api_overview": "https://platform.kimi.com/docs/api/overview",
+    "list_models": "https://platform.kimi.com/docs/api/list-models",
+    "errors": "https://platform.kimi.com/docs/api/errors",
+    "openapi": "https://platform.kimi.com/docs/openapi.json"
+  }
+}

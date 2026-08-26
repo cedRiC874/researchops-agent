@@ -15,14 +15,15 @@ one-time invite -> pseudonymous Secure/HttpOnly session -> explicit consent
 It uses the locked candidate commitment:
 
 ```text
-1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7
+105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc
 ```
 
 The frozen pilot Provider identity remains DeepSeek `deepseek-v4-flash` through the
-OpenAI-compatible Responses transport. Candidate v4 binds the offline-tested Anthropic Models
-preflight contract but does not authorize or register Anthropic for this pilot. Changing the
-pilot Provider/model still requires a new candidate and campaign. The service verifies
-the candidate source commitment before its worker starts and does not modify the
+OpenAI-compatible Responses transport. Candidate v5 binds the Kimi Models preflight at
+`implemented_offline_tested_not_run`; no live Kimi preflight or Kimi model call has been
+performed, and Kimi is not authorized or registered for this pilot. No predecessor result is
+inherited. Changing the pilot Provider/model still requires a new candidate and campaign. The
+service verifies the candidate source commitment before its worker starts and does not modify the
 frozen prompt, scorer or tool schema.
 
 ## What is implemented
@@ -169,12 +170,14 @@ that blocker. Supervised records never enter the formal 3–5 participant / 20 i
 claim gate. Historical `pilot_pack.supervised_v1.json` remains bound to the initial
 two-person / 12-assignment campaign. Historical
 `pilot_pack.supervised_v3.json` remains the completed same-participant UX regression.
-The active `pilot_pack.supervised_v5.json` binds the v4 candidate while preserving
-the same six public tasks and translations; no online v4 run or participant evidence
-exists yet, and no predecessor result is inherited. Neither pack can be counted as a
-second independent participant or aggregated with v1. The formal pack remains five ×
-six / 30. These assignment limits do not claim an upstream API-request or monetary
-ceiling, because one task may use multiple model turns.
+Historical `pilot_pack.supervised_v5.json` binds candidate v4 commitment
+`1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` and was not run
+online. The active `pilot_pack.supervised_v6.json` binds candidate v5 while preserving the v5
+pack's same six public tasks, translations and DeepSeek Provider. No candidate v5 participant or
+online run exists, Kimi live preflight/model calls remain false, and no predecessor result is
+inherited. None of these packs can be counted as a second independent participant or aggregated
+with v1. The formal pack remains five × six / 30. These assignment limits do not claim an
+upstream API-request or monetary ceiling, because one task may use multiple model turns.
 
 Before starting:
 

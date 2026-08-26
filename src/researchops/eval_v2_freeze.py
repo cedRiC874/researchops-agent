@@ -16,9 +16,10 @@ from .eval_v2_public import (
     load_eval_v2_public_tasks,
 )
 from .eval_v2_runner import eval_v2_tool_contract
+from .kimi_preflight import kimi_models_preflight_contract
 
 
-PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION = "4.0"
+PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION = "5.0"
 COMPLETION_TELEMETRY_CONTRACT_ID = "completion-telemetry-v2"
 HISTORICAL_V1_CANDIDATE_COMMITMENT_SHA256 = (
     "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11"
@@ -28,6 +29,9 @@ HISTORICAL_V2_CANDIDATE_COMMITMENT_SHA256 = (
 )
 PREDECESSOR_V3_CANDIDATE_COMMITMENT_SHA256 = (
     "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9"
+)
+PREDECESSOR_V4_CANDIDATE_COMMITMENT_SHA256 = (
+    "1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7"
 )
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _EXACT_REQUIREMENT = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[^\s]+)$")
@@ -50,6 +54,8 @@ _CANDIDATE_FIELDS = frozenset(
         "prior_results_inherited",
         "completion_telemetry_contract_id",
         "anthropic_models_preflight_contract_id",
+        "kimi_provider_contract_id",
+        "kimi_models_preflight_contract_id",
         "execution_policy",
         "provider_config",
         "hash_algorithm",
@@ -101,9 +107,59 @@ _COMPONENT_KEYS = frozenset(
         "completion_telemetry_contract_sha256",
         "anthropic_provider_contract_sha256",
         "anthropic_models_preflight_contract_sha256",
+        "kimi_provider_contract_sha256",
+        "kimi_models_preflight_contract_sha256",
         "campaign_sha256",
     }
 )
+_KIMI_ACCOUNT_RATE_LIMITS = {
+    "status": "account_specific_and_under_announced_update",
+    "concurrency": None,
+    "requests_per_minute": None,
+    "tokens_per_minute": None,
+    "tokens_per_day": None,
+}
+_KIMI_FUTURE_RUNTIME_CONTROLS = {
+    "fixed_origin_required": True,
+    "trust_environment_allowed": False,
+    "redirects_allowed": False,
+    "client_managed_retries": 0,
+    "fallbacks_allowed": False,
+    "external_tracing_or_callbacks_allowed": False,
+    "raw_request_or_response_body_logging_allowed": False,
+    "api_key_persisted_logged_or_hashed_allowed": False,
+    "api_key_loaded_after_local_gates": True,
+    "owned_http_client_per_run_required": True,
+    "local_request_count_cap_required": True,
+    "local_input_token_cap_required": True,
+    "local_output_token_cap_required": True,
+    "local_monetary_cap_required": True,
+    "provider_project_budget_enforcement_delay_minutes_approximate": 10,
+    "provider_project_budget_is_local_hard_cap": False,
+}
+_KIMI_METADATA_PREFLIGHT_DESIGN = {
+    "implementation_status": "implemented_offline_tested_not_run",
+    "method": "GET",
+    "fixed_origin": "https://api.moonshot.cn",
+    "path": "/v1/models",
+    "future_http_attempts_max": 1,
+    "future_client_retries": 0,
+    "model_generation_calls": 0,
+    "model_token_calls": 0,
+    "live_preflight_performed": False,
+    "success_claim_scope": (
+        "china_platform_authentication_and_exact_model_visibility_"
+        "at_one_point_in_time_only"
+    ),
+    "success_authorizes_chat_completions": False,
+    "success_authorizes_tools": False,
+    "success_authorizes_pilot": False,
+    "success_authorizes_campaign_registration": False,
+    "success_authorizes_private_evaluation": False,
+    "success_allows_model_quality_claim": False,
+    "separate_one_time_authorization_required": True,
+    "authorization_consumption_ledger_implemented": False,
+}
 
 
 def build_public_regression_component_hashes(
@@ -169,6 +225,12 @@ def build_public_regression_component_hashes(
         "anthropic_models_preflight_contract_sha256": _sha256_file(
             root / "evals" / "v2" / "anthropic_models_preflight_contract.json"
         ),
+        "kimi_provider_contract_sha256": _sha256_file(
+            root / "evals" / "v2" / "kimi_provider_contract.json"
+        ),
+        "kimi_models_preflight_contract_sha256": _sha256_file(
+            root / "evals" / "v2" / "kimi_models_preflight_contract.json"
+        ),
         "campaign_sha256": _sha256_file(root / "evals" / "v2" / "campaign.json"),
     }
 
@@ -191,12 +253,16 @@ def validate_public_regression_candidate(
         or candidate["private_holdout_access_authorized"] is not False
         or candidate["model_quality_claim_allowed"] is not False
         or candidate["predecessor_candidate_commitment_sha256"]
-        != PREDECESSOR_V3_CANDIDATE_COMMITMENT_SHA256
+        != PREDECESSOR_V4_CANDIDATE_COMMITMENT_SHA256
         or candidate["prior_results_inherited"] is not False
         or candidate["completion_telemetry_contract_id"]
         != COMPLETION_TELEMETRY_CONTRACT_ID
         or candidate["anthropic_models_preflight_contract_id"]
         != "eval-v2-anthropic-models-preflight-v1"
+        or candidate["kimi_provider_contract_id"]
+        != "eval-v2-moonshot-kimi-provider-design-v1"
+        or candidate["kimi_models_preflight_contract_id"]
+        != "eval-v2-kimi-models-preflight-v1"
         or candidate["hash_algorithm"] != "sha256-bundle-v1"
     ):
         raise EvalV2ContractError(
@@ -233,7 +299,7 @@ def validate_public_regression_candidate(
     ]:
         raise EvalV2ContractError(
             "eval_v2_public_candidate_provider_plan_invalid",
-            "Anthropic offline adapter 不得冒充已注册 campaign Provider。",
+            "Offline Provider/preflight contract 不得冒充已注册 campaign Provider。",
         )
 
     execution = _strict_object(
@@ -288,6 +354,14 @@ def validate_public_regression_candidate(
         root / "evals" / "v2" / "anthropic_models_preflight_contract.json",
         "Anthropic Models preflight contract",
     )
+    kimi_snapshot = _load_json_object(
+        root / "evals" / "v2" / "kimi_provider_contract.json",
+        "Kimi provider contract",
+    )
+    kimi_preflight_snapshot = _load_json_object(
+        root / "evals" / "v2" / "kimi_models_preflight_contract.json",
+        "Kimi Models preflight contract",
+    )
     if prompt_snapshot != eval_v2_prompt_contract():
         raise EvalV2ContractError(
             "eval_v2_public_candidate_prompt_drift",
@@ -318,6 +392,182 @@ def validate_public_regression_candidate(
         raise EvalV2ContractError(
             "eval_v2_anthropic_models_preflight_contract_invalid",
             "Anthropic Models preflight contract 与实现不一致。",
+        )
+    if (
+        kimi_snapshot.get("schema_version") != "1.0"
+        or kimi_snapshot.get("contract_id")
+        != "eval-v2-moonshot-kimi-provider-design-v1"
+        or kimi_snapshot.get("status")
+        != "preflight_implemented_offline_tested_not_run"
+        or kimi_snapshot.get("implementation_status") != "models_preflight_only"
+        or kimi_snapshot.get("provider")
+        != {
+            "provider_id": "moonshot_kimi",
+            "provider_class": "first_party_model_api",
+            "platform_surface": "platform.kimi.com",
+            "region_surface": "china",
+            "default_model_id": "kimi-k3",
+            "allowed_model_ids": ["kimi-k3"],
+            "transport_id": "moonshot_openai_compatible_chat_completions",
+            "transport_protocol": "chat_completions",
+            "api_origin": "https://api.moonshot.cn",
+            "api_base": "https://api.moonshot.cn/v1",
+            "chat_completions_path": "/v1/chat/completions",
+            "models_path": "/v1/models",
+            "api_key_environment_variable": "MOONSHOT_API_KEY",
+            "authentication_scheme": "bearer",
+            "openai_protocol_compatibility_is_provider_identity": False,
+            "arbitrary_base_url_allowed": False,
+            "arbitrary_model_id_allowed": False,
+        }
+        or kimi_snapshot.get("privacy_and_retention_review", {}).get(
+            "synthetic_data_only"
+        )
+        is not True
+        or kimi_snapshot.get("privacy_and_retention_review", {}).get(
+            "input_output_or_feedback_model_optimization_license_present"
+        )
+        is not True
+        or kimi_snapshot.get("privacy_and_retention_review", {}).get(
+            "public_no_training_commitment_verified"
+        )
+        is not False
+        or kimi_snapshot.get("privacy_and_retention_review", {}).get(
+            "public_training_opt_out_verified"
+        )
+        is not False
+        or any(
+            kimi_snapshot.get("privacy_and_retention_review", {}).get(key)
+            is not None
+            for key in (
+                "request_body_retention_days",
+                "response_body_retention_days",
+                "tool_input_and_output_retention_days",
+                "request_metadata_retention_days",
+                "abuse_and_security_log_retention_days",
+                "backup_retention_days",
+                "deletion_sla_days",
+            )
+        )
+        or kimi_snapshot.get("privacy_and_retention_review", {}).get(
+            "zero_data_retention_verified"
+        )
+        is not False
+        or kimi_snapshot.get("privacy_and_retention_review", {}).get(
+            "non_synthetic_data_allowed"
+        )
+        is not False
+        or any(
+            kimi_snapshot.get("privacy_and_retention_review", {}).get(key)
+            is not False
+            for key in (
+                "complete_api_subprocessor_list_verified",
+                "public_dpa_verified",
+                "personal_information_allowed",
+                "business_secrets_allowed",
+                "file_upload_allowed",
+                "hosted_web_search_allowed",
+                "hosted_memory_allowed",
+            )
+        )
+        or kimi_snapshot.get("privacy_and_retention_review", {}).get(
+            "private_holdout_allowed"
+        )
+        is not False
+        or kimi_snapshot.get("time_bounded_public_snapshot", {}).get(
+            "agreements_future_dated_at_review"
+        )
+        is not True
+        or kimi_snapshot.get("time_bounded_public_snapshot", {}).get(
+            "published_agreements_effective_on"
+        )
+        != "2026-08-31"
+        or kimi_snapshot.get("time_bounded_public_snapshot", {}).get(
+            "rereview_not_before"
+        )
+        != "2026-08-31"
+        or kimi_snapshot.get("time_bounded_public_snapshot", {}).get(
+            "snapshot_must_be_refreshed_before_chat_completions_or_pilot"
+        )
+        is not True
+        or kimi_snapshot.get("time_bounded_public_snapshot", {}).get(
+            "metadata_preflight_allowed_under_current_effective_terms"
+        )
+        is not True
+        or kimi_snapshot.get("time_bounded_public_snapshot", {}).get(
+            "account_rate_limits"
+        )
+        != _KIMI_ACCOUNT_RATE_LIMITS
+        or kimi_snapshot.get("time_bounded_public_snapshot", {}).get(
+            "snapshot_is_spend_authorization"
+        )
+        is not False
+        or kimi_snapshot.get("future_runtime_controls")
+        != _KIMI_FUTURE_RUNTIME_CONTROLS
+        or kimi_snapshot.get("metadata_preflight_design")
+        != _KIMI_METADATA_PREFLIGHT_DESIGN
+        or any(
+            kimi_snapshot.get("audit_activity", {}).get(key) != 0
+            for key in (
+                "authenticated_moonshot_api_requests_performed",
+                "models_preflight_requests_performed",
+                "chat_completions_requests_performed",
+                "tool_calls_performed",
+                "model_token_calls",
+            )
+        )
+        or kimi_snapshot.get("audit_activity", {}).get(
+            "api_key_read_or_used_by_this_design"
+        )
+        is not False
+        or kimi_snapshot.get("candidate_binding_status")
+        != "bound_to_candidate_v5"
+        or kimi_snapshot.get("future_candidate_requirement", {}).get(
+            "minimum_chat_completions_successor_version"
+        )
+        != "v6"
+        or kimi_snapshot.get("future_candidate_requirement", {}).get(
+            "campaign_modified"
+        )
+        is not False
+        or kimi_snapshot.get("future_candidate_requirement", {}).get(
+            "historical_evidence_modified"
+        )
+        is not False
+        or kimi_snapshot.get("entry_points", {}).get("metadata_preflight_enabled")
+        is not True
+        or any(
+            kimi_snapshot.get("entry_points", {}).get(key) is not False
+            for key in (
+                "provider_registry_enabled",
+                "phase6_cli_enabled",
+                "self_pilot_cli_enabled",
+                "self_pilot_web_enabled",
+                "eval_v2_public_runner_enabled",
+                "pilot_staging_enabled",
+                "controlled_synthetic_pilot_enabled",
+                "private_evaluation_enabled",
+            )
+        )
+        or kimi_snapshot.get("evaluation_boundary", {}).get("campaign_registered")
+        is not False
+        or kimi_snapshot.get("evaluation_boundary", {}).get(
+            "online_calls_performed"
+        )
+        is not False
+        or kimi_snapshot.get("evaluation_boundary", {}).get(
+            "model_quality_claim_allowed"
+        )
+        is not False
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_kimi_provider_contract_invalid",
+            "Kimi provider contract 状态或声明边界无效。",
+        )
+    if kimi_preflight_snapshot != kimi_models_preflight_contract():
+        raise EvalV2ContractError(
+            "eval_v2_kimi_models_preflight_contract_invalid",
+            "Kimi Models preflight contract 与实现不一致。",
         )
 
     split = _validate_public_regression_split(root)
@@ -369,7 +619,7 @@ def validate_public_regression_candidate(
         "private_holdout_access_authorized": False,
         "model_quality_claim_allowed": False,
         "predecessor_candidate_commitment_sha256": (
-            PREDECESSOR_V3_CANDIDATE_COMMITMENT_SHA256
+            PREDECESSOR_V4_CANDIDATE_COMMITMENT_SHA256
         ),
         "prior_results_inherited": False,
         "completion_telemetry_contract_id": COMPLETION_TELEMETRY_CONTRACT_ID,
@@ -384,6 +634,17 @@ def validate_public_regression_candidate(
         "anthropic_models_preflight_live_calls_performed": False,
         "anthropic_campaign_registered": False,
         "anthropic_online_calls_performed": False,
+        "kimi_provider_contract_id": kimi_snapshot["contract_id"],
+        "kimi_provider_status": kimi_snapshot["status"],
+        "kimi_models_preflight_contract_id": kimi_preflight_snapshot[
+            "contract_id"
+        ],
+        "kimi_models_preflight_status": kimi_preflight_snapshot[
+            "implementation_status"
+        ],
+        "kimi_models_preflight_live_calls_performed": False,
+        "kimi_campaign_registered": False,
+        "kimi_online_calls_performed": False,
         "public_regression_task_count": 40,
         "provider_behavior_task_count": 31,
         "deterministic_fault_injection_task_count": 9,

@@ -16,12 +16,14 @@
 | `protocol_version` | `external-researcher-pilot-protocol-v1` |
 | `moderator_guide_version` | `supervised-pilot-moderator-v1` |
 | `recruitment_checklist_version` | `supervised-pilot-recruitment-v1` |
-| `candidate_commitment_sha256` | `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` |
+| `candidate_commitment_sha256` | `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc` |
 | `deployment_git_sha` | `________________________________________` |
-| `task_pack_sha256` | `________________________________________________________________` |
+| `task_pack_file` | `pilot_pack.supervised_v6.json` |
+| `task_pack_sha256` | `83363291f30c7edd62d30e88da38fcf966b7d01c5ac16d3a2964ee9571555d72` |
 | `consent_document_sha256` | `________________________________________________________________` |
-| `provider_id` | `________________` |
-| `model_id` | `________________` |
+| `provider_id` | `deepseek` |
+| `model_id` | `deepseek-v4-flash` |
+| `transport_id` | `openai_compatible_responses` |
 
 固定声明：
 
@@ -31,6 +33,10 @@ qualifying_external_pilot=false
 external_validation_claim_allowed=false
 professional_correctness_assessed=false
 recording_enabled=false
+kimi_models_preflight_status=implemented_offline_tested_not_run
+kimi_models_preflight_live_call_performed=false
+kimi_online_run_performed=false
+prior_pilot_results_inherited=false
 ```
 
 ## B. 场次前确认

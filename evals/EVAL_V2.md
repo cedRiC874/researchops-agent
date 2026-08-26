@@ -1,6 +1,6 @@
 # Eval v2：外部留出、多数据集与重复运行
 
-> 当前状态：完整 campaign 仍为 `design_only`；DeepSeek v1 public-regression candidate 已于 2026-08-21 一次性运行完成。Completion Telemetry v2 是新的离线 candidate，尚未在线运行且不继承 v1 结果。本页不代表 private holdout、第二 Provider 或外部复核已经完成。
+> 当前状态：完整 campaign 仍为 `design_only`；DeepSeek v1 public-regression candidate 已于 2026-08-21 一次性运行完成。v2/v3/v4/v5 successor candidates 均未继承 v1 结果；当前本地 v5 绑定 Kimi 中国区 Models preflight，但只有 MockTransport 离线证据，尚未 live preflight、Chat、注册或质量评测。本页不代表 private holdout、第二 Provider 或外部复核已经完成。
 
 Eval v2 的目标是解决 Phase 6 小样本、repo-local holdout 可见、单 Provider 和单数据集证据不足的问题。它不会覆盖或重新解释现有 Phase 5/6 成绩，也不会再次使用当前 4 题 holdout 调整 prompt。
 
@@ -155,14 +155,14 @@ Public-regression candidate 使用三份预承诺 seed/task order；三次排列
 
 ## 3.4 Public-regression candidate lock
 
-历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json)、[`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json) 与 [`public_regression_candidate_v3.json`](v2/public_regression_candidate_v3.json) 分别保留 v1 一次性结果、Completion Telemetry v2 与 Anthropic offline-adapter commitments。当前 [`public_regression_candidate_v4.json`](v2/public_regression_candidate_v4.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它继续把 public-run Provider 固定为 DeepSeek，同时绑定固定 Anthropic Models API preflight 实现/机器合同、predecessor adapter contract、campaign planned slot、source、prompt/scorer/tool、Completion Telemetry、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
+历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json)、[`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json)、[`public_regression_candidate_v3.json`](v2/public_regression_candidate_v3.json) 与 [`public_regression_candidate_v4.json`](v2/public_regression_candidate_v4.json) 分别保留 v1 一次性结果、Completion Telemetry v2、Anthropic offline-adapter 与 Anthropic Models preflight commitments。当前 [`public_regression_candidate_v5.json`](v2/public_regression_candidate_v5.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它继续把 public-run Provider 固定为 DeepSeek，同时绑定 Kimi 中国区 fixed-origin Models preflight/Provider contracts、全部 predecessor contracts、campaign planned slot、source、prompt/scorer/tool、Completion Telemetry、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`。Kimi Chat/通用在线入口仍关闭，数据边界为 synthetic-only/private denied。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
 
 ```powershell
 .\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-public-freeze `
   --verify-environment
 ```
 
-`requirements.lock` 的 82 个版本全部精确 pin；`openai-agents[litellm]`、`litellm==1.83.0`、`httpx==0.28.1`、`httpcore==1.0.9`、`h11==0.16.0` 与固定 CA bundle `certifi==2026.7.22` 均显式锁定，但仍没有 wheel/sdist artifact hashes。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；v2 `1f6ac18e…e5ce5`、v3 `22c985e9…b2a9` 与 v4 successor 均只完成离线验证，不继承历史 68/93。Anthropic 仍为 `offline_contract_only / campaign_registered=false / online_calls_performed=false`；Models preflight 为 `implemented_offline_tested_not_run`，generic online entrypoints fail closed，完整 campaign 仍非 frozen。实现与使用边界见 [Anthropic Provider 指南](../docs/ANTHROPIC_PROVIDER.md)。
+`requirements.lock` 的 82 个版本全部精确 pin；`openai-agents[litellm]`、`litellm==1.83.0`、`httpx==0.28.1`、`httpcore==1.0.9`、`h11==0.16.0` 与固定 CA bundle `certifi==2026.7.22` 均显式锁定，但仍没有 wheel/sdist artifact hashes。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；v2 `1f6ac18e…e5ce5`、v3 `22c985e9…b2a9`、v4 `1741c2b0…f6399c7` 与 v5 `105b7def…5165dffc` 均没有继承历史 68/93 或产生新在线成绩。Kimi Models preflight 为 `implemented_offline_tested_not_run`，Chat/通用在线入口关闭；Anthropic frozen contract 仍是 offline-only，post-lock 错误 CCTK token 的 403 metadata 尝试不构成 Provider 成绩。完整 campaign 仍非 frozen。实现与使用边界见 [Kimi Provider 指南](../docs/KIMI_PROVIDER.md) 与 [Anthropic Provider 指南](../docs/ANTHROPIC_PROVIDER.md)。
 
 原子 artifact writer 只写脱敏 `eval_v2_report.json`、`eval_v2_summary.md`、可选 repetition aggregation 和带 SHA-256/size/source-tree hash 的 manifest。目标必须是 `artifacts/` 下不存在的新目录；先在同父目录 staging 中生成并复核，再原子 rename。路径、API Key/Authorization、final output、raw rows、sample values 和 traceback 字段均被拒绝。所有未冻结产物固定 `model_quality_claim_allowed=false`。
 
@@ -260,12 +260,12 @@ cross-check 未完成。`synthetic=false` release 固定拒绝；`check-private-
 - private holdout 0/50；
 - 已注册数据集 1/3，非 synthetic 0/3；
 - 已完成来源与哈希核验的外部数据集 3 个，但外部专家复核为 0/3；
-- 已注册 Provider 1/2；Anthropic adapter 已完成离线合同，但第二 Provider campaign slot 仍为 `planned`；
-- 历史 v1/v2 public candidates 保持可追溯；v3 hashes/commitment 已离线生成但尚未在线运行，完整 private campaign freeze 尚未生成；
+- 已注册 Provider 1/2；Anthropic adapter 保持 offline-only，Kimi Models preflight 为 `implemented_offline_tested_not_run`，二者均未注册，第二 Provider campaign slot 仍为 `planned`；
+- 历史 v1/v2/v3/v4 public candidates 保持可追溯；当前本地 v5 已锁定但未在线运行，完整 private campaign freeze 尚未生成；
 - private corpus commitment 尚未提供；
 - 外部 golden review 和统计交叉检查尚未完成。
 
-因此当前可声称“Eval v2 设计合同、Completion Telemetry v2 离线实现/校验，以及历史一次性 DeepSeek v1 public candidate run 已完成”；不能把历史结果归给 v2，也不能声称完整 Eval v2 campaign 已 frozen、已有 private holdout、跨 Provider 或未知生产泛化。
+因此当前可声称“Eval v2 设计合同、Completion Telemetry v2 与 Kimi Models preflight 的离线实现/校验，以及历史一次性 DeepSeek v1 public candidate run 已完成”；不能把历史结果归给 v2–v5，也不能声称 Kimi 已 live 验证或注册、完整 Eval v2 campaign 已 frozen、已有 private holdout、跨 Provider 或未知生产泛化。
 
 ## 9. 下一实现批次
 

@@ -15,22 +15,23 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | 模拟科研分析 | 已验证 | 240 行模拟 RCT；ANCOVA 与 Welch 均生成数值、样本流、诊断、证据 ID 和聚合图表 |
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
 | Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
-| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@77911226` run 32930474006：根测试 334/334，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
+| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@3dfb0a36` run 32932614962：根测试 334/334，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | `main@77911226` 的 offline run 32930474006、pilot run 32930473989 与 production run 32930473976 均成功；334 项 root tests、51 项 pilot offline contracts + 1 项真实 PostgreSQL contract、18 项 production contracts + 真实 Compose E2E 均通过 |
+| 自动化测试 | 已验证 | `main@3dfb0a36` 的 offline run 32932614962 与 pilot run 32932614805 成功；最近 production run 32930473976 也成功；334 项 main root tests、51 项 pilot offline contracts + 1 项真实 PostgreSQL contract、18 项 production contracts + 真实 Compose E2E 均通过 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
-| Provider 适配 | 分层验证 | Anthropic 固定 Models API preflight 已实现并仅通过 MockTransport 离线测试；generic Anthropic online entrypoints fail closed，仍未注册、未在线调用 |
+| Provider 适配 | 分层验证 | Kimi 中国区固定 Models API preflight 已实现并仅通过 MockTransport 离线测试；Kimi Chat/通用在线入口均关闭。Anthropic official preflight 曾用错误的 CCTK token 单次返回 403，0 model tokens；CCTK 路线已放弃 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
 | Eval v2 public candidate v1（历史） | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
 | Completion Telemetry v2 candidate | 已进入 main 并通过 clean CI，未在线运行 | PR #11；四类受控 completion source、legacy coverage、v1/v2 双 telemetry digest retention；commitment `1f6ac18e…e5ce5` 不继承 v1 结果 |
 | Eval v2 public candidate v3（历史） | 已进入 main 并通过 clean CI，未在线运行 | commitment `22c985e9…b2a9`、predecessor `1f6ac18e…e5ce5`；文件与 commitment 保持不变 |
 | Eval v2 public candidate v4 | 已进入 main，未在线运行 | commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；绑定 Models preflight 与 generic fail-closed，public/pilot Provider 仍为 DeepSeek，历史结果不继承 |
+| Eval v2 public candidate v5 | 本地 successor locked，未在线运行 | commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`；绑定 Kimi 中国区 Models preflight 与 synthetic-only 数据边界，public/pilot Provider 仍为 DeepSeek，历史结果不继承 |
 | Eval v2 private custodian kit v1.1 | 已进入 main 并通过 clean CI；真实 private release 仍 fail-closed | PR #14；不同 Ed25519 角色、外部 anchors、两阶段 ledger、预承诺 denominator/budget 与 aggregate-only verifier；private 0/50、Provider 1/2，仍为 `design_only / not_authorized` |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
-| External researcher pilot staging | 当前 main 工程合同通过；历史 supervised UX regression 已完成 | v5 pack 绑定 candidate v4，仍使用 DeepSeek且未在线运行；历史 v4 pack/review不改，历史同一参与者结果永久不进入正式 claim |
+| External researcher pilot staging | 历史 main 工程合同通过；本地 successor 仅完成离线验证 | `main@3dfb0a36` 的历史 CI 不包含本地 candidate v5/v6；本地未提交 successor v6 pack 绑定 candidate v5，仍使用 DeepSeek且未在线运行；历史 v1–v5 packs/reviews不改，历史同一参与者结果永久不进入正式 claim |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
-离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@77911226` run 32930474006 为 50/50、21/21、`phase5-ci-v1=valid`。PR #19 与 candidate v4 的 clean-main 证据见 [Anthropic Models preflight main CI 快照](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)；PR #15/#16 与 historical candidate v3 证据继续见 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)，v4 没有继承任何 predecessor 结果。
+离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@3dfb0a36` run 32932614962 为 50/50、21/21、`phase5-ci-v1=valid`。PR #19 与 candidate v4 的 clean-main 证据见 [Anthropic Models preflight main CI 快照](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)；本地 successor v5 不继承 v4 或任何历史结果。
 
 ## 一键离线演示
 
@@ -247,6 +248,25 @@ origin/version、exact allowlist、owned `httpx==0.28.1`、一次 attempt、零 
 Messages/tools、campaign 注册或模型质量声明。详见
 [Anthropic Provider boundary](docs/ANTHROPIC_PROVIDER.md)。
 
+### Kimi 中国区 Models API preflight
+
+Successor candidate v5 将 Kimi 固定为独立 `provider_id=moonshot_kimi`，只允许中国区官方
+origin `https://api.moonshot.cn`、exact model `kimi-k3` 与独立 `MOONSHOT_API_KEY`。专用
+`GET /v1/models` preflight 使用 owned `httpx`、一次 attempt、零 retry/fallback/redirect、
+64 KiB decoded cap 与 strict non-authorizing receipt；当前仅有 MockTransport 离线证据，
+`not_run / network_calls=0`。
+
+```powershell
+.\.venv\Scripts\python.exe -m researchops.cli kimi-models-preflight `
+  --model kimi-k3
+```
+
+省略 `--confirm-online` 不读取 Key 或联网。即使将来成功，也只证明该中国区账号在当时可见
+exact model，不授权 Chat Completions、tools、pilot、Provider 注册或质量声明。Kimi Chat
+adapter 和 generic online entrypoints 尚未实现；公开条款允许将输入/输出用于模型服务优化，
+因此后续最多只允许全新 synthetic pilot，non-synthetic/private 固定拒绝。详见
+[Kimi Provider boundary](docs/KIMI_PROVIDER.md)。
+
 ### Eval v2：设计合同，不是新成绩
 
 Eval v2 新增独立 campaign contract 与公开 task schema，预注册 80 个 development、40 个 public regression 和至少 50 个 external private holdout 任务，并要求 3–5 个数据集、至少 2 个 Provider、每个 Provider 3 次重复、外部 golden 复核以及 R/SAS 独立统计交叉检查。
@@ -391,7 +411,7 @@ researchops-agent/
 │   ├── EVAL_V2.md                # private holdout、多数据集和重复运行设计
 │   └── v2/                        # campaign、公开 task schema/corpus 与外部数据 manifest
 ├── src/researchops/              # 分析、控制面、provider、Agent、评分器与 runner
-├── tests/                        # 当前完整工作树 258 项单元/集成/故障注入测试
+├── tests/                        # 根单元、集成与故障注入测试
 ├── services/production_slice/    # 独立 FastAPI/PostgreSQL/S3/OTel 纵切与 18 项测试
 ├── services/pilot_staging/       # 邀请制外部科研用户 pilot API/Web/worker/contracts
 ├── scripts/
@@ -416,8 +436,8 @@ GitHub Actions 当前有三条独立 workflow。
 
 - 安装锁定依赖
 - 验证 50 题与 20 题语料契约
-- 验证 candidate v4 与未确认 Anthropic preflight 固定 `not_run / network_calls=0`
-- 对当前提交运行 334 项根测试（当前 Windows 本机有 1 项平台 skip）
+- 验证 candidate v5 与未确认 Kimi/Anthropic preflight 固定 `not_run / network_calls=0`
+- 对 successor 当前提交运行 368 项 Kimi scope 根测试（当前 Windows 本机有 1 项平台 skip）
 - 从固定模拟数据重建 50 题离线评测
 - 验证哈希、审计链和敏感 canary
 - 使用版本化 `phase5-ci-v1` 精确要求任务 50/50、失败 0、success rate 1、
@@ -442,8 +462,9 @@ GitHub Actions 当前有三条独立 workflow。
   campaign 环境持久化、audit chain 与 task-pack integrity；
 - 构建并启动 offline API Compose，验证页面与 readiness 后无 `down -v` 退出。
 
-`main@77911226` 的三条 runs 32930474006、32930473989 与 32930473976 分别验证
-offline root gate、pilot PostgreSQL/Compose 和 production-slice E2E；长期审计见
+`main@3dfb0a36` 的 runs 32932614962 与 32932614805 分别验证 offline root gate 和 pilot
+PostgreSQL/Compose；该文档-only merge 未触发 production path，最近 production run
+32930473976 继续成功。PR #19 lineage 的长期审计见
 [Anthropic Models preflight main CI 快照](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
 较早 PR #15/#16 与 candidate v3 的 main lineage 继续保留在
 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)。
@@ -480,7 +501,7 @@ provenance 标量，加入 profile 阈值与退出码传播；push/PR clean runs
 - 当前主分析是 available-case，不是完整 ITT；缺失机制与差异性失访需要进一步研究。
 - Phase 5 只评测确定性组件和控制面，模型调用为 0。
 - Phase 6 的 4 题 holdout 位于仓库内、不具备抗污染能力且不含审批场景；4/4 不能外推到未知请求。
-- Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明其锁定 public system 的 68/93；candidate v2/v3/v4 均无在线成绩且不继承 v1。Anthropic Models preflight 仅有离线 fixture 证据，private holdout、外部复核和正式第二 Provider 均未完成。
+- Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明其锁定 public system 的 68/93；candidate v2/v3/v4/v5 均无在线成绩且不继承 v1。Kimi Models preflight 仅有离线 fixture 证据；Anthropic post-lock metadata 尝试曾因错误 CCTK token 返回 403，但没有模型调用或质量证据。Private holdout、外部复核和正式第二 Provider 均未完成。
 - Production-like slice 已完成真实 PostgreSQL/MinIO/collector Compose E2E；它仍是单机 development 证据，不代表 HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量。
 - 旧 `main` run 32568017243 曾出现 44/50 却绿色的门禁缺陷；PR #3 与新 main run 32571384757 已恢复 50/50、21/21 并 fail-closed，旧历史成绩仍不能跨 source/data/manifest 冒充当前提交成绩。
 - DeepSeek development/holdout 是小样本顺序评测，不是生产负载或 SLA；成本因缺少完整价格表保持 unavailable。
