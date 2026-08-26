@@ -14,15 +14,47 @@ _OPENAI_MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _DEEPSEEK_MODELS = frozenset({"deepseek-v4-flash", "deepseek-v4-pro"})
 _DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 _ANTHROPIC_BASE_URL = "https://api.anthropic.com"
-_ANTHROPIC_MODELS = frozenset(
-    {"claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5-20251001"}
+ANTHROPIC_ALLOWED_MODEL_IDS = (
+    "claude-sonnet-5",
+    "claude-opus-4-8",
+    "claude-haiku-4-5-20251001",
 )
+_ANTHROPIC_MODELS = frozenset(ANTHROPIC_ALLOWED_MODEL_IDS)
 _RESPONSES_TRANSPORT_ID = "openai_responses"
 _LITELLM_TRANSPORT_ID = "litellm_anthropic_chat_completions"
 _LITELLM_COMPATIBILITY_VERSION = "1.83.0"
 _OPENAI_AGENTS_COMPATIBILITY_VERSION = "0.21.0"
 SUPPORTED_PROVIDER_IDS = ("openai", "deepseek", "anthropic")
+ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE = (
+    "anthropic_generic_online_entrypoint_disabled"
+)
 _LITELLM_PROCESS_LOCK = threading.Lock()
+_ANTHROPIC_OFFLINE_TEST_AUTHORIZATION_TOKEN = object()
+
+
+class _AnthropicRunAuthorization:
+    """Single-use capability for offline adapter contract tests only."""
+
+    __slots__ = ("_consumed", "_token")
+
+    def __init__(self, token: object) -> None:
+        self._token = token
+        self._consumed = False
+
+    def consume(self) -> bool:
+        if (
+            self._consumed
+            or self._token is not _ANTHROPIC_OFFLINE_TEST_AUTHORIZATION_TOKEN
+        ):
+            return False
+        self._consumed = True
+        return True
+
+
+def _anthropic_offline_test_authorization() -> _AnthropicRunAuthorization:
+    """Create a non-production capability used only by injected offline tests."""
+
+    return _AnthropicRunAuthorization(_ANTHROPIC_OFFLINE_TEST_AUTHORIZATION_TOKEN)
 
 
 class _NoRetentionDict(dict):
@@ -200,8 +232,18 @@ class AnthropicProvider:
 
     @asynccontextmanager
     async def open_model(
-        self, *, model_id: str, api_key: str, timeout_seconds: float = 120.0
+        self,
+        *,
+        model_id: str,
+        api_key: str,
+        timeout_seconds: float = 120.0,
+        _authorization: _AnthropicRunAuthorization | None = None,
     ) -> AsyncIterator[ProviderModel]:
+        if _authorization is None or not _authorization.consume():
+            raise ProviderConfigurationError(
+                ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+                "Anthropic online transport 未获同进程受控 pilot capability。",
+            )
         normalized_model = self.validate_model(model_id)
         normalized_key = _require_api_key(api_key, self.api_key_env)
         normalized_timeout = _validate_timeout(timeout_seconds)

@@ -1,9 +1,9 @@
-# Anthropic Models API zero-generation-token preflight design
+# Anthropic Models API zero-generation-token preflight contract
 
-> Status: `design_only`
-> Version: `anthropic-models-preflight-design/1.0`
+> Status: `implemented_offline_tested_not_run`
+> Version: `anthropic-models-preflight/1.0`
 > Reviewed against Anthropic official API documentation: 2026-08-25
-> Online requests performed for this design: `0`
+> Online requests performed: `0`
 
 ## Purpose
 
@@ -17,8 +17,10 @@
 也不证明 Messages API、tool calling、usage/error semantics、余额、成本、延迟或模型质量。
 它仍是一次联网认证请求，不能称为 offline 或免费。
 
-本文件只定义未来实现合同。它不修改 candidate v3，不启用 Anthropic Web/public runner，
-不读取 Key，也不执行真实请求。
+本合同现已由 `src/researchops/anthropic_preflight.py`、严格机器快照
+`evals/v2/anthropic_models_preflight_contract.json` 与无网络 tests 实现。successor candidate
+v4 绑定新源码且不修改、不继承 v3；Anthropic Web/public runner/controlled pilot 仍未启用，
+本次实现没有读取 Key 或执行真实请求。
 
 ## Official API basis
 
@@ -40,7 +42,7 @@ Anthropic 官方文档定义：
 
 ## Fixed request contract
 
-未来实现必须生成恰好一个请求：
+实现必须生成恰好一个请求：
 
 ```text
 method=GET
@@ -78,26 +80,33 @@ HTTP transport 正常生成的标准 headers 可以存在。测试不得错误�
   application data；
 - 不自动分页，因为 single-model retrieve 不需要 catalog scan；
 - 不 follow redirect；任何 3xx 都 fail closed；
-- TLS certificate verification 必须开启；不得允许任意 CA disable 开关；
+- TLS certificate verification 必须使用固定 `certifi==2026.7.22` CA bundle；直接构造
+  `SSLContext(PROTOCOL_TLS_CLIENT)`，不得调用会读取 `SSLKEYLOGFILE` 的 convenience factory，
+  且 `keylog_filename` 必须保持 null。不得允许任意 CA disable 开关或 TLS session-key
+  持久化；
 - 默认不继承 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`.netrc` 等环境网络配置
   (`trust_env=false`)；如未来确需企业代理，必须另建显式 allowlisted contract；
 - client event hooks、第三方 tracing/callbacks 与 HTTP debug/header logging 必须为空或关闭；
+  `httpx`/`httpcore` effective DEBUG 开启时在读取 Key 前 fail closed；
 - 客户端由每次预检独占并在成功、失败或取消后关闭；
 - `http_attempts=1`、`provider_managed_retries=0`、fallback/alias/routing 均为 0/false；
 - response 必须 streamed/bounded read，硬上限 64 KiB；请求固定
-  `Accept-Encoding: identity`，仍须对 `aiter_bytes()` 返回的 decoded bytes 逐 chunk 计数，
-  即使服务端忽略该 header，也在读到第 65,537 byte 时立即 abort/close；不能只信任
-  `Content-Length`；超限、非 JSON 或 schema 异常均 fail closed；
-- 建议 connect/read/write/pool timeouts 分别为 5/10/5/5 秒，外层总 deadline 为 15 秒；
-  future implementation 可进一步收紧，但不得放宽到无界等待。
+  `Accept-Encoding: identity`，响应只接受 absent/`identity` Content-Encoding。任何压缩
+  encoding 在读取 body 前拒绝，避免解压 bomb；identity bytes 逐 chunk 计数，在读到第
+  65,537 byte 时立即 abort/close，且不能只信任 `Content-Length`；超限、非 JSON 或 schema
+  异常均 fail closed；
+- connect/read/write/pool timeouts 分别为 5/10/5/5 秒，request-total deadline 为 15 秒；
+  client/transport cleanup 另有 5 秒 close deadline。后续版本可进一步收紧，但不得放宽到
+  无界等待。
 
-直接使用仓库已锁定的 `httpx==0.28.1`，不经过 LiteLLM。这样可以避免为一次 metadata
+直接使用仓库已锁定的 `httpx==0.28.1`、`httpcore==1.0.9`、`h11==0.16.0` 与固定
+`certifi==2026.7.22`，不经过 LiteLLM。这样可以避免为一次 metadata
 请求加载 LiteLLM process-global state，也避免引入 Anthropic SDK 的默认自动重试。未来若
 改用官方 SDK，必须显式 `max_retries=0` 并重新验证等价的 request/retention 合同。
 
 ## Invocation and Key handling
 
-建议未来 CLI：
+已实现 CLI：
 
 ```text
 python -m researchops.cli anthropic-models-preflight \
@@ -105,13 +114,14 @@ python -m researchops.cli anthropic-models-preflight \
   --confirm-online
 ```
 
-这是接口设计，不是当前可用命令。
+省略 `--confirm-online` 时只返回安全 `not_run` receipt，不读取 Key 或联网。
 
 调用顺序必须为：
 
 1. 验证 `--confirm-online`；未确认时 `network_calls=0`，且不读取 Key；
 2. 本地验证 provider、exact model、timeout 与 dependency pin；
-3. 才从 `ANTHROPIC_API_KEY` 读取非空值到进程内存；
+3. 才从 `ANTHROPIC_API_KEY` 读取值，并在 client 前要求 1–512 个 visible ASCII characters、
+   无空白/control/CRLF，避免 header exception/log 反射；
 4. 发出一次固定 Models API 请求；
 5. 在 `finally` 中关闭 client，并 best-effort 丢弃本地 Key 引用。
 
@@ -178,7 +188,7 @@ authorizes_model_run=false
 
 ## Stable result schema
 
-未来实现 MUST 只输出以下 allowlisted receipt fields；不得增加 raw headers/body、exception、
+实现 MUST 只输出以下 allowlisted receipt fields；不得增加 raw headers/body、exception、
 Key、组织/workspace identity 或自由文本：
 
 ```json
@@ -216,8 +226,9 @@ Key、组织/workspace identity 或自由文本：
 - literals：`schema_version`、`provider_id`、`verification_method`、`api_origin`、
   `anthropic_version`；
 - `status` 只能是 `not_run | verified | failed`；
-- `requested_model_id` 是已严格验证的 allowlisted string；`returned_model_id` 是 string 或
-  null；
+- `requested_model_id` 是已严格验证的 allowlisted string 或 null；只有 raw input 在本地
+  validation 前即非法时才为 null，避免把任意输入反射进 receipt。`returned_model_id` 是
+  string 或 null；
 - `checked_at_utc` 是 RFC 3339 UTC string；`latency_ms` 是非负 integer 或 null；
 - `http_status` 是 integer 或 null；`http_attempts` 与 `network_calls` 各只能是 0 或 1；
 - `model_token_calls` 固定为 0，`token_usage` 与 `cost` 固定为 null；
@@ -237,7 +248,8 @@ receipt/log，session 结束后不可恢复。未来若确需把 raw ID 交给 s
 Result fields 使用三态而不是把未知伪装成 false：
 
 - `status=not_run`：本地门禁在发请求前停止；attempts/network 为 0，HTTP/latency/returned
-  model/request hash 为 null，auth/visibility 为 null，error code 非空；
+  model/request hash 为 null，auth/visibility 为 null，error code 非空；非法 raw model 输入
+  时 `requested_model_id` 也为 null，其他本地门禁可保留已验证的 allowlisted ID；
 - `status=verified`：仅限完整 200 success contract；attempts/network 为 1、HTTP 为 200、
   latency 非负、returned model exact、auth/visibility 为 true，error code 为 null；
 - `status=failed`：已经尝试但未满足成功合同；attempts/network 为 1，HTTP 可以为 status 或
@@ -258,6 +270,7 @@ Result fields 使用三态而不是把未知伪装成 false：
 | --- | --- | --- |
 | 未确认联网 | `anthropic_preflight_confirmation_required` | `not_run`，network 0 |
 | Key 缺失 | `anthropic_preflight_key_missing` | `not_run`，client 未创建 |
+| Key 不是安全 header value | `anthropic_preflight_key_invalid` | `not_run`，不回显 Key，client 未创建 |
 | model 不在 allowlist | `anthropic_preflight_model_not_allowed` | `not_run`，network 0 |
 | timeout/dependency drift | `anthropic_preflight_configuration_invalid` | `not_run`，network 0 |
 | 3xx | `anthropic_preflight_redirect_denied` | 固定 origin 未得到直接响应 |
@@ -277,7 +290,7 @@ Result fields 使用三态而不是把未知伪装成 false：
 | 200 但 id/type 不匹配 | `anthropic_preflight_identity_mismatch` | fail closed，不接受 alias/异常 schema |
 | 非 JSON/超限/documented 顶层字段缺失或类型错误 | `anthropic_preflight_response_invalid` | fail closed；未知新增字段可忽略 |
 | client close 失败 | `anthropic_preflight_client_close_failed` | 原本可成功也不得标 verified；若已有主失败则保留主 code |
-| caller cancellation | `anthropic_preflight_cancelled` | `finally` 清理后向上传播；不生成 receipt |
+| caller cancellation | `n/a (propagated)` | `finally` 清理后向上传播；不生成 receipt/error_code |
 | 其他 | `anthropic_preflight_failed` | unknown 保持失败 |
 
 虽然官方建议对部分 transient errors 重试，本预检刻意保持一次尝试，避免隐藏请求数和在
@@ -288,9 +301,14 @@ Result fields 使用三态而不是把未知伪装成 false：
 
 - `phase6-status --provider anthropic` 继续是纯离线状态查询，`network_calls=0`；不得静默
   触发本预检。
-- 当前 generic `phase6-run-online` 与 `self-pilot-run` 技术上已能选择 Anthropic，但只检查
-  confirm + Key，没有封顶预算、single-use authorization 或本 preflight；它们不是受控
-  Anthropic pilot，当前不得用于该 pilot，也不得接受 standalone receipt 解锁。
+- 当前 generic `phase6-run-online` 与 `self-pilot-run` 只有 parser choice；runtime、direct
+  Phase 6 Agent、Eval Provider executor 与 public `AnthropicProvider.open_model` 均在
+  Key/client 前 fail closed。底层 adapter 行为只能由 module-private single-use offline-test
+  capability 覆盖，生产 capability factory 不存在。它们不是受控 Anthropic pilot，也不得
+  接受 standalone receipt 解锁。
+- module-private Python test seams 不是安全隔离边界；能任意导入/调用 underscored internals
+  的受信任代码持有者在本威胁模型之外。对外支持的 public method 默认拒绝，CLI/service
+  路径不能获得 test capability。
 - generic self-pilot 还会使用 repo public tasks，不满足“非已运行公开题/不可调参”的 task
   boundary。未来实现必须另建 dedicated controlled-pilot orchestration + disjoint synthetic
   pack，或在这些 generic entrypoints 对 Anthropic 继续 fail closed，然后才能提供 Key。
@@ -299,41 +317,41 @@ Result fields 使用三态而不是把未知伪装成 false：
   明确授权，成功 preflight 绝不自动改变 catalog。
 - Eval v2 public runner 继续拒绝 Anthropic；成功 preflight 不改变 campaign slot，仍为
   `planned`。
-- candidate v3 commitment 保持不变。未来对 `src/researchops` 的实现改动会使 v3 source
-  bundle 失效，必须建立 successor candidate，不能继承 v1/v2/v3 成绩。
+- historical candidate v3 commitment 保持不变；successor candidate v4 绑定实现后的 source
+  bundle，`prior_results_inherited=false`，不能继承 v1/v2/v3 成绩。
 - pilot staging 继续使用 DeepSeek；supervised v4 pack 未运行，不能改写为 Anthropic pack。
 - private custodian 继续 synthetic-only、private 0/50、Provider 1/2、not authorized；
   preflight 与 private release 无关。
 - Phase 6 仍只支持首次审批暂停，不因 preflight 支持批准后在线恢复。
 
-## Required offline tests for implementation
+## Required offline verification
 
-未来实现 PR 至少覆盖以下无网络测试，建议使用内部 injected `httpx.MockTransport`。该
+实现 PR 至少覆盖以下无网络测试，并使用内部 injected `httpx.MockTransport`。该
 transport factory 只作为 private test seam，不得暴露为 CLI/API 的 URL、header、proxy 或
 transport override：
 
-1. 未确认、缺 Key、非法 model、dependency drift 均在 client 创建前停止；
+1. 未确认、缺/非法 Key、非法 model、dependency drift 与 HTTP debug logging 均在 client
+   创建前停止；
 2. exact method/origin/path/body、required/forbidden application headers；允许标准 transport
    headers，不出现 Messages、prompt、Authorization、Content-Type 或 beta header；
 3. 200 + exact id/type + 当前 documented top-level ModelInfo 类型是唯一成功路径；
    alias/different id、必需字段缺失/类型错误、malformed/oversized JSON 全部拒绝，未知新增
    字段可忽略但不持久化；
 4. 3xx、400、401、402、403、404、408、409、413、429、500、504、529 与未知 status 映射稳定；
-5. timeout、DNS、TLS、取消和 client-close failure 路径；decoded body 64 KiB 可成功，读取
-   第 65,537 byte 时立即 abort/close；
+5. timeout、DNS、TLS、取消和 client-close failure 路径；identity body 64 KiB 可成功，读取
+   第 65,537 byte 时立即 abort/close；non-identity encoding 在 body读取前拒绝；
 6. 每次最多一次 request，retry/fallback/redirect 均为 0；
-7. `trust_env=false`，环境 proxy、`.netrc` 与任意 base URL 不能改变目标；
+7. `trust_env=false`，环境 proxy、`.netrc`、`SSL_CERT_FILE`/`SSL_CERT_DIR` 与任意 base URL
+   不能改变目标；固定 certifi roots，`SSLKEYLOGFILE` 不能创建文件或启用 TLS key logging；
 8. Key 和 raw request/error body 不出现在 repr、exception、stdout/stderr、receipt 或 test
    snapshots；
 9. raw request ID 不持久化；可选 hash 符合预期；
 10. success/failure receipt 只有 allowlisted fields，token usage/cost 保持 null；
 11. preflight success 不修改 campaign、candidate、Web catalog、pilot pack 或 private flags；
-12. future same-process pilot gate 拒绝过期、不同 model/transport 或不同内存 credential
-    binding。
 
 CI 只能运行这些 fixtures，不配置 `ANTHROPIC_API_KEY`，也不访问 Anthropic。
 
-## Live-use gate after implementation
+## Live-use gate
 
 一次真实 Models API preflight 仍需用户显式提供 Key 与联网授权；成功结果只是 pilot 的必要
 条件，不是充分条件。后续小规模 tool/usage/error-semantics pilot 还必须另有：
@@ -343,6 +361,8 @@ CI 只能运行这些 fixtures，不配置 `ANTHROPIC_API_KEY`，也不访问 An
 - 固定 Provider/model/transport/dependency/config hash；
 - 禁止用结果调整 prompt、scorer、tool schema 或 candidate；
 - 独立报告 tool、usage、error 与 completion semantics；
+- future same-process pilot capability 必须 single-use/有 expiry，并拒绝不同 model、transport
+  或 credential binding；该 capability 当前未实现；
 - 无论结果如何，都不自动注册第二 Provider。
 
 只有外部领域专家复核、R/SAS 独立 cross-check，以及 external custodian 的 private 50 题
@@ -350,8 +370,8 @@ CI 只能运行这些 fixtures，不配置 `ANTHROPIC_API_KEY`，也不访问 An
 启用 non-synthetic private evaluation。在此之前所有相关 claim/authorization flags 保持
 false；当前 kit 仍不支持 non-synthetic release，因此这项完成条件目前尚不可达。
 
-## Design acceptance criteria
+## Implementation acceptance criteria
 
-本设计完成的判据是：请求身份、联网确认、Key 生命周期、成功语义、失败分类、脱敏 receipt、
-集成边界、离线测试矩阵和后续人工门禁均明确且互不矛盾。它不以 live API 成功、实现代码、
-campaign 注册或模型成绩作为完成条件。
+本实现完成的判据是：请求身份、联网确认、Key 生命周期、成功语义、失败分类、脱敏 receipt、
+集成边界、无网络测试矩阵和后续人工门禁均由代码/合同覆盖且互不矛盾。它不以 live API
+成功、campaign 注册或模型成绩作为完成条件。

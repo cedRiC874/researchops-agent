@@ -13,7 +13,11 @@ from typing import Any, Callable, Mapping
 from urllib.parse import urlsplit
 
 from .eval_v2_contracts import EvalV2ContractError
-from .model_providers import ProviderAdapter, get_provider
+from .model_providers import (
+    ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+    ProviderAdapter,
+    get_provider,
+)
 from .self_pilot import (
     get_next_self_pilot_task,
     get_self_pilot_blinded_tasks,
@@ -240,6 +244,12 @@ def verify_provider_model_access(
 ) -> dict[str, Any]:
     """Authenticate against the provider model catalog without a model token call."""
 
+    if provider.provider_id == "anthropic":
+        raise EvalV2ContractError(
+            ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+            "Generic self-pilot Web 不允许 Anthropic；专用 Models preflight 不授权 Web 运行。",
+        )
+
     try:
         asyncio.get_running_loop()
     except RuntimeError:
@@ -260,6 +270,11 @@ async def _verify_provider_model_access_async(
     api_key: str,
     timeout_seconds: float,
 ) -> dict[str, Any]:
+    if provider.provider_id == "anthropic":
+        raise EvalV2ContractError(
+            ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+            "Generic self-pilot Web 不允许 Anthropic；专用 Models preflight 不授权 Web 运行。",
+        )
     try:
         from openai import AsyncOpenAI
     except ImportError as exc:
@@ -530,7 +545,11 @@ class SelfPilotWebController:
                 "self_pilot_web_configuration_invalid",
                 "Provider 和 model 必须从受控列表选择。",
             )
-        api_key = _normalize_api_key(payload["api_key"])
+        if provider_id.strip().lower() == "anthropic":
+            raise EvalV2ContractError(
+                ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+                "Generic self-pilot Web 不允许 Anthropic；专用 Models preflight 不授权 Web 运行。",
+            )
         with self._lock:
             if self._provider is not None or self._active_task_id is not None:
                 raise EvalV2ContractError(
@@ -546,6 +565,7 @@ class SelfPilotWebController:
                 "self_pilot_web_configuration_invalid",
                 "Provider/model 不在当前 session 的受控可用列表中。",
             )
+        api_key = _normalize_api_key(payload["api_key"])
         try:
             provider = self._provider_resolver(provider_id)
         except Exception as exc:

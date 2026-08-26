@@ -1,9 +1,11 @@
 # Pilot Staging Verification Snapshot
 
-> Successor note (2026-08-25): branch candidate v3 commitment
-> `22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9` migrates the live preflight to
-> `pilot_pack.supervised_v4.json` while keeping the pilot Provider as DeepSeek.
-> Anthropic remains offline-contract-only; no v3 Provider or participant run is claimed.
+> Successor note (2026-08-25): branch candidate v4 commitment
+> `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` migrates the locked candidate to the offline-tested Anthropic Models
+> preflight successor and `pilot_pack.supervised_v5.json`, while keeping the pilot Provider as DeepSeek.
+> Anthropic remains offline-contract-only; no live Models preflight, v4 Provider or participant run is claimed.
+> Successor local verification: 334 root tests `OK` (1 platform skip), 51 pilot offline
+> contracts passed (real PostgreSQL contract skipped locally without its explicit URL), network calls 0.
 
 > Current note: Completion Telemetry v2 candidate `1f6ac18e…e5ce5` 已进入
 > `main@094cb9b1` 并通过无 Provider Key clean CI；它不继承 predecessor

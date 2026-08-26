@@ -15,21 +15,22 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | 模拟科研分析 | 已验证 | 240 行模拟 RCT；ANCOVA 与 Welch 均生成数值、样本流、诊断、证据 ID 和聚合图表 |
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
 | Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
-| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@3e487096` run 32840171286：根测试 301/301，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
+| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@9eabf434` run 32844911180：根测试 301/301，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | `main@3e487096`：根测试 301/301；pilot staging 51 个 offline contracts + 1 个真实 PostgreSQL contract；production slice 18/18 + 真实 Compose E2E；三个最终 checks 全部成功 |
+| 自动化测试 | 已验证 | successor branch 334 项 root tests `OK`（其中 1 项平台 skip）；pilot staging 51 个 offline contracts 通过（PostgreSQL integration 本机无 URL 时 skip）；`main@9eabf434` offline run 32844911180 与最近 production E2E 均成功 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
-| Provider 适配 | 分层验证 | OpenAI 与 DeepSeek 使用独立 Key/client；Anthropic 已完成 CLI/offline adapter contract，但仍为 `offline_contract_only`，未注册、未在线调用 |
+| Provider 适配 | 分层验证 | Anthropic 固定 Models API preflight 已实现并仅通过 MockTransport 离线测试；generic Anthropic online entrypoints fail closed，仍未注册、未在线调用 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
 | Eval v2 public candidate v1（历史） | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
 | Completion Telemetry v2 candidate | 已进入 main 并通过 clean CI，未在线运行 | PR #11；四类受控 completion source、legacy coverage、v1/v2 双 telemetry digest retention；commitment `1f6ac18e…e5ce5` 不继承 v1 结果 |
-| Eval v2 public candidate v3 | 已进入 main 并通过 clean CI，未在线运行 | PR #16；commitment `22c985e9…b2a9`、predecessor `1f6ac18e…e5ce5`；public/pilot Provider 仍为 DeepSeek，Anthropic 只完成离线合同且不继承历史结果 |
+| Eval v2 public candidate v3（历史） | 已进入 main 并通过 clean CI，未在线运行 | commitment `22c985e9…b2a9`、predecessor `1f6ac18e…e5ce5`；文件与 commitment 保持不变 |
+| Eval v2 public candidate v4 | successor candidate locked，未在线运行 | commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；绑定 Models preflight 与 generic fail-closed，public/pilot Provider 仍为 DeepSeek，历史结果不继承 |
 | Eval v2 private custodian kit v1.1 | 已进入 main 并通过 clean CI；真实 private release 仍 fail-closed | PR #14；不同 Ed25519 角色、外部 anchors、两阶段 ledger、预承诺 denominator/budget 与 aggregate-only verifier；private 0/50、Provider 1/2，仍为 `design_only / not_authorized` |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
-| External researcher pilot staging | 当前 main CI 通过；历史 supervised UX regression 已完成 | `main` run 32840171287 为 51 个 offline contracts + 1 个真实 PostgreSQL contract；v4 pack 仍使用 DeepSeek、未在线运行；历史同一参与者结果永久不进入正式 claim，也不算第二位独立参与者 |
+| External researcher pilot staging | 当前工程合同通过；历史 supervised UX regression 已完成 | successor v5 pack 绑定 candidate v4，仍使用 DeepSeek且未在线运行；历史 v4 pack/review不改，历史同一参与者结果永久不进入正式 claim |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
-离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。PR #3 已修复 LF provenance 与退出码覆盖；当前 `main@3e487096` run 32840171286 为 50/50、21/21、`phase5-ci-v1=valid`。PR #15/#16、candidate v3、同 tree 发布关系与三个最终 checks 见 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)。
+离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@9eabf434` run 32844911180 为 50/50、21/21、`phase5-ci-v1=valid`。PR #15/#16 与 historical candidate v3 证据仍见 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)；successor v4 没有继承该证据。
 
 ## 一键离线演示
 
@@ -229,6 +230,23 @@ DeepSeek 会忽略 `parallel_tool_calls=False`，所以串行与审批安全由�
 
 人工复核还记录了两个不影响自动 4/4、但影响作品集解读的 P2：HOLD-002 在 prose 中报告了 CI/p，却没有输出对应 optional CLAIM；HOLD-003 的路径在安全清洗后出现 `[PATH_REDACTED]`，拒绝决定正确但文本可读性受损。
 
+### Anthropic Models API preflight
+
+Successor candidate v4 新增固定 `GET /v1/models/{exact_model_id}` metadata preflight：official
+origin/version、exact allowlist、owned `httpx==0.28.1`、一次 attempt、零 retry/fallback/redirect、
+64 KiB decoded response cap 与 strict non-authorizing receipt 均由 MockTransport 离线测试覆盖。
+不确认联网时可安全查看 `not_run` 合同：
+
+```powershell
+.\.venv\Scripts\python.exe -m researchops.cli anthropic-models-preflight `
+  --model claude-sonnet-5
+```
+
+这不是 live API 证据。Generic Phase 6/self-pilot/Web/public-runner Anthropic 入口固定拒绝；
+任何真实 metadata request 仍需用户显式提供 Key 与联网授权，且成功 receipt 也不授权
+Messages/tools、campaign 注册或模型质量声明。详见
+[Anthropic Provider boundary](docs/ANTHROPIC_PROVIDER.md)。
+
 ### Eval v2：设计合同，不是新成绩
 
 Eval v2 新增独立 campaign contract 与公开 task schema，预注册 80 个 development、40 个 public regression 和至少 50 个 external private holdout 任务，并要求 3–5 个数据集、至少 2 个 Provider、每个 Provider 3 次重复、外部 golden 复核以及 R/SAS 独立统计交叉检查。
@@ -398,7 +416,8 @@ GitHub Actions 当前有三条独立 workflow。
 
 - 安装锁定依赖
 - 验证 50 题与 20 题语料契约
-- 对已提交 `main` 运行 301 项根测试
+- 验证 candidate v4 与未确认 Anthropic preflight 固定 `not_run / network_calls=0`
+- 对当前提交运行 334 项根测试（当前 Windows 本机有 1 项平台 skip）
 - 从固定模拟数据重建 50 题离线评测
 - 验证哈希、审计链和敏感 canary
 - 使用版本化 `phase5-ci-v1` 精确要求任务 50/50、失败 0、success rate 1、
@@ -423,8 +442,9 @@ GitHub Actions 当前有三条独立 workflow。
   campaign 环境持久化、audit chain 与 task-pack integrity；
 - 构建并启动 offline API Compose，验证页面与 readiness 后无 `down -v` 退出。
 
-当前 `main@3e487096` 的三条 clean runs 32840171286、32840171287 与 32840171312
-分别验证 root offline gate、pilot PostgreSQL/Compose 和 production-slice E2E；长期审计见
+`main@9eabf434` offline run 32844911180 验证 root offline gate；较早同一实现 lineage 的
+三条 runs 32840171286、32840171287 与 32840171312 分别验证 offline、pilot
+PostgreSQL/Compose 和 production-slice E2E；长期审计见
 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)。
 
 较早 PR #5 合并后的 `main@a20fdfd8` 已由
@@ -459,7 +479,7 @@ provenance 标量，加入 profile 阈值与退出码传播；push/PR clean runs
 - 当前主分析是 available-case，不是完整 ITT；缺失机制与差异性失访需要进一步研究。
 - Phase 5 只评测确定性组件和控制面，模型调用为 0。
 - Phase 6 的 4 题 holdout 位于仓库内、不具备抗污染能力且不含审批场景；4/4 不能外推到未知请求。
-- Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明其锁定 public system 的 68/93；candidate v2/v3 均无在线成绩且不继承 v1。Anthropic 仍为 offline contract，private holdout、外部复核和正式第二 Provider 均未完成，不能声称未知生产集泛化。
+- Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明其锁定 public system 的 68/93；candidate v2/v3/v4 均无在线成绩且不继承 v1。Anthropic Models preflight 仅有离线 fixture 证据，private holdout、外部复核和正式第二 Provider 均未完成。
 - Production-like slice 已完成真实 PostgreSQL/MinIO/collector Compose E2E；它仍是单机 development 证据，不代表 HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量。
 - 旧 `main` run 32568017243 曾出现 44/50 却绿色的门禁缺陷；PR #3 与新 main run 32571384757 已恢复 50/50、21/21 并 fail-closed，旧历史成绩仍不能跨 source/data/manifest 冒充当前提交成绩。
 - DeepSeek development/holdout 是小样本顺序评测，不是生产负载或 SLA；成本因缺少完整价格表保持 unavailable。

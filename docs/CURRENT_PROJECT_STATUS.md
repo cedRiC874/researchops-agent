@@ -1,9 +1,10 @@
 # ResearchOps Agent 当前项目状态
 
 > 2026-08-25 successor note：本文件主体保留 2026-08-22 历史快照。当前分支新增
-> public candidate v3 `22c985e9…b2a9` 与 Anthropic CLI/offline adapter contract；
-> public-run 与 pilot Provider 仍为 DeepSeek，Anthropic campaign slot 仍为 `planned`，没有
-> Anthropic Key、在线调用、结果或模型质量证据。最新跨会话状态以仓库根目录
+> public candidate v4 `1741c2b0…f6399c7` 与固定 Anthropic Models API metadata preflight；
+> preflight 只完成 MockTransport 离线验证，generic Anthropic online 入口 fail closed，
+> public-run 与 pilot Provider 仍为 DeepSeek，campaign slot 仍为 `planned`，没有 Anthropic
+> Key 读取、在线调用、结果或模型质量证据。最新跨会话状态以仓库根目录
 > `handoff.md` 为准。
 
 > 状态快照：2026-08-22（Asia/Shanghai）

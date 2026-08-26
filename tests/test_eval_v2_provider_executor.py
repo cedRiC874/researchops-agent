@@ -406,7 +406,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
                 tracing_disabled=False,
             )
         self.assertEqual(
-            anthropic.exception.code, "eval_v2_external_tracing_denied"
+            anthropic.exception.code, "anthropic_generic_online_entrypoint_disabled"
         )
 
     def test_bilingual_mode_adds_presentation_contract_without_a_second_run(self) -> None:

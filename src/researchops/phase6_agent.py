@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Protocol
 
 from .model_providers import (
+    ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
     OpenAIProvider,
     ProviderAdapter,
     ProviderConfigurationError,
@@ -720,7 +721,14 @@ async def run_phase6_agent(
         provider_id = _provider_identity(adapter, "provider_id")
         transport_id = _provider_identity(adapter, "transport_id")
         api_key_env = _provider_identity(adapter, "api_key_env")
+        if provider_id == "anthropic":
+            raise Phase6AgentError(
+                ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+                "Generic Phase 6 Agent 不接受 Anthropic；受控 pilot capability 尚未实现。",
+            )
         validated_model = adapter.validate_model(model)
+    except Phase6AgentError:
+        raise
     except ProviderConfigurationError as exc:
         raise Phase6AgentError(exc.code, str(exc)) from exc
     except Exception as exc:

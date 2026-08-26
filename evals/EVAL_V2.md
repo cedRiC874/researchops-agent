@@ -155,14 +155,14 @@ Public-regression candidate 使用三份预承诺 seed/task order；三次排列
 
 ## 3.4 Public-regression candidate lock
 
-历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json) 与 [`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json) 分别保留 v1 一次性结果和 Completion Telemetry v2 离线 commitment。当前 [`public_regression_candidate_v3.json`](v2/public_regression_candidate_v3.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它继续把 public-run Provider 固定为 DeepSeek，同时绑定 Anthropic offline adapter contract、campaign planned slot、source、prompt/scorer/tool、Completion Telemetry、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
+历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json)、[`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json) 与 [`public_regression_candidate_v3.json`](v2/public_regression_candidate_v3.json) 分别保留 v1 一次性结果、Completion Telemetry v2 与 Anthropic offline-adapter commitments。当前 [`public_regression_candidate_v4.json`](v2/public_regression_candidate_v4.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它继续把 public-run Provider 固定为 DeepSeek，同时绑定固定 Anthropic Models API preflight 实现/机器合同、predecessor adapter contract、campaign planned slot、source、prompt/scorer/tool、Completion Telemetry、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
 
 ```powershell
 .\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-public-freeze `
   --verify-environment
 ```
 
-`requirements.lock` 的 82 个版本全部精确 pin；新增 `openai-agents[litellm]` 与 exact `litellm==1.83.0` compatibility pin，但仍没有 wheel/sdist artifact hashes。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；v2 commitment `1f6ac18e…e5ce5` 和 v3 commitment `22c985e9…b2a9` 均只完成离线验证，不继承历史 68/93。Anthropic 仍为 `offline_contract_only / campaign_registered=false / online_calls_performed=false`，完整 campaign 仍非 frozen；实现与使用边界见 [Anthropic Provider 指南](../docs/ANTHROPIC_PROVIDER.md)。
+`requirements.lock` 的 82 个版本全部精确 pin；`openai-agents[litellm]`、`litellm==1.83.0`、`httpx==0.28.1`、`httpcore==1.0.9`、`h11==0.16.0` 与固定 CA bundle `certifi==2026.7.22` 均显式锁定，但仍没有 wheel/sdist artifact hashes。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；v2 `1f6ac18e…e5ce5`、v3 `22c985e9…b2a9` 与 v4 successor 均只完成离线验证，不继承历史 68/93。Anthropic 仍为 `offline_contract_only / campaign_registered=false / online_calls_performed=false`；Models preflight 为 `implemented_offline_tested_not_run`，generic online entrypoints fail closed，完整 campaign 仍非 frozen。实现与使用边界见 [Anthropic Provider 指南](../docs/ANTHROPIC_PROVIDER.md)。
 
 原子 artifact writer 只写脱敏 `eval_v2_report.json`、`eval_v2_summary.md`、可选 repetition aggregation 和带 SHA-256/size/source-tree hash 的 manifest。目标必须是 `artifacts/` 下不存在的新目录；先在同父目录 staging 中生成并复核，再原子 rename。路径、API Key/Authorization、final output、raw rows、sample values 和 traceback 字段均被拒绝。所有未冻结产物固定 `model_quality_claim_allowed=false`。
 

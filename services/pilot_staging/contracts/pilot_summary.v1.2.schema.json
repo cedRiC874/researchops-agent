@@ -317,7 +317,8 @@
           "enum": [
             "7744770aa4a36c131476b95d6ed9be248cdefc3ab0f4f2a18d5111b85c9f0d11",
             "1f6ac18e1cf4756e2a3ebd34075d2e98f8ab4dd98b316754f4af8b74c7be5ce5",
-            "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9"
+            "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9",
+            "1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7"
           ]
         },
         "deployment_git_sha": {

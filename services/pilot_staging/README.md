@@ -15,12 +15,12 @@ one-time invite -> pseudonymous Secure/HttpOnly session -> explicit consent
 It uses the locked candidate commitment:
 
 ```text
-22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9
+1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7
 ```
 
 The frozen pilot Provider identity remains DeepSeek `deepseek-v4-flash` through the
-OpenAI-compatible Responses transport. Candidate v3 adds an Anthropic offline adapter
-contract but does not authorize or register Anthropic for this pilot. Changing the
+OpenAI-compatible Responses transport. Candidate v4 binds the offline-tested Anthropic Models
+preflight contract but does not authorize or register Anthropic for this pilot. Changing the
 pilot Provider/model still requires a new candidate and campaign. The service verifies
 the candidate source commitment before its worker starts and does not modify the
 frozen prompt, scorer or tool schema.
@@ -169,8 +169,8 @@ that blocker. Supervised records never enter the formal 3–5 participant / 20 i
 claim gate. Historical `pilot_pack.supervised_v1.json` remains bound to the initial
 two-person / 12-assignment campaign. Historical
 `pilot_pack.supervised_v3.json` remains the completed same-participant UX regression.
-The active `pilot_pack.supervised_v4.json` binds the v3 candidate while preserving
-the same six public tasks and translations; no online v3 run or participant evidence
+The active `pilot_pack.supervised_v5.json` binds the v4 candidate while preserving
+the same six public tasks and translations; no online v4 run or participant evidence
 exists yet, and no predecessor result is inherited. Neither pack can be counted as a
 second independent participant or aggregated with v1. The formal pack remains five ×
 six / 30. These assignment limits do not claim an upstream API-request or monetary

@@ -2,7 +2,7 @@
 
 > 状态：staging protocol，尚不构成已完成 pilot 的证据
 > Pilot 类型：邀请制、独立外部科研用户、非专家可用性评估
-> Eval v2 candidate 承诺：`22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9`
+> Eval v2 candidate 承诺：`1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`
 
 ## 1. 目的与声明边界
 
@@ -17,14 +17,15 @@
 运行前冻结任务包、展示文案、模型/Provider 配置、反馈字段、纳入规则、门槛和本协议。模型执行部分绑定以下 Eval v2 candidate SHA-256 承诺值：
 
 ```text
-22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9
+1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7
 ```
 
 每个 manifest、同意记录、任务反馈和汇总均必须保存字段名明确的 `candidate_commitment_sha256`；协议、同意文档、任务包、反馈 schema、数据集 manifest、部署 Git SHA 和镜像 digest 另存各自的 commitment，不能用 candidate hash 冒充这些文件的 hash。上述值不是安全认证或第三方签名，只用于证明一轮 pilot 使用同一冻结定义。开始收集后不得挑题、改字段、改纳入标准或静默更换模型。任何实质变更都必须停止当前轮、生成新 campaign 并重新冻结；旧记录保持原承诺且不得混入新一轮汇总。
 
-该 candidate 保留 Completion Telemetry v2，并新增 Anthropic offline adapter contract。当前
-pilot Provider 仍固定为 DeepSeek；Anthropic 未注册到 campaign、未完成模型目录预检、
-未运行在线任务。它不保存 Provider 原始响应，也不把诊断标签称为因果根因。旧 candidate
+该 candidate 保留 Completion Telemetry v2，并绑定 Anthropic offline adapter 与固定 Models
+metadata preflight contract。当前 pilot Provider 仍固定为 DeepSeek；Anthropic 未注册到
+campaign、未执行 live preflight 或在线任务，generic 入口固定拒绝。它不保存 Provider 原始
+响应，也不把诊断标签称为因果根因。旧 candidate
 的 pilot/public-regression 结果不继承到本轮；本协议本身也不授权在线或付费运行。
 
 ## 3. 招募、邀请与人数

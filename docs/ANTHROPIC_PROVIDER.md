@@ -1,16 +1,28 @@
-# Anthropic Provider — offline adapter contract
+# Anthropic Provider — offline adapter and Models preflight contract
 
 ## Status
 
-Anthropic is implemented as an **offline-contract-only** third Provider adapter. It is available to
-the Phase 6 and self-pilot CLIs, but it is not yet registered in the Eval v2 campaign and is not
-enabled in the self-pilot web model-catalog preflight or the paid public-regression runner.
+Anthropic remains an **offline-contract-only** third Provider adapter. A fixed-origin Models API
+metadata preflight is now implemented and covered only by injected `httpx.MockTransport` tests; no
+live preflight was performed. Generic Phase 6/self-pilot Anthropic online entrypoints, direct Agent/
+Provider-executor calls and public `AnthropicProvider.open_model` now fail closed before reading a
+Key. Adapter internals remain testable only through a module-private, single-use offline-test
+capability; no production authorization factory exists. Self-pilot Web, Eval v2 public runner and a
+controlled pilot entrypoint remain disabled.
+
+Underscored Python test seams are not claimed as a security boundary; arbitrary trusted code with
+source-level access is outside this entrypoint threat model. Supported public methods deny by
+default, and CLI/service paths cannot obtain the offline-test capability.
 
 No Anthropic API Key, authenticated model-catalog check, model request, result, pass rate or cost
 evidence exists. Existing DeepSeek public/pilot results are not inherited.
 
-Machine-readable boundary:
-[`evals/v2/anthropic_provider_contract.json`](../evals/v2/anthropic_provider_contract.json).
+Machine-readable boundaries:
+
+- predecessor adapter contract:
+  [`evals/v2/anthropic_provider_contract.json`](../evals/v2/anthropic_provider_contract.json);
+- current preflight/entrypoint contract:
+  [`evals/v2/anthropic_models_preflight_contract.json`](../evals/v2/anthropic_models_preflight_contract.json).
 
 ## Frozen adapter identity
 
@@ -65,33 +77,43 @@ These commands do not call Anthropic:
   --provider anthropic
 
 .\.venv\Scripts\python.exe -m unittest `
-  tests.test_phase6_providers -v
+  tests.test_phase6_providers tests.test_anthropic_preflight -v
+
+.\.venv\Scripts\python.exe -m researchops.cli anthropic-models-preflight `
+  --model claude-sonnet-5
 ```
 
-Online commands remain gated by an explicit `--confirm-online` and `ANTHROPIC_API_KEY`. Do not run
-them until a separate budget, retention policy and one-time evaluation authorization are approved.
-The current generic `phase6-run-online` and `self-pilot-run` gates do not themselves enforce a capped
-budget, single-use authorization or the proposed Models preflight, and generic self-pilot uses repo
-public tasks. They are not the controlled Anthropic pilot and must not be used as one.
+The unconfirmed preflight command returns `not_run` with `network_calls=0` and does not read a Key.
+Only this dedicated command can make the metadata request, and only with `--confirm-online` plus
+`ANTHROPIC_API_KEY`. Generic `phase6-run-online`, `self-pilot-run`, Web and public-runner paths reject
+Anthropic and cannot consume a preflight receipt. A controlled Messages/tool pilot entrypoint is not
+implemented.
 
-## Models API preflight design
+## Models API preflight implementation
 
-The proposed Anthropic-specific availability check is specified in
+The Anthropic-specific availability contract is specified in
 [Anthropic Models API zero-generation-token preflight design](ANTHROPIC_MODELS_API_PREFLIGHT.md).
 It uses one fixed `GET /v1/models/{exact_model_id}` metadata request to verify Models API
 authentication and exact allowlisted model visibility. It does not call Messages/Completions or
 produce model output tokens, but it is still an online authenticated request and is not evidence of
 tool compatibility, usage/error semantics, cost, availability SLA or model quality.
 
-The design is not implemented and no live preflight was run. `phase6-status` remains offline,
-self-pilot Web and the Eval v2 public runner remain disabled for Anthropic, and campaign registration
+The implementation owns a direct `httpx==0.28.1` client with exact `httpcore==1.0.9` /
+`h11==0.16.0` and fixed `certifi==2026.7.22` CA roots,
+fixes origin/version/headers, performs at
+most one GET, disables retries/fallbacks/redirects/environment proxies/TLS key logging, rejects
+unsafe Key header values and HTTP debug logging before client creation, rejects compressed responses,
+bounds identity bodies to 64 KiB and emits a strict non-authorizing receipt. It has only offline fixture evidence; no live
+Models request, Messages/tool request, token/cost observation or quality result exists.
+
+Successor candidate v4 binds the source and machine contract without modifying or inheriting v3.
+`phase6-status` remains offline, generic Anthropic runs remain disabled, and campaign registration
 remains false.
 
 ## Gates before campaign registration
 
-1. Implement and separately authorize the fixed-origin Anthropic Models API metadata preflight;
-   require exact returned model identity, zero retries/fallbacks, sanitized output and no
-   Messages/Completions call.
+1. Before any live use, separately authorize the implemented fixed-origin Models metadata preflight;
+   an unrun or successful receipt still does not authorize Messages/tools.
 2. Run a small, budgeted tool/usage/error-semantics pilot that is not used to tune the frozen public
    tasks, only after the user supplies a Key, capped budget and one-time authorization.
 3. Add provider-specific price/coverage handling to the public runner or keep it fail-closed.
