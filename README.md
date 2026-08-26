@@ -15,9 +15,9 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | 模拟科研分析 | 已验证 | 240 行模拟 RCT；ANCOVA 与 Welch 均生成数值、样本流、诊断、证据 ID 和聚合图表 |
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
 | Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
-| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@3dfb0a36` run 32932614962：根测试 334/334，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
+| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@c65ff65c` run 32957003253：根测试 368/368，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | `main@3dfb0a36` 的 offline run 32932614962 与 pilot run 32932614805 成功；最近 production run 32930473976 也成功；334 项 main root tests、51 项 pilot offline contracts + 1 项真实 PostgreSQL contract、18 项 production contracts + 真实 Compose E2E 均通过 |
+| 自动化测试 | 已验证 | `main@c65ff65c` 的 offline run 32957003253、pilot run 32957003191 与 production run 32957003204 均成功；368 项 root tests、51 项 pilot offline contracts + 1 项真实 PostgreSQL contract、18 项 production contracts + 真实 Compose E2E 均通过 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
 | Provider 适配 | 分层验证 | Kimi 中国区固定 Models API preflight 已实现并通过 MockTransport 离线测试；candidate v5 锁定后的一次独立授权 metadata GET 已 verified，但不进入 candidate。Kimi Chat/通用在线入口均关闭。Anthropic official preflight 曾用错误的 CCTK token 单次返回 403，0 model tokens；CCTK 路线已放弃 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
@@ -25,13 +25,13 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | Completion Telemetry v2 candidate | 已进入 main 并通过 clean CI，未在线运行 | PR #11；四类受控 completion source、legacy coverage、v1/v2 双 telemetry digest retention；commitment `1f6ac18e…e5ce5` 不继承 v1 结果 |
 | Eval v2 public candidate v3（历史） | 已进入 main 并通过 clean CI，未在线运行 | commitment `22c985e9…b2a9`、predecessor `1f6ac18e…e5ce5`；文件与 commitment 保持不变 |
 | Eval v2 public candidate v4 | 已进入 main，未在线运行 | commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；绑定 Models preflight 与 generic fail-closed，public/pilot Provider 仍为 DeepSeek，历史结果不继承 |
-| Eval v2 public candidate v5 | PR #21 的 pre-call frozen snapshot，未运行模型评测 | commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`；绑定 Kimi 中国区 Models preflight 与 synthetic-only 数据边界，public/pilot Provider 仍为 DeepSeek；post-lock metadata receipt 与历史结果均不继承 |
+| Eval v2 public candidate v5 | 已随 PR #21 进入 `main@c65ff65c`，未运行模型评测 | pre-call commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`；public/pilot Provider 仍为 DeepSeek，post-lock metadata receipt 与历史结果均不继承；[main 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md) |
 | Eval v2 private custodian kit v1.1 | 已进入 main 并通过 clean CI；真实 private release 仍 fail-closed | PR #14；不同 Ed25519 角色、外部 anchors、两阶段 ledger、预承诺 denominator/budget 与 aggregate-only verifier；private 0/50、Provider 1/2，仍为 `design_only / not_authorized` |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
-| External researcher pilot staging | 历史 main 与 PR #21 successor 证据分开 | `main@3dfb0a36` 的历史 CI 不包含 candidate v5/v6；PR #21 implementation head `ca0e0380…` 的 4 条 checks 成功，successor v6 pack 仍使用 DeepSeek且未在线运行；PR disposition 与 current-head checks 必须从 GitHub 实时核验，历史 v1–v5 packs/reviews不改 |
+| External researcher pilot staging | Candidate v5/v6 已由 clean main 验证，仍无在线 Pilot | `main@c65ff65c` pilot run 32957003191 通过 51 项 offline contracts、1 项真实 PostgreSQL contract 与无 Provider secret Compose；v6 pack 仍使用 DeepSeek且未在线运行，历史 v1–v5 packs/reviews不改；[main 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md) |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
-离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@3dfb0a36` run 32932614962 为 50/50、21/21、`phase5-ci-v1=valid`。PR #19 与 candidate v4 的 clean-main 证据见 [Anthropic Models preflight main CI 快照](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)；PR #21 的 successor v5 不继承 v4、历史结果或 post-lock Kimi receipt。
+离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@c65ff65c` run 32957003253 为 50/50、21/21、`phase5-ci-v1=valid`。PR #21 与 candidate v5 的 clean-main 证据见 [Kimi Models preflight main CI 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md)；v5 不继承 v4、历史结果或 post-lock Kimi receipt。
 
 ## 一键离线演示
 
@@ -465,9 +465,11 @@ GitHub Actions 当前有三条独立 workflow。
   campaign 环境持久化、audit chain 与 task-pack integrity；
 - 构建并启动 offline API Compose，验证页面与 readiness 后无 `down -v` 退出。
 
-`main@3dfb0a36` 的 runs 32932614962 与 32932614805 分别验证 offline root gate 和 pilot
-PostgreSQL/Compose；该文档-only merge 未触发 production path，最近 production run
-32930473976 继续成功。PR #19 lineage 的长期审计见
+`main@c65ff65c` 的 runs 32957003253、32957003191 与 32957003204 分别验证 offline root
+gate、pilot PostgreSQL/Compose 和 production PostgreSQL/MinIO/OTel E2E。PR #21 lineage
+的长期审计见
+[Kimi Models preflight main CI 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md)；
+PR #19 lineage 继续见
 [Anthropic Models preflight main CI 快照](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
 较早 PR #15/#16 与 candidate v3 的 main lineage 继续保留在
 [Anthropic offline adapter main CI 快照](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)。

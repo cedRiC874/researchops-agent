@@ -151,7 +151,9 @@ One separately authorized request completed after candidate v5 was locked:
 - model token calls `0`; token usage and cost `null`.
 
 The one-time authorization is consumed. The request must not be retried; any new metadata request needs
-new explicit authorization. The redacted observation is recorded in the
+new explicit authorization. The redacted observation, merge provenance and clean-main boundaries are
+recorded in the
+[Kimi Models preflight main CI snapshot](evidence/kimi-models-preflight-main-ci-v1/README.md) and the
 [PR #21 comment](https://github.com/cedRiC874/researchops-agent/pull/21#issuecomment-5423475486).
 No raw request ID or request-ID hash is reproduced here.
 
@@ -168,7 +170,7 @@ tool schema or historical evidence.
 
 The Models preflight implementation is bound to successor candidate v5, with predecessor exactly
 candidate v4, new contract hashes and `prior_results_inherited=false`. Candidate v4 remains unchanged.
-Candidate v5 commitment is
+Candidate v5 entered `main@c65ff65c` through regular-merged PR #21. Its commitment is
 `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`; supervised successor v6
 continues to execute only DeepSeek and has not run online.
 The post-lock Models receipt does not modify this commitment, inherit into v5/v6 or create a model-
@@ -181,9 +183,9 @@ register Kimi or enable non-synthetic private evaluation.
 
 ## Gates
 
-1. Candidate v5 and its successor pilot pack passed PR #21 implementation-head clean checks; no Chat
-   Completions adapter is enabled. Verify PR disposition and current-head checks on GitHub rather than
-   treating this pre-merge snapshot as main evidence.
+1. Candidate v5 and its successor pilot pack passed PR #21 and `main@c65ff65c` clean checks; no Chat
+   Completions adapter is enabled. The exact merge and three final main runs are frozen in the
+   [main CI snapshot](evidence/kimi-models-preflight-main-ci-v1/README.md).
 2. The separately authorized zero-generation-token metadata request completed successfully after the
    lock. Its authorization is consumed and it remains non-authorizing. Do not retry it; a new request
    requires new explicit authorization.
