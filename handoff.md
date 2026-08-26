@@ -7,10 +7,10 @@
 ## 最新 main / candidate v5 / supervised 状态
 
 - GitHub `main` 为 `3dfb0a367b51f45656cbc315989a85f75341a0f7`；PR #20 已 regular merge，合并后的 main runs `32932614962`（offline）与 `32932614805`（pilot）均为 `success`。该文档-only merge 未触发 production path，最近 production run `32930473976` 继续成功。
-- 本地 successor candidate v5 commitment 为 `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`，predecessor v4 为 `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`；`prior_results_inherited=false`，public Provider 仍为 DeepSeek，完整 campaign 仍为 `design_only`。
+- PR #21 implementation head `ca0e0380223c450eaeb4d5a9c8a96bdd8084240d` 的 4 条 checks 均为 `success`；PR disposition 与 current-head checks 必须从 GitHub 实时核验，本文件不冒充 post-merge main 证据。Candidate v5 commitment 为 `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`，predecessor v4 为 `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`；它是 pre-call snapshot，`prior_results_inherited=false`，public Provider 仍为 DeepSeek，完整 campaign 仍为 `design_only`。
 - 本地实现 commit `329a6dc…` 与 PR #16 远端 head `7079af08…` 的 tree 均为 `710ef581f2e1355e33d9af135325468b4db1c095`；commit SHA 不同来自 Git Data API 发布，不是文件内容漂移。最终 merge tree 另含 PR #15，不能与 PR head tree 混为一谈。
 - Anthropic frozen contract 仍为 offline-only；post-lock 一次 official-origin metadata 尝试使用了 CCTK token并返回 `403 / network_calls=1 / model_token_calls=0`，不证明官方 Anthropic或CCTK可用性。CCTK 路线已放弃，generic Anthropic online 入口继续 fail closed。
-- Kimi 中国区 fixed-origin Models-list preflight 已实现并只用 MockTransport 离线验证，状态为 `implemented_offline_tested_not_run`；固定 `provider_id=moonshot_kimi`、`api.moonshot.cn`、`MOONSHOT_API_KEY` 与 exact `kimi-k3`。Chat/Phase 6/self-pilot/Web/public-runner/pilot 入口均关闭，`campaign_registered=false`、`online_calls_performed=false`、`model_quality_claim_allowed=false`。
+- Kimi 中国区 fixed-origin Models-list preflight 在 v5 锁定时为 `implemented_offline_tested_not_run`。锁定后的一次独立授权 GET 于 `2026-08-26T09:41:49.967Z` verified：HTTP 200、attempts/network calls `1/1`、requested/returned `kimi-k3`、认证与 exact visibility true、0 model tokens、cost null。该 receipt 不进入 v5；一次性授权已消耗，不得重试，任何新 request 需新授权。Chat/Responses/tools/usage/cost semantics/质量/注册/private 均未授权；Provider 仍 1/2，private 仍 0/50。
 - 历史 v1/v2/v3/v4 candidates、supervised v1–v5 packs/reviews 与既有 evidence 均保持不变；successor supervised v6 pack 绑定 v5，沿用 v5 的六题/翻译/DeepSeek Provider，未在线运行或继承历史结果。
 - Campaign `EXT-PILOT-01A605022746D203` 已于 2026-08-25 完成，绑定 candidate `1f6ac18e…e5ce5`、v3 pack file SHA `90e81bbc…8346`、deployment image `sha256:70581518…3dc5c`。
 - 聚合 lifecycle：1 completed、0 withdrawn；6/6 terminal，4 completed + feedback，2 excluded technical failures；operator independence 未 adjudicate，不主张新独立参与者增量。
@@ -37,8 +37,8 @@
 
 - 本地路径：`C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent`
 - GitHub：https://github.com/cedRiC874/researchops-agent
-- 当前实现分支：`codex/kimi-provider-preflight`；其基线 tree 与
-  `main@3dfb0a367b51f45656cbc315989a85f75341a0f7` 相同。
+- 当前 PR 分支：`codex/kimi-provider-preflight-pr`；PR #21 head 为
+  `ca0e0380223c450eaeb4d5a9c8a96bdd8084240d`，base 为 `main@3dfb0a367b51f45656cbc315989a85f75341a0f7`。
 - GitHub `main`：`3dfb0a367b51f45656cbc315989a85f75341a0f7`；PR #11–#20 已 regular merge。
 - 版本：`0.2.0`
 - Annotated tag：`phase6-deepseek-v1`，仍指向 `80ad08e…`，不是当前 `main`
@@ -60,14 +60,17 @@ PR #5 已用 regular merge 合并 pilot staging 两个提交：`ce40353`（实�
 production run `32585792929`。长期 pilot CI 证据位于
 `docs/evidence/pilot-staging-linux-ci-main-v1/`。
 
-本地 successor 实现边界为固定 Kimi 中国区 Models API metadata preflight、generic Kimi
+PR #21 implementation head `ca0e0380…` 的 successor 边界为固定 Kimi 中国区 Models API
+metadata preflight、generic Kimi
 online 入口 fail closed、candidate v5 与 supervised v6 pack。它不改 prompt、scorer、
 tool schema、public tasks、campaign 注册、private授权、旧 candidates/packs/reviews 或历史
-evidence，也不执行任何 Kimi 请求。PR #19 的 Anthropic candidate v4/supervised v5 实现
-继续作为历史 main lineage 保留。
+evidence。Candidate 构建与 PR checks 未执行 Kimi 请求；之后的独立 post-lock metadata GET
+是单独事实，不进入 candidate。PR #19 的 Anthropic candidate v4/supervised v5 实现继续作为
+历史 main lineage 保留。
 
-Kimi preflight 复用精确锁定的 `httpx==0.28.1`，所有请求测试均使用 MockTransport；没有读取
-任何 API Key、运行付费 Provider或使用 repo-local/已运行公开题调参。
+Kimi preflight 复用精确锁定的 `httpx==0.28.1`，所有 PR 测试均使用 MockTransport；post-lock
+metadata request 使用用户本机 Key，但未打印、记录或提交 Key，也未运行模型或使用
+repo-local/已运行公开题调参。
 原有用户文件均已保留。PR #4 的本地提交边界曾为：
 
 ```text
@@ -92,9 +95,9 @@ v0.2.0，尚未为 Eval v2 或 pilot staging 新建 Release。
 
 当前后续门禁顺序：
 
-1. Kimi Models-list preflight 已实现但未 live 运行；任何真实 metadata request 仍需用户在
-   本机配置中国区 `MOONSHOT_API_KEY` 并提供一次性授权。成功只证明当时的账号认证/exact
-   `kimi-k3` 可见，不授权 Chat/tools/pilot。
+1. Kimi Models-list preflight 已完成一次 post-lock metadata verification；一次性授权已消耗，
+   不得重试。任何新 metadata request 都必须重新取得用户明确授权。现有 receipt 只证明当时
+   的账号认证/exact `kimi-k3` 可见，不授权 Chat/tools/pilot。
 2. 2026-08-31 后须重新审阅生效的 Kimi 条款和价格；只有用户明确提供封顶预算、请求/token
    上限和独立一次性授权后，才运行预承诺的小规模
    tool/usage/error-semantics pilot；结果不得用于调 prompt/scorer/tool/candidate，不并入既有
@@ -360,10 +363,10 @@ latest production run 32930473976: 18 contracts + real PostgreSQL/MinIO/OTel E2E
 ```
 
 两条 PR #20 后 main runs 绑定精确 head SHA `3dfb0a36…` 并为 `completed / success`；该
-docs-only merge 未触发 production workflow。当前本地 successor 另通过 candidate v5 verifier
-`valid / network_calls=0`、368 项 Kimi scope root tests（1 项平台 skip）、Kimi preflight
-MockTransport tests 与 pilot v6 offline contracts（1 项显式 PostgreSQL URL 条件 skip）。
-这些只证明离线合同与相邻服务回归，不是 Kimi Chat/tools/usage/cost/质量证据。PR #19 长期快照见
+docs-only merge 未触发 production workflow。PR #21 implementation head `ca0e0380…` 的两条 offline checks、
+pilot check 与 production check 共 4 条均成功；candidate verifier 仍报告 pre-call snapshot
+`valid / network_calls=0`。Post-lock metadata receipt 是独立 observation，不是 PR 测试或
+candidate 成绩。这些证据都不是 Kimi Chat/tools/usage/cost semantics/质量证据。PR #19 长期快照见
 [docs/evidence/anthropic-models-preflight-main-ci-v1/](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
 
 重要 P1 历史事实：run 32568017243 的 workflow conclusion 虽为 `success`，其新重建
@@ -582,12 +585,12 @@ $env:PYTHONPATH = "src"
 
 ## 13. 新会话接手时的推荐第一项工作
 
-如果用户没有指定新的任务，先说明 Kimi 中国区 Models preflight 已实现并绑定 candidate v5，
-但仍未 live preflight、未调用模型、未注册。随后按以下门禁询问：
+如果用户没有指定新的任务，先说明 Kimi 中国区 Models preflight 已绑定 pre-call candidate
+v5，且 post-lock metadata GET 已 verified；它没有调用模型，也未注册 Provider。随后按以下
+门禁继续：
 
-1. 任何真实 Models metadata preflight 都必须由用户在本机配置中国区
-   `MOONSHOT_API_KEY` 并提供一次性联网授权；它只验证认证和 exact `kimi-k3` visibility，
-   成功 receipt 也不授权 Chat/tools；
+1. 已有 metadata authorization 已消耗，不得重试；任何新 request 都需要新的明确授权。
+   现有 receipt 只验证当时认证和 exact `kimi-k3` visibility，不授权 Chat/tools；
 2. 2026-08-31 后先重新审阅 Kimi 生效条款；只有用户明确提供封顶预算、请求/token 上限和
    独立一次性授权后，才运行预承诺的小规模
    tool/usage/error-semantics pilot；不得用结果调 prompt/scorer/tool/candidate，不并入既有

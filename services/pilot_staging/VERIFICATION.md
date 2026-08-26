@@ -3,9 +3,16 @@
 > Current working-tree note (2026-08-26): candidate v5 commitment
 > `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc` and
 > `pilot_pack.supervised_v6.json` are locally bound while keeping the pilot Provider as DeepSeek.
-> Kimi Models preflight is `implemented_offline_tested_not_run`; live Kimi preflight and Kimi
-> online/model calls remain false, and no predecessor result is inherited. This successor state
-> has offline verification only and is not described here as merged main or participant evidence.
+> Kimi Models preflight was `implemented_offline_tested_not_run` at candidate lock, so the frozen
+> candidate/pilot snapshot retains `live_models_preflight_performed=false`. After that lock, one
+> separately authorized metadata GET completed at `2026-08-26T09:41:49.967Z`: HTTP 200,
+> attempts/network calls `1/1`, requested/returned model `kimi-k3`, exact visibility true, zero model
+> tokens and cost `null`. The receipt is not inherited by candidate v5 or pilot v6. It does not
+> authorize Chat, tools, model quality, Provider registration or private evaluation. The one-time
+> authorization is consumed and the request must not be retried; any new request requires fresh
+> explicit authorization. No Kimi Chat/tool/model call or predecessor result exists. The successor
+> candidate/pilot state itself has offline verification only and is not described here as merged main
+> or participant evidence.
 
 > Historical PR #19 note: candidate v4 commitment
 > `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` and historical
@@ -73,8 +80,11 @@ PR #11 已 regular merge 至
 - Active supervised pack: `pilot_pack.supervised_v6.json`
 - Historical v4-bound pack: `pilot_pack.supervised_v5.json`
 - Kimi Models preflight: `implemented_offline_tested_not_run`
-- Kimi live preflight performed: `false`
-- Kimi online/model calls performed: `false`
+- Kimi live preflight recorded in candidate/pilot v6 snapshot: `false`
+- Separate post-lock metadata observation: `verified / HTTP 200 / attempts 1 / network 1 /
+  exact kimi-k3 visible / model tokens 0 / cost null`
+- Post-lock receipt inherited or authorizing: `false`
+- Kimi Chat/tool/model calls performed: `false`
 - Anthropic Models preflight: `implemented_offline_tested_not_run`
 - Public/pilot execution Provider: still `deepseek / deepseek-v4-flash`
 - Historical v1 commitment:

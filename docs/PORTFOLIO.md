@@ -1,6 +1,6 @@
 # ResearchOps Agent：作品集展示与面试演示手册
 
-> 状态快照：2026-08-26。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行。candidate v2/v3/v4/v5 均无新在线成绩且不继承 v1；本地 successor v5 绑定 Kimi 中国区 Models preflight，但仅有无网络 fixture 证据，尚未 live preflight、Chat、注册或质量评测。OpenAI API 当前不可用，不影响既有 DeepSeek 与离线证据。
+> 状态快照：2026-08-26。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行。candidate v2/v3/v4/v5 均无新模型成绩且不继承 v1；PR #21 candidate v5 是 Kimi Models preflight 的 pre-call snapshot。Post-lock 一次 metadata GET verified 认证与 exact model visibility，但不回填 v5，也未验证或授权 Chat、tools、usage/cost semantics、质量、注册或 private。OpenAI API 当前不可用，不影响既有 DeepSeek 与离线证据。
 
 ## 先说清楚：这个项目现在证明了什么
 
@@ -15,7 +15,7 @@
 | Eval v2 public candidate v1（历史） | Provider system 68/93；三轮 23/31、22/31、23/31；fault harness 27/27 | 锁定 `DeepSeek + 控制面` 在公开任务上的重复表现、usage、成本与失败分层 | 模型单体规划准确率、private holdout、跨 Provider或未知生产泛化 |
 | Completion Telemetry v2 | 新 commitment `1f6ac18e…e5ce5`；离线 root/pilot/PostgreSQL 合同通过；0 次 Provider 调用 | 可区分安全 completion 分支并显式报告 legacy unknown coverage | 因果根因、在线模型质量、继承 v1 68/93 或未知生产泛化 |
 | Candidate v4 / Anthropic Models preflight | 已随 PR #19 进入 `main@77911226`；commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；冻结 contract 仅有离线证据，post-lock 错误 CCTK token 尝试为 403/0 model tokens | 固定 Models metadata request、strict receipt 与 generic fail-closed 可由 clean-main fixtures 验证 | live preflight 已验证、官方 Anthropic Key 可用、已授权 pilot、已注册第二 Provider、成本或质量 |
-| Candidate v5 / Kimi 中国区 Models preflight | 本地 successor commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`；fixed-origin Models-list preflight `implemented_offline_tested_not_run`，历史 candidates/packs/evidence 未改 | 一次 bodyless GET、Bearer credential 隔离、exact `kimi-k3` visibility 与 401/403/404/429 taxonomy 可由 fixtures 验证 | 已进行 live preflight、Chat/tools/usage/cost/质量、non-synthetic/private、已注册第二 Provider |
+| Candidate v5 / Kimi 中国区 Models preflight | PR #21 pre-call snapshot commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`；post-lock metadata receipt 不继承 | Fixtures 验证 bodyless GET、credential 隔离与错误 taxonomy；一次 post-lock GET 为 HTTP 200、1/1 call、exact `kimi-k3` visible、0 model tokens、cost null | Chat/Responses/tools、usage/cost semantics、质量、non-synthetic/private、已注册第二 Provider |
 | Production-like slice | 当前 main run 32930473976：18/18 + 真实单机 Compose E2E | FastAPI/worker、PG lease queue、MinIO artifact、event hash chain、幂等与 API→worker Trace ID 的真实纵切 | HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量 |
 
 PR #15/#16、同 tree 发布关系和三个最终 main checks 的长期证据见
@@ -33,11 +33,15 @@ PR #19、candidate v4 与 `main@77911226` 三条最终 checks 的长期证据见
     deepseek_development_status = passed_16_of_16
     deepseek_repo_local_holdout_status = passed_4_of_4
     deepseek_cost_status = unavailable
-    eval_v2_candidate_v5_status = candidate_locked_offline_only
+    eval_v2_candidate_v5_status = candidate_locked_pre_call_offline_snapshot
     anthropic_models_preflight_status = postlock_failed_403_wrong_gateway_credential
     anthropic_campaign_status = planned_not_registered
     anthropic_model_calls = 0
-    kimi_models_preflight_status = implemented_offline_tested_not_run
+    kimi_models_preflight_contract_status = implemented_offline_tested_not_run
+    kimi_models_preflight_postlock_status = verified_metadata_only
+    kimi_models_preflight_postlock_network_calls = 1
+    kimi_model_token_calls = 0
+    kimi_cost_status = unavailable_null
     kimi_chat_status = disabled_not_implemented
     kimi_campaign_status = planned_not_registered
     production_slice_ci_status = passed_main_linux_compose_e2e

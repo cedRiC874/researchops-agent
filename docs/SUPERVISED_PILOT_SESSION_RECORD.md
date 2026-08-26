@@ -39,6 +39,9 @@ kimi_online_run_performed=false
 prior_pilot_results_inherited=false
 ```
 
+上述 Kimi 字段只描述本 candidate/Pilot snapshot，不是全局 Provider 活动日志。Candidate
+锁定后的一次独立 metadata verification 不回填本记录，也不构成 Kimi model/pilot run 或授权。
+
 ## B. 场次前确认
 
 - [ ] 招募资格已由单独检查表核验。

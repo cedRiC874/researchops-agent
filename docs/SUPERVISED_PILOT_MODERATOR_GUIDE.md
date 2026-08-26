@@ -18,8 +18,10 @@ professional_correctness_assessed=false
 当前 `pilot_pack.supervised_v6.json` 绑定 Kimi Models-preflight successor v5 candidate，
 原样沿用 historical `pilot_pack.supervised_v5.json` 的 6 道公开任务、翻译与 DeepSeek
 Provider，但不继承任何旧参与者或结果。历史 v5 pack 继续绑定 predecessor v4
-candidate，不得改写。Kimi preflight 为 `implemented_offline_tested_not_run`；未 live 预检、
-未在线运行，Kimi 未注册为 pilot Provider。
+candidate，不得改写。Candidate/Pilot snapshot 中 Kimi preflight 为
+`implemented_offline_tested_not_run`，live preflight/online model run 字段为 `false`；另有一次
+post-lock metadata verification，但它不回填本 snapshot、不授权在线 pilot，Kimi 仍未注册为
+pilot Provider。
 目标人数固定为 1；不得跨 campaign 聚合，也不得据此声称模型质量、外部验证或未知分布
 泛化。当前尚未授权或执行该 pack 的在线运行。
 
