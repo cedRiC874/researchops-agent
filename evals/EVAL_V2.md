@@ -1,6 +1,6 @@
 # Eval v2：外部留出、多数据集与重复运行
 
-> 当前状态：完整 campaign 仍为 `design_only`；DeepSeek v1 public-regression candidate 已于 2026-08-21 一次性运行完成。PR #21 已 regular merge 至 `main@c65ff65c`，v5 仍是 Kimi Models preflight 的 pre-call frozen snapshot且不继承历史或 post-lock receipt。锁定后一次 metadata GET 只 verified 认证与 exact model visibility；Chat/tools/usage/cost semantics、质量、注册和 private 均未验证或授权。本页不代表 private holdout、第二 Provider 或外部复核已经完成。
+> 当前状态：完整 campaign 仍为 `design_only`；DeepSeek v1 public-regression candidate 已于 2026-08-21 一次性运行完成。PR-A 保留到 Candidate v7 historical snapshot：Chat/Pilot v2 是调用前离线锁定合同，随后一次独立授权在首个 required-tool 请求上 fail-closed；该失败和已消费授权均不回填 Candidate v7。历史 v6 尝试也已消费且失败。Chat、usage、tool、error-semantics compatibility、质量、注册和 private 均未验证或授权。本页不代表 private holdout、第二 Provider 或外部复核已经完成。
 
 Eval v2 的目标是解决 Phase 6 小样本、repo-local holdout 可见、单 Provider 和单数据集证据不足的问题。它不会覆盖或重新解释现有 Phase 5/6 成绩，也不会再次使用当前 4 题 holdout 调整 prompt。
 
@@ -155,14 +155,23 @@ Public-regression candidate 使用三份预承诺 seed/task order；三次排列
 
 ## 3.4 Public-regression candidate lock
 
-历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json)、[`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json)、[`public_regression_candidate_v3.json`](v2/public_regression_candidate_v3.json) 与 [`public_regression_candidate_v4.json`](v2/public_regression_candidate_v4.json) 分别保留 v1 一次性结果、Completion Telemetry v2、Anthropic offline-adapter 与 Anthropic Models preflight commitments。当前 [`public_regression_candidate_v5.json`](v2/public_regression_candidate_v5.json) 使用 `candidate_locked`，不是完整 campaign 的 `frozen`。它继续把 public-run Provider 固定为 DeepSeek，同时绑定 Kimi 中国区 fixed-origin Models preflight/Provider contracts、全部 predecessor contracts、campaign planned slot、source、prompt/scorer/tool、Completion Telemetry、40 题 split/三次顺序、public corpus/schema、dataset manifest、internal review、`pyproject.toml` 与 `requirements.lock`。Kimi Chat/通用在线入口仍关闭，数据边界为 synthetic-only/private denied。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
+历史 [`public_regression_candidate.json`](v2/public_regression_candidate.json)、[`public_regression_candidate_v2.json`](v2/public_regression_candidate_v2.json)、[`public_regression_candidate_v3.json`](v2/public_regression_candidate_v3.json)、[`public_regression_candidate_v4.json`](v2/public_regression_candidate_v4.json) 与 [`public_regression_candidate_v5.json`](v2/public_regression_candidate_v5.json) 分别保留 v1 一次性结果、Completion Telemetry v2、Anthropic offline-adapter、Anthropic Models preflight 与 Kimi Models preflight commitments。PR-A 新增的 latest historical snapshot [`public_regression_candidate_v7.json`](v2/public_regression_candidate_v7.json) 使用 `candidate_locked`，predecessor 为 [`public_regression_candidate_v6.json`](v2/public_regression_candidate_v6.json)，验证结果固定标记 `historical_snapshot_only=true`，且不是完整 campaign 的 `frozen`。V7 继续把 public-run Provider 固定为 DeepSeek，同时以独立 synthetic-only 配置绑定 Kimi Chat/Pilot v2、三场景合同和严格本地门禁。V6/V7 post-lock observations、授权及 Provider 输出均不继承。完整 campaign 仍为 `design_only`，`full_campaign_frozen=false`、`private_holdout_access_authorized=false`、`model_quality_claim_allowed=false`、`prior_results_inherited=false`。
 
 ```powershell
 .\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-public-freeze `
-  --verify-environment
+  --candidate evals/v2/public_regression_candidate_v7.json
+.\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-environment
 ```
 
-`requirements.lock` 的 82 个版本全部精确 pin；`openai-agents[litellm]`、`litellm==1.83.0`、`httpx==0.28.1`、`httpcore==1.0.9`、`h11==0.16.0` 与固定 CA bundle `certifi==2026.7.22` 均显式锁定，但仍没有 wheel/sdist artifact hashes。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；v2 `1f6ac18e…e5ce5`、v3 `22c985e9…b2a9`、v4 `1741c2b0…f6399c7` 与 v5 `105b7def…5165dffc` 均没有继承历史 68/93 或产生新模型成绩。V5 合同保持 `implemented_offline_tested_not_run`；post-lock Kimi metadata receipt 仅证明当时认证与 exact model visibility，不进入 candidate。PR #21 和 `main@c65ff65c` 的工程证据见 [Kimi main CI 快照](../docs/evidence/kimi-models-preflight-main-ci-v1/README.md)。Kimi Chat/通用在线入口关闭；Anthropic frozen contract 仍是 offline-only，post-lock 错误 CCTK token 的 403 metadata 尝试不构成 Provider 成绩。完整 campaign 仍非 frozen。
+第一条只验证 v7 historical artifact，固定返回 `historical_snapshot_only=true` 且不能接受
+`--verify-environment`；第二条独立验证 `requirements.lock` 与当前已安装环境，不验证、不授权
+任何 Candidate。Public online runner 与 Pilot Staging 都拒绝 historical snapshot。Active Pilot
+配置保持 Candidate v5 / Pack6；由于当前源码已超出 v5 source bundle，在线执行继续在网络前
+fail-closed，直到另行锁定 current successor。
+
+`requirements.lock` 的 82 个版本全部精确 pin；`openai-agents[litellm]`、`litellm==1.83.0`、`httpx==0.28.1`、`httpcore==1.0.9`、`h11==0.16.0` 与固定 CA bundle `certifi==2026.7.22` 均显式锁定，但仍没有 wheel/sdist artifact hashes。历史 commitment `7744770a…f0d11` 已完成一次性 public-regression；v2 `1f6ac18e…e5ce5`、v3 `22c985e9…b2a9`、v4 `1741c2b0…f6399c7`、v5 `105b7def…5165dffc`、v6 `57d0c1b0…f6f5641` 与 v7 `2d0b9952…d223d5` 均没有继承历史 68/93。V5 post-lock metadata receipt 只证明当时认证与 exact model visibility；v6/v7 post-lock failures 只证明各自冻结合同下的一次本地 fail-closed observation。三者都不进入 candidate，不构成 Kimi compatibility、质量或注册成绩。PR #21 和 `main@c65ff65c` 的既有工程证据见 [Kimi main CI 快照](../docs/evidence/kimi-models-preflight-main-ci-v1/README.md)。完整 campaign 仍非 frozen。
+
+V6/V7 在线 CLI 均永久禁用；v7 的只读 artifact verifier 保留。任何后续 Kimi 调用都需要一个版本化 successor later than v7、fresh legal/pricing review、全新授权 ID/expiry、预算与明确一次性授权。Kimi 仍不是已注册第二 Provider。
 
 原子 artifact writer 只写脱敏 `eval_v2_report.json`、`eval_v2_summary.md`、可选 repetition aggregation 和带 SHA-256/size/source-tree hash 的 manifest。目标必须是 `artifacts/` 下不存在的新目录；先在同父目录 staging 中生成并复核，再原子 rename。路径、API Key/Authorization、final output、raw rows、sample values 和 traceback 字段均被拒绝。所有未冻结产物固定 `model_quality_claim_allowed=false`。
 
@@ -260,12 +269,12 @@ cross-check 未完成。`synthetic=false` release 固定拒绝；`check-private-
 - private holdout 0/50；
 - 已注册数据集 1/3，非 synthetic 0/3；
 - 已完成来源与哈希核验的外部数据集 3 个，但外部专家复核为 0/3；
-- 已注册 Provider 1/2；Anthropic adapter 保持 offline-only，Kimi candidate contract 保持 `implemented_offline_tested_not_run`；post-lock metadata verification 不构成注册，第二 Provider campaign slot 仍为 `planned`；
-- 历史 v1/v2/v3/v4 public candidates 保持可追溯；PR #21 v5 已进入 `main@c65ff65c`，但未运行模型评测或继承 post-lock receipt，完整 private campaign freeze 尚未生成；
+- 已注册 Provider 1/2；Anthropic adapter 保持 offline-only，Kimi Candidate v7 Chat/Pilot v2 锁定合同保持 `implemented_offline_tested_not_run`；metadata 与 v6/v7 post-lock observations 均不构成注册，第二 Provider campaign slot 仍为 `planned`；
+- 历史 v1–v7 public candidates 保持可追溯；Candidate v7 historical snapshot 不继承 post-lock failure、授权或历史结果，完整 private campaign freeze 尚未生成；
 - private corpus commitment 尚未提供；
 - 外部 golden review 和统计交叉检查尚未完成。
 
-因此当前可声称“Eval v2 设计合同、Completion Telemetry v2 与 Kimi Models preflight 的离线实现/校验、一次 non-authorizing Kimi metadata verification，以及历史一次性 DeepSeek v1 public candidate run 已完成”；不能把历史或 post-lock receipt 归给 v2–v5，也不能声称 Kimi Chat/tools/usage/cost semantics/质量或注册已验证、完整 Eval v2 campaign 已 frozen、已有 private holdout、跨 Provider 或未知生产泛化。
+因此当前可声称“Eval v2 设计合同、Completion Telemetry v2、Kimi Models preflight、Candidate v7 Chat/Pilot v2 离线合同、两次脱敏 post-lock failure evidence，以及历史一次性 DeepSeek v1 public candidate run 已完成”；不能把历史或 post-lock observations 归给 v2–v7，也不能声称 Kimi Chat/usage/tool/error compatibility、质量或注册已验证、完整 Eval v2 campaign 已 frozen、已有 private holdout、跨 Provider 或未知生产泛化。
 
 ## 9. 下一实现批次
 

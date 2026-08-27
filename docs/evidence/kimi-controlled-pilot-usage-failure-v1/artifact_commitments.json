@@ -1,0 +1,38 @@
+{
+  "schema_version": "kimi-controlled-pilot-artifact-commitments/1.0",
+  "public_evidence_id": "318f466b-db08-4d64-9c18-5a3375eea513",
+  "original_artifacts_published": false,
+  "original_artifacts_present_at_verification_utc": "2026-08-26T16:09:04.316Z",
+  "opaque_commitments": {
+    "receipt.json": {
+      "bytes": 4153,
+      "sha256": "1d71c8c92eedaddefd55296ea0b941e80cc0519663a72edf7441fd2f0fa02df5"
+    },
+    "checkpoint.json": {
+      "bytes": 3591,
+      "sha256": "4c1633fa4301774c0b0039b6db172065ff03ea4b4a4d7b3faaf4837e642c4c67"
+    },
+    "event_chain.jsonl": {
+      "bytes": 5691,
+      "sha256": "b4d31b3d0918b42f9c8d439d260b4a970799ff44c01bb4c00fa17db282fea5e3"
+    }
+  },
+  "event_chain": {
+    "event_count": 4,
+    "head_sha256": "559eab399fcb795dbb5c90495efe39ec90ff1a067df400f8cf2003b280e51f59"
+  },
+  "offline_verification": {
+    "projection_valid": true,
+    "hash_chain_recomputed_valid": true,
+    "artifact_sanitizer_valid": true,
+    "network_calls": 0
+  },
+  "publication_omissions": {
+    "authorization_identifier_or_hash": true,
+    "authorization_derived_bindings": true,
+    "auth_bound_attestation_hashes": true,
+    "raw_request_or_response": true,
+    "prompt_reasoning_or_tool_payload": true,
+    "path_email_account_project_or_participant_identifier": true
+  }
+}

@@ -2048,7 +2048,7 @@ def _validate_repository_state(project_root: Path) -> dict[str, Any]:
         )
         candidate = validate_public_regression_candidate(
             project_root=project_root,
-            candidate_path=project_root / "evals" / "v2" / "public_regression_candidate_v5.json",
+            candidate_path=project_root / "evals" / "v2" / "public_regression_candidate_v7.json",
             verify_environment=False,
         )
     except Exception as exc:
@@ -2060,6 +2060,7 @@ def _validate_repository_state(project_root: Path) -> dict[str, Any]:
         candidate["full_campaign_frozen"]
         or candidate["private_holdout_access_authorized"]
         or candidate["model_quality_claim_allowed"]
+        or candidate.get("historical_snapshot_only") is not True
     ):
         raise PrivateCustodianError(
             "private_public_candidate_boundary_invalid",
@@ -2078,6 +2079,8 @@ def readiness_status(project_root: Path) -> dict[str, Any]:
     ]
     freeze_hashes = campaign["freeze_policy"]["hashes"]
     request_gaps: list[str] = []
+    if validated["candidate"].get("historical_snapshot_only") is True:
+        request_gaps.append("historical_candidate_execution_forbidden")
     if campaign["status"] != "frozen":
         request_gaps.append("campaign_not_frozen")
     if private_split["registered_task_count"] < private_split["target_task_count"]:
@@ -2108,6 +2111,7 @@ def readiness_status(project_root: Path) -> dict[str, Any]:
         "public_candidate_commitment_sha256": validated["candidate"][
             "candidate_commitment_sha256"
         ],
+        "public_candidate_historical_snapshot_only": True,
         "public_candidate_full_campaign_frozen": False,
         "non_synthetic_release_supported": False,
         "model_quality_claim_allowed": False,

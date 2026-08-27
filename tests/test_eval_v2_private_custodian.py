@@ -685,10 +685,67 @@ class PrivateCustodianKitTests(unittest.TestCase):
         self.assertFalse(result["repository_private_content_scan_performed"])
         self.assertFalse(result["repository_private_content_absence_claimed"])
         self.assertEqual(status["campaign_status"], "design_only")
+        self.assertEqual(
+            status["public_candidate_commitment_sha256"],
+            "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5",
+        )
+        self.assertTrue(status["public_candidate_historical_snapshot_only"])
+        self.assertFalse(status["public_candidate_full_campaign_frozen"])
         self.assertFalse(status["private_request_allowed"])
+        self.assertIn(
+            "historical_candidate_execution_forbidden",
+            status["request_readiness_gaps"],
+        )
         self.assertIn("private_cases_below_target", status["request_readiness_gaps"])
         self.assertIn("provider_count_below_minimum", status["request_readiness_gaps"])
         self.assertEqual(result["network_calls"], 0)
+
+    def test_historical_candidate_remains_a_gap_when_all_governance_is_ready(self) -> None:
+        campaign = private.load_json_object(
+            REPO_ROOT / "evals" / "v2" / "campaign.json", "campaign"
+        )
+        campaign = deepcopy(campaign)
+        campaign["status"] = "frozen"
+        private_split = campaign["splits"]["private_holdout"]
+        private_split["registered_task_count"] = private_split["target_task_count"]
+        for provider in campaign["run_policy"]["providers"]:
+            provider["status"] = "registered"
+        campaign["private_holdout_policy"]["commitment_sha256"] = _sha(
+            "private-corpus"
+        )
+        campaign["external_review_policy"]["golden_review_status"] = "completed"
+        campaign["external_review_policy"]["statistical_crosscheck_status"] = (
+            "completed"
+        )
+        for name in campaign["freeze_policy"]["hashes"]:
+            campaign["freeze_policy"]["hashes"][name] = _sha(name)
+        validated = {
+            "candidate": {
+                "candidate_commitment_sha256": (
+                    "2d0b9952a556eed6982eac2b4e4d050e"
+                    "fb40f518551738e51ceaf671a1d223d5"
+                ),
+                "historical_snapshot_only": True,
+            }
+        }
+        with (
+            mock.patch.object(
+                private, "_validate_repository_state", return_value=validated
+            ),
+            mock.patch.object(private, "load_json_object", return_value=campaign),
+        ):
+            status = private.readiness_status(REPO_ROOT)
+
+        self.assertEqual(
+            status["request_readiness_gaps"],
+            ["historical_candidate_execution_forbidden"],
+        )
+        self.assertFalse(status["private_request_allowed"])
+        self.assertFalse(status["private_access_authorized"])
+        self.assertIn(
+            "historical_candidate_execution_forbidden",
+            status["access_readiness_gaps"],
+        )
 
     def test_valid_complete_and_stopped_synthetic_releases(self) -> None:
         for terminal_status in ("complete", "stopped"):

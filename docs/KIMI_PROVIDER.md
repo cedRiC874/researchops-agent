@@ -17,6 +17,82 @@ chat_completions_path=/v1/chat/completions
 default_model_id=kimi-k3
 ```
 
+## Frozen historical snapshot — candidate v7
+
+Candidate v7 freezes the official-documentation-driven Chat parser v2 and isolated controlled Pilot
+v2 at commitment
+`2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5`, with Candidate v6
+commitment `57d0c1b054367794fa08ec2dbdecdeb0c75bc4be2c45894b69db832a1f6f5641` as its immutable
+predecessor. Public-regression and supervised-pilot execution remain DeepSeek; Kimi remains an
+independent, unregistered synthetic compatibility configuration.
+
+Parser v2 requires a non-empty terminal choice with `finish_reason` and accepts documented usage at
+the top level, choice level, or both when reconciled. Core prompt/completion/total tokens are required;
+optional cache reporting cannot reduce the all-uncached conservative budget unless it is explicitly
+present. Empty-choices usage trailers, conflicting projections, unknown usage fields, duplicate
+terminal/DONE and post-terminal data remain fail-closed. The protocol binds the first-party Chat,
+migration and streaming documentation captures.
+
+Pilot v2 has an independent capability, receipt/event/checkpoint 2.0 schemas, verifier and
+`artifacts/kimi_controlled_pilot_v2` namespace. Candidate v7, Chat v2 and Pilot v2 commitments are
+bound at runtime before the Key loader can run; authorization IDs are checked against both v1 and v2
+local artifact namespaces. After the v7 lock, one separately authorized attempt failed closed during
+local response validation on the first required-tool request: one request/call, zero completed
+scenarios, zero trusted Provider tool calls, zero tool executions and zero usage observations. Actual
+tokens, bill and Provider latency remain unknown. No v6 result was inherited, and this observation is
+not inherited into Candidate v7 or Pack v8. See the
+[sanitized v7 failure evidence](evidence/kimi-controlled-pilot-v2-response-failure-v1/README.md).
+
+Candidate v7's one-time authorization is consumed; no further v7 online execution is authorized, and
+no online command is published. Both the v6 and v7 online commands are permanently tombstoned. The
+retained implementations are auditable snapshots, not permission to call them. See the
+[Candidate v7 / Pilot v2 runbook](KIMI_CONTROLLED_PILOT_V2_RUNBOOK.md),
+[Chat v2 contract](../evals/v2/kimi_chat_completions_contract_v2.json),
+[Pilot v2 contract](../evals/v2/kimi_controlled_pilot_contract_v2.json) and
+[runtime v7 contract](../evals/v2/kimi_runtime_candidate_v7_contract.json).
+
+`pilot_pack.supervised_v7.json` and `pilot_pack.supervised_v8.json` are immutable historical artifacts;
+neither is selected by the active Pilot Staging composition or invite path. Candidate v5 / Pack v6
+remain the configured active baseline, while current-source execution stays fail-closed until a
+separately locked current successor exists. The versioned
+[post-lock status overlay](evidence/kimi-historical-status-overlays-v1/README.md) binds both Pack/review
+hashes and records that the separate one-call observations occurred without being inherited into a
+Candidate, Pack, compatibility result or quality claim.
+
+## Historical candidate v6 and consumed post-lock attempt
+
+Candidate v6 freezes an independent, unregistered Kimi compatibility configuration at commitment
+`57d0c1b054367794fa08ec2dbdecdeb0c75bc4be2c45894b69db832a1f6f5641`. It keeps the Eval v2
+public-regression and supervised-pilot execution Provider as DeepSeek while binding the exact
+`moonshot_kimi / kimi-k3 / https://api.moonshot.cn / chat_completions / reasoning_effort=low`
+synthetic-only configuration and its resource limits.
+
+The fixed SSE Chat/tools adapter and three-scenario controlled pilot are implemented and covered by
+MockTransport. After Candidate v6 was locked, one separately authorized post-lock attempt stopped at
+the first response's usage-validation stage: one request/call, zero completed scenarios, zero trusted
+Provider tool calls and zero tool executions. Usage, actual token consumption, bill and Provider
+latency remain unknown; G4 is `planned_not_registered` and the consumed authorization cannot be
+retried. This observation is not inherited into Candidate v6 or Pilot Pack v7. See the
+[sanitized failure evidence](evidence/kimi-controlled-pilot-usage-failure-v1/README.md).
+
+An offline postmortem confirmed that the frozen parser's usage-only terminal-chunk assumption differs
+from the official documented same-chunk finish/usage example. Because no raw Provider body was saved,
+that independent contract mismatch is not a unique causal explanation for the observed
+`kimi_chat_usage_invalid`; the live root cause remains undetermined. Any future attempt requires a
+versioned successor later than v7, a fresh legal and Kimi K3 pricing review, a complete authorization
+window and entirely new one-time authority. The existing local caps remain 8 model requests, 40,000
+input tokens, 10,000 output tokens, 6 tool executions, 10 minutes and CNY 5; they do not guarantee the
+Provider bill.
+
+The historical runtime contract is
+[`evals/v2/kimi_runtime_candidate_v6_contract.json`](../evals/v2/kimi_runtime_candidate_v6_contract.json).
+It records `offline_ready_not_run`, zero online/model-token calls in the locked v6 snapshot, no campaign
+or registry registration, no private/non-synthetic support and no model-quality or compatibility claim.
+The consumed-run procedure is retained in the
+[controlled synthetic pilot runbook](KIMI_CONTROLLED_PILOT_RUNBOOK.md).
+
+## Historical candidate v5 metadata baseline
+
 Candidate v5 freezes the pre-call status `preflight_implemented_offline_tested_not_run`. The dedicated
 Models preflight CLI and MockTransport fixtures are implemented. After that lock, one separately
 authorized metadata request verified China-platform authentication and exact model visibility; the
@@ -111,10 +187,14 @@ References: [Open Platform model and price surface](https://platform.kimi.com/),
 
 The public pages reviewed on 2026-08-26 already displayed agreements updated on 2026-08-24 with a
 future effective date of 2026-08-31. Because that date had not arrived, this design does not treat the
-future-dated text as an already-effective promise. Legal, privacy, pricing and rate-limit pages must be
-reviewed again on or after 2026-08-31 and before any Chat Completions request or pilot. A Models-list
-metadata preflight sends no prompt and generates no model tokens, but remains separately authorized and
-non-authorizing.
+future-dated text as an already-effective promise. Before `2026-08-30T16:00:00Z`, G2a allowed only a
+separately authorized synthetic compatibility pilot whose fresh current-effective legal capture,
+preview delta review, Kimi K3 pricing capture and complete 600-second window all passed the locked
+local gates. The consumed v6/v7 attempts used that pre-effective branch. At or after the cutoff, G2a
+is invalid and the actually effective legal/privacy text must be captured and reviewed before any
+later Chat Completions request or pilot. Neither branch permits private or non-synthetic data. A
+Models-list metadata preflight sends no prompt and generates no model tokens, but remains separately
+authorized and non-authorizing.
 
 The platform supports project daily/monthly spend limits and TPM limits, but documents an enforcement
 delay of about ten minutes. Those controls are defense in depth only. A future harness must still
@@ -163,37 +243,33 @@ streaming, usage accounting, cost, availability, error semantics, model quality,
 registration or private evaluation. A pilot would require a separate Key, budget, request/token caps
 and one-time authorization.
 
-## Frozen campaign and future candidate boundary
+## Frozen campaign and candidate-lineage boundary
 
-Candidate v4 remains unchanged. The successor does not alter `evals/v2/campaign.json`, prompt, scorer,
-tool schema or historical evidence.
+Candidate v4 and v5 remain unchanged. Candidates v6 and v7 do not alter `evals/v2/campaign.json`, the
+public prompt, scorer, tool schema, scenario selection or historical evidence.
 
-The Models preflight implementation is bound to successor candidate v5, with predecessor exactly
-candidate v4, new contract hashes and `prior_results_inherited=false`. Candidate v4 remains unchanged.
-Candidate v5 entered `main@c65ff65c` through regular-merged PR #21. Its commitment is
-`105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`; supervised successor v6
-continues to execute only DeepSeek and has not run online.
-The post-lock Models receipt does not modify this commitment, inherit into v5/v6 or create a model-
-quality result.
-Any future Chat Completions adapter or other Kimi runtime change under `src/researchops/` requires a
-new successor candidate v6 or later and cannot inherit v5 or any historical result.
+Candidate v5 entered `main@c65ff65c` through regular-merged PR #21 at commitment
+`105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`. Candidate v6 succeeds v5;
+Candidate v7 succeeds v6 and is retained in PR-A as a historical snapshot. Every successor fixes
+`prior_results_inherited=false`; neither post-lock failure nor either consumed authorization is a
+candidate result. Any later Kimi runtime change requires a newly versioned successor later than v7.
 Public execution remains DeepSeek, Eval v2 remains `design_only`, registered Providers remain 1/2 and
 private remains 0/50. A Key, successful preflight or successful synthetic pilot cannot automatically
 register Kimi or enable non-synthetic private evaluation.
 
 ## Gates
 
-1. Candidate v5 and its successor pilot pack passed PR #21 and `main@c65ff65c` clean checks; no Chat
-   Completions adapter is enabled. The exact merge and three final main runs are frozen in the
+1. Candidate v5 and its successor pilot pack passed PR #21 and `main@c65ff65c` clean checks. The exact
+   merge and three final main runs are frozen in the
    [main CI snapshot](evidence/kimi-models-preflight-main-ci-v1/README.md).
 2. The separately authorized zero-generation-token metadata request completed successfully after the
    lock. Its authorization is consumed and it remains non-authorizing. Do not retry it; a new request
    requires new explicit authorization.
-3. Re-review the future-dated legal/privacy terms after they take effect and freeze a dated price and
-   rate-limit snapshot before any Chat Completions request.
-4. Only after a successful preflight and terms re-review, separately preregister and authorize a small synthetic-only
-   tool/usage/error-semantics pilot with hard local request, token and cost ceilings. Its cases and
-   results cannot be used to tune the frozen prompt or candidate.
+3. Candidate v6 and v7 each consumed one separate post-lock authorization and failed closed on the
+   first request. Neither may be retried, and both online commands are permanently disabled.
+4. Any future attempt requires a successor later than v7, fresh legal/pricing review and a new explicit
+   one-time authorization. The v6/v7 observations cannot tune the prompt, scorer, tool schema,
+   scenarios, candidate or task selection.
 5. Keep private and all non-synthetic release denied until written enterprise data protections,
    external expert review, independent R/SAS cross-check and actual external private-50 evaluation
    are complete.

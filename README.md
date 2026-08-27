@@ -8,7 +8,7 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 
 ## Evidence at a glance
 
-当前验证快照：2026-08-26。
+当前验证快照：2026-08-28。
 
 | 层 | 状态 | 可复核结果 |
 | --- | --- | --- |
@@ -19,16 +19,20 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
 | 自动化测试 | 已验证 | `main@c65ff65c` 的 offline run 32957003253、pilot run 32957003191 与 production run 32957003204 均成功；368 项 root tests、51 项 pilot offline contracts + 1 项真实 PostgreSQL contract、18 项 production contracts + 真实 Compose E2E 均通过 |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
-| Provider 适配 | 分层验证 | Kimi 中国区固定 Models API preflight 已实现并通过 MockTransport 离线测试；candidate v5 锁定后的一次独立授权 metadata GET 已 verified，但不进入 candidate。Kimi Chat/通用在线入口均关闭。Anthropic official preflight 曾用错误的 CCTK token 单次返回 403，0 model tokens；CCTK 路线已放弃 |
+| Provider 适配 | 分层验证 | Kimi v6 与 v7 两次独立 post-lock 尝试均在首请求 fail-closed，G4 均为 `planned_not_registered`；v7 为 1 call、0/3 场景、0 个可信解析出的 Provider tool calls、0 次 tool execution、0 usage observations，实际 tokens、账单与 Provider latency 未知。v6/v7 授权均已消费且不得重试，Kimi 仍未注册 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
 | Eval v2 public candidate v1（历史） | 一次性运行完成 | `DeepSeek + 锁定控制面` 68/93；三轮 23/31、22/31、23/31；fault harness 27/27；完整 campaign 仍为 design-only |
 | Completion Telemetry v2 candidate | 已进入 main 并通过 clean CI，未在线运行 | PR #11；四类受控 completion source、legacy coverage、v1/v2 双 telemetry digest retention；commitment `1f6ac18e…e5ce5` 不继承 v1 结果 |
 | Eval v2 public candidate v3（历史） | 已进入 main 并通过 clean CI，未在线运行 | commitment `22c985e9…b2a9`、predecessor `1f6ac18e…e5ce5`；文件与 commitment 保持不变 |
 | Eval v2 public candidate v4 | 已进入 main，未在线运行 | commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；绑定 Models preflight 与 generic fail-closed，public/pilot Provider 仍为 DeepSeek，历史结果不继承 |
 | Eval v2 public candidate v5 | 已随 PR #21 进入 `main@c65ff65c`，未运行模型评测 | pre-call commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`；public/pilot Provider 仍为 DeepSeek，post-lock metadata receipt 与历史结果均不继承；[main 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md) |
+| Eval v2 public candidate v6（历史） | 离线锁定；post-lock observation 失败但不回填 | commitment `57d0c1b0…f6f5641`、predecessor v5 `105b7def…5165dffc`；public-regression Provider 仍为 DeepSeek；旧在线命令已永久禁用；[历史运行手册](docs/KIMI_CONTROLLED_PILOT_RUNBOOK.md) |
+| Kimi Candidate v6 post-lock observation | `failed / planned_not_registered` | 独立一次性授权已消费；首请求 usage validation fail-closed，1 request/call、0/3 场景、0 个可信解析出的 Provider tool calls、0 次 tool execution、usage incomplete；实际 tokens、cost 与 Provider latency 未知；[脱敏证据](docs/evidence/kimi-controlled-pilot-usage-failure-v1/README.md) |
+| Eval v2 public candidate v7（历史调用前快照） | 调用前离线锁定；post-lock observation 失败但不回填 | commitment `2d0b9952…d223d5`、predecessor v6 `57d0c1b0…f6f5641`；绑定 Chat/Pilot v2；授权已消费，v7 在线 CLI 已永久禁用；public Provider 仍为 DeepSeek；[v2 历史运行手册](docs/KIMI_CONTROLLED_PILOT_V2_RUNBOOK.md) |
+| Kimi Candidate v7 post-lock observation | `failed / planned_not_registered` | 独立一次性授权已消费；首个 required-tool 请求在本地 response validation 阶段失败，1 request/call、0 个可信解析出的 Provider tool calls、0 次 tool execution、usage incomplete；raw payload 未保存，唯一根因、实际 tokens、cost 与 Provider latency 均未知；[脱敏证据](docs/evidence/kimi-controlled-pilot-v2-response-failure-v1/README.md) |
 | Eval v2 private custodian kit v1.1 | 已进入 main 并通过 clean CI；真实 private release 仍 fail-closed | PR #14；不同 Ed25519 角色、外部 anchors、两阶段 ledger、预承诺 denominator/budget 与 aggregate-only verifier；private 0/50、Provider 1/2，仍为 `design_only / not_authorized` |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
-| External researcher pilot staging | Candidate v5/v6 已由 clean main 验证，仍无在线 Pilot | `main@c65ff65c` pilot run 32957003191 通过 51 项 offline contracts、1 项真实 PostgreSQL contract 与无 Provider secret Compose；v6 pack 仍使用 DeepSeek且未在线运行，历史 v1–v5 packs/reviews不改；[main 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md) |
+| External researcher pilot staging | Candidate v5 / Pack v6 保持 active 基线，当前源码下在线执行 fail-closed | `pilot_pack.supervised_v6.json` 与 Candidate v5 commitment 保持 active 配置；新增 Candidate v6/Pack7 与 Candidate v7/Pack8 仅作历史 artifact。当前源码已超出 v5 source bundle，必须先锁定 current successor 才能启动在线 worker；[历史状态 overlay](docs/evidence/kimi-historical-status-overlays-v1/README.md) |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
 离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@c65ff65c` run 32957003253 为 50/50、21/21、`phase5-ci-v1=valid`。PR #21 与 candidate v5 的 clean-main 证据见 [Kimi Models preflight main CI 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md)；v5 不继承 v4、历史结果或 post-lock Kimi receipt。
@@ -279,8 +283,11 @@ Eval v2 新增独立 campaign contract 与公开 task schema，预注册 80 个 
 ```powershell
 .\.venv\Scripts\python.exe -m researchops.cli eval-v2-validate
 .\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-public-freeze `
-  --verify-environment
+  --candidate evals/v2/public_regression_candidate_v7.json
+.\.venv\Scripts\python.exe -m researchops.cli eval-v2-verify-environment
 ```
+
+Historical v7 校验与当前 dependency/environment 校验是两个独立门禁；前者不能授权在线执行。
 
 Public-regression 配置作为独立 `candidate_locked` 锁定，并未把完整 campaign 冒充为 frozen。历史 v1 commitment `7744770a…f0d11` 已一次性运行：Provider system 68/93（73.12%），三轮 23/31、22/31、23/31；deterministic fault harness 27/27，未归因模型、未合并进入模型分母。Completion Telemetry v2 commitment `1f6ac18e…e5ce5` 只完成离线合同验证，没有调用 Provider，`prior_results_inherited=false`。v1 结果属于对应的 `DeepSeek + 锁定控制面`，不能称为 LLM 规划准确率或未知生产集泛化，也不能归给 v2。
 
@@ -502,11 +509,11 @@ provenance 标量，加入 profile 阈值与退出码传播；push/PR clean runs
 
 ## 已知限制
 
-- 全部数据为模拟数据，不代表临床或生产验证。
+- 核心 RCT 演示数据为模拟数据；Eval v2 另使用 Palmer Penguins 与两套 UCI 外部公开数据。两类证据均不代表临床或生产验证。
 - 当前主分析是 available-case，不是完整 ITT；缺失机制与差异性失访需要进一步研究。
 - Phase 5 只评测确定性组件和控制面，模型调用为 0。
 - Phase 6 的 4 题 holdout 位于仓库内、不具备抗污染能力且不含审批场景；4/4 不能外推到未知请求。
-- Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明其锁定 public system 的 68/93；candidate v2/v3/v4/v5 均无新模型成绩且不继承 v1。Kimi post-lock metadata receipt 只验证当时认证与 exact model visibility，不回填 v5，也没有 Chat/tools/usage/cost semantics 或质量证据；Anthropic post-lock metadata 尝试曾因错误 CCTK token 返回 403。Private holdout、外部复核和正式第二 Provider 均未完成。
+- Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行，但只证明其锁定 public system 的 68/93；candidate v2–v7 均没有继承该成绩。Kimi metadata receipt 只验证当时认证与 exact model visibility；v6/v7 的独立 post-lock 失败也都不回填 candidate，且没有建立 Chat、usage、tool、error-semantics、质量或注册证据。Private holdout、外部复核和正式第二 Provider 均未完成。
 - Production-like slice 已完成真实 PostgreSQL/MinIO/collector Compose E2E；它仍是单机 development 证据，不代表 HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量。
 - 旧 `main` run 32568017243 曾出现 44/50 却绿色的门禁缺陷；PR #3 与新 main run 32571384757 已恢复 50/50、21/21 并 fail-closed，旧历史成绩仍不能跨 source/data/manifest 冒充当前提交成绩。
 - DeepSeek development/holdout 是小样本顺序评测，不是生产负载或 SLA；成本因缺少完整价格表保持 unavailable。

@@ -1,0 +1,193 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "eval-v2-kimi-chat-completions-v1",
+  "status": "implemented_offline_tested_not_run",
+  "provider": {
+    "provider_id": "moonshot_kimi",
+    "model_id": "kimi-k3",
+    "transport_id": "moonshot_direct_chat_completions_sse",
+    "api_origin": "https://api.moonshot.cn",
+    "path": "/v1/chat/completions",
+    "api_key_environment_variable": "MOONSHOT_API_KEY",
+    "generic_provider_registry_enabled": false
+  },
+  "request_contract": {
+    "method": "POST",
+    "content_type": "application/json",
+    "accept": "text/event-stream",
+    "accept_encoding": "identity",
+    "canonical_json_required": true,
+    "max_canonical_body_bytes": 6144,
+    "model": "kimi-k3",
+    "reasoning_effort": "low",
+    "stream": true,
+    "stream_options_include_usage": true,
+    "max_completion_tokens_max": 1536,
+    "tool_choice_allowlist": [
+      "required",
+      "none",
+      "specified_allowlisted_function"
+    ],
+    "explicit_fixed_sampling_parameters_sent": false,
+    "files_images_video_allowed": false,
+    "hosted_tools_search_or_memory_allowed": false,
+    "arbitrary_extra_body_allowed": false,
+    "fixed_invalid_request_probe": {
+      "canonical_body_bytes": 124,
+      "canonical_body_sha256": "b07a395baa11d449dcb58666363e56daa60a3686edb27bf4e57eb1d8cfa76cd7",
+      "required_messages_intentionally_omitted": true,
+      "prompt_present": false,
+      "tools_present": false,
+      "max_completion_tokens": 1,
+      "accepted_http_status": 400,
+      "accepted_provider_error_type": "invalid_request_error",
+      "unexpected_status_action": "stop_no_retry_no_body_read",
+      "unexpected_2xx_outcome_unknown": true
+    }
+  },
+  "message_contract": {
+    "allowed_roles": [
+      "system",
+      "user",
+      "assistant",
+      "tool"
+    ],
+    "complete_assistant_message_replay_required": true,
+    "reasoning_content_replayed_in_memory": true,
+    "reasoning_content_persisted": false,
+    "tool_calls_replayed_in_memory": true,
+    "raw_prompt_or_output_persisted": false,
+    "unmatched_or_duplicate_tool_call_ids_allowed": false
+  },
+  "tool_contract": {
+    "tools_per_request_max": 6,
+    "tool_calls_per_response_max": 6,
+    "argument_utf8_bytes_max": 4096,
+    "strict_schema_required": true,
+    "additional_properties_allowed": false,
+    "function_call_legacy_fields_allowed": false,
+    "whole_batch_validated_before_execution": true,
+    "sequential_execution_required": true,
+    "parallel_execution_allowed": false,
+    "execution_before_done_usage_and_finish_reason_validation_allowed": false
+  },
+  "stream_contract": {
+    "media_type": "text/event-stream",
+    "content_encoding": "identity",
+    "event_decoded_bytes_max": 65536,
+    "response_decoded_bytes_max": 524288,
+    "done_marker_exact_count": 1,
+    "final_usage_chunk_exact_count": 1,
+    "stable_completion_id_required": true,
+    "exact_response_model_required": true,
+    "choice_index": 0,
+    "allowed_complete_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "length_finish_reason_is_failure": true,
+    "partial_or_missing_done_is_failure": true
+  },
+  "usage_contract": {
+    "required_fields": [
+      "prompt_tokens",
+      "completion_tokens",
+      "total_tokens",
+      "cached_tokens"
+    ],
+    "nonnegative_integer_fields_required": true,
+    "total_equals_prompt_plus_completion": true,
+    "cached_not_greater_than_prompt": true,
+    "usage_missing_stops_run": true,
+    "reasoning_tokens_included_in_provider_completion_usage": true,
+    "cache_discount_may_relax_local_budget": false
+  },
+  "transport_controls": {
+    "owned_http_client_per_attempt": true,
+    "http2_enabled": false,
+    "trust_environment": false,
+    "tls_verification_required": true,
+    "follow_redirects": false,
+    "client_retries": 0,
+    "fallbacks_allowed": false,
+    "connect_timeout_seconds": 5,
+    "read_timeout_seconds": 90,
+    "write_timeout_seconds": 5,
+    "pool_timeout_seconds": 5,
+    "request_deadline_seconds": 90,
+    "close_timeout_seconds": 5,
+    "external_callbacks_or_tracing_allowed": false,
+    "http_debug_logging_allowed": false
+  },
+  "error_contract": {
+    "raw_error_body_persisted": false,
+    "raw_provider_message_persisted": false,
+    "html_504_body_read": false,
+    "retry_after_header_persisted": false,
+    "retry_after_followed": false,
+    "stable_codes": [
+      "kimi_chat_confirmation_required",
+      "kimi_chat_configuration_invalid",
+      "kimi_chat_key_missing",
+      "kimi_chat_key_invalid",
+      "kimi_chat_request_invalid",
+      "kimi_chat_request_too_large",
+      "kimi_chat_redirect_denied",
+      "kimi_chat_content_filtered",
+      "kimi_chat_invalid_request",
+      "kimi_chat_auth_failed",
+      "kimi_chat_permission_denied",
+      "kimi_chat_model_unavailable",
+      "kimi_chat_engine_overloaded",
+      "kimi_chat_quota_exceeded",
+      "kimi_chat_rate_limited",
+      "kimi_chat_client_closed_request",
+      "kimi_chat_provider_error",
+      "kimi_chat_provider_unavailable",
+      "kimi_chat_provider_timeout",
+      "kimi_chat_timeout",
+      "kimi_chat_network_failed",
+      "kimi_chat_response_invalid",
+      "kimi_chat_stream_incomplete",
+      "kimi_chat_usage_missing",
+      "kimi_chat_usage_invalid",
+      "kimi_chat_tool_protocol_invalid",
+      "kimi_chat_output_limit_reached",
+      "kimi_chat_invalid_request_probe_mismatch",
+      "kimi_chat_invalid_request_probe_unexpected_status",
+      "kimi_chat_client_close_failed",
+      "kimi_chat_failed"
+    ]
+  },
+  "security_and_receipt_boundary": {
+    "api_key_loaded_after_local_gates": true,
+    "api_key_persisted_logged_or_hashed": false,
+    "authorization_header_persisted": false,
+    "raw_request_id_persisted": false,
+    "request_id_hash_scope": "local_correlation_only",
+    "raw_completion_id_persisted": false,
+    "raw_assistant_content_persisted": false,
+    "raw_reasoning_content_persisted": false,
+    "raw_tool_arguments_or_results_persisted": false,
+    "model_quality_claim_allowed": false,
+    "authorizes_provider_registration": false,
+    "authorizes_public_regression": false,
+    "authorizes_private_evaluation": false,
+    "non_synthetic_release_supported": false
+  },
+  "audit_activity": {
+    "live_chat_requests_performed": 0,
+    "model_token_calls": 0,
+    "api_key_read_or_used": false,
+    "usage": null,
+    "cost": null
+  },
+  "official_references": {
+    "chat": "https://platform.kimi.com/docs/api/chat",
+    "model": "https://platform.kimi.com/docs/guide/kimi-k3-quickstart",
+    "streaming": "https://platform.kimi.com/docs/guide/utilize-the-streaming-output-feature-of-kimi-api",
+    "tool_choice": "https://platform.kimi.com/docs/guide/use-tool-choice",
+    "errors": "https://platform.kimi.com/docs/api/errors",
+    "pricing": "https://platform.kimi.com/docs/pricing/chat-k3"
+  }
+}

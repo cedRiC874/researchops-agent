@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+from researchops.eval_v2_contracts import EvalV2ContractError
 from researchops.eval_v2_freeze import validate_public_regression_candidate
 from researchops.eval_v2_inspect_backend import EvalV2InspectDatasetBackend
 from researchops.eval_v2_provider_executor import EvalV2ProviderExecutor
@@ -66,7 +67,9 @@ class LockedCandidateExecutor:
     ) -> None:
         if candidate_commitment_sha256 != LOCKED_CANDIDATE_COMMITMENT:
             raise CampaignDrift("Candidate commitment 不匹配。")
-        validate_locked_candidate_files(project_root)
+        validation = validate_locked_candidate_files(project_root)
+        if validation.get("historical_snapshot_only") is not False:
+            raise CampaignDrift("Historical candidate 不能授权 Pilot Provider 执行。")
         if provider_id != "deepseek" or model_id != "deepseek-v4-flash":
             raise CampaignDrift("Provider/model 不属于已锁定 candidate。")
         if not isinstance(api_key, str) or not api_key.strip():
@@ -111,14 +114,21 @@ class LockedCandidateExecutor:
 
 def validate_locked_candidate_files(project_root: str | Path) -> Mapping[str, object]:
     resolved_root = Path(project_root).resolve()
-    validation = validate_public_regression_candidate(
-        project_root=resolved_root,
-        candidate_path=resolved_root
-        / "evals"
-        / "v2"
-        / "public_regression_candidate_v5.json",
-        verify_environment=False,
-    )
+    try:
+        validation = validate_public_regression_candidate(
+            project_root=resolved_root,
+            candidate_path=resolved_root
+            / "evals"
+            / "v2"
+            / "public_regression_candidate_v5.json",
+            verify_environment=False,
+        )
+    except EvalV2ContractError as exc:
+        raise CampaignDrift(
+            f"Active Candidate v5 未绑定当前 source：{exc.code}。"
+        ) from exc
+    if validation.get("historical_snapshot_only") is not False:
+        raise CampaignDrift("Historical candidate 不能成为 active Pilot candidate。")
     if validation["candidate_commitment_sha256"] != LOCKED_CANDIDATE_COMMITMENT:
         raise CampaignDrift("部署中的 Eval v2 candidate 已漂移。")
     return validation

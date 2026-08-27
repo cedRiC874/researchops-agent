@@ -1,0 +1,265 @@
+{
+  "schema_version": "2.0",
+  "contract_id": "eval-v2-kimi-chat-completions-v2",
+  "status": "implemented_offline_tested_not_run",
+  "predecessor": {
+    "contract_id": "eval-v2-kimi-chat-completions-v1",
+    "contract_path": "evals/v2/kimi_chat_completions_contract.json",
+    "contract_sha256": "a8a7df576175fe003de7ef09f584bd71823473c3aed1addf8977cd307ae38f8d",
+    "transport_source_path": "src/researchops/kimi_chat_transport.py",
+    "transport_source_sha256": "6e4be581ebf3d11c96bec4cb4cb8d58de62c24f8b025912cc1af5a3774977279",
+    "results_inherited": false,
+    "authorization_inherited": false
+  },
+  "implementation": {
+    "module": "researchops.kimi_chat_transport_v2",
+    "source_path": "src/researchops/kimi_chat_transport_v2.py",
+    "parser_version": "2.0",
+    "transport_id": "moonshot_direct_chat_completions_sse_v2",
+    "entrypoint": "run_kimi_chat_completion_v2",
+    "success_parser": "_parse_success_response_v2",
+    "v1_success_parser_called": false,
+    "shared_v1_boundaries": [
+      "request_and_message_value_objects",
+      "fixed_tls_and_http_client_controls",
+      "bounded_sse_decoder",
+      "stable_http_error_classifier",
+      "identifier_hashing_and_redaction"
+    ]
+  },
+  "provider": {
+    "provider_id": "moonshot_kimi",
+    "model_id": "kimi-k3",
+    "transport_id": "moonshot_direct_chat_completions_sse_v2",
+    "api_origin": "https://api.moonshot.cn",
+    "path": "/v1/chat/completions",
+    "api_key_environment_variable": "MOONSHOT_API_KEY",
+    "generic_provider_registry_enabled": false
+  },
+  "official_source_commitments": {
+    "capture_method": "fixed first-party HTTPS GET with identity content encoding; SHA-256 over decoded response bytes",
+    "sources": [
+      {
+        "source_id": "chat_completions_documentation",
+        "url": "https://platform.kimi.com/docs/api/chat",
+        "captured_at_utc": "2026-08-26T16:15:03.000Z",
+        "decoded_bytes": 826200,
+        "sha256": "8aceb197e56b47dc73c1f06377462ed33e36c126f4e7d5459294b0746b94d43a"
+      },
+      {
+        "source_id": "openai_migration_guide",
+        "url": "https://platform.kimi.com/docs/guide/migrating-from-openai-to-kimi",
+        "captured_at_utc": "2026-08-26T16:28:17.000Z",
+        "decoded_bytes": 477544,
+        "sha256": "e03668deb99a35666293518e33cb80a15e68bc368a03168c0041f0f7f5b8a476"
+      },
+      {
+        "source_id": "streaming_guide",
+        "url": "https://platform.kimi.com/docs/guide/utilize-the-streaming-output-feature-of-kimi-api",
+        "captured_at_utc": "2026-08-26T16:28:25.000Z",
+        "decoded_bytes": 547349,
+        "sha256": "d2ec3b080c02d98889334e29c9965044f8ef941b85171bfd7dfd910f3ed7b3c2"
+      }
+    ],
+    "authorizes_provider_call": false,
+    "is_effective_terms_evidence": false
+  },
+  "request_contract": {
+    "method": "POST",
+    "content_type": "application/json",
+    "accept": "text/event-stream",
+    "accept_encoding": "identity",
+    "canonical_json_required": true,
+    "max_canonical_body_bytes": 6144,
+    "model": "kimi-k3",
+    "reasoning_effort": "low",
+    "stream": true,
+    "stream_options_include_usage": true,
+    "max_completion_tokens_max": 1536,
+    "tool_choice_allowlist": [
+      "required",
+      "none",
+      "specified_allowlisted_function"
+    ],
+    "explicit_fixed_sampling_parameters_sent": false,
+    "files_images_video_allowed": false,
+    "hosted_tools_search_or_memory_allowed": false,
+    "arbitrary_extra_body_allowed": false
+  },
+  "message_contract": {
+    "allowed_roles": [
+      "system",
+      "user",
+      "assistant",
+      "tool"
+    ],
+    "complete_assistant_message_replay_required": true,
+    "reasoning_content_replayed_in_memory": true,
+    "reasoning_content_persisted": false,
+    "tool_calls_replayed_in_memory": true,
+    "raw_prompt_or_output_persisted": false,
+    "unmatched_or_duplicate_tool_call_ids_allowed": false
+  },
+  "tool_contract": {
+    "tools_per_request_max": 6,
+    "tool_calls_per_response_max": 6,
+    "argument_utf8_bytes_max": 4096,
+    "strict_schema_required": true,
+    "additional_properties_allowed": false,
+    "function_call_legacy_fields_allowed": false,
+    "whole_batch_validated_before_execution": true,
+    "sequential_execution_required": true,
+    "parallel_execution_allowed": false,
+    "execution_before_terminal_usage_and_done_validation_allowed": false
+  },
+  "stream_contract": {
+    "media_type": "text/event-stream",
+    "content_encoding": "identity",
+    "event_decoded_bytes_max": 65536,
+    "response_decoded_bytes_max": 524288,
+    "strict_json_duplicate_keys_rejected": true,
+    "strict_json_nonfinite_numbers_rejected": true,
+    "unknown_protocol_fields_allowed": false,
+    "stable_completion_id_required": true,
+    "exact_response_model_required": true,
+    "stable_created_integer_required": true,
+    "choice_count": 1,
+    "choice_index": 0,
+    "terminal_choice_nonempty_required": true,
+    "terminal_finish_and_usage_same_event_required": true,
+    "terminal_usage_projection_allowlist": [
+      "top_level_only",
+      "choice_level_only",
+      "both_reconciled"
+    ],
+    "openai_empty_choices_usage_only_allowed": false,
+    "allowed_complete_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "length_finish_reason_is_failure": true,
+    "finish_reason_exact_count": 1,
+    "logical_usage_exact_count": 1,
+    "done_marker_exact_count": 1,
+    "done_must_immediately_follow_terminal_data": true,
+    "data_after_terminal_allowed": false,
+    "partial_or_missing_done_is_failure": true,
+    "partial_tool_result_exposed": false
+  },
+  "usage_contract": {
+    "required_fields": [
+      "prompt_tokens",
+      "completion_tokens",
+      "total_tokens"
+    ],
+    "optional_fields": [
+      "cached_tokens"
+    ],
+    "unknown_fields_allowed": false,
+    "nonnegative_integer_fields_required": true,
+    "total_equals_prompt_plus_completion": true,
+    "cached_not_greater_than_prompt": true,
+    "both_projection_reconciliation": {
+      "core_three_fields_must_match": true,
+      "cached_must_match_when_reported_by_both": true,
+      "cached_reported_by_one_projection_is_adopted": true,
+      "cached_omitted_by_one_projection_is_not_a_conflict": true
+    },
+    "cached_missing_internal_conservative_value": 0,
+    "cached_missing_receipt_projection": null,
+    "cached_missing_budget_assumption": "all_input_uncached",
+    "cache_discount_requires_provider_reported_cached_tokens": true,
+    "cache_discount_may_relax_local_reservation": false,
+    "usage_missing_stops_run": true,
+    "usage_conflict_stops_run": true,
+    "reasoning_tokens_included_in_provider_completion_usage": true
+  },
+  "transport_controls": {
+    "owned_http_client_per_attempt": true,
+    "http2_enabled": false,
+    "trust_environment": false,
+    "tls_verification_required": true,
+    "follow_redirects": false,
+    "client_retries": 0,
+    "fallbacks_allowed": false,
+    "connect_timeout_seconds": 5,
+    "read_timeout_seconds": 90,
+    "write_timeout_seconds": 5,
+    "pool_timeout_seconds": 5,
+    "request_deadline_seconds": 90,
+    "close_timeout_seconds": 5,
+    "request_body_bytes_max": 6144,
+    "error_body_bytes_max": 65536,
+    "tool_argument_bytes_max": 4096,
+    "external_callbacks_or_tracing_allowed": false,
+    "http_debug_logging_allowed": false
+  },
+  "error_contract": {
+    "raw_error_body_persisted": false,
+    "raw_provider_message_persisted": false,
+    "html_redirect_or_504_body_read": false,
+    "retry_after_header_persisted": false,
+    "retry_after_followed": false,
+    "timeout_or_network_outcome_unknown": true,
+    "missing_done_outcome_unknown": true,
+    "premature_done_without_terminal_outcome_unknown": true,
+    "missing_terminal_usage_outcome_unknown": true,
+    "primary_error_preserved_over_close_error": true,
+    "stable_codes": [
+      "kimi_chat_confirmation_required",
+      "kimi_chat_configuration_invalid",
+      "kimi_chat_key_missing",
+      "kimi_chat_key_invalid",
+      "kimi_chat_request_invalid",
+      "kimi_chat_request_too_large",
+      "kimi_chat_redirect_denied",
+      "kimi_chat_content_filtered",
+      "kimi_chat_invalid_request",
+      "kimi_chat_auth_failed",
+      "kimi_chat_permission_denied",
+      "kimi_chat_model_unavailable",
+      "kimi_chat_engine_overloaded",
+      "kimi_chat_quota_exceeded",
+      "kimi_chat_rate_limited",
+      "kimi_chat_client_closed_request",
+      "kimi_chat_provider_error",
+      "kimi_chat_provider_unavailable",
+      "kimi_chat_provider_timeout",
+      "kimi_chat_timeout",
+      "kimi_chat_network_failed",
+      "kimi_chat_response_invalid",
+      "kimi_chat_stream_incomplete",
+      "kimi_chat_usage_missing",
+      "kimi_chat_usage_invalid",
+      "kimi_chat_tool_protocol_invalid",
+      "kimi_chat_output_limit_reached",
+      "kimi_chat_invalid_request_probe_mismatch",
+      "kimi_chat_invalid_request_probe_unexpected_status",
+      "kimi_chat_client_close_failed",
+      "kimi_chat_failed"
+    ]
+  },
+  "security_and_receipt_boundary": {
+    "api_key_loaded_after_local_gates": true,
+    "api_key_persisted_logged_or_hashed": false,
+    "authorization_header_persisted": false,
+    "raw_request_id_persisted": false,
+    "request_id_hash_scope": "local_correlation_only",
+    "raw_completion_id_persisted": false,
+    "raw_assistant_content_persisted": false,
+    "raw_reasoning_content_persisted": false,
+    "raw_tool_arguments_or_results_persisted": false,
+    "model_quality_claim_allowed": false,
+    "authorizes_provider_registration": false,
+    "authorizes_public_regression": false,
+    "authorizes_private_evaluation": false,
+    "non_synthetic_release_supported": false
+  },
+  "audit_activity": {
+    "live_chat_requests_performed": 0,
+    "model_token_calls": 0,
+    "api_key_read_or_used": false,
+    "usage": null,
+    "cost": null
+  }
+}

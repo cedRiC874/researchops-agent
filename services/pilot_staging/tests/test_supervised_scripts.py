@@ -113,6 +113,8 @@ def test_invite_defaults_to_two_hours_and_never_persists_link() -> None:
     assert "Test-PilotFunnelActive" in invite
     assert '"researchops-pilot-admin"' in invite
     assert "pilot_pack.supervised_v6.json" in invite
+    assert "pilot_pack.supervised_v8.json" not in invite
+    assert "pilot_pack.supervised_v7.json" not in invite
     assert "pilot_pack.supervised_v5.json" not in invite
     assert "pilot_pack.supervised_v3.json" not in invite
     assert "pilot_pack.supervised_v2.json" not in invite
