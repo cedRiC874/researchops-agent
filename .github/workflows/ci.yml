@@ -84,6 +84,20 @@ jobs:
             Write-Output "::error title=historical_v7_contract_invalid::Candidate v7 must remain a valid offline-only historical snapshot."
             exit 1
           }
+          $diagnosticV8Raw = (& python -m researchops.cli `
+            eval-v2-verify-public-freeze `
+            --candidate evals/v2/public_regression_candidate_v8.json | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $diagnosticV8 = $diagnosticV8Raw | ConvertFrom-Json
+          if ($diagnosticV8.status -ne "valid" -or
+              $diagnosticV8.historical_snapshot_only -ne $false -or
+              $diagnosticV8.diagnostic_snapshot_only -ne $true -or
+              $diagnosticV8.public_regression_online_authorized -ne $false -or
+              $diagnosticV8.controlled_synthetic_pilot_online_authorized -ne $false -or
+              $diagnosticV8.network_calls -ne 0) {
+            Write-Output "::error title=diagnostic_v8_contract_invalid::Candidate v8 must remain a valid offline diagnostic-only snapshot."
+            exit 1
+          }
           $environmentRaw = (& python -m researchops.cli `
             eval-v2-verify-environment | Out-String)
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -197,6 +211,63 @@ jobs:
               $kimiPilotV7.authorizes_private_evaluation -or
               $kimiPilotV7.authorizes_non_synthetic_data) {
             Write-Output "::error title=kimi_pilot_v7_contract_invalid::Consumed v7 must remain permanently disabled."
+            exit 1
+          }
+          try {
+            $PSNativeCommandUseErrorActionPreference = $false
+            $kimiPilotV8Raw = (& python -m researchops.cli `
+              kimi-controlled-synthetic-pilot-v8 | Out-String)
+            $kimiPilotV8Exit = $LASTEXITCODE
+          } finally {
+            $PSNativeCommandUseErrorActionPreference = $nativeErrorPreference
+          }
+          if ($kimiPilotV8Exit -ne 4) {
+            Write-Output "::error title=kimi_pilot_v8_cli_failed::Unexpected CLI exit code."
+            exit 1
+          }
+          $kimiPilotV8 = $kimiPilotV8Raw | ConvertFrom-Json
+          if ($kimiPilotV8.status -ne "not_run" -or
+              $kimiPilotV8.error_code -ne "kimi_pilot_v8_confirmation_required" -or
+              $kimiPilotV8.contract_id -ne "kimi-controlled-synthetic-pilot-v3" -or
+              $kimiPilotV8.network_attempts -ne 0 -or
+              $kimiPilotV8.network_calls -ne 0 -or
+              $kimiPilotV8.model_request_count -ne 0 -or
+              $kimiPilotV8.key_loader_passed_to_runner -or
+              $kimiPilotV8.authorizes_chat -or
+              $kimiPilotV8.authorizes_tools -or
+              $kimiPilotV8.authorizes_retry -or
+              $kimiPilotV8.authorizes_provider_registration -or
+              $kimiPilotV8.authorizes_private_evaluation -or
+              $kimiPilotV8.authorizes_non_synthetic_data) {
+            Write-Output "::error title=kimi_pilot_v8_contract_invalid::Unconfirmed v8 must remain zero-call and non-authorizing."
+            exit 1
+          }
+          try {
+            $PSNativeCommandUseErrorActionPreference = $false
+            $kimiPilotV8ConfirmedRaw = (& python -m researchops.cli `
+              kimi-controlled-synthetic-pilot-v8 --confirm-online | Out-String)
+            $kimiPilotV8ConfirmedExit = $LASTEXITCODE
+          } finally {
+            $PSNativeCommandUseErrorActionPreference = $nativeErrorPreference
+          }
+          if ($kimiPilotV8ConfirmedExit -ne 4) {
+            Write-Output "::error title=kimi_pilot_v8_confirmed_cli_failed::Unexpected CLI exit code."
+            exit 1
+          }
+          $kimiPilotV8Confirmed = $kimiPilotV8ConfirmedRaw | ConvertFrom-Json
+          if ($kimiPilotV8Confirmed.status -ne "not_run" -or
+              $kimiPilotV8Confirmed.error_code -ne "kimi_pilot_v8_online_not_authorized" -or
+              $kimiPilotV8Confirmed.network_attempts -ne 0 -or
+              $kimiPilotV8Confirmed.network_calls -ne 0 -or
+              $kimiPilotV8Confirmed.model_request_count -ne 0 -or
+              $kimiPilotV8Confirmed.key_loader_passed_to_runner -or
+              $kimiPilotV8Confirmed.authorizes_chat -or
+              $kimiPilotV8Confirmed.authorizes_tools -or
+              $kimiPilotV8Confirmed.authorizes_retry -or
+              $kimiPilotV8Confirmed.authorizes_provider_registration -or
+              $kimiPilotV8Confirmed.authorizes_private_evaluation -or
+              $kimiPilotV8Confirmed.authorizes_non_synthetic_data) {
+            Write-Output "::error title=kimi_pilot_v8_confirmed_contract_invalid::Confirmed v8 must remain zero-call and non-authorizing."
             exit 1
           }
           $anthropic = (python -m researchops.cli phase6-status `

@@ -500,7 +500,13 @@ def test_online_confirmation_and_key_fail_before_filesystem_write(
     assert confirmation.value.code == "eval_v2_online_confirmation_required"
     assert not output.exists()
 
-    with _raises(EvalV2ContractError) as missing_key:
+    with (
+        patch(
+            "researchops.eval_v2_public_runner.validate_public_regression_candidate",
+            return_value={"historical_snapshot_only": False},
+        ),
+        _raises(EvalV2ContractError) as missing_key,
+    ):
         run_public_regression_online(
             **common,
             api_key="",
@@ -537,6 +543,36 @@ def test_historical_candidate_is_rejected_before_environment_or_provider(
             confirm_online=True,
         )
     assert caught.value.code == "eval_v2_historical_candidate_execution_forbidden"
+    assert not output.exists()
+
+
+def test_diagnostic_candidate_is_rejected_before_environment_or_provider(
+    tmp_path: Path,
+) -> None:
+    output = PROJECT_ROOT / "artifacts" / f"diagnostic-reject-{tmp_path.name}"
+    assert not output.exists()
+    with (
+        patch(
+            "researchops.eval_v2_public_runner.validate_eval_v2_dependency_environment",
+            side_effect=AssertionError("environment gate must follow diagnostic rejection"),
+        ),
+        patch(
+            "researchops.eval_v2_public_runner.get_provider",
+            side_effect=AssertionError("Provider must not be constructed"),
+        ),
+        _raises(EvalV2ContractError) as caught,
+    ):
+        run_public_regression_online(
+            project_root=PROJECT_ROOT,
+            candidate_path=PROJECT_ROOT
+            / "evals/v2/public_regression_candidate_v8.json",
+            registry_path=PROJECT_ROOT / "artifacts/missing-registry.json",
+            output_directory=output,
+            api_key="offline-canary-key-not-forwarded",
+            budget_cny=6,
+            confirm_online=True,
+        )
+    assert caught.value.code == "eval_v2_candidate_online_execution_forbidden"
     assert not output.exists()
 
 

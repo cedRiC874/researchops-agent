@@ -11,6 +11,7 @@ from unittest.mock import patch
 from researchops import eval_v2_freeze as freeze_module
 from researchops.eval_v2_contracts import EvalV2ContractError
 from researchops.eval_v2_freeze import (
+    build_v8_diagnostic_candidate_component_hashes,
     candidate_commitment_sha256,
     load_public_regression_task_orders,
     sha256_bundle_v1,
@@ -25,6 +26,12 @@ from researchops.eval_v2_runner import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v7.json"
+V8_CANDIDATE_PATH = (
+    REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v8.json"
+)
+V8_RUNTIME_PATH = (
+    REPO_ROOT / "evals" / "v2" / "kimi_runtime_candidate_v8_contract.json"
+)
 HISTORICAL_V5_CANDIDATE_PATH = (
     REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v5.json"
 )
@@ -97,6 +104,135 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertTrue(result["dependency_lock"]["environment_verified"])
         self.assertEqual(result["dependency_lock"]["environment_mismatch_count"], 0)
         self.assertEqual(result["network_calls"], 0)
+
+    def test_v8_diagnostic_candidate_is_current_but_not_online_authorized(self) -> None:
+        result = validate_public_regression_candidate(
+            project_root=REPO_ROOT,
+            candidate_path=V8_CANDIDATE_PATH,
+            verify_environment=True,
+        )
+        self.assertEqual(result["status"], "valid")
+        self.assertEqual(
+            result["candidate_id"],
+            "eval-v2-public-regression-deepseek-kimi-controlled-chat-v8",
+        )
+        self.assertEqual(
+            result["candidate_commitment_sha256"],
+            "b41269ac6db96e2999fedc95f08f3b77a48699f8c0b50b63764bcb6e1f9e962c",
+        )
+        self.assertFalse(result["historical_snapshot_only"])
+        self.assertTrue(result["diagnostic_snapshot_only"])
+        self.assertFalse(result["public_regression_online_authorized"])
+        self.assertFalse(result["controlled_synthetic_pilot_online_authorized"])
+        self.assertFalse(result["model_quality_claim_allowed"])
+        self.assertFalse(result["private_holdout_access_authorized"])
+        self.assertFalse(result["prior_results_inherited"])
+        self.assertFalse(result["predecessor_failure_result_inherited"])
+        self.assertFalse(result["predecessor_authorization_reused"])
+        self.assertTrue(result["dependency_lock"]["environment_verified"])
+        self.assertEqual(result["dependency_lock"]["environment_mismatch_count"], 0)
+        self.assertEqual(result["network_calls"], 0)
+        self.assertEqual(
+            hashlib.sha256(V8_CANDIDATE_PATH.read_bytes()).hexdigest(),
+            "6615cc6638e79dc854265e46cf61dd4de9932e57a6fe2415b721f0a408b4eac0",
+        )
+
+    def test_v8_candidate_component_and_runtime_hashes_are_exact(self) -> None:
+        candidate = json.loads(V8_CANDIDATE_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(
+            candidate["component_hashes"],
+            build_v8_diagnostic_candidate_component_hashes(REPO_ROOT),
+        )
+        self.assertEqual(
+            candidate_commitment_sha256(candidate),
+            candidate["candidate_commitment_sha256"],
+        )
+        runtime = json.loads(V8_RUNTIME_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(
+            candidate["component_hashes"]["kimi_runtime_candidate_contract_sha256"],
+            hashlib.sha256(V8_RUNTIME_PATH.read_bytes()).hexdigest(),
+        )
+        self.assertTrue(runtime["successor_safety_semantics"][
+            "response_validation_diagnostic_fixed_enum_only"
+        ])
+        self.assertFalse(runtime["entry_points"]["public_runner_enabled"])
+        self.assertFalse(
+            runtime["entry_points"]["pilot_staging_provider_execution_enabled"]
+        )
+        self.assertFalse(
+            runtime["entry_points"]["controlled_synthetic_pilot_online_authorized"]
+        )
+        self.assertTrue(all(value is False for value in runtime["claim_boundary"].values()))
+
+    def test_v8_candidate_rejects_optimistic_pilot_and_runtime_mutations(self) -> None:
+        real_loader = freeze_module._load_json_object
+        for field, value in (
+            ("campaign_registered", True),
+            ("provider_registry_registered", True),
+            ("synthetic_only", False),
+            ("client_retries", 1),
+            ("fallbacks_allowed", True),
+        ):
+            with self.subTest(field=field):
+                def load_with_candidate_mutation(path: Path, label: str):
+                    payload = real_loader(path, label)
+                    if Path(path).name == V8_CANDIDATE_PATH.name:
+                        payload = deepcopy(payload)
+                        payload["controlled_synthetic_pilot_config"][field] = value
+                    return payload
+
+                with (
+                    patch.object(
+                        freeze_module,
+                        "_load_json_object",
+                        side_effect=load_with_candidate_mutation,
+                    ),
+                    self.assertRaises(EvalV2ContractError) as caught,
+                ):
+                    validate_public_regression_candidate(
+                        project_root=REPO_ROOT,
+                        candidate_path=V8_CANDIDATE_PATH,
+                    )
+                self.assertEqual(
+                    caught.exception.code,
+                    "eval_v2_public_candidate_v8_pilot_invalid",
+                )
+
+        for section, field, value in (
+            ("entry_points", "public_runner_enabled", True),
+            ("entry_points", "controlled_synthetic_pilot_online_authorized", True),
+            ("audit_activity", "successor_online_calls_performed", 1),
+            ("claim_boundary", "model_quality_claim_allowed", True),
+            (
+                "successor_safety_semantics",
+                "response_validation_diagnostic_fixed_enum_only",
+                False,
+            ),
+        ):
+            with self.subTest(section=section, field=field):
+                def load_with_mutation(path: Path, label: str):
+                    payload = real_loader(path, label)
+                    if Path(path).name == V8_RUNTIME_PATH.name:
+                        payload = deepcopy(payload)
+                        payload[section][field] = value
+                    return payload
+
+                with (
+                    patch.object(
+                        freeze_module,
+                        "_load_json_object",
+                        side_effect=load_with_mutation,
+                    ),
+                    self.assertRaises(EvalV2ContractError) as caught,
+                ):
+                    validate_public_regression_candidate(
+                        project_root=REPO_ROOT,
+                        candidate_path=V8_CANDIDATE_PATH,
+                    )
+                self.assertEqual(
+                    caught.exception.code,
+                    "eval_v2_kimi_runtime_candidate_v8_invalid",
+                )
 
     def test_historical_v1_candidate_is_preserved_without_result_inheritance(self) -> None:
         raw = HISTORICAL_V1_CANDIDATE_PATH.read_bytes()
