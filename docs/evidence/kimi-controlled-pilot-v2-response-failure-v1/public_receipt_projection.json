@@ -1,0 +1,79 @@
+{
+  "schema_version": "kimi-controlled-pilot-v2-public-projection/1.0",
+  "public_evidence_id": "1ff3008e-068f-4fae-b2e9-8102935e480b",
+  "documented_at_utc": "2026-08-26T18:17:58.883Z",
+  "candidate_snapshot": {
+    "candidate_id": "eval-v2-public-regression-deepseek-kimi-controlled-chat-v7",
+    "candidate_commitment_sha256": "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5",
+    "candidate_file_sha256": "efc6ca2bbd97abe6c659983a386784938a74614cd1028861c25e20478ce7b278",
+    "predecessor_candidate_commitment_sha256": "57d0c1b054367794fa08ec2dbdecdeb0c75bc4be2c45894b69db832a1f6f5641",
+    "result_inherited": false
+  },
+  "contracts": {
+    "chat_contract_id": "eval-v2-kimi-chat-completions-v2",
+    "chat_contract_sha256": "eb226578df2555813fbef005e366bb014d05bbb0dfde039b170689fc5a00916c",
+    "pilot_contract_id": "kimi-controlled-synthetic-pilot-v2",
+    "pilot_contract_sha256": "6c305f7bf53ec2b10dca16a4fdbec157d3cbfcb8a6804e58641c5c0d848ff605"
+  },
+  "outcome": {
+    "status": "failed",
+    "error_code": "kimi_chat_response_invalid",
+    "event_description": "local_response_validation_failure",
+    "g4_decision": "planned_not_registered",
+    "scenarios_planned": 3,
+    "scenarios_completed": 0,
+    "model_request_limit": 8,
+    "model_request_count": 1,
+    "network_attempts": 1,
+    "network_calls": 1,
+    "requested_tool_call_count": 0,
+    "deduplicated_tool_call_count": 0,
+    "executed_tool_call_count": 0,
+    "expected_invalid_request_count": 0,
+    "outcome_unknown": false,
+    "wall_elapsed_ms": 21378,
+    "provider_latency_ms": null
+  },
+  "usage": {
+    "usage_complete": false,
+    "usage_observed_request_count": 0,
+    "input_tokens": null,
+    "output_tokens": null,
+    "actual_token_count_unknown": true,
+    "reserved_input_tokens": 8000,
+    "reserved_output_tokens": 1536
+  },
+  "cost": {
+    "currency": "CNY",
+    "local_reserved_estimated_cost": "0.313600",
+    "local_estimated_reservation_limit": "5.000000",
+    "usage_based_estimated_cost": null,
+    "actual_billed_cost": null,
+    "actual_bill_unknown": true,
+    "claim_scope": "local_conservative_hard_stop_only"
+  },
+  "observation_boundary": {
+    "raw_provider_headers_persisted": false,
+    "raw_provider_body_persisted": false,
+    "observed_provider_payload_shape_known": false,
+    "causal_root_cause": "undetermined_without_raw_provider_payload",
+    "causal_provider_fault_claim_allowed": false,
+    "usage_compatibility_verified": false,
+    "tool_compatibility_verified": false,
+    "error_semantics_verified": false
+  },
+  "authorization_and_claim_boundary": {
+    "authorization_consumed": true,
+    "authorization_identifier_or_hash_published": false,
+    "authorization_derived_binding_hashes_published": false,
+    "candidate_result_created": false,
+    "authorizes_retry": false,
+    "authorizes_resume": false,
+    "authorizes_model_quality_claim": false,
+    "authorizes_provider_registration": false,
+    "authorizes_private_evaluation": false,
+    "authorizes_non_synthetic_data": false,
+    "compatibility_verified": false
+  }
+}
+

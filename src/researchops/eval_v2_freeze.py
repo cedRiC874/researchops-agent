@@ -33,6 +33,12 @@ PREDECESSOR_V3_CANDIDATE_COMMITMENT_SHA256 = (
 PREDECESSOR_V4_CANDIDATE_COMMITMENT_SHA256 = (
     "1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7"
 )
+HISTORICAL_V6_CANDIDATE_COMMITMENT_SHA256 = (
+    "57d0c1b054367794fa08ec2dbdecdeb0c75bc4be2c45894b69db832a1f6f5641"
+)
+HISTORICAL_V7_CANDIDATE_COMMITMENT_SHA256 = (
+    "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5"
+)
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _EXACT_REQUIREMENT = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[^\s]+)$")
 _FAULT_SCENARIOS = frozenset(
@@ -63,6 +69,55 @@ _CANDIDATE_FIELDS = frozenset(
         "candidate_commitment_sha256",
         "limitations",
     }
+)
+_HISTORICAL_V7_CANDIDATE_FIELDS = frozenset(
+    {
+        "schema_version",
+        "candidate_id",
+        "status",
+        "locked_at_utc",
+        "scope",
+        "campaign_id",
+        "campaign_status_expected",
+        "full_campaign_frozen",
+        "private_holdout_access_authorized",
+        "model_quality_claim_allowed",
+        "predecessor_candidate_commitment_sha256",
+        "prior_results_inherited",
+        "predecessor_failure_result_inherited",
+        "predecessor_authorization_reused",
+        "completion_telemetry_contract_id",
+        "anthropic_models_preflight_contract_id",
+        "kimi_provider_contract_id",
+        "kimi_models_preflight_contract_id",
+        "kimi_terms_g2a_contract_id",
+        "kimi_chat_completions_contract_id",
+        "kimi_controlled_pilot_contract_id",
+        "kimi_controlled_pilot_scenario_set_id",
+        "kimi_runtime_candidate_contract_id",
+        "execution_policy",
+        "provider_config",
+        "controlled_synthetic_pilot_config",
+        "hash_algorithm",
+        "component_hashes",
+        "candidate_commitment_sha256",
+        "limitations",
+    }
+)
+_HISTORICAL_V7_LIMITATIONS = (
+    "This locks a versioned offline successor candidate only; the public-regression execution Provider remains DeepSeek and the full Eval v2 campaign remains design_only.",
+    "Candidate v6, its consumed authorization and its post-lock usage-stage failure are immutable predecessor evidence and are not inherited as a v7 result, authorization, compatibility claim or causal root-cause claim.",
+    "The live v1 response shape was not persisted and remains unknown; v2 accepts only the first-party-documented terminal event with one non-empty choice, finish_reason and one reconciled top-level, choice-level or dual usage projection before one DONE marker.",
+    "The v2 parser treats cached_tokens as optional, exposes an omitted value as null and budgets all prompt tokens at the uncached rate; cache information cannot relax the local reservation.",
+    "The Kimi G2a terms decision is provisional synthetic-only and expires at 2026-08-30T16:00:00Z; it is not final effective-terms verification and does not itself authorize Provider calls.",
+    "The v2 Kimi Chat Completions transport and v2 controlled pilot are implemented and MockTransport-tested but have performed zero successor online calls.",
+    "Kimi remains absent from the generic Provider registry, Phase 6, self-pilot, Web, public-runner, pilot-staging Provider execution and private-evaluation entrypoints.",
+    "The controlled pilot reuses exactly the immutable v1 three-case synthetic scenario set and v1 synthetic tool schema; no prior public, supervised, repo-local holdout or private item was used for prompt, scorer, schema, candidate or task-selection tuning.",
+    "A future online successor pilot requires a fresh Key, exact locked caps, fresh bound legal and Kimi K3 pricing attestations, a CNY 5 local conservative hard-stop and a new separately authorized single-use capability bound to this candidate commitment; no retry, resume, fallback or legacy authorization reuse is allowed.",
+    "Actual Provider token use, billing, latency, Chat/tool/error compatibility and model quality remain unverified for v2; all receipt authorization and quality claims remain false.",
+    "The announced 2026-08-31 terms remain a pre-effective preview and require final source capture, hashing, delta review and manual signoff at or after effectiveness.",
+    "Provider-behavior and deterministic fault-injection channels remain separate, completion failures are diagnostic rather than causal root-cause claims, and requirements.lock still lacks artifact hashes.",
+    "No online Provider call or paid evaluation was performed while building Candidate v7.",
 )
 _EXECUTION_POLICY_FIELDS = frozenset(
     {
@@ -235,6 +290,114 @@ def build_public_regression_component_hashes(
     }
 
 
+def _validate_historical_v7_candidate(
+    *,
+    root: Path,
+    candidate_path: Path,
+) -> dict[str, Any]:
+    expected_path = (
+        root / "evals" / "v2" / "public_regression_candidate_v7.json"
+    ).resolve()
+    if candidate_path.resolve() != expected_path:
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_path_invalid",
+            "Historical Candidate v7 必须使用固定 manifest 路径。",
+        )
+
+    candidate = _load_json_object(candidate_path, "historical candidate v7")
+    _require_exact_fields(
+        candidate,
+        _HISTORICAL_V7_CANDIDATE_FIELDS,
+        "historical candidate v7",
+    )
+    if (
+        _sha256_file(candidate_path)
+        != "efc6ca2bbd97abe6c659983a386784938a74614cd1028861c25e20478ce7b278"
+        or candidate.get("schema_version") != "7.0"
+        or candidate.get("candidate_id")
+        != "eval-v2-public-regression-deepseek-kimi-controlled-chat-v7"
+        or candidate.get("status") != "candidate_locked"
+        or candidate.get("locked_at_utc") != "2026-08-26T17:55:43Z"
+        or candidate.get("scope") != "public_regression"
+        or candidate.get("campaign_status_expected") != "design_only"
+        or candidate.get("full_campaign_frozen") is not False
+        or candidate.get("private_holdout_access_authorized") is not False
+        or candidate.get("model_quality_claim_allowed") is not False
+        or candidate.get("predecessor_candidate_commitment_sha256")
+        != HISTORICAL_V6_CANDIDATE_COMMITMENT_SHA256
+        or candidate.get("prior_results_inherited") is not False
+        or candidate.get("predecessor_failure_result_inherited") is not False
+        or candidate.get("predecessor_authorization_reused") is not False
+        or candidate.get("limitations") != list(_HISTORICAL_V7_LIMITATIONS)
+        or candidate.get("candidate_commitment_sha256")
+        != HISTORICAL_V7_CANDIDATE_COMMITMENT_SHA256
+        or candidate_commitment_sha256(candidate)
+        != HISTORICAL_V7_CANDIDATE_COMMITMENT_SHA256
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_historical_candidate_v7_invalid",
+            "Historical Candidate v7 manifest 与冻结快照不一致。",
+        )
+
+    frozen_components = {
+        "evals/v2/kimi_runtime_candidate_v7_contract.json": (
+            "12ad1f34398cc4579a2b43888057fc80eca31c0174cd7e78a09d46486b579eb9"
+        ),
+        "src/researchops/kimi_chat_transport_v2.py": (
+            "0e62e6b696a43804ef36bd1b7c1422cb0b9d7a974544d2afe50f5b7c6e2af8ae"
+        ),
+        "evals/v2/kimi_chat_completions_contract_v2.json": (
+            "eb226578df2555813fbef005e366bb014d05bbb0dfde039b170689fc5a00916c"
+        ),
+        "src/researchops/kimi_controlled_pilot_v2.py": (
+            "6dc1ea634cb944c35bb072227d1f698db35a6e7db7a2bbe6f9e83f547f168ee1"
+        ),
+        "evals/v2/kimi_controlled_pilot_contract_v2.json": (
+            "6c305f7bf53ec2b10dca16a4fdbec157d3cbfcb8a6804e58641c5c0d848ff605"
+        ),
+        "evals/v2/kimi_controlled_pilot_scenarios_v1.json": (
+            "f5f51f57f46d5b98677bb9809f28f3e211bb553fd8f4f8d873f848a9ef6f649b"
+        ),
+        "src/researchops/kimi_synthetic_tools.py": (
+            "e097d5371b36afc5dc7bf5a87cd206d62092a262db4feed35d2a0f4d6b5fc130"
+        ),
+        "evals/v2/kimi_terms_g2a_provisional_contract.json": (
+            "be9b3b609675b6965d81d078c6c260b75bad4b99f98276b811ac533deadfdc49"
+        ),
+    }
+    if any(
+        (root / relative_path).is_symlink()
+        or not (root / relative_path).is_file()
+        or _sha256_file(root / relative_path) != expected_sha256
+        for relative_path, expected_sha256 in frozen_components.items()
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_historical_candidate_v7_component_drift",
+            "Historical Candidate v7 frozen components 缺失或漂移。",
+        )
+
+    return {
+        "status": "valid",
+        "candidate_status": "candidate_locked",
+        "candidate_id": candidate["candidate_id"],
+        "candidate_commitment_sha256": (
+            HISTORICAL_V7_CANDIDATE_COMMITMENT_SHA256
+        ),
+        "full_campaign_frozen": False,
+        "private_holdout_access_authorized": False,
+        "model_quality_claim_allowed": False,
+        "predecessor_candidate_commitment_sha256": (
+            HISTORICAL_V6_CANDIDATE_COMMITMENT_SHA256
+        ),
+        "prior_results_inherited": False,
+        "predecessor_failure_result_inherited": False,
+        "predecessor_authorization_reused": False,
+        "historical_snapshot_only": True,
+        "historical_component_count": len(frozen_components),
+        "network_calls": 0,
+    }
+
+
 def validate_public_regression_candidate(
     *,
     project_root: str | Path,
@@ -242,7 +405,18 @@ def validate_public_regression_candidate(
     verify_environment: bool = False,
 ) -> dict[str, Any]:
     root = Path(project_root).resolve()
-    candidate = _load_json_object(Path(candidate_path), "candidate")
+    resolved_candidate_path = Path(candidate_path).resolve()
+    if resolved_candidate_path.name == "public_regression_candidate_v7.json":
+        if verify_environment:
+            raise EvalV2ContractError(
+                "eval_v2_historical_candidate_environment_verification_unsupported",
+                "Historical Candidate v7 只能复核冻结 artifact；不能据此声明当前环境已验证。",
+            )
+        return _validate_historical_v7_candidate(
+            root=root,
+            candidate_path=resolved_candidate_path,
+        )
+    candidate = _load_json_object(resolved_candidate_path, "candidate")
     _require_exact_fields(candidate, _CANDIDATE_FIELDS, "candidate")
     if (
         candidate["schema_version"] != PUBLIC_REGRESSION_CANDIDATE_SCHEMA_VERSION
@@ -622,6 +796,7 @@ def validate_public_regression_candidate(
             PREDECESSOR_V4_CANDIDATE_COMMITMENT_SHA256
         ),
         "prior_results_inherited": False,
+        "historical_snapshot_only": False,
         "completion_telemetry_contract_id": COMPLETION_TELEMETRY_CONTRACT_ID,
         "anthropic_provider_contract_id": anthropic_snapshot["contract_id"],
         "anthropic_provider_status": "offline_contract_only",
@@ -651,6 +826,25 @@ def validate_public_regression_candidate(
         "repetitions": 3,
         "task_order_sha256": split["task_order_sha256"],
         "dependency_lock": lock_summary,
+        "network_calls": 0,
+    }
+
+
+def validate_eval_v2_dependency_environment(
+    project_root: str | Path,
+) -> dict[str, Any]:
+    """Validate the installed environment without treating a historical snapshot as current."""
+
+    root = Path(project_root).resolve()
+    dependency_lock = _validate_requirements_lock(
+        root / "requirements.lock", verify_environment=True
+    )
+    return {
+        "status": "valid",
+        "verification_scope": "requirements_lock_and_installed_environment_only",
+        "candidate_verified": False,
+        "historical_snapshot_verified": False,
+        "dependency_lock": dependency_lock,
         "network_calls": 0,
     }
 

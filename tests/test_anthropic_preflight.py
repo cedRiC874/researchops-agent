@@ -593,6 +593,8 @@ class AnthropicModelsPreflightTests(unittest.TestCase):
             _ROOT / "evals" / "v2" / "campaign.json",
             _ROOT / "evals" / "v2" / "public_regression_candidate_v4.json",
             _ROOT / "evals" / "v2" / "public_regression_candidate_v5.json",
+            _ROOT / "evals" / "v2" / "public_regression_candidate_v6.json",
+            _ROOT / "evals" / "v2" / "public_regression_candidate_v7.json",
             _ROOT
             / "services"
             / "pilot_staging"
@@ -603,6 +605,16 @@ class AnthropicModelsPreflightTests(unittest.TestCase):
             / "pilot_staging"
             / "content"
             / "pilot_pack.supervised_v6.json",
+            _ROOT
+            / "services"
+            / "pilot_staging"
+            / "content"
+            / "pilot_pack.supervised_v7.json",
+            _ROOT
+            / "services"
+            / "pilot_staging"
+            / "content"
+            / "pilot_pack.supervised_v8.json",
             _ROOT / "evals" / "v2" / "private_holdout_kit" / "protocol.json",
         )
         before = {

@@ -1,21 +1,12 @@
 # Pilot Staging Verification Snapshot
 
-> Current main note (2026-08-26): candidate v5 commitment
+> Current PR-A worktree note (2026-08-28): Candidate v5 commitment
 > `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc` and
-> `pilot_pack.supervised_v6.json` are bound in `main@c65ff65c` while keeping the pilot Provider as
-> DeepSeek.
-> Kimi Models preflight was `implemented_offline_tested_not_run` at candidate lock, so the frozen
-> candidate/pilot snapshot retains `live_models_preflight_performed=false`. After that lock, one
-> separately authorized metadata GET completed at `2026-08-26T09:41:49.967Z`: HTTP 200,
-> attempts/network calls `1/1`, requested/returned model `kimi-k3`, exact visibility true, zero model
-> tokens and cost `null`. The receipt is not inherited by candidate v5 or pilot v6. It does not
-> authorize Chat, tools, model quality, Provider registration or private evaluation. The one-time
-> authorization is consumed and the request must not be retried; any new request requires fresh
-> explicit authorization. No Kimi Chat/tool/model call or predecessor result exists. The successor
-> candidate/pilot state itself has offline verification only. PR #21 regular-merged it to
-> `main@c65ff65c`; this remains engineering evidence, not participant evidence. The exact merge and
-> final main runs are recorded in the
-> [`Kimi Models preflight main CI snapshot`](../../docs/evidence/kimi-models-preflight-main-ci-v1/README.md).
+> `pilot_pack.supervised_v6.json` remain the configured active baseline. Candidate v6/Pack7 and
+> Candidate v7/Pack8 are immutable historical artifacts. Their separate one-call post-lock failures
+> are bound by a versioned overlay and inherited by neither Candidate nor Pack. Because PR-A adds
+> source files after Candidate v5 was locked, current-source execution remains fail-closed until a
+> separately locked current successor exists. This verification makes zero Provider calls.
 
 > Historical PR #19 note: candidate v4 commitment
 > `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` and historical
@@ -28,7 +19,7 @@
 > `main@094cb9b1` 并通过无 Provider Key clean CI；它不继承 predecessor
 > `7744770a…f0d11` 的任何结果。
 
-Date: 2026-08-26 (Asia/Shanghai)
+Date: 2026-08-28 (Asia/Shanghai)
 
 This is a local and GitHub clean-CI engineering verification snapshot. It is not an external participant
 result, a production deployment attestation, a security certification or a Provider
@@ -90,21 +81,25 @@ PR #11 已 regular merge 至
 
 ## Frozen boundary
 
-- Current candidate v5 status: `candidate_locked / valid`
-- Current candidate v5 commitment:
+- Active configured Candidate v5 commitment:
   `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`
-- Predecessor v4 commitment:
-  `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`
+- Active Candidate v5 current-source verification: `component_drift / online execution denied`
+- Historical Candidate v7 commitment:
+  `2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5`
+- Historical Candidate v6 commitment:
+  `57d0c1b054367794fa08ec2dbdecdeb0c75bc4be2c45894b69db832a1f6f5641`
 - Historical predecessor v3 commitment:
   `22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9`
-- Active supervised pack: `pilot_pack.supervised_v6.json`
-- Historical v4-bound pack: `pilot_pack.supervised_v5.json`
-- Kimi Models preflight: `implemented_offline_tested_not_run`
-- Kimi live preflight recorded in candidate/pilot v6 snapshot: `false`
-- Separate post-lock metadata observation: `verified / HTTP 200 / attempts 1 / network 1 /
-  exact kimi-k3 visible / model tokens 0 / cost null`
-- Post-lock receipt inherited or authorizing: `false`
-- Kimi Chat/tool/model calls performed: `false`
+- Active configured supervised pack: `pilot_pack.supervised_v6.json`
+- Historical Candidate-v6 pack: `pilot_pack.supervised_v7.json`
+- Historical Candidate-v7 pack: `pilot_pack.supervised_v8.json`
+- Kimi Chat parser v2/tools and controlled synthetic pilot v2:
+  `implemented_offline_tested_not_run`
+- Candidate v6/v7 and Pack7/8 inherited their post-lock attempts: `false`
+- Separate v7 post-lock observation: `failed / planned_not_registered / 1 request /
+  0 trusted Provider tool calls / 0 tool executions /
+  usage, actual tokens, bill and Provider latency unknown`
+- Kimi Provider registered: `false`
 - Anthropic Models preflight: `implemented_offline_tested_not_run`
 - Public/pilot execution Provider: still `deepseek / deepseek-v4-flash`
 - Historical v1 commitment:

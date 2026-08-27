@@ -14,6 +14,7 @@ from researchops.eval_v2_freeze import (
     candidate_commitment_sha256,
     load_public_regression_task_orders,
     sha256_bundle_v1,
+    validate_eval_v2_dependency_environment,
     validate_public_regression_candidate,
 )
 from researchops.eval_v2_runner import (
@@ -23,7 +24,10 @@ from researchops.eval_v2_runner import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v5.json"
+CANDIDATE_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v7.json"
+HISTORICAL_V5_CANDIDATE_PATH = (
+    REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v5.json"
+)
 HISTORICAL_V1_CANDIDATE_PATH = (
     REPO_ROOT / "evals" / "v2" / "public_regression_candidate.json"
 )
@@ -36,6 +40,9 @@ HISTORICAL_V3_CANDIDATE_PATH = (
 HISTORICAL_V4_CANDIDATE_PATH = (
     REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v4.json"
 )
+HISTORICAL_V7_CANDIDATE_PATH = (
+    REPO_ROOT / "evals" / "v2" / "public_regression_candidate_v7.json"
+)
 SPLIT_PATH = REPO_ROOT / "evals" / "v2" / "public_regression_split_manifest.json"
 
 
@@ -44,61 +51,52 @@ class EvalV2FreezeTests(unittest.TestCase):
         result = validate_public_regression_candidate(
             project_root=REPO_ROOT,
             candidate_path=CANDIDATE_PATH,
-            verify_environment=True,
+            verify_environment=False,
         )
 
         self.assertEqual(result["status"], "valid")
         self.assertEqual(result["candidate_status"], "candidate_locked")
+        self.assertTrue(result["historical_snapshot_only"])
         self.assertFalse(result["full_campaign_frozen"])
         self.assertFalse(result["private_holdout_access_authorized"])
         self.assertFalse(result["model_quality_claim_allowed"])
         self.assertFalse(result["prior_results_inherited"])
-        self.assertEqual(
-            result["completion_telemetry_contract_id"], "completion-telemetry-v2"
-        )
+        self.assertFalse(result["predecessor_failure_result_inherited"])
+        self.assertFalse(result["predecessor_authorization_reused"])
+        self.assertEqual(result["network_calls"], 0)
         self.assertEqual(
             result["predecessor_candidate_commitment_sha256"],
-            "1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7",
+            "57d0c1b054367794fa08ec2dbdecdeb0c75bc4be2c45894b69db832a1f6f5641",
         )
         self.assertEqual(
-            result["anthropic_provider_contract_id"],
-            "eval-v2-anthropic-provider-offline-v1",
+            result["candidate_commitment_sha256"],
+            "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5",
         )
-        self.assertEqual(result["anthropic_provider_status"], "offline_contract_only")
+
+    def test_historical_candidate_cannot_claim_environment_verification(self) -> None:
+        with self.assertRaises(EvalV2ContractError) as caught:
+            validate_public_regression_candidate(
+                project_root=REPO_ROOT,
+                candidate_path=CANDIDATE_PATH,
+                verify_environment=True,
+            )
         self.assertEqual(
-            result["anthropic_models_preflight_contract_id"],
-            "eval-v2-anthropic-models-preflight-v1",
+            caught.exception.code,
+            "eval_v2_historical_candidate_environment_verification_unsupported",
         )
+
+    def test_dependency_environment_gate_is_candidate_independent(self) -> None:
+        result = validate_eval_v2_dependency_environment(REPO_ROOT)
+        self.assertEqual(result["status"], "valid")
         self.assertEqual(
-            result["anthropic_models_preflight_status"],
-            "implemented_offline_tested_not_run",
+            result["verification_scope"],
+            "requirements_lock_and_installed_environment_only",
         )
-        self.assertFalse(result["anthropic_models_preflight_live_calls_performed"])
-        self.assertFalse(result["anthropic_campaign_registered"])
-        self.assertFalse(result["anthropic_online_calls_performed"])
-        self.assertEqual(
-            result["kimi_provider_contract_id"],
-            "eval-v2-moonshot-kimi-provider-design-v1",
-        )
-        self.assertEqual(
-            result["kimi_provider_status"],
-            "preflight_implemented_offline_tested_not_run",
-        )
-        self.assertEqual(
-            result["kimi_models_preflight_contract_id"],
-            "eval-v2-kimi-models-preflight-v1",
-        )
-        self.assertEqual(
-            result["kimi_models_preflight_status"],
-            "implemented_offline_tested_not_run",
-        )
-        self.assertFalse(result["kimi_models_preflight_live_calls_performed"])
-        self.assertFalse(result["kimi_campaign_registered"])
-        self.assertFalse(result["kimi_online_calls_performed"])
-        self.assertEqual(result["provider_behavior_task_count"], 31)
-        self.assertEqual(result["deterministic_fault_injection_task_count"], 9)
-        self.assertEqual(result["dependency_lock"]["exact_pin_count"], 82)
-        self.assertFalse(result["dependency_lock"]["artifact_hashes_included"])
+        self.assertFalse(result["candidate_verified"])
+        self.assertFalse(result["historical_snapshot_verified"])
+        self.assertTrue(result["dependency_lock"]["environment_verified"])
+        self.assertEqual(result["dependency_lock"]["environment_mismatch_count"], 0)
+        self.assertEqual(result["network_calls"], 0)
 
     def test_historical_v1_candidate_is_preserved_without_result_inheritance(self) -> None:
         raw = HISTORICAL_V1_CANDIDATE_PATH.read_bytes()
@@ -168,9 +166,50 @@ class EvalV2FreezeTests(unittest.TestCase):
             historical["candidate_commitment_sha256"],
         )
 
+    def test_historical_v7_candidate_and_frozen_components_are_exact(self) -> None:
+        raw = HISTORICAL_V7_CANDIDATE_PATH.read_bytes()
+        historical = json.loads(raw)
+        self.assertEqual(
+            hashlib.sha256(raw).hexdigest(),
+            "efc6ca2bbd97abe6c659983a386784938a74614cd1028861c25e20478ce7b278",
+        )
+        self.assertEqual(
+            historical["candidate_commitment_sha256"],
+            "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5",
+        )
+        summary = validate_public_regression_candidate(
+            project_root=REPO_ROOT,
+            candidate_path=HISTORICAL_V7_CANDIDATE_PATH,
+        )
+        self.assertTrue(summary["historical_snapshot_only"])
+        self.assertEqual(summary["historical_component_count"], 8)
+        self.assertEqual(summary["network_calls"], 0)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            isolated = Path(temporary)
+            isolated_candidate = (
+                isolated
+                / "evals"
+                / "v2"
+                / "public_regression_candidate_v7.json"
+            )
+            isolated_candidate.parent.mkdir(parents=True)
+            isolated_candidate.write_bytes(raw)
+            with self.assertRaises(EvalV2ContractError) as caught:
+                validate_public_regression_candidate(
+                    project_root=isolated,
+                    candidate_path=isolated_candidate,
+                )
+            self.assertEqual(
+                caught.exception.code,
+                "eval_v2_historical_candidate_v7_component_drift",
+            )
+
     def test_current_public_candidate_remains_deepseek_only(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            payload = json.loads(CANDIDATE_PATH.read_text(encoding="utf-8"))
+            payload = json.loads(
+                HISTORICAL_V5_CANDIDATE_PATH.read_text(encoding="utf-8")
+            )
             payload["provider_config"].update(
                 {
                     "provider_id": "anthropic",
@@ -289,7 +328,7 @@ class EvalV2FreezeTests(unittest.TestCase):
                 ):
                     validate_public_regression_candidate(
                         project_root=REPO_ROOT,
-                        candidate_path=CANDIDATE_PATH,
+                        candidate_path=HISTORICAL_V5_CANDIDATE_PATH,
                     )
 
                 self.assertEqual(
@@ -339,7 +378,9 @@ class EvalV2FreezeTests(unittest.TestCase):
 
     def test_component_drift_fails_even_with_recomputed_commitment(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            payload = json.loads(CANDIDATE_PATH.read_text(encoding="utf-8"))
+            payload = json.loads(
+                HISTORICAL_V5_CANDIDATE_PATH.read_text(encoding="utf-8")
+            )
             payload["component_hashes"]["prompt_source_sha256"] = "0" * 64
             payload["candidate_commitment_sha256"] = candidate_commitment_sha256(payload)
             path = Path(temporary) / "candidate.json"

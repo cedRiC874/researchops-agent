@@ -24,9 +24,16 @@ from .eval_v2_dataset_prep import (
 )
 from .eval_v2_dataset_verify import verify_eval_v2_dataset_downloads
 from .eval_v2_inspect_backend import EvalV2InspectDatasetBackend
-from .eval_v2_freeze import validate_public_regression_candidate
+from .eval_v2_freeze import (
+    validate_eval_v2_dependency_environment,
+    validate_public_regression_candidate,
+)
 from .eval_v2_public_runner import run_public_regression_online
 from .eval_v2_public import validate_eval_v2_suite
+from .kimi_controlled_pilot import verify_kimi_controlled_pilot_artifacts
+from .kimi_controlled_pilot_v2 import (
+    verify_kimi_controlled_pilot_v2_artifacts,
+)
 from .kimi_preflight import run_kimi_models_preflight
 from .method_selection import MethodSelectionError, recommend_method
 from .model_providers import (
@@ -182,6 +189,67 @@ def build_parser() -> argparse.ArgumentParser:
     kimi_preflight_parser.add_argument("--model", required=True)
     kimi_preflight_parser.add_argument("--confirm-online", action="store_true")
 
+    kimi_pilot_parser = subparsers.add_parser(
+        "kimi-controlled-synthetic-pilot",
+        help="历史 v6 入口已永久禁用，仅返回不授权 tombstone",
+    )
+    kimi_pilot_parser.add_argument("--confirm-online", action="store_true")
+    kimi_pilot_parser.add_argument("--accept-locked-caps", action="store_true")
+    kimi_pilot_parser.add_argument("--authorization-id")
+    kimi_pilot_parser.add_argument("--authorization-expires-at-utc")
+    kimi_pilot_parser.add_argument("--terms-retrieved-at-utc")
+    kimi_pilot_parser.add_argument("--terms-service-sha256")
+    kimi_pilot_parser.add_argument("--terms-privacy-sha256")
+    kimi_pilot_parser.add_argument("--terms-payment-sha256")
+    kimi_pilot_parser.add_argument(
+        "--attest-no-material-terms-delta", action="store_true"
+    )
+    kimi_pilot_parser.add_argument("--pricing-retrieved-at-utc")
+    kimi_pilot_parser.add_argument("--pricing-source-sha256")
+    kimi_pilot_parser.add_argument("--pricing-source-bytes", type=int)
+    kimi_pilot_parser.add_argument(
+        "--attest-kimi-k3-pricing-unchanged", action="store_true"
+    )
+
+    kimi_pilot_verify_parser = subparsers.add_parser(
+        "kimi-controlled-pilot-verify",
+        help="只读验证历史 Candidate v6 / Pilot v1 artifact chain",
+    )
+    kimi_pilot_verify_parser.add_argument("--authorization-id", required=True)
+
+    kimi_pilot_v7_parser = subparsers.add_parser(
+        "kimi-controlled-synthetic-pilot-v7",
+        help="历史 v7 入口已永久禁用，仅返回不授权 tombstone",
+    )
+    kimi_pilot_v7_parser.add_argument("--confirm-online", action="store_true")
+    kimi_pilot_v7_parser.add_argument(
+        "--accept-successor-v7-locked-caps", action="store_true"
+    )
+    kimi_pilot_v7_parser.add_argument("--authorized-candidate-commitment")
+    kimi_pilot_v7_parser.add_argument("--authorization-id")
+    kimi_pilot_v7_parser.add_argument("--authorization-expires-at-utc")
+    kimi_pilot_v7_parser.add_argument("--terms-retrieved-at-utc")
+    kimi_pilot_v7_parser.add_argument("--terms-service-sha256")
+    kimi_pilot_v7_parser.add_argument("--terms-privacy-sha256")
+    kimi_pilot_v7_parser.add_argument("--terms-payment-sha256")
+    kimi_pilot_v7_parser.add_argument(
+        "--attest-no-material-terms-delta", action="store_true"
+    )
+    kimi_pilot_v7_parser.add_argument("--pricing-retrieved-at-utc")
+    kimi_pilot_v7_parser.add_argument("--pricing-source-sha256")
+    kimi_pilot_v7_parser.add_argument("--pricing-source-bytes", type=int)
+    kimi_pilot_v7_parser.add_argument(
+        "--attest-kimi-k3-pricing-unchanged", action="store_true"
+    )
+
+    kimi_pilot_v7_verify_parser = subparsers.add_parser(
+        "kimi-controlled-pilot-v7-verify",
+        help="只读验证历史 Candidate v7 / Pilot v2 artifact chain",
+    )
+    kimi_pilot_v7_verify_parser.add_argument(
+        "--authorization-id", required=True
+    )
+
     phase6_validate_parser = subparsers.add_parser(
         "phase6-validate", help="严格验证第六阶段 Agent 行为评测集与 split 清单"
     )
@@ -300,10 +368,15 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_freeze_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate_v5.json"),
+        default=Path("evals/v2/public_regression_candidate_v7.json"),
     )
     eval_v2_freeze_parser.add_argument(
         "--verify-environment", action="store_true"
+    )
+
+    subparsers.add_parser(
+        "eval-v2-verify-environment",
+        help="独立验证 requirements.lock 与当前已安装环境；不验证或授权 candidate",
     )
 
     eval_v2_public_run_parser = subparsers.add_parser(
@@ -439,6 +512,57 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _kimi_pilot_cli_not_run(
+    *,
+    command: str,
+    error_code: str,
+    candidate_id: str | None,
+    contract_id: str,
+) -> dict[str, object]:
+    """Return a non-artifact, zero-call tombstone receipt."""
+
+    return {
+        "schema_version": "kimi-controlled-pilot-cli-gate/1.0",
+        "status": "not_run",
+        "command": command,
+        "error_code": error_code,
+        "contract_id": contract_id,
+        "candidate_id": candidate_id,
+        "candidate_commitment_sha256": None,
+        "chat_contract_sha256": None,
+        "pilot_contract_sha256": None,
+        "scenario_count": 3,
+        "scenarios_completed": 0,
+        "model_request_count": 0,
+        "model_request_limit": 8,
+        "network_attempts": 0,
+        "network_calls": 0,
+        "requested_tool_call_count": 0,
+        "deduplicated_tool_call_count": 0,
+        "executed_tool_call_count": 0,
+        "expected_invalid_request_count": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "usage_observed_request_count": 0,
+        "usage_complete": False,
+        "pricing_attestation": None,
+        "local_estimated_reservation_limit_cny": "5.000000",
+        "local_cost_claim_scope": "local_conservative_hard_stop_only",
+        "actual_billed_cost_cny": None,
+        "outcome_unknown": False,
+        "candidate_result_created": False,
+        "key_loader_passed_to_runner": False,
+        "authorizes_retry": False,
+        "authorizes_resume": False,
+        "authorizes_chat": False,
+        "authorizes_tools": False,
+        "authorizes_model_quality_claim": False,
+        "authorizes_provider_registration": False,
+        "authorizes_private_evaluation": False,
+        "authorizes_non_synthetic_data": False,
+    }
+
+
 def main() -> int:
     args = build_parser().parse_args()
     try:
@@ -543,6 +667,42 @@ def main() -> int:
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if result["status"] == "verified" else 4
+        elif args.command == "kimi-controlled-synthetic-pilot":
+            result = _kimi_pilot_cli_not_run(
+                command="kimi-controlled-synthetic-pilot",
+                error_code="kimi_pilot_v6_online_permanently_disabled",
+                candidate_id=None,
+                contract_id="kimi-controlled-synthetic-pilot-v1",
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 4
+        elif args.command == "kimi-controlled-pilot-verify":
+            project_root = Path(__file__).resolve().parents[2]
+            result = verify_kimi_controlled_pilot_artifacts(
+                project_root,
+                authorization_id=args.authorization_id,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "kimi-controlled-synthetic-pilot-v7":
+            result = _kimi_pilot_cli_not_run(
+                command="kimi-controlled-synthetic-pilot-v7",
+                error_code="kimi_pilot_v7_online_permanently_disabled",
+                candidate_id=(
+                    "eval-v2-public-regression-deepseek-kimi-controlled-chat-v7"
+                ),
+                contract_id="kimi-controlled-synthetic-pilot-v2",
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 4
+        elif args.command == "kimi-controlled-pilot-v7-verify":
+            project_root = Path(__file__).resolve().parents[2]
+            result = verify_kimi_controlled_pilot_v2_artifacts(
+                project_root,
+                authorization_id=args.authorization_id,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         elif args.command == "phase6-validate":
             result = validate_phase6_suite(args.tasks, args.splits)
             print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -625,6 +785,11 @@ def main() -> int:
                 candidate_path=args.candidate,
                 verify_environment=args.verify_environment,
             )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "eval-v2-verify-environment":
+            project_root = Path(__file__).resolve().parents[2]
+            result = validate_eval_v2_dependency_environment(project_root)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         elif args.command == "eval-v2-run-public-online":

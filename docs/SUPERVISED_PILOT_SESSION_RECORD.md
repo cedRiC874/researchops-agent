@@ -19,7 +19,8 @@
 | `candidate_commitment_sha256` | `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc` |
 | `deployment_git_sha` | `________________________________________` |
 | `task_pack_file` | `pilot_pack.supervised_v6.json` |
-| `task_pack_sha256` | `83363291f30c7edd62d30e88da38fcf966b7d01c5ac16d3a2964ee9571555d72` |
+| `task_pack_sha256` | `7536b148fd3873135707962421e57482602a3daccb1d982f6bb4d72219cec3c5` |
+| `task_pack_commitment_sha256` | `83363291f30c7edd62d30e88da38fcf966b7d01c5ac16d3a2964ee9571555d72` |
 | `consent_document_sha256` | `________________________________________________________________` |
 | `provider_id` | `deepseek` |
 | `model_id` | `deepseek-v4-flash` |
@@ -33,14 +34,17 @@ qualifying_external_pilot=false
 external_validation_claim_allowed=false
 professional_correctness_assessed=false
 recording_enabled=false
-kimi_models_preflight_status=implemented_offline_tested_not_run
-kimi_models_preflight_live_call_performed=false
-kimi_online_run_performed=false
+kimi_models_preflight_candidate_snapshot_status=implemented_offline_tested_not_run
+candidate_v6_post_lock_failure_inherited=false
+candidate_v7_post_lock_failure_inherited=false
+kimi_historical_online_observation_inherited=false
 prior_pilot_results_inherited=false
 ```
 
-上述 Kimi 字段只描述本 candidate/Pilot snapshot，不是全局 Provider 活动日志。Candidate
-锁定后的一次独立 metadata verification 不回填本记录，也不构成 Kimi model/pilot run 或授权。
+上述字段只描述 Candidate v5 / Pack6 active baseline 的继承边界，不是全局 Provider 活动日志。
+Candidate v6/v7 锁定后的两次独立首请求失败、已消费授权和更早的 metadata verification 均不
+回填本记录。Pack7/8 是 historical artifacts，不能用于本 active session；当前源码未由 v5
+commitment 绑定时不得启动 online worker。
 
 ## B. 场次前确认
 

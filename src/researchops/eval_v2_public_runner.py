@@ -18,6 +18,7 @@ from .artifact_security import ArtifactPermissionError, enable_parent_acl_inheri
 from .eval_v2_dataset_prep import EvalV2LogicalDatasetRegistry
 from .eval_v2_freeze import (
     load_public_regression_task_orders,
+    validate_eval_v2_dependency_environment,
     validate_public_regression_candidate,
 )
 from .eval_v2_inspect_backend import EvalV2InspectDatasetBackend
@@ -225,8 +226,14 @@ def run_public_regression_online(
     freeze = validate_public_regression_candidate(
         project_root=root,
         candidate_path=candidate_source,
-        verify_environment=True,
+        verify_environment=False,
     )
+    if freeze.get("historical_snapshot_only") is not False:
+        raise EvalV2ContractError(
+            "eval_v2_historical_candidate_execution_forbidden",
+            "Historical candidate 只允许离线复核，不能授权 public-regression 在线执行。",
+        )
+    validate_eval_v2_dependency_environment(root)
     candidate = _load_json_object(candidate_source, "candidate")
     provider_config = candidate["provider_config"]
     execution_policy = candidate["execution_policy"]

@@ -66,12 +66,38 @@ jobs:
         run: |
           $env:PYTHONPATH = "src"
           python -m researchops.cli eval-validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m researchops.cli phase6-validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m researchops.cli phase6-status
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m researchops.cli eval-v2-validate
-          python -m researchops.cli eval-v2-verify-public-freeze `
-            --candidate evals/v2/public_regression_candidate_v5.json `
-            --verify-environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $historicalV7Raw = (& python -m researchops.cli `
+            eval-v2-verify-public-freeze `
+            --candidate evals/v2/public_regression_candidate_v7.json | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $historicalV7 = $historicalV7Raw | ConvertFrom-Json
+          if ($historicalV7.status -ne "valid" -or
+              $historicalV7.historical_snapshot_only -ne $true -or
+              $historicalV7.network_calls -ne 0) {
+            Write-Output "::error title=historical_v7_contract_invalid::Candidate v7 must remain a valid offline-only historical snapshot."
+            exit 1
+          }
+          $environmentRaw = (& python -m researchops.cli `
+            eval-v2-verify-environment | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $environment = $environmentRaw | ConvertFrom-Json
+          if ($environment.status -ne "valid" -or
+              $environment.verification_scope -ne "requirements_lock_and_installed_environment_only" -or
+              $environment.candidate_verified -ne $false -or
+              $environment.historical_snapshot_verified -ne $false -or
+              $environment.dependency_lock.environment_verified -ne $true -or
+              $environment.dependency_lock.environment_mismatch_count -ne 0 -or
+              $environment.network_calls -ne 0) {
+            Write-Output "::error title=eval_v2_environment_contract_invalid::The independent dependency environment gate did not pass."
+            exit 1
+          }
           $nativeErrorPreference = $PSNativeCommandUseErrorActionPreference
           try {
             $PSNativeCommandUseErrorActionPreference = $false
@@ -114,6 +140,63 @@ jobs:
               $kimiPreflight.authorizes_model_run -or
               $kimiPreflight.authorizes_provider_registration) {
             Write-Output "::error title=kimi_preflight_contract_invalid::Unconfirmed Kimi preflight must remain offline and non-authorizing."
+            exit 1
+          }
+          try {
+            $PSNativeCommandUseErrorActionPreference = $false
+            $kimiPilotV6Raw = (& python -m researchops.cli `
+              kimi-controlled-synthetic-pilot | Out-String)
+            $kimiPilotV6Exit = $LASTEXITCODE
+          } finally {
+            $PSNativeCommandUseErrorActionPreference = $nativeErrorPreference
+          }
+          if ($kimiPilotV6Exit -ne 4) {
+            Write-Output "::error title=kimi_pilot_v6_cli_failed::Unexpected CLI exit code."
+            exit 1
+          }
+          $kimiPilotV6 = $kimiPilotV6Raw | ConvertFrom-Json
+          if ($kimiPilotV6.status -ne "not_run" -or
+              $kimiPilotV6.error_code -ne "kimi_pilot_v6_online_permanently_disabled" -or
+              $kimiPilotV6.network_attempts -ne 0 -or
+              $kimiPilotV6.network_calls -ne 0 -or
+              $kimiPilotV6.model_request_count -ne 0 -or
+              $kimiPilotV6.key_loader_passed_to_runner -or
+              $kimiPilotV6.authorizes_chat -or
+              $kimiPilotV6.authorizes_tools -or
+              $kimiPilotV6.authorizes_retry -or
+              $kimiPilotV6.authorizes_provider_registration -or
+              $kimiPilotV6.authorizes_private_evaluation -or
+              $kimiPilotV6.authorizes_non_synthetic_data) {
+            Write-Output "::error title=kimi_pilot_v6_contract_invalid::Consumed v6 must remain permanently disabled."
+            exit 1
+          }
+          try {
+            $PSNativeCommandUseErrorActionPreference = $false
+            $kimiPilotV7Raw = (& python -m researchops.cli `
+              kimi-controlled-synthetic-pilot-v7 | Out-String)
+            $kimiPilotV7Exit = $LASTEXITCODE
+          } finally {
+            $PSNativeCommandUseErrorActionPreference = $nativeErrorPreference
+          }
+          if ($kimiPilotV7Exit -ne 4) {
+            Write-Output "::error title=kimi_pilot_v7_cli_failed::Unexpected CLI exit code."
+            exit 1
+          }
+          $kimiPilotV7 = $kimiPilotV7Raw | ConvertFrom-Json
+          if ($kimiPilotV7.status -ne "not_run" -or
+              $kimiPilotV7.error_code -ne "kimi_pilot_v7_online_permanently_disabled" -or
+              $kimiPilotV7.contract_id -ne "kimi-controlled-synthetic-pilot-v2" -or
+              $kimiPilotV7.network_attempts -ne 0 -or
+              $kimiPilotV7.network_calls -ne 0 -or
+              $kimiPilotV7.model_request_count -ne 0 -or
+              $kimiPilotV7.key_loader_passed_to_runner -or
+              $kimiPilotV7.authorizes_chat -or
+              $kimiPilotV7.authorizes_tools -or
+              $kimiPilotV7.authorizes_retry -or
+              $kimiPilotV7.authorizes_provider_registration -or
+              $kimiPilotV7.authorizes_private_evaluation -or
+              $kimiPilotV7.authorizes_non_synthetic_data) {
+            Write-Output "::error title=kimi_pilot_v7_contract_invalid::Consumed v7 must remain permanently disabled."
             exit 1
           }
           $anthropic = (python -m researchops.cli phase6-status `

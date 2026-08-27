@@ -20,7 +20,8 @@ from .postgres import PostgresPilotStore
 
 def create_app() -> FastAPI:
     settings = Settings()
-    validate_locked_candidate_files(settings.project_root)
+    if settings.provider_execution_enabled:
+        validate_locked_candidate_files(settings.project_root)
     store = PostgresPilotStore(settings.database_url())
     catalog = RegistryDatasetCatalog(settings.registry_path)
     consent_path = (

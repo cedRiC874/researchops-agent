@@ -1,0 +1,304 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "moonshot-kimi-terms-g2a-provisional-v1",
+  "reviewed_on_utc": "2026-08-26",
+  "decision": {
+    "gate": "G2a",
+    "status": "provisional_synthetic_only_pass",
+    "final_effective_terms_verified": false,
+    "does_not_grant_user_task_authorization": true,
+    "does_not_authorize_implementation": true,
+    "does_not_authorize_provider_calls": true,
+    "does_not_authorize_chat_or_pilot": true,
+    "separate_pre_effective_user_authorization_may_enable_synthetic_pilot": true,
+    "does_not_authorize_provider_registration": true,
+    "does_not_authorize_private_or_non_synthetic": true
+  },
+  "source_evidence": {
+    "old_effective_cache": {
+      "displayed_effective_date": "2025-04-28",
+      "displayed_updated_date": "2025-04-28",
+      "named_legal_entity": "北京月之暗面科技有限公司",
+      "source_kind": "secondary_search_cache_partial",
+      "capture_completeness": "partial_relevant_excerpts_only",
+      "service_agreement_url": "https://platform.kimi.com/docs/agreement/modeluse",
+      "privacy_policy_url": "https://platform.kimi.com/docs/agreement/userprivacy",
+      "payment_agreement_url": "https://platform.kimi.com/docs/agreement/payment",
+      "full_text_sha256": null,
+      "authoritative_full_text_available": false,
+      "evidence_strength": "limited",
+      "may_be_treated_as_final_full_text": false
+    },
+    "announced_preview": {
+      "displayed_updated_date": "2026-08-24",
+      "announced_effective_date": "2026-08-31",
+      "named_legal_entity": "北京月之暗面科技股份有限公司",
+      "source_kind": "first_party_pre_effective_preview",
+      "capture_completeness": "reviewed_relevant_sections_not_versioned_archive",
+      "service_agreement_url": "https://platform.kimi.com/docs/agreement/modeluse",
+      "privacy_policy_url": "https://platform.kimi.com/docs/agreement/userprivacy",
+      "payment_agreement_url": "https://platform.kimi.com/docs/agreement/payment",
+      "full_text_sha256": null,
+      "is_final_effective_text": false,
+      "evidence_strength": "moderate",
+      "may_be_treated_as_current_effective_text": false
+    }
+  },
+  "verified_deltas": [
+    {
+      "field": "version_dates",
+      "old_value": "effective_and_updated_2025_04_28",
+      "announced_value": "updated_2026_08_24_effective_2026_08_31",
+      "evidence_strength": "high",
+      "requires_final_reverification": true
+    },
+    {
+      "field": "named_legal_entity_form",
+      "old_value": "北京月之暗面科技有限公司",
+      "announced_value": "北京月之暗面科技股份有限公司",
+      "evidence_strength": "moderate",
+      "requires_final_reverification": true
+    }
+  ],
+  "comparison_boundary": {
+    "complete_clause_level_diff_performed": false,
+    "old_full_text_baseline_available": false,
+    "absence_of_observed_delta_means_no_delta": false,
+    "old_cache_may_be_used_as_final_text": false,
+    "announced_preview_may_be_called_effective": false,
+    "unobserved_or_uncomparable_clauses_status": "unknown"
+  },
+  "common_risks": {
+    "input_output_feedback_model_optimization_use": {
+      "value": true,
+      "evidence_strength": "moderate",
+      "old_support": "observed_in_partial_cache",
+      "announced_support": "observed_in_first_party_preview"
+    },
+    "dialogue_content_model_optimization_use": {
+      "value": true,
+      "evidence_strength": "moderate",
+      "old_support": "observed_in_partial_cache",
+      "announced_support": "observed_in_first_party_preview"
+    },
+    "public_no_training_commitment_verified": {
+      "value": false,
+      "evidence_strength": "moderate"
+    },
+    "public_training_opt_out_verified": {
+      "value": false,
+      "evidence_strength": "moderate"
+    },
+    "zero_data_retention_verified": {
+      "value": false,
+      "evidence_strength": "moderate"
+    },
+    "personal_information_storage_location": {
+      "value": "peoples_republic_of_china",
+      "evidence_strength": "moderate"
+    },
+    "request_retention_days": {
+      "value": null,
+      "evidence_strength": "limited"
+    },
+    "response_retention_days": {
+      "value": null,
+      "evidence_strength": "limited"
+    },
+    "security_log_retention_days": {
+      "value": null,
+      "evidence_strength": "limited"
+    },
+    "backup_retention_days": {
+      "value": null,
+      "evidence_strength": "limited"
+    },
+    "deletion_sla_days": {
+      "value": null,
+      "evidence_strength": "limited"
+    },
+    "complete_api_subprocessor_list_verified": {
+      "value": false,
+      "evidence_strength": "limited"
+    },
+    "public_dpa_verified": {
+      "value": false,
+      "evidence_strength": "limited"
+    }
+  },
+  "announced_preview_observations": [
+    {
+      "observation_id": "privacy_financial_management_details",
+      "classification": "announced_preview_observation_not_verified_delta",
+      "summary": "The announced privacy preview describes order, payment status, transaction and invoicing information used for recharge, support, disputes, audit and legal compliance.",
+      "evidence_strength": "limited",
+      "old_comparison_status": "unknown_due_partial_cache",
+      "may_be_called_new_or_expanded": false
+    },
+    {
+      "observation_id": "payment_and_transaction_processor_sharing",
+      "classification": "announced_preview_observation_not_verified_delta",
+      "summary": "The announced privacy preview describes necessary transaction information sharing with payment processors such as Alipay and WeChat.",
+      "evidence_strength": "limited",
+      "old_comparison_status": "unknown_due_partial_cache",
+      "may_be_called_new_or_expanded": false
+    },
+    {
+      "observation_id": "third_party_processing_and_login_sdk",
+      "classification": "announced_preview_observation_not_verified_delta",
+      "summary": "The announced privacy preview describes generic authorized technical or analytics processors and identifies NetEase Yidun login verification processing of IP and device information.",
+      "evidence_strength": "limited",
+      "old_comparison_status": "unknown_due_partial_cache",
+      "may_be_called_new_or_expanded": false
+    },
+    {
+      "observation_id": "customer_business_data_instruction_language",
+      "classification": "announced_preview_observation_not_verified_delta",
+      "summary": "The announced service preview contains instruction-bound customer business data processing language, subject to agreement, product-rule and legal exceptions.",
+      "evidence_strength": "limited",
+      "old_comparison_status": "unknown_due_partial_cache",
+      "may_be_called_new_or_expanded": false
+    }
+  ],
+  "provisional_scope": {
+    "data_class": "fresh_synthetic_non_sensitive_only",
+    "personal_information_allowed": false,
+    "business_secrets_allowed": false,
+    "private_holdout_allowed": false,
+    "non_synthetic_allowed": false,
+    "repo_local_holdout_allowed": false,
+    "previously_run_public_cases_allowed": false,
+    "previously_run_supervised_cases_allowed": false,
+    "file_upload_allowed": false,
+    "hosted_search_or_memory_allowed": false,
+    "result_may_be_used_for_prompt_tuning": false
+  },
+  "pre_effective_expiry": {
+    "effective_date_timezone_assumption": "Asia/Shanghai",
+    "expires_at_utc": "2026-08-30T16:00:00Z",
+    "validity_rule": "current_time_utc_must_be_before_expires_at_utc_and_sources_unchanged",
+    "state_before_expiry": "provisional_synthetic_only_pass",
+    "state_at_or_after_expiry": "blocked_pending_final_effective_terms_review",
+    "expires_on_any_source_update": true,
+    "automatic_extension_allowed": false
+  },
+  "pre_effective_online_gate": {
+    "fresh_first_party_source_attestation_required": true,
+    "required_source_ids": [
+      "service_agreement",
+      "privacy_policy",
+      "payment_agreement"
+    ],
+    "required_attestation_fields": [
+      "retrieved_at_utc",
+      "source_urls",
+      "displayed_updated_dates",
+      "displayed_effective_dates",
+      "raw_or_canonical_text_sha256",
+      "canonicalization_version",
+      "material_delta_review_status",
+      "authorization_binding_sha256"
+    ],
+    "attestation_max_age_seconds": 3600,
+    "source_update_detection_implemented": false,
+    "operator_source_recheck_required_immediately_before_online_run": true,
+    "attestation_must_be_bound_to_separate_user_authorization": true,
+    "attestation_must_confirm_no_material_or_unclassifiable_delta": true,
+    "separate_user_authorization_must_include_locked_caps_and_budget": true,
+    "missing_stale_or_unreviewed_attestation_action": "blocked_manual_re_review",
+    "valid_only_before_expires_at_utc": true,
+    "g2b_required_at_or_after_expiry": true
+  },
+  "delta_gate": {
+    "required_final_sources": [
+      "final_first_party_service_agreement",
+      "final_first_party_privacy_policy",
+      "final_first_party_payment_agreement"
+    ],
+    "required_capture_fields": [
+      "retrieved_at_utc",
+      "displayed_updated_date",
+      "displayed_effective_date",
+      "raw_or_canonical_text_sha256",
+      "canonicalization_version"
+    ],
+    "material_categories": [
+      "legal_entity",
+      "customer_content_use",
+      "training_or_model_improvement",
+      "retention_and_deletion",
+      "data_location_and_cross_border_transfer",
+      "subprocessors",
+      "confidentiality_and_security",
+      "incident_notification",
+      "ownership_and_license",
+      "availability_sla",
+      "liability",
+      "pricing_refund_and_termination",
+      "regional_or_sanctions_eligibility"
+    ],
+    "preview_hash_or_date_mismatch_action": "blocked_manual_re_review",
+    "material_or_unclassifiable_delta_action": "blocked_manual_re_review",
+    "no_material_delta_auto_authorizes_online_use": false,
+    "manual_signoff_required": true
+  },
+  "g2a": {
+    "pass_conditions": [
+      "old_cache_is_labeled_partial_and_non_authoritative",
+      "announced_text_is_labeled_pre_effective_preview",
+      "synthetic_only_and_private_denied_are_machine_enforced",
+      "no_no_training_or_zero_retention_claim_is_made",
+      "no_provider_call_is_part_of_g2a",
+      "candidate_and_prior_results_are_not_inherited",
+      "current_user_task_authorization_is_checked_separately",
+      "fresh_first_party_source_attestation_is_bound_to_separate_user_authorization",
+      "operator_source_recheck_is_completed_immediately_before_online_run"
+    ],
+    "fail_conditions": [
+      "effective_date_reached_without_final_source_capture_and_diff",
+      "source_version_date_or_content_changes_before_expiry",
+      "old_cache_or_preview_is_presented_as_final_effective_text",
+      "non_synthetic_private_personal_or_secret_data_is_proposed",
+      "no_training_zero_retention_or_complete_subprocessor_claim_is_asserted",
+      "provider_call_chat_tool_or_pilot_is_treated_as_authorized",
+      "post_lock_metadata_receipt_is_used_as_terms_compliance_quality_or_registration_evidence",
+      "material_delta_is_unreviewed",
+      "fresh_first_party_source_attestation_is_missing",
+      "first_party_source_attestation_is_older_than_3600_seconds",
+      "operator_source_recheck_is_not_completed_immediately_before_online_run",
+      "source_update_is_observed_or_cannot_be_ruled_out"
+    ],
+    "pass_effect": "eligible_for_separately_authorized_pre_effective_synthetic_pilot_or_offline_design",
+    "pass_automatically_authorizes_implementation": false,
+    "pass_automatically_authorizes_online_use": false,
+    "failure_state": "blocked_manual_re_review"
+  },
+  "post_lock_receipt_boundary": {
+    "may_support": [
+      "authentication_at_one_point_in_time",
+      "exact_model_visibility_at_one_point_in_time"
+    ],
+    "may_not_support": [
+      "terms_compliance",
+      "chat_or_tool_compatibility",
+      "usage_or_cost_semantics",
+      "model_quality",
+      "provider_registration",
+      "non_synthetic_or_private_use"
+    ]
+  },
+  "next_state": {
+    "name": "G2b_final_effective_terms_review",
+    "earliest_date": "2026-08-31",
+    "requires_manual_signoff": true,
+    "requires_separate_user_task_authorization": true,
+    "requires_separate_key_budget_caps_and_one_time_authorization_for_online_use": true
+  },
+  "audit_activity": {
+    "public_document_review_performed": true,
+    "provider_api_key_read": false,
+    "provider_network_calls": 0,
+    "model_token_calls": 0,
+    "cost": null
+  }
+}

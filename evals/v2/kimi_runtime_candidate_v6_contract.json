@@ -1,0 +1,111 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "eval-v2-kimi-runtime-candidate-v6",
+  "candidate_id": "eval-v2-public-regression-deepseek-kimi-controlled-chat-v6",
+  "status": "offline_ready_not_run",
+  "implementation_status": "implemented_offline_tested_not_run",
+  "predecessor": {
+    "relationship": "immutable_successor_of",
+    "contract_id": "eval-v2-moonshot-kimi-provider-design-v1",
+    "contract_sha256": "d40f5696ce6930d0710dc73b875ad09c9cd55c5b6a4606a96fea043608541e17",
+    "historical_implementation_status": "models_preflight_only"
+  },
+  "runtime_identity": {
+    "provider_id": "moonshot_kimi",
+    "model_id": "kimi-k3",
+    "api_origin": "https://api.moonshot.cn",
+    "chat_path": "/v1/chat/completions",
+    "transport_protocol": "chat_completions",
+    "transport_id": "moonshot_direct_chat_completions_sse",
+    "reasoning_effort": "low",
+    "synthetic_only": true
+  },
+  "contract_references": {
+    "chat_completions": {
+      "contract_id": "eval-v2-kimi-chat-completions-v1",
+      "status": "implemented_offline_tested_not_run",
+      "path": "evals/v2/kimi_chat_completions_contract.json",
+      "sha256": "a8a7df576175fe003de7ef09f584bd71823473c3aed1addf8977cd307ae38f8d"
+    },
+    "controlled_synthetic_pilot": {
+      "contract_id": "kimi-controlled-synthetic-pilot-v1",
+      "status": "implemented_offline_tested_not_run",
+      "path": "evals/v2/kimi_controlled_pilot_contract.json",
+      "sha256": "3711ca1df12f6949398c529d60afbb2d3dd94fc77b276ea6eb082e543e1e98ac"
+    },
+    "pricing_attestation": {
+      "contract_id": "kimi-pricing-attestation/1.0",
+      "status": "implemented_offline_tested_not_run",
+      "implementation_path": "src/researchops/kimi_controlled_pilot.py",
+      "implementation_sha256": "592f6204aa15be0ee6e837368f2dcf79d1c1f52ebf82f9f345cc51d860075981",
+      "official_source_url": "https://platform.kimi.com/docs/pricing/chat-k3",
+      "canonicalization_version": "kimi-pricing-canonical-v1",
+      "attestation_max_age_seconds": 3600,
+      "local_cost_claim_scope": "local_conservative_hard_stop_only",
+      "actual_billed_cost_available": false
+    },
+    "invalid_request_error_probe": {
+      "contract_id": "kimi-invalid-request-error-probe-v1",
+      "status": "implemented_offline_tested_not_run",
+      "scenario_set_id": "kimi-controlled-pilot-synthetic-tools-v1",
+      "scenario_id": "KIMI-SYNTH-PROVIDER-003",
+      "scenario_path": "evals/v2/kimi_controlled_pilot_scenarios_v1.json",
+      "scenario_sha256": "f5f51f57f46d5b98677bb9809f28f3e211bb553fd8f4f8d873f848a9ef6f649b",
+      "transport_implementation_path": "src/researchops/kimi_chat_transport.py",
+      "transport_implementation_sha256": "6e4be581ebf3d11c96bec4cb4cb8d58de62c24f8b025912cc1af5a3774977279",
+      "canonical_body_bytes": 124,
+      "canonical_body_sha256": "b07a395baa11d449dcb58666363e56daa60a3686edb27bf4e57eb1d8cfa76cd7",
+      "messages_omitted": true,
+      "prompt_present": false,
+      "tools_present": false,
+      "max_completion_tokens": 1,
+      "expected_http_status": 400,
+      "expected_error_type": "invalid_request_error",
+      "stable_error_code": "kimi_chat_invalid_request",
+      "client_retries": 0,
+      "fallbacks_allowed": false
+    }
+  },
+  "component_hashes": {
+    "predecessor_provider_design_contract_sha256": "d40f5696ce6930d0710dc73b875ad09c9cd55c5b6a4606a96fea043608541e17",
+    "chat_completions_contract_sha256": "a8a7df576175fe003de7ef09f584bd71823473c3aed1addf8977cd307ae38f8d",
+    "controlled_pilot_contract_sha256": "3711ca1df12f6949398c529d60afbb2d3dd94fc77b276ea6eb082e543e1e98ac",
+    "controlled_pilot_scenarios_sha256": "f5f51f57f46d5b98677bb9809f28f3e211bb553fd8f4f8d873f848a9ef6f649b",
+    "terms_g2a_contract_sha256": "be9b3b609675b6965d81d078c6c260b75bad4b99f98276b811ac533deadfdc49",
+    "chat_transport_source_sha256": "6e4be581ebf3d11c96bec4cb4cb8d58de62c24f8b025912cc1af5a3774977279",
+    "controlled_pilot_source_sha256": "592f6204aa15be0ee6e837368f2dcf79d1c1f52ebf82f9f345cc51d860075981",
+    "synthetic_tools_source_sha256": "e097d5371b36afc5dc7bf5a87cd206d62092a262db4feed35d2a0f4d6b5fc130"
+  },
+  "entry_points": {
+    "campaign_registered": false,
+    "provider_registry_enabled": false,
+    "phase6_enabled": false,
+    "self_pilot_cli_enabled": false,
+    "self_pilot_web_enabled": false,
+    "web_enabled": false,
+    "public_runner_enabled": false,
+    "pilot_staging_provider_execution_enabled": false,
+    "private_evaluation_enabled": false
+  },
+  "audit_activity": {
+    "online_calls_performed": 0,
+    "chat_completions_requests_performed": 0,
+    "invalid_request_error_probe_requests_performed": 0,
+    "model_token_calls": 0,
+    "api_key_read_or_used": false,
+    "usage": null,
+    "cost": null
+  },
+  "claim_boundary": {
+    "model_quality_claim_allowed": false,
+    "private_evaluation_claim_allowed": false,
+    "non_synthetic_release_claim_allowed": false,
+    "provider_registration_claim_allowed": false,
+    "campaign_registration_claim_allowed": false,
+    "public_regression_claim_allowed": false,
+    "online_chat_compatibility_claim_allowed": false,
+    "online_tool_compatibility_claim_allowed": false,
+    "online_error_semantics_claim_allowed": false,
+    "authorizes_model_run": false
+  }
+}

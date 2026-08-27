@@ -1,0 +1,73 @@
+{
+  "schema_version": "kimi-controlled-pilot-public-projection/1.0",
+  "public_evidence_id": "318f466b-db08-4d64-9c18-5a3375eea513",
+  "documented_at_utc": "2026-08-26T16:20:48.119Z",
+  "candidate_snapshot": {
+    "candidate_id": "eval-v2-public-regression-deepseek-kimi-controlled-chat-v6",
+    "candidate_commitment_sha256": "57d0c1b054367794fa08ec2dbdecdeb0c75bc4be2c45894b69db832a1f6f5641",
+    "candidate_file_sha256": "a6b91f68eda6aee4f435ab091e81034ed93971f4358675945d22d5b70daba657",
+    "result_inherited": false
+  },
+  "contract": {
+    "contract_id": "kimi-controlled-synthetic-pilot-v1",
+    "contract_sha256": "3711ca1df12f6949398c529d60afbb2d3dd94fc77b276ea6eb082e543e1e98ac"
+  },
+  "outcome": {
+    "status": "failed",
+    "error_code": "kimi_chat_usage_invalid",
+    "g4_decision": "planned_not_registered",
+    "scenarios_planned": 3,
+    "scenarios_completed": 0,
+    "model_request_limit": 8,
+    "model_request_count": 1,
+    "network_attempts": 1,
+    "network_calls": 1,
+    "requested_tool_call_count": 0,
+    "deduplicated_tool_call_count": 0,
+    "executed_tool_call_count": 0,
+    "expected_invalid_request_count": 0,
+    "outcome_unknown": false,
+    "wall_elapsed_ms": 15921,
+    "provider_latency_ms": null
+  },
+  "usage": {
+    "usage_complete": false,
+    "usage_observed_request_count": 0,
+    "input_tokens": null,
+    "output_tokens": null,
+    "actual_token_count_unknown": true,
+    "reserved_input_tokens": 8000,
+    "reserved_output_tokens": 1536
+  },
+  "cost": {
+    "currency": "CNY",
+    "local_reserved_estimated_cost": "0.313600",
+    "local_estimated_reservation_limit": "5.000000",
+    "usage_based_estimated_cost": null,
+    "actual_billed_cost": null,
+    "actual_bill_unknown": true,
+    "claim_scope": "local_conservative_hard_stop_only"
+  },
+  "postmortem": {
+    "raw_provider_body_persisted": false,
+    "observed_provider_payload_shape_known": false,
+    "documented_parser_contract_mismatch_confirmed": true,
+    "causal_root_cause": "undetermined_with_confirmed_parser_contract_mismatch",
+    "causal_root_cause_claim_allowed": false
+  },
+  "authorization_and_claim_boundary": {
+    "authorization_consumed": true,
+    "authorization_identifier_or_hash_published": false,
+    "authorization_derived_binding_hashes_published": false,
+    "candidate_result_created": false,
+    "authorizes_retry": false,
+    "authorizes_resume": false,
+    "authorizes_chat": false,
+    "authorizes_tools": false,
+    "authorizes_model_quality_claim": false,
+    "authorizes_provider_registration": false,
+    "authorizes_private_evaluation": false,
+    "authorizes_non_synthetic_data": false,
+    "compatibility_verified": false
+  }
+}

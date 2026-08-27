@@ -1,0 +1,53 @@
+{
+  "schema_version": "kimi-controlled-pilot-public-source-commitments/1.0",
+  "pilot_gate_sources_captured_at_utc": "2026-08-26T15:57:56.291Z",
+  "capture_method": "fixed first-party HTTPS GET with identity content encoding; SHA-256 over decoded response bytes",
+  "sources": {
+    "service_agreement": {
+      "url": "https://platform.kimi.com/docs/agreement/modeluse",
+      "http_status": 200,
+      "bytes": 314256,
+      "sha256": "d43e1cc10c671f120d28faf831a1ab84bdd26ea3509b9b4ea131f9c2920e80a1"
+    },
+    "privacy_policy": {
+      "url": "https://platform.kimi.com/docs/agreement/userprivacy",
+      "http_status": 200,
+      "bytes": 307243,
+      "sha256": "a71d7b4c643d217bfeffe544403a818414af1818e418a7f769b5773dcbc0051c"
+    },
+    "payment_agreement": {
+      "url": "https://platform.kimi.com/docs/agreement/payment",
+      "http_status": 200,
+      "bytes": 249744,
+      "sha256": "5f9973a704218b141667e75d8cb97e7a139dcc719928d3725c3d6f950a4a488f"
+    },
+    "kimi_k3_pricing": {
+      "url": "https://platform.kimi.com/docs/pricing/chat-k3",
+      "http_status": 200,
+      "bytes": 227660,
+      "sha256": "8555270b9dc88fcef0704abb8d02033137f6e67c6c23e9b09592658cd33bd38b",
+      "currency": "CNY",
+      "billing_unit_tokens": 1000000,
+      "cached_input_per_million": "2.000000",
+      "uncached_input_per_million": "20.000000",
+      "output_per_million": "100.000000"
+    },
+    "chat_completions_documentation": {
+      "url": "https://platform.kimi.com/docs/api/chat",
+      "captured_at_utc": "2026-08-26T16:15:03.000Z",
+      "http_status": 200,
+      "bytes": 826200,
+      "sha256": "8aceb197e56b47dc73c1f06377462ed33e36c126f4e7d5459294b0746b94d43a",
+      "documented_terminal_layout": "finish_reason_and_usage_in_same_final_data_chunk_before_done"
+    }
+  },
+  "boundary": {
+    "displayed_updated_date": "2026-08-24",
+    "displayed_effective_date": "2026-08-31",
+    "g2a_material_delta_observed": false,
+    "documented_parser_contract_mismatch_reproduced_offline": true,
+    "is_t2b_final_effective_terms_evidence": false,
+    "is_t6_governance_completion_evidence": false,
+    "authorizes_future_provider_call": false
+  }
+}

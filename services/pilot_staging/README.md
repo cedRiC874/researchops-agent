@@ -18,19 +18,14 @@ It uses the locked candidate commitment:
 105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc
 ```
 
-The frozen pilot Provider identity remains DeepSeek `deepseek-v4-flash` through the
-OpenAI-compatible Responses transport. Candidate v5 binds the Kimi Models preflight at
-`implemented_offline_tested_not_run`; the candidate and pilot v6 snapshot therefore retain
-`live_models_preflight_performed=false`. After that lock, one separately authorized metadata GET
-completed at `2026-08-26T09:41:49.967Z`: HTTP 200, attempts/network calls `1/1`, exact `kimi-k3`
-visible, zero model-token calls and cost `null`. This post-lock receipt is not inherited by the
-candidate or pilot. The one-time authorization is consumed and the request must not be retried;
-any new request requires fresh explicit authorization. It does not authorize Chat, tools, model
-quality, Provider registration or private evaluation. The pilot Provider remains DeepSeek, no Kimi
-model call has been performed, and no predecessor result is inherited. Changing the pilot
-Provider/model still requires a new candidate and campaign. The service verifies the candidate
-source commitment before its worker starts and does not modify the frozen prompt, scorer or tool
-schema.
+The configured pilot Provider identity remains DeepSeek `deepseek-v4-flash` through the
+OpenAI-compatible Responses transport, with Candidate v5 / Pack 6 as the active baseline. Candidate
+v6/Pack 7 and Candidate v7/Pack 8 are immutable historical artifacts. Their separate one-call
+post-lock failures are recorded by a versioned overlay but inherited by neither Candidate nor Pack
+and create no compatibility or quality claim. Because PR-A adds source files after Candidate v5 was
+locked, full source verification currently fails closed; no online worker may start until a separately
+locked current successor exists. Changing the Provider/model still requires a new candidate and
+campaign.
 
 ## What is implemented
 
@@ -178,13 +173,13 @@ two-person / 12-assignment campaign. Historical
 `pilot_pack.supervised_v3.json` remains the completed same-participant UX regression.
 Historical `pilot_pack.supervised_v5.json` binds candidate v4 commitment
 `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7` and was not run
-online. The active `pilot_pack.supervised_v6.json` binds candidate v5 while preserving the v5
-pack's same six public tasks, translations and DeepSeek Provider. No candidate v5 participant or
-online model run exists; the candidate/pilot snapshot's live-preflight field remains false and no
-predecessor result is inherited. The separate post-lock verified metadata GET described above does
-not change the pack, authorize it or create participant/model-quality evidence. None of these packs
-can be counted as a second independent participant or aggregated with v1. The formal pack remains
-five × six / 30. These assignment limits do not claim an upstream API-request or monetary ceiling,
+online. Historical `pilot_pack.supervised_v7.json` and `pilot_pack.supervised_v8.json` bind Candidates
+v6 and v7 respectively and remain unchanged. The active composition and invite path continue to
+select `pilot_pack.supervised_v6.json` / Candidate v5. No Pack7/8 participant or online run exists;
+their separate consumed post-lock observations do not change a pack, authorize it or create
+participant or model-quality evidence. None of these packs can
+be counted as a second independent participant or aggregated with v1. The formal pack remains five
+× six / 30. These assignment limits do not claim an upstream API-request or monetary ceiling,
 because one task may use multiple model turns.
 
 Before starting:

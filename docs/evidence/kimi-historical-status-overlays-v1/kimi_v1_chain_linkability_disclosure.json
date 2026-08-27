@@ -1,0 +1,28 @@
+{
+  "schema_version": "kimi-artifact-publication-overlay/1.0",
+  "overlay_id": "kimi-v1-chain-linkability-disclosure-v1",
+  "snapshot_date_local": "2026-08-27",
+  "timezone": "Asia/Shanghai",
+  "applies_to": {
+    "artifact_commitments_file": "docs/evidence/kimi-controlled-pilot-usage-failure-v1/artifact_commitments.json",
+    "artifact_commitments_bytes": 1307,
+    "artifact_commitments_sha256": "5159ed6ff5d143406fb3fddc06387a98927a107d3e313c1a4244e4df4ad50ba3"
+  },
+  "locked_artifact_modified": false,
+  "disclosures": [
+    {
+      "json_path": "event_chain.head_sha256",
+      "classification": "intentionally_linkable_opaque_commitment",
+      "links_exact_private_artifact_chain": true,
+      "is_authorization_identifier_or_binding": false
+    }
+  ],
+  "authorization_identifier_or_hash_published": false,
+  "authorization_binding_hashes_published": false,
+  "raw_artifact_published": false,
+  "authorizes_retry_or_new_run": false,
+  "authorizes_provider_registration": false,
+  "authorizes_model_quality_claim": false,
+  "authorizes_private_evaluation": false,
+  "authorizes_non_synthetic_data": false
+}

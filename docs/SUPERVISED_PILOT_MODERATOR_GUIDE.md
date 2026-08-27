@@ -15,13 +15,11 @@ external_validation_claim_allowed=false
 professional_correctness_assessed=false
 ```
 
-当前 `pilot_pack.supervised_v6.json` 绑定 Kimi Models-preflight successor v5 candidate，
-原样沿用 historical `pilot_pack.supervised_v5.json` 的 6 道公开任务、翻译与 DeepSeek
-Provider，但不继承任何旧参与者或结果。历史 v5 pack 继续绑定 predecessor v4
-candidate，不得改写。Candidate/Pilot snapshot 中 Kimi preflight 为
-`implemented_offline_tested_not_run`，live preflight/online model run 字段为 `false`；另有一次
-post-lock metadata verification，但它不回填本 snapshot、不授权在线 pilot，Kimi 仍未注册为
-pilot Provider。
+当前 active baseline 为 `pilot_pack.supervised_v6.json` 与 Candidate v5 commitment，Provider
+仍为 DeepSeek。Candidate v6/Pack7 与 Candidate v7/Pack8 只作为 immutable historical
+artifacts 保留；历史两次首请求失败已发生但不继承到 Candidate、Pack、compatibility、质量或
+注册结论，也不授权在线 pilot。当前源码已超出 Candidate v5 source bundle，online worker 在
+另行锁定 current successor 前必须 fail-closed。
 目标人数固定为 1；不得跨 campaign 聚合，也不得据此声称模型质量、外部验证或未知分布
 泛化。当前尚未授权或执行该 pack 的在线运行。
 
@@ -39,6 +37,7 @@ pilot Provider。
 - [ ] 固定 protocol、同意文案、6 题顺序、Provider/model 和部署版本已记录。
 - [ ] Candidate commitment 为 `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`。
 - [ ] Task pack 为 `pilot_pack.supervised_v6.json`，Provider 仍为 DeepSeek。
+- [ ] Current successor 已另行锁定且完整 source verification 通过；否则不得启动 online worker。
 - [ ] Provider Key 只在服务端 secret 中；浏览器和参与者无需输入 Key。
 - [ ] 没有启用录音、录像、录屏或会议自动转写。
 - [ ] 单场记录模板已经创建，但不含姓名、邮箱、机构、IP 或其他直接身份信息。

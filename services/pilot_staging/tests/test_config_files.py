@@ -148,13 +148,16 @@ def test_contract_json_and_pack_are_parseable() -> None:
         assert value["additionalProperties"] is False
     historical_v3 = "22c985e9cf264df127be42756f708ff5c14e63fe00e5a0d3883efb781c50b2a9"
     historical_v4 = "1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7"
-    current_v5 = LOCKED_CANDIDATE_COMMITMENT
+    active_v5 = "105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc"
+    historical_v6 = "57d0c1b054367794fa08ec2dbdecdeb0c75bc4be2c45894b69db832a1f6f5641"
+    historical_v7 = "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5"
+    assert LOCKED_CANDIDATE_COMMITMENT == active_v5
 
     def candidate_enums(value):
         matches = []
         if isinstance(value, dict):
             enum = value.get("enum")
-            if isinstance(enum, list) and current_v5 in enum:
+            if isinstance(enum, list) and historical_v7 in enum:
                 matches.append(enum)
             for child in value.values():
                 matches.extend(candidate_enums(child))
@@ -174,6 +177,9 @@ def test_contract_json_and_pack_are_parseable() -> None:
         assert len(enums) == 1
         assert historical_v3 in enums[0]
         assert historical_v4 in enums[0]
+        assert active_v5 in enums[0]
+        assert historical_v6 in enums[0]
+        assert historical_v7 in enums[0]
     pack = json.loads(
         (SERVICE / "content" / "pilot_pack.public_v1.json").read_text(encoding="utf-8")
     )
@@ -200,21 +206,39 @@ def test_contract_json_and_pack_are_parseable() -> None:
     assert hashlib.sha256(
         (SERVICE / "content" / "pilot_pack.supervised_v5.review.json").read_bytes()
     ).hexdigest() == "40841d3af62f64bf8456e4a788eae99c30bd1910c19809f38a37e1adc7b50017"
+    assert hashlib.sha256(
+        (SERVICE / "content" / "pilot_pack.supervised_v6.json").read_bytes()
+    ).hexdigest() == "7536b148fd3873135707962421e57482602a3daccb1d982f6bb4d72219cec3c5"
+    assert hashlib.sha256(
+        (SERVICE / "content" / "pilot_pack.supervised_v6.review.json").read_bytes()
+    ).hexdigest() == "6b62f4125c1b4b8ee99c1dcd4fc28a8ffb87de746457c6e345965e87fe9cbdfd"
+    assert hashlib.sha256(
+        (SERVICE / "content" / "pilot_pack.supervised_v7.json").read_bytes()
+    ).hexdigest() == "636701f8038c48a8c89b2bf024eb579b1bb7a730e8c5d5afaf38457d64756316"
+    assert hashlib.sha256(
+        (SERVICE / "content" / "pilot_pack.supervised_v7.review.json").read_bytes()
+    ).hexdigest() == "e7bf9f76faaffacc34e573fd6ebff0de18250b2d9c97666773a4cefdcc9f5106"
+    assert hashlib.sha256(
+        (SERVICE / "content" / "pilot_pack.supervised_v8.json").read_bytes()
+    ).hexdigest() == "e5c2c895ea838753356360041be28701f41a74b057d9782b2ef8c7c74d721100"
+    assert hashlib.sha256(
+        (SERVICE / "content" / "pilot_pack.supervised_v8.review.json").read_bytes()
+    ).hexdigest() == "45df91122f06bc0e538082b58b47dadcd4cd0bd71fdc0afea54d461165c39ee7"
     assert supervised_pack["target_participants"] == 2
     assert supervised_pack["max_provider_runs"] == 12
     assert supervised_pack["tasks"] == pack["tasks"]
     regression_pack = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v6.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v8.json").read_text(
             encoding="utf-8"
         )
     )
     review = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v6.review.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v8.review.json").read_text(
             encoding="utf-8"
         )
     )
     predecessor_pack = json.loads(
-        (SERVICE / "content" / "pilot_pack.supervised_v5.json").read_text(
+        (SERVICE / "content" / "pilot_pack.supervised_v7.json").read_text(
             encoding="utf-8"
         )
     )
@@ -236,8 +260,8 @@ def test_contract_json_and_pack_are_parseable() -> None:
         predecessor_pack["tasks"]
     )
     assert regression_commitment != task_pack_commitment_sha256(supervised_pack["tasks"])
-    assert regression_pack["candidate_commitment_sha256"] == LOCKED_CANDIDATE_COMMITMENT
-    assert "Kimi Models preflight" in regression_pack["title"]
+    assert regression_pack["candidate_commitment_sha256"] == historical_v7
+    assert "Kimi Chat parser v2 successor" in regression_pack["title"]
     assert regression_pack["provider"] == predecessor_pack["provider"]
     assert regression_pack["tasks"] == predecessor_pack["tasks"]
     assert (
@@ -274,11 +298,11 @@ def test_contract_json_and_pack_are_parseable() -> None:
             source["scenario"] == "clarification_required"
         )
     assert review["review_status"] == "internal_reviewed"
-    assert review["pack_file"] == "pilot_pack.supervised_v6.json"
+    assert review["pack_file"] == "pilot_pack.supervised_v8.json"
     assert review["purpose"] == (
-        "kimi_models_preflight_successor_supervised_usability_only"
+        "kimi_chat_parser_v2_successor_supervised_usability_only"
     )
-    assert review["predecessor_pack_file"] == "pilot_pack.supervised_v5.json"
+    assert review["predecessor_pack_file"] == "pilot_pack.supervised_v7.json"
     assert review["task_selection_changed"] is False
     assert review["translation_review"] == {
         "status": "internal_reviewed",
@@ -301,14 +325,32 @@ def test_contract_json_and_pack_are_parseable() -> None:
         "independent_participant_evidence_allowed"
     ] is False
     assert review["evidence_boundaries"]["cross_campaign_aggregation_allowed"] is False
-    assert review["evidence_boundaries"]["prior_pilot_results_inherited"] is False
-    assert review["evidence_boundaries"]["online_run_performed_for_v5_candidate"] is False
-    assert review["evidence_boundaries"]["kimi_models_preflight_live_call_performed"] is False
-    assert review["evidence_boundaries"]["kimi_online_run_performed"] is False
+    assert review["evidence_boundaries"] == {
+        "independent_participant_evidence_allowed": False,
+        "cross_campaign_aggregation_allowed": False,
+        "predecessor_pack_results_inherited": False,
+        "prior_pilot_results_inherited": False,
+        "kimi_v1_failure_result_inherited": False,
+        "kimi_controlled_pilot_result_inherited": False,
+        "external_validation_claim_allowed": False,
+        "model_quality_claim_allowed": False,
+        "unknown_distribution_generalization_claim_allowed": False,
+        "online_run_performed_for_v7_candidate": False,
+        "kimi_chat_v2_live_call_performed": False,
+        "kimi_controlled_pilot_v2_live_call_performed": False,
+        "kimi_online_run_performed": False,
+    }
     composition = (SERVICE / "src" / "pilot_staging" / "composition.py").read_text(
         encoding="utf-8"
     )
+    assert "if settings.provider_execution_enabled:" in composition
+    assert re.search(
+        r"if settings\.provider_execution_enabled:\s+validate_locked_candidate_files",
+        composition,
+    )
     assert "pilot_pack.supervised_v6.json" in composition
+    assert "pilot_pack.supervised_v8.json" not in composition
+    assert "pilot_pack.supervised_v7.json" not in composition
     assert "pilot_pack.supervised_v5.json" not in composition
     assert "pilot_pack.supervised_v4.json" not in composition
     assert "pilot_pack.supervised_v3.json" not in composition
