@@ -217,12 +217,6 @@ def run_public_regression_online(
             "eval_v2_online_confirmation_required",
             "Public-regression 在线运行需要 --confirm-online。",
         )
-    if not isinstance(api_key, str) or not api_key.strip():
-        raise EvalV2ContractError(
-            "eval_v2_provider_key_missing",
-            "未配置 candidate Provider 的 API key；未创建在线请求。",
-        )
-
     freeze = validate_public_regression_candidate(
         project_root=root,
         candidate_path=candidate_source,
@@ -232,6 +226,16 @@ def run_public_regression_online(
         raise EvalV2ContractError(
             "eval_v2_historical_candidate_execution_forbidden",
             "Historical candidate 只允许离线复核，不能授权 public-regression 在线执行。",
+        )
+    if freeze.get("public_regression_online_authorized") is False:
+        raise EvalV2ContractError(
+            "eval_v2_candidate_online_execution_forbidden",
+            "Diagnostic-only candidate 不能授权 public-regression 在线执行。",
+        )
+    if not isinstance(api_key, str) or not api_key.strip():
+        raise EvalV2ContractError(
+            "eval_v2_provider_key_missing",
+            "未配置 candidate Provider 的 API key；未创建在线请求。",
         )
     validate_eval_v2_dependency_environment(root)
     candidate = _load_json_object(candidate_source, "candidate")

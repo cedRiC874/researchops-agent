@@ -1,6 +1,6 @@
 # ResearchOps Agent：作品集展示与面试演示手册
 
-> 状态快照：2026-08-26。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行。PR #21 已 regular merge 至 `main@c65ff65c`，candidate v5 仍是 Kimi Models preflight 的 pre-call snapshot且不继承 post-lock receipt。一次 metadata GET 只 verified 认证与 exact model visibility；它不验证或授权 Chat、tools、usage/cost semantics、质量、注册或 private。长期边界见 [Kimi Models preflight main CI v1](evidence/kimi-models-preflight-main-ci-v1/README.md)。
+> 状态快照：2026-08-28。Phase 5 是确定性离线组件评测；Phase 6 已完成真实 `deepseek-v4-flash` 冻结版 development 与 repo-local holdout；Eval v2 v1 public candidate 已完成一次性 DeepSeek 三轮运行。当前工作树 Candidate v8 是未在线运行、默认不可执行的 Kimi diagnostic successor；历史 metadata GET 和 v6/v7 post-lock failures 均不继承。Chat/tools/usage/error compatibility、质量、注册和 private 仍未验证或授权。
 
 ## 先说清楚：这个项目现在证明了什么
 
@@ -16,6 +16,7 @@
 | Completion Telemetry v2 | 新 commitment `1f6ac18e…e5ce5`；离线 root/pilot/PostgreSQL 合同通过；0 次 Provider 调用 | 可区分安全 completion 分支并显式报告 legacy unknown coverage | 因果根因、在线模型质量、继承 v1 68/93 或未知生产泛化 |
 | Candidate v4 / Anthropic Models preflight | 已随 PR #19 进入 `main@77911226`；commitment `1741c2b0…f6399c7`、predecessor v3 `22c985e9…b2a9`；冻结 contract 仅有离线证据，post-lock 错误 CCTK token 尝试为 403/0 model tokens | 固定 Models metadata request、strict receipt 与 generic fail-closed 可由 clean-main fixtures 验证 | live preflight 已验证、官方 Anthropic Key 可用、已授权 pilot、已注册第二 Provider、成本或质量 |
 | Candidate v5 / Kimi 中国区 Models preflight | PR #21 已进入 `main@c65ff65c`；pre-call commitment `105b7def…5165dffc`、predecessor v4 `1741c2b0…f6399c7`，post-lock metadata receipt 不继承 | Clean-main fixtures 验证 bodyless GET、credential 隔离与错误 taxonomy；一次 post-lock GET 为 HTTP 200、1/1 call、exact `kimi-k3` visible、0 model tokens、cost null | Chat/Responses/tools、usage/cost semantics、质量、non-synthetic/private、已注册第二 Provider |
+| Candidate v8 / Kimi 脱敏诊断 successor | commitment `b41269ac…1f9e962c`、predecessor v7 `2d0b9952…d223d5`；v7授权和失败不继承；active staging仍为v5/Pack6且未修改 | 39项fixed local parser branch code；v2/v3 acceptance differential、跨event/checkpoint/receipt结构一致性、非法/漂移mutation、v1/v2/v3授权复用与CLI gates均离线测试；public/Pilot online authorization均为false | 认证防篡改（需外部签名/HMAC/anchor）、Kimi因果故障、在线兼容、实际tokens/cost/latency、质量、正式第二Provider、private/non-synthetic |
 | Production-like slice | 当前 main run 32957003204：18/18 + 真实单机 Compose E2E | FastAPI/worker、PG lease queue、MinIO artifact、event hash chain、幂等与 API→worker Trace ID 的真实纵切 | HA、云 IAM/KMS/TLS、备份恢复、生产 SLA 或负载容量 |
 
 PR #15/#16、同 tree 发布关系和三个最终 main checks 的长期证据见

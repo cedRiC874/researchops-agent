@@ -16,6 +16,10 @@ from .eval_v2_public import (
     load_eval_v2_public_tasks,
 )
 from .eval_v2_runner import eval_v2_tool_contract
+from .kimi_chat_transport_v3 import kimi_chat_completions_v3_contract
+from .kimi_controlled_pilot_v3 import (
+    kimi_controlled_pilot_contract as kimi_controlled_pilot_v3_contract,
+)
 from .kimi_preflight import kimi_models_preflight_contract
 
 
@@ -38,6 +42,11 @@ HISTORICAL_V6_CANDIDATE_COMMITMENT_SHA256 = (
 )
 HISTORICAL_V7_CANDIDATE_COMMITMENT_SHA256 = (
     "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5"
+)
+V8_CANDIDATE_SCHEMA_VERSION = "8.0"
+V8_CANDIDATE_ID = "eval-v2-public-regression-deepseek-kimi-controlled-chat-v8"
+V8_PREDECESSOR_CANDIDATE_COMMITMENT_SHA256 = (
+    HISTORICAL_V7_CANDIDATE_COMMITMENT_SHA256
 )
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _EXACT_REQUIREMENT = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[^\s]+)$")
@@ -119,6 +128,21 @@ _HISTORICAL_V7_LIMITATIONS = (
     "Provider-behavior and deterministic fault-injection channels remain separate, completion failures are diagnostic rather than causal root-cause claims, and requirements.lock still lacks artifact hashes.",
     "No online Provider call or paid evaluation was performed while building Candidate v7.",
 )
+_V8_CANDIDATE_LIMITATIONS = (
+    "This locks a versioned offline diagnostic successor candidate only; the public-regression execution Provider remains DeepSeek and the full Eval v2 campaign remains design_only.",
+    "Candidate v7, its consumed authorization and its separate post-lock response-validation failure are immutable predecessor evidence and are not inherited as a v8 result, authorization, compatibility claim or causal Provider-fault claim.",
+    "The v3 request bytes, response acceptance predicates and validation precedence are equivalent to v2; v3 only adds fixed local diagnostic enums and does not use the unavailable live v7 payload to relax or tune the parser.",
+    "The response-validation diagnostic persists only a schema version and allowlisted local branch code; it excludes raw headers/bodies, identifiers, actual field names or values, offsets, sizes and free text, and it cannot support causal Provider attribution.",
+    "The Kimi G2a terms decision is provisional synthetic-only and expires at 2026-08-30T16:00:00Z; it is not final effective-terms verification and does not itself authorize Provider calls.",
+    "The v3 Kimi Chat Completions transport and v3 controlled pilot are implemented and MockTransport-tested but have performed zero v8 successor online calls.",
+    "Kimi remains absent from the generic Provider registry, Phase 6, self-pilot, Web, public-runner, pilot-staging Provider execution and private-evaluation entrypoints.",
+    "The controlled pilot reuses exactly the immutable v1 three-case synthetic scenario set and v1 synthetic tool schema; prompt, scorer, tool schema, scenario and task selection are unchanged and no prior result is used for tuning.",
+    "Candidate v8 is permanently online_not_authorized; any future online pilot requires a successor later than v8, a fresh Key, exact locked caps, fresh bound legal and Kimi K3 pricing attestations, a CNY 5 local conservative hard-stop and a new separately authorized single-use capability bound to that successor commitment; no retry, resume, fallback or legacy authorization reuse is allowed.",
+    "The v7 attempt established no trusted usage, tool or error-semantics compatibility; actual Provider token use, billing and latency remain unknown, and all v8 quality, registration and private-evaluation claims remain false.",
+    "The announced 2026-08-31 terms remain a pre-effective preview and require final source capture, hashing, delta review and manual signoff at or after effectiveness.",
+    "Provider-behavior and deterministic fault-injection channels remain separate, diagnostics are local branch labels rather than causal root-cause claims, and requirements.lock still lacks artifact hashes.",
+    "No online Provider call or paid evaluation was performed while building Candidate v8.",
+)
 _EXECUTION_POLICY_FIELDS = frozenset(
     {
         "repetitions_per_provider",
@@ -167,6 +191,41 @@ _COMPONENT_KEYS = frozenset(
         "campaign_sha256",
     }
 )
+_V8_COMPONENT_KEYS = _COMPONENT_KEYS | frozenset(
+    {
+        "kimi_terms_g2a_contract_sha256",
+        "kimi_chat_completions_contract_sha256",
+        "kimi_controlled_pilot_contract_sha256",
+        "kimi_controlled_pilot_scenarios_sha256",
+        "kimi_runtime_candidate_contract_sha256",
+    }
+)
+_CONTROLLED_SYNTHETIC_PILOT_CONFIG = {
+    "configuration_scope": "independent_controlled_synthetic_compatibility",
+    "independent_from_public_regression_provider_config": True,
+    "campaign_registered": False,
+    "provider_registry_registered": False,
+    "provider_id": "moonshot_kimi",
+    "model_id": "kimi-k3",
+    "api_origin": "https://api.moonshot.cn",
+    "transport_protocol": "chat_completions",
+    "transport_id": "moonshot_direct_chat_completions_sse_v3",
+    "reasoning_effort": "low",
+    "synthetic_only": True,
+    "scenario_count": 3,
+    "model_requests": 8,
+    "concurrency": 1,
+    "client_retries": 0,
+    "input_tokens_per_request": 8000,
+    "input_tokens_total": 40000,
+    "output_tokens_per_request": 1536,
+    "output_tokens_total": 10000,
+    "tool_executions": 6,
+    "request_timeout_seconds": 90,
+    "run_timeout_seconds": 600,
+    "local_estimated_reservation_limit_cny": "5.000000",
+    "fallbacks_allowed": False,
+}
 _KIMI_ACCOUNT_RATE_LIMITS = {
     "status": "account_specific_and_under_announced_update",
     "concurrency": None,
@@ -290,6 +349,33 @@ def build_public_regression_component_hashes(
     }
 
 
+def build_v8_diagnostic_candidate_component_hashes(
+    project_root: str | Path,
+) -> dict[str, str]:
+    root = Path(project_root).resolve()
+    hashes = build_public_regression_component_hashes(root)
+    hashes.update(
+        {
+            "kimi_terms_g2a_contract_sha256": _sha256_file(
+                root / "evals/v2/kimi_terms_g2a_provisional_contract.json"
+            ),
+            "kimi_chat_completions_contract_sha256": _sha256_file(
+                root / "evals/v2/kimi_chat_completions_contract_v3.json"
+            ),
+            "kimi_controlled_pilot_contract_sha256": _sha256_file(
+                root / "evals/v2/kimi_controlled_pilot_contract_v3.json"
+            ),
+            "kimi_controlled_pilot_scenarios_sha256": _sha256_file(
+                root / "evals/v2/kimi_controlled_pilot_scenarios_v1.json"
+            ),
+            "kimi_runtime_candidate_contract_sha256": _sha256_file(
+                root / "evals/v2/kimi_runtime_candidate_v8_contract.json"
+            ),
+        }
+    )
+    return hashes
+
+
 def _validate_historical_v7_candidate(
     *,
     root: Path,
@@ -398,6 +484,323 @@ def _validate_historical_v7_candidate(
     }
 
 
+def _validate_v8_runtime_contract(root: Path) -> Mapping[str, Any]:
+    runtime = _load_json_object(
+        root / "evals/v2/kimi_runtime_candidate_v8_contract.json",
+        "Kimi runtime Candidate v8 contract",
+    )
+    expected_fields = {
+        "schema_version",
+        "contract_id",
+        "candidate_id",
+        "status",
+        "implementation_status",
+        "predecessor",
+        "runtime_identity",
+        "official_source_commitments",
+        "contract_references",
+        "successor_safety_semantics",
+        "component_hashes",
+        "entry_points",
+        "audit_activity",
+        "claim_boundary",
+    }
+    predecessor = runtime.get("predecessor")
+    identity = runtime.get("runtime_identity")
+    safety = runtime.get("successor_safety_semantics")
+    components = runtime.get("component_hashes")
+    entry_points = runtime.get("entry_points")
+    audit = runtime.get("audit_activity")
+    claims = runtime.get("claim_boundary")
+    expected_component_hashes = {
+        "predecessor_runtime_contract_sha256": _sha256_file(
+            root / "evals/v2/kimi_runtime_candidate_v7_contract.json"
+        ),
+        "predecessor_candidate_file_sha256": _sha256_file(
+            root / "evals/v2/public_regression_candidate_v7.json"
+        ),
+        "provider_design_contract_sha256": _sha256_file(
+            root / "evals/v2/kimi_provider_contract.json"
+        ),
+        "chat_completions_contract_sha256": _sha256_file(
+            root / "evals/v2/kimi_chat_completions_contract_v3.json"
+        ),
+        "controlled_pilot_contract_sha256": _sha256_file(
+            root / "evals/v2/kimi_controlled_pilot_contract_v3.json"
+        ),
+        "predecessor_controlled_pilot_contract_sha256": _sha256_file(
+            root / "evals/v2/kimi_controlled_pilot_contract_v2.json"
+        ),
+        "predecessor_controlled_pilot_source_sha256": _sha256_file(
+            root / "src/researchops/kimi_controlled_pilot_v2.py"
+        ),
+        "controlled_pilot_scenarios_sha256": _sha256_file(
+            root / "evals/v2/kimi_controlled_pilot_scenarios_v1.json"
+        ),
+        "terms_g2a_contract_sha256": _sha256_file(
+            root / "evals/v2/kimi_terms_g2a_provisional_contract.json"
+        ),
+        "chat_transport_source_sha256": _sha256_file(
+            root / "src/researchops/kimi_chat_transport_v3.py"
+        ),
+        "controlled_pilot_source_sha256": _sha256_file(
+            root / "src/researchops/kimi_controlled_pilot_v3.py"
+        ),
+        "synthetic_tools_source_sha256": _sha256_file(
+            root / "src/researchops/kimi_synthetic_tools.py"
+        ),
+    }
+    if (
+        set(runtime) != expected_fields
+        or runtime.get("schema_version") != "3.0"
+        or runtime.get("contract_id") != "eval-v2-kimi-runtime-candidate-v8"
+        or runtime.get("candidate_id") != V8_CANDIDATE_ID
+        or runtime.get("status") != "offline_ready_not_run"
+        or runtime.get("implementation_status")
+        != "implemented_offline_tested_not_run"
+        or not isinstance(predecessor, Mapping)
+        or predecessor.get("public_candidate_commitment_sha256")
+        != V8_PREDECESSOR_CANDIDATE_COMMITMENT_SHA256
+        or predecessor.get("post_lock_failure_result_inherited") is not False
+        or predecessor.get("authorization_reused") is not False
+        or identity
+        != {
+            "provider_id": "moonshot_kimi",
+            "model_id": "kimi-k3",
+            "api_origin": "https://api.moonshot.cn",
+            "chat_path": "/v1/chat/completions",
+            "transport_protocol": "chat_completions",
+            "transport_id": "moonshot_direct_chat_completions_sse_v3",
+            "parser_version": "3.0",
+            "reasoning_effort": "low",
+            "synthetic_only": True,
+        }
+        or components != expected_component_hashes
+        or not isinstance(entry_points, Mapping)
+        or set(entry_points)
+        != {
+            "campaign_registered",
+            "provider_registry_enabled",
+            "phase6_enabled",
+            "self_pilot_cli_enabled",
+            "self_pilot_web_enabled",
+            "web_enabled",
+            "public_runner_enabled",
+            "pilot_staging_provider_execution_enabled",
+            "private_evaluation_enabled",
+            "controlled_synthetic_pilot_online_authorized",
+        }
+        or any(value is not False for value in entry_points.values())
+        or audit
+        != {
+            "successor_online_calls_performed": 0,
+            "successor_chat_completions_requests_performed": 0,
+            "successor_invalid_request_probe_requests_performed": 0,
+            "successor_model_token_calls": 0,
+            "predecessor_failure_result_inherited": False,
+            "predecessor_authorization_reused": False,
+            "api_key_read_or_used": False,
+            "usage": None,
+            "cost": None,
+        }
+        or not isinstance(claims, Mapping)
+        or any(value is not False for value in claims.values())
+        or not isinstance(safety, Mapping)
+        or safety.get("authoritative_v8_manifest_required_by_run_and_verifier")
+        is not True
+        or safety.get("authoritative_v8_manifest_path")
+        != "evals/v2/public_regression_candidate_v8.json"
+        or safety.get("legacy_authorization_reuse_allowed") is not False
+        or safety.get("v1_and_v2_namespaces_checked_before_key_load") is not True
+        or safety.get("response_validation_diagnostic_schema_version")
+        != "kimi-response-validation-diagnostic/1.0"
+        or safety.get("response_validation_diagnostic_fixed_enum_only") is not True
+        or safety.get("response_validation_diagnostic_changes_acceptance_semantics")
+        is not False
+        or safety.get(
+            "response_validation_diagnostic_causal_provider_fault_claim_allowed"
+        )
+        is not False
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_kimi_runtime_candidate_v8_invalid",
+            "Kimi runtime Candidate v8 contract 状态、hash 或安全边界无效。",
+        )
+    return runtime
+
+
+def _validate_current_v8_candidate(
+    *,
+    root: Path,
+    candidate_path: Path,
+    verify_environment: bool,
+) -> dict[str, Any]:
+    expected_path = (
+        root / "evals/v2/public_regression_candidate_v8.json"
+    ).resolve()
+    if candidate_path.resolve() != expected_path:
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_path_invalid",
+            "Candidate v8 必须使用固定 manifest 路径。",
+        )
+    candidate = _load_json_object(candidate_path, "Candidate v8")
+    _require_exact_fields(candidate, _HISTORICAL_V7_CANDIDATE_FIELDS, "Candidate v8")
+    if (
+        candidate.get("schema_version") != V8_CANDIDATE_SCHEMA_VERSION
+        or candidate.get("candidate_id") != V8_CANDIDATE_ID
+        or candidate.get("status") != "candidate_locked"
+        or not isinstance(candidate.get("locked_at_utc"), str)
+        or not candidate["locked_at_utc"].endswith("Z")
+        or candidate.get("scope") != "public_regression"
+        or candidate.get("campaign_id") != "researchops-eval-v2-draft"
+        or candidate.get("campaign_status_expected") != "design_only"
+        or candidate.get("full_campaign_frozen") is not False
+        or candidate.get("private_holdout_access_authorized") is not False
+        or candidate.get("model_quality_claim_allowed") is not False
+        or candidate.get("predecessor_candidate_commitment_sha256")
+        != V8_PREDECESSOR_CANDIDATE_COMMITMENT_SHA256
+        or candidate.get("prior_results_inherited") is not False
+        or candidate.get("predecessor_failure_result_inherited") is not False
+        or candidate.get("predecessor_authorization_reused") is not False
+        or candidate.get("completion_telemetry_contract_id")
+        != COMPLETION_TELEMETRY_CONTRACT_ID
+        or candidate.get("anthropic_models_preflight_contract_id")
+        != "eval-v2-anthropic-models-preflight-v1"
+        or candidate.get("kimi_provider_contract_id")
+        != "eval-v2-moonshot-kimi-provider-design-v1"
+        or candidate.get("kimi_models_preflight_contract_id")
+        != "eval-v2-kimi-models-preflight-v1"
+        or candidate.get("kimi_terms_g2a_contract_id")
+        != "moonshot-kimi-terms-g2a-provisional-v1"
+        or candidate.get("kimi_chat_completions_contract_id")
+        != "eval-v2-kimi-chat-completions-v3"
+        or candidate.get("kimi_controlled_pilot_contract_id")
+        != "kimi-controlled-synthetic-pilot-v3"
+        or candidate.get("kimi_controlled_pilot_scenario_set_id")
+        != "kimi-controlled-pilot-synthetic-tools-v1"
+        or candidate.get("kimi_runtime_candidate_contract_id")
+        != "eval-v2-kimi-runtime-candidate-v8"
+        or candidate.get("hash_algorithm") != "sha256-bundle-v1"
+        or candidate.get("limitations") != list(_V8_CANDIDATE_LIMITATIONS)
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_v8_invalid",
+            "Candidate v8 manifest 状态或声明边界无效。",
+        )
+    execution = _strict_object(
+        candidate["execution_policy"], _EXECUTION_POLICY_FIELDS, "execution_policy"
+    )
+    provider = _strict_object(
+        candidate["provider_config"], _PROVIDER_CONFIG_FIELDS, "provider_config"
+    )
+    if execution != {
+        "repetitions_per_provider": 3,
+        "randomized_case_order": True,
+        "precommitted_orders": True,
+        "split_manifest_id": "eval-v2-public-regression-orders-v1",
+        "provider_behavior_task_count": 31,
+        "deterministic_fault_injection_task_count": 9,
+        "fault_results_attributed_to_model": False,
+        "execution_channels_reported_separately": True,
+    } or provider != {
+        "provider_id": "deepseek",
+        "model_id": "deepseek-v4-flash",
+        "transport_id": "openai_compatible_responses",
+        "max_turns": 8,
+        "case_timeout_seconds": 120,
+        "normal_max_output_tokens": 2000,
+        "refusal_max_output_tokens": 512,
+        "clarification_max_output_tokens": 768,
+    }:
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_v8_runtime_invalid",
+            "Candidate v8 public Provider 或 execution policy 无效。",
+        )
+    if candidate.get("controlled_synthetic_pilot_config") != (
+        _CONTROLLED_SYNTHETIC_PILOT_CONFIG
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_v8_pilot_invalid",
+            "Candidate v8 controlled synthetic Pilot 配置无效。",
+        )
+    campaign = _load_json_object(root / "evals/v2/campaign.json", "campaign")
+    if (
+        campaign.get("campaign_id") != candidate["campaign_id"]
+        or campaign.get("status") != "design_only"
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_campaign_mismatch",
+            "Candidate v8 与 design-only campaign 不匹配。",
+        )
+    chat_snapshot = _load_json_object(
+        root / "evals/v2/kimi_chat_completions_contract_v3.json",
+        "Kimi Chat v3 contract",
+    )
+    pilot_snapshot = _load_json_object(
+        root / "evals/v2/kimi_controlled_pilot_contract_v3.json",
+        "Kimi Pilot v3 contract",
+    )
+    if chat_snapshot != kimi_chat_completions_v3_contract():
+        raise EvalV2ContractError(
+            "eval_v2_kimi_chat_v3_contract_invalid",
+            "Kimi Chat v3 contract 与实现不匹配。",
+        )
+    if pilot_snapshot != kimi_controlled_pilot_v3_contract():
+        raise EvalV2ContractError(
+            "eval_v2_kimi_pilot_v3_contract_invalid",
+            "Kimi Pilot v3 contract 与实现不匹配。",
+        )
+    _validate_v8_runtime_contract(root)
+    expected_hashes = _strict_object(
+        candidate["component_hashes"], _V8_COMPONENT_KEYS, "component_hashes"
+    )
+    actual_hashes = build_v8_diagnostic_candidate_component_hashes(root)
+    if dict(expected_hashes) != actual_hashes:
+        changed = sorted(
+            key
+            for key in _V8_COMPONENT_KEYS
+            if expected_hashes.get(key) != actual_hashes[key]
+        )
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_component_drift",
+            "Candidate v8 component drift：" + ", ".join(changed),
+        )
+    commitment = candidate.get("candidate_commitment_sha256")
+    if (
+        not isinstance(commitment, str)
+        or _SHA256.fullmatch(commitment) is None
+        or commitment != candidate_commitment_sha256(candidate)
+    ):
+        raise EvalV2ContractError(
+            "eval_v2_public_candidate_commitment_mismatch",
+            "Candidate v8 commitment 与 manifest 内容不匹配。",
+        )
+    dependency_lock = _validate_requirements_lock(
+        root / "requirements.lock", verify_environment=verify_environment
+    )
+    return {
+        "status": "valid",
+        "candidate_status": "candidate_locked",
+        "candidate_id": V8_CANDIDATE_ID,
+        "candidate_commitment_sha256": commitment,
+        "predecessor_candidate_commitment_sha256": (
+            V8_PREDECESSOR_CANDIDATE_COMMITMENT_SHA256
+        ),
+        "historical_snapshot_only": False,
+        "diagnostic_snapshot_only": True,
+        "public_regression_online_authorized": False,
+        "controlled_synthetic_pilot_online_authorized": False,
+        "full_campaign_frozen": False,
+        "private_holdout_access_authorized": False,
+        "model_quality_claim_allowed": False,
+        "prior_results_inherited": False,
+        "predecessor_failure_result_inherited": False,
+        "predecessor_authorization_reused": False,
+        "dependency_lock": dependency_lock,
+        "network_calls": 0,
+    }
+
+
 def validate_public_regression_candidate(
     *,
     project_root: str | Path,
@@ -406,6 +809,12 @@ def validate_public_regression_candidate(
 ) -> dict[str, Any]:
     root = Path(project_root).resolve()
     resolved_candidate_path = Path(candidate_path).resolve()
+    if resolved_candidate_path.name == "public_regression_candidate_v8.json":
+        return _validate_current_v8_candidate(
+            root=root,
+            candidate_path=resolved_candidate_path,
+            verify_environment=verify_environment,
+        )
     if resolved_candidate_path.name == "public_regression_candidate_v7.json":
         if verify_environment:
             raise EvalV2ContractError(

@@ -17,6 +17,49 @@ chat_completions_path=/v1/chat/completions
 default_model_id=kimi-k3
 ```
 
+## Current offline diagnostic successor — candidate v8
+
+Candidate v8 freezes Chat parser v3 and controlled Pilot v3 at commitment
+`b41269ac6db96e2999fedc95f08f3b77a48699f8c0b50b63764bcb6e1f9e962c`, with Candidate v7
+commitment `2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5` as its immutable
+predecessor. It is `diagnostic_snapshot_only=true`; public-regression and controlled synthetic Pilot
+online authorization are fixed false and cannot be unlocked by authorization. Public/Pilot execution configuration
+remains Candidate v5 / Pack6 and DeepSeek. Candidate v8 is not selected by or wired into Pilot
+Staging.
+
+Chat v3 preserves v2 request bytes, response acceptance predicates and validation precedence. Its
+only protocol delta is a 39-value fixed local diagnostic enum for the broad
+`kimi_chat_response_invalid` class. The diagnostic stores only
+`kimi-response-validation-diagnostic/1.0` plus an allowlisted branch code. It cannot contain raw
+headers/body, Provider request/completion/model IDs or their hashes, actual field names or values,
+JSON pointers, offsets, sizes, prompt/reasoning/tool payloads, authorization bindings or free-text
+exceptions and cannot support causal Provider-fault attribution.
+
+Pilot v3 uses independent receipt/event/checkpoint 3.0 schemas and the
+`artifacts/kimi_controlled_pilot_v3` namespace. When the terminal error remains response-invalid, the
+diagnostic must propagate identically from `request_failed` to `run_terminal`, checkpoint and receipt.
+If a terminal authorization/terms/pricing guard supersedes it, the request-failure diagnostic remains
+hash-bound while later projections are null. The verifier rejects missing, unknown, non-generic or
+conditionally drifting values. It checks v1/v2/v3 authorization namespaces and creates the v3
+cross-version tombstone before any Key lookup.
+
+The local unkeyed hash chain checks structure and projection consistency only. A fully consistent
+replacement with another valid enum can be re-hashed by an attacker controlling all local artifacts;
+authenticated tamper evidence requires a repo-external signature/HMAC or external chain-head anchor
+and is not claimed. Private, gitignored events/checkpoints/receipts retain authorization hashes and
+bindings, exact operation times, tombstone and event-chain integrity values. They must never be
+published verbatim; any future public evidence requires a separate minimal projection and publication
+gate.
+
+Candidate v8 has performed zero online calls and inherits neither the v7 authorization nor its
+post-lock failure. The v6 and v7 online commands remain permanently disabled. Candidate v8 is also
+fixed `online_not_authorized`; both unconfirmed and confirmed CLI paths return zero-call,
+zero-Key-load non-authorizing receipts. See the
+[Candidate v8 / Pilot v3 runbook](KIMI_CONTROLLED_PILOT_V3_RUNBOOK.md),
+[Chat v3 contract](../evals/v2/kimi_chat_completions_contract_v3.json),
+[Pilot v3 contract](../evals/v2/kimi_controlled_pilot_contract_v3.json) and
+[runtime v8 contract](../evals/v2/kimi_runtime_candidate_v8_contract.json).
+
 ## Frozen historical snapshot — candidate v7
 
 Candidate v7 freezes the official-documentation-driven Chat parser v2 and isolated controlled Pilot
@@ -78,8 +121,8 @@ retried. This observation is not inherited into Candidate v6 or Pilot Pack v7. S
 An offline postmortem confirmed that the frozen parser's usage-only terminal-chunk assumption differs
 from the official documented same-chunk finish/usage example. Because no raw Provider body was saved,
 that independent contract mismatch is not a unique causal explanation for the observed
-`kimi_chat_usage_invalid`; the live root cause remains undetermined. Any future attempt requires a
-versioned successor later than v7, a fresh legal and Kimi K3 pricing review, a complete authorization
+`kimi_chat_usage_invalid`; the live root cause remains undetermined. Any future attempt requires
+Candidate v8 or a later versioned successor, a fresh legal and Kimi K3 pricing review, a complete authorization
 window and entirely new one-time authority. The existing local caps remain 8 model requests, 40,000
 input tokens, 10,000 output tokens, 6 tool executions, 10 minutes and CNY 5; they do not guarantee the
 Provider bill.
@@ -245,14 +288,15 @@ and one-time authorization.
 
 ## Frozen campaign and candidate-lineage boundary
 
-Candidate v4 and v5 remain unchanged. Candidates v6 and v7 do not alter `evals/v2/campaign.json`, the
+Candidate v4 and v5 remain unchanged. Candidates v6, v7 and v8 do not alter `evals/v2/campaign.json`, the
 public prompt, scorer, tool schema, scenario selection or historical evidence.
 
 Candidate v5 entered `main@c65ff65c` through regular-merged PR #21 at commitment
 `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`. Candidate v6 succeeds v5;
-Candidate v7 succeeds v6 and is retained in PR-A as a historical snapshot. Every successor fixes
+Candidate v7 succeeds v6 and is retained as a historical snapshot; Candidate v8 succeeds v7 only as
+a source-bound diagnostic snapshot. Every successor fixes
 `prior_results_inherited=false`; neither post-lock failure nor either consumed authorization is a
-candidate result. Any later Kimi runtime change requires a newly versioned successor later than v7.
+candidate result. Any later Kimi runtime change requires a newly versioned successor later than v8.
 Public execution remains DeepSeek, Eval v2 remains `design_only`, registered Providers remain 1/2 and
 private remains 0/50. A Key, successful preflight or successful synthetic pilot cannot automatically
 register Kimi or enable non-synthetic private evaluation.
@@ -267,8 +311,8 @@ register Kimi or enable non-synthetic private evaluation.
    requires new explicit authorization.
 3. Candidate v6 and v7 each consumed one separate post-lock authorization and failed closed on the
    first request. Neither may be retried, and both online commands are permanently disabled.
-4. Any future attempt requires a successor later than v7, fresh legal/pricing review and a new explicit
-   one-time authorization. The v6/v7 observations cannot tune the prompt, scorer, tool schema,
+4. Candidate v8 cannot be unlocked by authorization. Any future attempt requires a successor later
+   than v8, fresh legal/pricing review and a new explicit one-time authorization. The v6/v7 observations cannot tune the prompt, scorer, tool schema,
    scenarios, candidate or task selection.
 5. Keep private and all non-synthetic release denied until written enterprise data protections,
    external expert review, independent R/SAS cross-check and actual external private-50 evaluation

@@ -595,6 +595,7 @@ class AnthropicModelsPreflightTests(unittest.TestCase):
             _ROOT / "evals" / "v2" / "public_regression_candidate_v5.json",
             _ROOT / "evals" / "v2" / "public_regression_candidate_v6.json",
             _ROOT / "evals" / "v2" / "public_regression_candidate_v7.json",
+            _ROOT / "evals" / "v2" / "public_regression_candidate_v8.json",
             _ROOT
             / "services"
             / "pilot_staging"

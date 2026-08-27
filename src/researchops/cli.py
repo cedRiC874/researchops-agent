@@ -34,6 +34,10 @@ from .kimi_controlled_pilot import verify_kimi_controlled_pilot_artifacts
 from .kimi_controlled_pilot_v2 import (
     verify_kimi_controlled_pilot_v2_artifacts,
 )
+from .kimi_controlled_pilot_v3 import (
+    EXPECTED_CANDIDATE_ID as KIMI_V8_EXPECTED_CANDIDATE_ID,
+    verify_kimi_controlled_pilot_v3_artifacts,
+)
 from .kimi_preflight import run_kimi_models_preflight
 from .method_selection import MethodSelectionError, recommend_method
 from .model_providers import (
@@ -242,11 +246,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--attest-kimi-k3-pricing-unchanged", action="store_true"
     )
 
+    kimi_pilot_v8_parser = subparsers.add_parser(
+        "kimi-controlled-synthetic-pilot-v8",
+        help="Candidate v8 为 diagnostic-only；在线入口固定不授权",
+    )
+    kimi_pilot_v8_parser.add_argument("--confirm-online", action="store_true")
+
     kimi_pilot_v7_verify_parser = subparsers.add_parser(
         "kimi-controlled-pilot-v7-verify",
         help="只读验证历史 Candidate v7 / Pilot v2 artifact chain",
     )
     kimi_pilot_v7_verify_parser.add_argument(
+        "--authorization-id", required=True
+    )
+
+    kimi_pilot_v8_verify_parser = subparsers.add_parser(
+        "kimi-controlled-pilot-v8-verify",
+        help="只读验证 Candidate v8 / Pilot v3 artifact chain",
+    )
+    kimi_pilot_v8_verify_parser.add_argument(
         "--authorization-id", required=True
     )
 
@@ -368,7 +386,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_v2_freeze_parser.add_argument(
         "--candidate",
         type=Path,
-        default=Path("evals/v2/public_regression_candidate_v7.json"),
+        default=Path("evals/v2/public_regression_candidate_v8.json"),
     )
     eval_v2_freeze_parser.add_argument(
         "--verify-environment", action="store_true"
@@ -563,6 +581,36 @@ def _kimi_pilot_cli_not_run(
     }
 
 
+_KIMI_V8_CANDIDATE_RELATIVE_PATH = Path(
+    "evals/v2/public_regression_candidate_v8.json"
+)
+
+
+def _kimi_v8_cli_not_run(
+    *,
+    error_code: str,
+    candidate_commitment_sha256: str | None = None,
+    chat_contract_sha256: str | None = None,
+    pilot_contract_sha256: str | None = None,
+) -> dict[str, object]:
+    result = _kimi_pilot_cli_not_run(
+        command="kimi-controlled-synthetic-pilot-v8",
+        error_code=error_code,
+        candidate_id=KIMI_V8_EXPECTED_CANDIDATE_ID,
+        contract_id="kimi-controlled-synthetic-pilot-v3",
+    )
+    result["candidate_commitment_sha256"] = candidate_commitment_sha256
+    result["chat_contract_sha256"] = chat_contract_sha256
+    result["pilot_contract_sha256"] = pilot_contract_sha256
+    return result
+
+
+def _load_deepseek_api_key() -> str:
+    """Load the DeepSeek Key only after Candidate execution scope is authorized."""
+
+    return os.environ.get("DEEPSEEK_API_KEY", "")
+
+
 def main() -> int:
     args = build_parser().parse_args()
     try:
@@ -695,9 +743,61 @@ def main() -> int:
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 4
+        elif args.command == "kimi-controlled-synthetic-pilot-v8":
+            if not args.confirm_online:
+                result = _kimi_v8_cli_not_run(
+                    error_code="kimi_pilot_v8_confirmation_required"
+                )
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return 4
+            project_root = Path(__file__).resolve().parents[2]
+            candidate_path = project_root / _KIMI_V8_CANDIDATE_RELATIVE_PATH
+            try:
+                candidate_summary = validate_public_regression_candidate(
+                    project_root=project_root,
+                    candidate_path=candidate_path,
+                    verify_environment=False,
+                )
+            except (EvalV2ContractError, OSError, ValueError, json.JSONDecodeError):
+                result = _kimi_v8_cli_not_run(
+                    error_code="kimi_pilot_v8_candidate_invalid"
+                )
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return 4
+            candidate_id = candidate_summary.get("candidate_id")
+            candidate_commitment = candidate_summary.get(
+                "candidate_commitment_sha256"
+            )
+            if (
+                candidate_summary.get("status") != "valid"
+                or candidate_id != KIMI_V8_EXPECTED_CANDIDATE_ID
+                or not isinstance(candidate_commitment, str)
+                or candidate_summary.get("diagnostic_snapshot_only") is not True
+                or candidate_summary.get("controlled_synthetic_pilot_online_authorized")
+                is not False
+            ):
+                result = _kimi_v8_cli_not_run(
+                    error_code="kimi_pilot_v8_candidate_invalid"
+                )
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return 4
+            result = _kimi_v8_cli_not_run(
+                error_code="kimi_pilot_v8_online_not_authorized",
+                candidate_commitment_sha256=candidate_commitment,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 4
         elif args.command == "kimi-controlled-pilot-v7-verify":
             project_root = Path(__file__).resolve().parents[2]
             result = verify_kimi_controlled_pilot_v2_artifacts(
+                project_root,
+                authorization_id=args.authorization_id,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "kimi-controlled-pilot-v8-verify":
+            project_root = Path(__file__).resolve().parents[2]
+            result = verify_kimi_controlled_pilot_v3_artifacts(
                 project_root,
                 authorization_id=args.authorization_id,
             )
@@ -794,12 +894,27 @@ def main() -> int:
             return 0
         elif args.command == "eval-v2-run-public-online":
             project_root = Path(__file__).resolve().parents[2]
+            candidate_scope = validate_public_regression_candidate(
+                project_root=project_root,
+                candidate_path=args.candidate,
+                verify_environment=False,
+            )
+            if candidate_scope.get("historical_snapshot_only") is not False:
+                raise EvalV2ContractError(
+                    "eval_v2_historical_candidate_execution_forbidden",
+                    "Historical candidate 只允许离线复核，不能授权 public-regression 在线执行。",
+                )
+            if candidate_scope.get("public_regression_online_authorized") is False:
+                raise EvalV2ContractError(
+                    "eval_v2_candidate_online_execution_forbidden",
+                    "Diagnostic-only candidate 不能授权 public-regression 在线执行。",
+                )
             result = run_public_regression_online(
                 project_root=project_root,
                 candidate_path=args.candidate,
                 registry_path=args.registry,
                 output_directory=args.output_dir,
-                api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
+                api_key=_load_deepseek_api_key(),
                 budget_cny=args.budget_cny,
                 confirm_online=args.confirm_online,
                 resume=args.resume,

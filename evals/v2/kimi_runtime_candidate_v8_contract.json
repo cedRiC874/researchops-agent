@@ -1,0 +1,182 @@
+{
+  "schema_version": "3.0",
+  "contract_id": "eval-v2-kimi-runtime-candidate-v8",
+  "candidate_id": "eval-v2-public-regression-deepseek-kimi-controlled-chat-v8",
+  "status": "offline_ready_not_run",
+  "implementation_status": "implemented_offline_tested_not_run",
+  "predecessor": {
+    "relationship": "immutable_successor_of",
+    "runtime_contract_id": "eval-v2-kimi-runtime-candidate-v7",
+    "runtime_contract_path": "evals/v2/kimi_runtime_candidate_v7_contract.json",
+    "runtime_contract_sha256": "12ad1f34398cc4579a2b43888057fc80eca31c0174cd7e78a09d46486b579eb9",
+    "public_candidate_id": "eval-v2-public-regression-deepseek-kimi-controlled-chat-v7",
+    "public_candidate_path": "evals/v2/public_regression_candidate_v7.json",
+    "public_candidate_file_sha256": "efc6ca2bbd97abe6c659983a386784938a74614cd1028861c25e20478ce7b278",
+    "public_candidate_commitment_sha256": "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5",
+    "post_lock_failure_result_inherited": false,
+    "authorization_reused": false
+  },
+  "runtime_identity": {
+    "provider_id": "moonshot_kimi",
+    "model_id": "kimi-k3",
+    "api_origin": "https://api.moonshot.cn",
+    "chat_path": "/v1/chat/completions",
+    "transport_protocol": "chat_completions",
+    "transport_id": "moonshot_direct_chat_completions_sse_v3",
+    "parser_version": "3.0",
+    "reasoning_effort": "low",
+    "synthetic_only": true
+  },
+  "official_source_commitments": {
+    "capture_method": "fixed first-party HTTPS GET with identity content encoding; SHA-256 over decoded response bytes",
+    "sources": [
+      {
+        "source_id": "chat_completions_documentation",
+        "url": "https://platform.kimi.com/docs/api/chat",
+        "captured_at_utc": "2026-08-26T16:15:03.000Z",
+        "decoded_bytes": 826200,
+        "sha256": "8aceb197e56b47dc73c1f06377462ed33e36c126f4e7d5459294b0746b94d43a"
+      },
+      {
+        "source_id": "openai_migration_guide",
+        "url": "https://platform.kimi.com/docs/guide/migrating-from-openai-to-kimi",
+        "captured_at_utc": "2026-08-26T16:28:17.000Z",
+        "decoded_bytes": 477544,
+        "sha256": "e03668deb99a35666293518e33cb80a15e68bc368a03168c0041f0f7f5b8a476"
+      },
+      {
+        "source_id": "streaming_guide",
+        "url": "https://platform.kimi.com/docs/guide/utilize-the-streaming-output-feature-of-kimi-api",
+        "captured_at_utc": "2026-08-26T16:28:25.000Z",
+        "decoded_bytes": 547349,
+        "sha256": "d2ec3b080c02d98889334e29c9965044f8ef941b85171bfd7dfd910f3ed7b3c2"
+      }
+    ],
+    "authorizes_provider_call": false,
+    "is_effective_terms_evidence": false
+  },
+  "contract_references": {
+    "provider_design": {
+      "contract_id": "eval-v2-moonshot-kimi-provider-design-v1",
+      "path": "evals/v2/kimi_provider_contract.json",
+      "sha256": "d40f5696ce6930d0710dc73b875ad09c9cd55c5b6a4606a96fea043608541e17"
+    },
+    "chat_completions": {
+      "contract_id": "eval-v2-kimi-chat-completions-v3",
+      "status": "implemented_offline_tested_not_run",
+      "path": "evals/v2/kimi_chat_completions_contract_v3.json",
+      "sha256": "464b87bb4a1db9b66c252ef502a73dfb5037637ad75c3619fbc61349fad873c2",
+      "implementation_path": "src/researchops/kimi_chat_transport_v3.py",
+      "implementation_sha256": "6a702c9edb4153b258c5ea1dcc8a9047b2d46fa8281a38fac7c0ee93a475bdef"
+    },
+    "controlled_synthetic_pilot": {
+      "contract_id": "kimi-controlled-synthetic-pilot-v3",
+      "status": "implemented_offline_tested_not_run",
+      "path": "evals/v2/kimi_controlled_pilot_contract_v3.json",
+      "sha256": "8e0b9b67f5427ddde1097c2d1ff9769a309f1031bd0b224a328f430ec675079b",
+      "implementation_path": "src/researchops/kimi_controlled_pilot_v3.py",
+      "implementation_sha256": "39e03a20d64e6907231233b087bb4517b3de854e4db1493b81038e44485cab00"
+    },
+    "predecessor_controlled_synthetic_pilot": {
+      "relationship": "immutable_diagnostic_successor_of",
+      "contract_id": "kimi-controlled-synthetic-pilot-v2",
+      "path": "evals/v2/kimi_controlled_pilot_contract_v2.json",
+      "sha256": "6c305f7bf53ec2b10dca16a4fdbec157d3cbfcb8a6804e58641c5c0d848ff605",
+      "implementation_path": "src/researchops/kimi_controlled_pilot_v2.py",
+      "implementation_sha256": "6dc1ea634cb944c35bb072227d1f698db35a6e7db7a2bbe6f9e83f547f168ee1",
+      "results_inherited": false,
+      "authorization_inherited": false
+    },
+    "controlled_scenarios": {
+      "scenario_set_id": "kimi-controlled-pilot-synthetic-tools-v1",
+      "status": "offline_contract_only",
+      "path": "evals/v2/kimi_controlled_pilot_scenarios_v1.json",
+      "sha256": "f5f51f57f46d5b98677bb9809f28f3e211bb553fd8f4f8d873f848a9ef6f649b",
+      "task_selection_changed": false
+    },
+    "terms_g2a": {
+      "contract_id": "moonshot-kimi-terms-g2a-provisional-v1",
+      "status": "provisional_synthetic_only_pass",
+      "path": "evals/v2/kimi_terms_g2a_provisional_contract.json",
+      "sha256": "be9b3b609675b6965d81d078c6c260b75bad4b99f98276b811ac533deadfdc49"
+    }
+  },
+  "successor_safety_semantics": {
+    "authorization_schema_version": "kimi-pilot-authorization/3.0",
+    "authorization_expiry_canonical_utc_bound": true,
+    "authorization_binding_includes_expiry": true,
+    "authoritative_v8_manifest_required_by_run_and_verifier": true,
+    "authoritative_v8_manifest_path": "evals/v2/public_regression_candidate_v8.json",
+    "legacy_authorization_reuse_allowed": false,
+    "legacy_successor_tombstone_schema_version": "kimi-pilot-successor-tombstone/3.0",
+    "legacy_successor_tombstone_created_before_key_load": true,
+    "legacy_successor_tombstone_bound_to_all_v3_artifacts": true,
+    "v1_and_v2_namespaces_checked_before_key_load": true,
+    "artifact_success_event_count": 17,
+    "artifact_success_event_sequence_exact": true,
+    "artifact_failure_grammar": "valid_success_prefix_optional_single_failure_marker_single_terminal",
+    "artifact_failure_marker_must_immediately_precede_terminal": true,
+    "artifact_terminal_unique_and_last": true,
+    "artifact_event_counters_monotonic_and_delta_checked": true,
+    "artifact_event_reservation_usage_tool_and_invalid_deltas_checked": true,
+    "artifact_immutable_bindings_checked_on_every_event": true,
+    "premature_done_without_terminal_outcome_unknown": true,
+    "missing_terminal_usage_outcome_unknown": true,
+    "response_validation_diagnostic_schema_version": "kimi-response-validation-diagnostic/1.0",
+    "response_validation_diagnostic_fixed_enum_only": true,
+    "response_validation_diagnostic_cross_projection_equality_condition": "terminal_error_remains_kimi_chat_response_invalid",
+    "response_validation_diagnostic_cross_projection_equality_required_when_condition_met": true,
+    "response_validation_diagnostic_terminal_guard_override_clears_terminal_projection": true,
+    "response_validation_diagnostic_changes_acceptance_semantics": false,
+    "response_validation_diagnostic_causal_provider_fault_claim_allowed": false
+  },
+  "component_hashes": {
+    "predecessor_runtime_contract_sha256": "12ad1f34398cc4579a2b43888057fc80eca31c0174cd7e78a09d46486b579eb9",
+    "predecessor_candidate_file_sha256": "efc6ca2bbd97abe6c659983a386784938a74614cd1028861c25e20478ce7b278",
+    "provider_design_contract_sha256": "d40f5696ce6930d0710dc73b875ad09c9cd55c5b6a4606a96fea043608541e17",
+    "chat_completions_contract_sha256": "464b87bb4a1db9b66c252ef502a73dfb5037637ad75c3619fbc61349fad873c2",
+    "controlled_pilot_contract_sha256": "8e0b9b67f5427ddde1097c2d1ff9769a309f1031bd0b224a328f430ec675079b",
+    "predecessor_controlled_pilot_contract_sha256": "6c305f7bf53ec2b10dca16a4fdbec157d3cbfcb8a6804e58641c5c0d848ff605",
+    "predecessor_controlled_pilot_source_sha256": "6dc1ea634cb944c35bb072227d1f698db35a6e7db7a2bbe6f9e83f547f168ee1",
+    "controlled_pilot_scenarios_sha256": "f5f51f57f46d5b98677bb9809f28f3e211bb553fd8f4f8d873f848a9ef6f649b",
+    "terms_g2a_contract_sha256": "be9b3b609675b6965d81d078c6c260b75bad4b99f98276b811ac533deadfdc49",
+    "chat_transport_source_sha256": "6a702c9edb4153b258c5ea1dcc8a9047b2d46fa8281a38fac7c0ee93a475bdef",
+    "controlled_pilot_source_sha256": "39e03a20d64e6907231233b087bb4517b3de854e4db1493b81038e44485cab00",
+    "synthetic_tools_source_sha256": "e097d5371b36afc5dc7bf5a87cd206d62092a262db4feed35d2a0f4d6b5fc130"
+  },
+  "entry_points": {
+    "campaign_registered": false,
+    "provider_registry_enabled": false,
+    "phase6_enabled": false,
+    "self_pilot_cli_enabled": false,
+    "self_pilot_web_enabled": false,
+    "web_enabled": false,
+    "public_runner_enabled": false,
+    "pilot_staging_provider_execution_enabled": false,
+    "private_evaluation_enabled": false,
+    "controlled_synthetic_pilot_online_authorized": false
+  },
+  "audit_activity": {
+    "successor_online_calls_performed": 0,
+    "successor_chat_completions_requests_performed": 0,
+    "successor_invalid_request_probe_requests_performed": 0,
+    "successor_model_token_calls": 0,
+    "predecessor_failure_result_inherited": false,
+    "predecessor_authorization_reused": false,
+    "api_key_read_or_used": false,
+    "usage": null,
+    "cost": null
+  },
+  "claim_boundary": {
+    "model_quality_claim_allowed": false,
+    "private_evaluation_claim_allowed": false,
+    "non_synthetic_release_claim_allowed": false,
+    "provider_registration_claim_allowed": false,
+    "campaign_registration_claim_allowed": false,
+    "public_regression_claim_allowed": false,
+    "online_chat_compatibility_claim_allowed": false,
+    "online_tool_compatibility_claim_allowed": false,
+    "online_error_semantics_claim_allowed": false,
+    "authorizes_model_run": false
+  }
+}
