@@ -15,9 +15,9 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | 模拟科研分析 | 已验证 | 240 行模拟 RCT；ANCOVA 与 Welch 均生成数值、样本流、诊断、证据 ID 和聚合图表 |
 | 人工审批与恢复 | 已验证 | 受控写入先暂停；批准后重校验 scope 再执行；拒绝、过期和参数变化均 fail-closed |
 | Phase 5 历史作品集基线 | 已验证快照 | 对应其冻结 source/manifest 的 50/50；非预期工具错误 0%；安全违规 0%；证据引用 21/21 |
-| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@27fad953` run 33092660167：根测试 534/534，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
+| 当前 `main` Phase 5 重建 | P1 已关闭 | `main@b9054774` run 33106332631：根测试 608/608，Nehalem/x86-v2 canonical identity、Phase 5 50/50、证据 21/21、profile valid |
 | 审计 | 已验证 | 50 条评测审计链全部有效；Phase 4 演示含错误、重试、审批和发布记录 |
-| 自动化测试 | 已验证 | `main@27fad953` 的 offline run 33092660167、pilot run 33092660220 与 production run 33092660267 均成功；534 项 root tests、54 项 pilot offline contracts + 1 项真实 PostgreSQL contract、18 项 production contracts + 真实 Compose E2E 均通过；[PR #23 main 快照](docs/evidence/kimi-controlled-pilot-history-main-ci-v1/README.md) |
+| 自动化测试 | 已验证 | `main@b9054774` 的 offline run 33106332631、pilot run 33106333010 与 production run 33106332748 均成功；608 项 root tests、54 项 pilot offline contracts + 1 项真实 PostgreSQL contract、18 项 production contracts + 真实 Compose E2E 均通过；[PR #24/#25 main 快照](docs/evidence/kimi-v8-diagnostic-main-ci-v1/README.md) |
 | Phase 6 Agent 行为语料 | 已验证契约 | 20 题：development 16、repo-local holdout 4；工具名、顺序、参数、证据与审批均有 grader |
 | Provider 适配 | 分层验证 | Kimi v6 与 v7 两次独立 post-lock 尝试均在首请求 fail-closed，G4 均为 `planned_not_registered`；v7 为 1 call、0/3 场景、0 个可信解析出的 Provider tool calls、0 次 tool execution、0 usage observations，实际 tokens、账单与 Provider latency 未知。v6/v7 授权均已消费且不得重试，Kimi 仍未注册 |
 | DeepSeek 在线 Agent | 已完成冻结评测 | `deepseek-v4-flash`：development 16/16；repo-local non-secret holdout 4/4；完整 usage、延迟与审计证据已保存 |
@@ -30,13 +30,13 @@ ResearchOps Agent 是一个面向科研数据分析岗位的工程化作品集�
 | Kimi Candidate v6 post-lock observation | `failed / planned_not_registered` | 独立一次性授权已消费；首请求 usage validation fail-closed，1 request/call、0/3 场景、0 个可信解析出的 Provider tool calls、0 次 tool execution、usage incomplete；实际 tokens、cost 与 Provider latency 未知；[脱敏证据](docs/evidence/kimi-controlled-pilot-usage-failure-v1/README.md) |
 | Eval v2 public candidate v7（历史调用前快照） | 已随 PR #23 进入 `main@27fad953`；post-lock observation 失败但不回填 | commitment `2d0b9952…d223d5`、predecessor v6 `57d0c1b0…f6f5641`；绑定 Chat/Pilot v2；授权已消费，v7 在线 CLI 已永久禁用；public Provider 仍为 DeepSeek；[main 快照](docs/evidence/kimi-controlled-pilot-history-main-ci-v1/README.md) |
 | Kimi Candidate v7 post-lock observation | `failed / planned_not_registered` | 独立一次性授权已消费；首个 required-tool 请求在本地 response validation 阶段失败，1 request/call、0 个可信解析出的 Provider tool calls、0 次 tool execution、usage incomplete；raw payload 未保存，唯一根因、实际 tokens、cost 与 Provider latency 均未知；[脱敏证据](docs/evidence/kimi-controlled-pilot-v2-response-failure-v1/README.md) |
-| Eval v2 public candidate v8（脱敏诊断 successor） | 当前分支离线锁定，未在线运行且不可执行 | commitment `b41269ac…1f9e962c`、predecessor v7 `2d0b9952…d223d5`；Chat/Pilot v3保持v2 request bytes、接受谓词与优先级，仅新增39项固定本地branch code；诊断仅含schema+code，不含raw header/body、Provider ID/hash、字段值、offset、size、prompt/reasoning/tool payload、授权binding或free text；不继承v7失败或授权；public/Pilot online authorization固定为false；[v3运行手册](docs/KIMI_CONTROLLED_PILOT_V3_RUNBOOK.md) |
+| Eval v2 public candidate v8（脱敏诊断 successor） | 已随 PR #25 进入 `main@b9054774`，未在线运行且不可执行 | commitment `b41269ac…1f9e962c`、predecessor v7 `2d0b9952…d223d5`；Chat/Pilot v3保持v2 request bytes、接受谓词与优先级，仅新增39项固定本地branch code；诊断仅含schema+code，不含raw header/body、Provider ID/hash、字段值、offset、size、prompt/reasoning/tool payload、授权binding或free text；不继承v7失败或授权；public/Pilot online authorization固定为false；[main 快照](docs/evidence/kimi-v8-diagnostic-main-ci-v1/README.md)、[v3运行手册](docs/KIMI_CONTROLLED_PILOT_V3_RUNBOOK.md) |
 | Eval v2 private custodian kit v1.1 | 已进入 main 并通过 clean CI；真实 private release 仍 fail-closed | PR #14；不同 Ed25519 角色、外部 anchors、两阶段 ledger、预承诺 denominator/budget 与 aggregate-only verifier；private 0/50、Provider 1/2，仍为 `design_only / not_authorized` |
 | Production-like slice | 已合并并通过 Linux CI | FastAPI → PostgreSQL lease queue → aggregate inspect → S3/MinIO → OTel；PR #2 已合并，`main` push run 32568017244 与手动 dispatch run 32568233292 均通过 |
 | External researcher pilot staging | Candidate v5 / Pack v6 保持 active 基线，当前源码下在线执行 fail-closed | `pilot_pack.supervised_v6.json` 与 Candidate v5 commitment 保持 active 配置；新增 Candidate v6/Pack7 与 Candidate v7/Pack8 仅作历史 artifact。当前源码已超出 v5 source bundle，必须先锁定 current successor 才能启动在线 worker；[历史状态 overlay](docs/evidence/kimi-historical-status-overlays-v1/README.md) |
 | OpenAI 在线状态 | 外部阻塞 | Key 认证修复后最小请求返回 HTTP 429；OpenAI API 计费不可用，未据此推断模型质量 |
 
-离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@27fad953` run 33092660167 为 50/50、21/21、`phase5-ci-v1=valid`。PR #23 的 clean-main 证据见 [Kimi controlled Pilot history main CI 快照](docs/evidence/kimi-controlled-pilot-history-main-ci-v1/README.md)；PR #21 / candidate v5 的历史 main 证据继续见 [Kimi Models preflight main CI 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md)。
+离线 50/50 的准确名称是 `offline_deterministic / components_and_control_plane`。它不能冒充真实 LLM 的规划准确率，也只能归属于其对应的 source/data/manifest。当前 `main@b9054774` run 33106332631 为 50/50、21/21、`phase5-ci-v1=valid`。PR #24/#25 的 clean-main 证据见 [Kimi Candidate v8 diagnostic main CI 快照](docs/evidence/kimi-v8-diagnostic-main-ci-v1/README.md)；PR #23 的历史 main 证据继续见 [Kimi controlled Pilot history main CI 快照](docs/evidence/kimi-controlled-pilot-history-main-ci-v1/README.md)，PR #21 / candidate v5 的历史 main 证据继续见 [Kimi Models preflight main CI 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md)。
 
 ## 一键离线演示
 
@@ -475,9 +475,11 @@ GitHub Actions 当前有三条独立 workflow。
   campaign 环境持久化、audit chain 与 task-pack integrity；
 - 构建并启动 offline API Compose，验证页面与 readiness 后无 `down -v` 退出。
 
-`main@27fad953` 的 runs 33092660167、33092660220 与 33092660267 分别验证 offline root
-gate、pilot PostgreSQL/Compose 和 production PostgreSQL/MinIO/OTel E2E。PR #23 lineage
+`main@b9054774` 的 runs 33106332631、33106333010 与 33106332748 分别验证 offline root
+gate、pilot PostgreSQL/Compose 和 production PostgreSQL/MinIO/OTel E2E。PR #24/#25 lineage
 的长期审计见
+[Kimi Candidate v8 diagnostic main CI 快照](docs/evidence/kimi-v8-diagnostic-main-ci-v1/README.md)；
+PR #23 lineage 继续见
 [Kimi controlled Pilot history main CI 快照](docs/evidence/kimi-controlled-pilot-history-main-ci-v1/README.md)；
 PR #21 lineage 继续见
 [Kimi Models preflight main CI 快照](docs/evidence/kimi-models-preflight-main-ci-v1/README.md)；
