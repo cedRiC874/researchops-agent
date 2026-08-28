@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/external-review/pre-invitation-governance-anchor-v1.json",
+  "title": "External review pre-invitation governance anchor v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "status",
+    "public_package_commitment_sha256",
+    "domain_delivery_commitment_sha256",
+    "statistical_delivery_commitment_sha256",
+    "roster_version",
+    "roster_commitment_sha256",
+    "invitation_ledger_genesis_commitment_sha256",
+    "statistical_attempt_ledger_genesis_commitment_sha256",
+    "compensation_policy_commitment_sha256",
+    "replacement_policy_commitment_sha256",
+    "role_registry",
+    "qualification_and_conflict_verifications",
+    "identity_commitment_policy",
+    "time_anchors",
+    "governance_signer",
+    "privacy",
+    "document_commitment_sha256",
+    "governance_signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "document_type": {"const": "external_review_pre_invitation_governance_anchor"},
+    "status": {"const": "pre_invitation_anchored"},
+    "public_package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "domain_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "roster_version": {"type": "string", "pattern": "^ER-ROSTER-V[1-9][0-9]*$"},
+    "roster_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "invitation_ledger_genesis_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_attempt_ledger_genesis_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "compensation_policy_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "replacement_policy_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "role_registry": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "identity_commitment_sha256", "key_id", "public_key_b64"],
+        "properties": {
+          "role": {
+            "enum": [
+              "domain_reviewer_a",
+              "domain_reviewer_b",
+              "statistical_reviewer",
+              "comparison_verifier",
+              "governance_verifier"
+            ]
+          },
+          "identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+          "key_id": {"type": "string", "pattern": "^(ERD|ERS|ERC|ERG)-[A-F0-9]{16}$"},
+          "public_key_b64": {"$ref": "#/$defs/public_key_b64"}
+        }
+      }
+    },
+    "qualification_and_conflict_verifications": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity_commitment_sha256", "qualification_commitment_sha256", "conflict_declaration_commitment_sha256", "qualification_status", "conflict_status"],
+        "properties": {
+          "identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+          "qualification_commitment_sha256": {"$ref": "#/$defs/sha256"},
+          "conflict_declaration_commitment_sha256": {"$ref": "#/$defs/sha256"},
+          "qualification_status": {"const": "independently_verified"},
+          "conflict_status": {"const": "no_unmanaged_conflict"}
+        }
+      }
+    },
+    "identity_commitment_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "domain_separated", "stable_across_roles", "custodian_secret_external", "canonical_identity_policy_commitment_sha256"],
+      "properties": {
+        "algorithm": {"const": "HMAC-SHA256"},
+        "domain_separated": {"const": true},
+        "stable_across_roles": {"const": true},
+        "custodian_secret_external": {"const": true},
+        "canonical_identity_policy_commitment_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "time_anchors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_public_anchor_at_utc", "roster_anchor_at_utc", "pre_governance_signed_at_utc", "first_invitation_not_before_at_utc", "strict_order_verified"],
+      "properties": {
+        "package_public_anchor_at_utc": {"$ref": "#/$defs/timestamp"},
+        "roster_anchor_at_utc": {"$ref": "#/$defs/timestamp"},
+        "pre_governance_signed_at_utc": {"$ref": "#/$defs/timestamp"},
+        "first_invitation_not_before_at_utc": {"$ref": "#/$defs/timestamp"},
+        "strict_order_verified": {"const": true}
+      }
+    },
+    "governance_signer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "identity_commitment_sha256", "key_id", "public_key_b64", "trust_anchor_sha256", "trust_anchor_type", "trust_anchor_observed_at_utc"],
+      "properties": {
+        "role": {"const": "governance_verifier"},
+        "identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "key_id": {"type": "string", "pattern": "^ERG-[A-F0-9]{16}$"},
+        "public_key_b64": {"$ref": "#/$defs/public_key_b64"},
+        "trust_anchor_sha256": {"$ref": "#/$defs/sha256"},
+        "trust_anchor_type": {"enum": ["public_transparency_log", "signed_organizational_registry", "hardware_attested_registry"]},
+        "trust_anchor_observed_at_utc": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "privacy": {"$ref": "#/$defs/privacy"},
+    "document_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "governance_signature": {"$ref": "#/$defs/signature"}
+  },
+  "x-researchops-signing": {
+    "canonicalization": "RFC8785_JCS",
+    "domain_utf8_with_newline": "researchops-external-review-pre-governance-v1\n",
+    "preimage": "domain_bytes || JCS(document_without_document_commitment_sha256_and_governance_signature)",
+    "excluded_top_level_fields": ["document_commitment_sha256", "governance_signature"],
+    "signature_message": "UTF8(researchops-review-signature-v1\\0) || UTF8(document_type) || 0x00 || raw_32_byte_commitment",
+    "signed_sha256_must_equal": "document_commitment_sha256"
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signed_sha256", "signature_b64"],
+      "properties": {
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direct_identifiers_included", "contact_details_included", "qualification_originals_included", "conflict_originals_included", "free_text_notes_included", "private_content_included"],
+      "properties": {
+        "direct_identifiers_included": {"const": false},
+        "contact_details_included": {"const": false},
+        "qualification_originals_included": {"const": false},
+        "conflict_originals_included": {"const": false},
+        "free_text_notes_included": {"const": false},
+        "private_content_included": {"const": false}
+      }
+    }
+  }
+}

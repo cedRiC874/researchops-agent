@@ -68,3 +68,8 @@ omitted.
 The external record must validate against `domain_review_record.schema.json`. A schema-valid record
 is still not completion evidence until a later verifier enforces exact IDs, roll-up consistency,
 cross-reviewer agreement, signatures, timestamps and governance receipts.
+
+Before signing, resolve the public package commitment, identical domain-delivery commitment and
+pre-invitation governance commitment from their public/external anchors. Sign every terminal record—
+including needs-revision, rejected, out-of-scope and unresolved records—using
+`SIGNING_INSTRUCTIONS.md`; never overwrite a signed predecessor.

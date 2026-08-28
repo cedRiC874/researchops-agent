@@ -280,7 +280,7 @@ cross-check 未完成。`synthetic=false` release 固定拒绝；`check-private-
 
 外部复核的 v2 预结果准备包位于
 [`external_review_pre_results_v2/`](v2/external_review_pre_results_v2/README.md)，package commitment
-为 `2debdcd1…76f5be`。它与模型 Candidate 解耦，固定两位专家各自审阅全部 120 道 public
+为 `15bf3930…4d8ebc`。它与模型 Candidate 解耦，固定两位专家各自审阅全部 120 道 public
 task/golden、完整邀请 outcome ledger、严格外部时间锚和独立 R/SAS detached delivery；当前仍是
 `preparation_only / not_invited / not_run / not_evidence`，不能替代任何真人 receipt 或统计结果。
 

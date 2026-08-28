@@ -9,10 +9,12 @@
     "document_type",
     "package_id",
     "public_package_commitment_sha256",
+    "statistical_delivery_commitment_sha256",
+    "pre_governance_commitment_sha256",
     "detached_delivery_manifest_sha256",
-    "detached_bundle_commitment_sha256",
     "anchor_spec_sha256",
     "tolerance_policy_sha256",
+    "field_universe_sha256",
     "execution_id",
     "executed_at_utc",
     "input_dataset_sha256",
@@ -22,8 +24,7 @@
     "implementation_source_sha256",
     "runtime_manifest_sha256",
     "dependency_lock_sha256",
-    "anchor_results",
-    "result_commitment_sha256"
+    "anchor_results"
   ],
   "properties": {
     "schema_version": {"const": "1.0"},
@@ -33,16 +34,15 @@
       "$ref": "#/$defs/sha256",
       "description": "Top-level commitment from the publicly anchored package_commitments.json."
     },
+    "statistical_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "pre_governance_commitment_sha256": {"$ref": "#/$defs/sha256"},
     "detached_delivery_manifest_sha256": {
       "$ref": "#/$defs/sha256",
       "description": "Raw-byte SHA-256 of detached_delivery_manifest.json."
     },
-    "detached_bundle_commitment_sha256": {
-      "$ref": "#/$defs/sha256",
-      "description": "Domain-prefixed commitment over the eight detached payload files recorded by the detached manifest."
-    },
     "anchor_spec_sha256": {"$ref": "#/$defs/sha256"},
     "tolerance_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "field_universe_sha256": {"$ref": "#/$defs/sha256"},
     "execution_id": {"type": "string", "pattern": "^RXC-[A-F0-9]{16}$"},
     "executed_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
     "input_dataset_sha256": {"const": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00"},
@@ -67,15 +67,7 @@
         {"$ref": "#/$defs/runtime"}
       ],
       "items": false
-    },
-    "result_commitment_sha256": {"$ref": "#/$defs/sha256"}
-  },
-  "x-researchops-result-commitment": {
-    "canonicalization": "RFC8785_JCS",
-    "domain_utf8_with_newline": "researchops-stat-xcheck-result-v1\n",
-    "preimage": "domain_bytes || JCS(document_without_result_commitment_sha256)",
-    "hash": "sha256",
-    "self_field_excluded": "result_commitment_sha256"
+    }
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},

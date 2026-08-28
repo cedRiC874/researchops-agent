@@ -7,10 +7,14 @@
   "minimum_significant_digits_persisted": 17,
   "exact_fields": [
     "public_package_commitment_sha256",
+    "statistical_delivery_commitment_sha256",
+    "pre_governance_commitment_sha256",
     "detached_delivery_manifest_sha256",
-    "detached_bundle_commitment_sha256",
     "anchor_spec_sha256",
     "tolerance_policy_sha256",
+    "result_contract_sha256",
+    "field_universe_sha256",
+    "execution_lock_commitment_sha256",
     "input_dataset_sha256",
     "input_design_sha256",
     "anchor_id",
@@ -74,7 +78,7 @@
   "exact_anchor_classes": {
     "RXC-SF-ANCOVA-001": "all_fields_exact",
     "RXC-SF-WELCH-001": "all_fields_exact",
-    "RXC-RUNTIME-001": "all_fields_exact_except_engine_specific_descriptive_strings_must_match_the_prelocked_runtime_manifest"
+    "RXC-RUNTIME-001": "prelocked_runtime_manifest_exact"
   },
   "exact_numeric_fields": [
     "RXC-WELCH-001.control_n",

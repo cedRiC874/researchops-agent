@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/statistical-execution-lock-v1.json",
+  "title": "Independent R/SAS execution lock v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "status",
+    "public_package_commitment_sha256",
+    "statistical_delivery_commitment_sha256",
+    "pre_governance_commitment_sha256",
+    "detached_delivery_manifest_sha256",
+    "anchor_spec_sha256",
+    "tolerance_policy_sha256",
+    "result_contract_sha256",
+    "field_universe_sha256",
+    "attempt_ledger_genesis_commitment_sha256",
+    "attempt_sequence",
+    "execution_id",
+    "statistical_reviewer_identity_commitment_sha256",
+    "statistical_reviewer_signer",
+    "engine",
+    "engine_version",
+    "implementation_source_sha256",
+    "runtime_manifest_sha256",
+    "dependency_lock_sha256",
+    "stdout_log_sha256",
+    "runtime_target",
+    "external_result",
+    "terminal_failure",
+    "output_lock",
+    "prior_public_exposure",
+    "claim",
+    "privacy",
+    "execution_lock_commitment_sha256",
+    "statistical_reviewer_signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "document_type": {"const": "independent_statistical_execution_lock"},
+    "status": {"enum": ["completed", "failed", "outcome_unknown", "invalid"]},
+    "public_package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "pre_governance_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "detached_delivery_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "anchor_spec_sha256": {"$ref": "#/$defs/sha256"},
+    "tolerance_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "result_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "field_universe_sha256": {"$ref": "#/$defs/sha256"},
+    "attempt_ledger_genesis_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "attempt_sequence": {"type": "integer", "minimum": 1},
+    "execution_id": {"type": "string", "pattern": "^RXC-[A-F0-9]{16}$"},
+    "statistical_reviewer_identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_reviewer_signer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "key_id", "public_key_b64"],
+      "properties": {
+        "role": {"const": "statistical_reviewer"},
+        "key_id": {"type": "string", "pattern": "^ERS-[A-F0-9]{16}$"},
+        "public_key_b64": {"$ref": "#/$defs/public_key_b64"}
+      }
+    },
+    "engine": {"enum": ["R", "SAS"]},
+    "engine_version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$"},
+    "implementation_source_sha256": {"$ref": "#/$defs/sha256"},
+    "runtime_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "dependency_lock_sha256": {"$ref": "#/$defs/sha256"},
+    "stdout_log_sha256": {"$ref": "#/$defs/sha256"},
+    "runtime_target": {"$ref": "#/$defs/runtime_target"},
+    "external_result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sha256", "bytes", "schema_valid"],
+          "properties": {
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "bytes": {"type": "integer", "minimum": 1},
+            "schema_valid": {"const": true}
+          }
+        },
+        {"type": "null"}
+      ]
+    },
+    "terminal_failure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "outcome_known"],
+          "properties": {
+            "code": {
+              "enum": [
+                "input_hash_mismatch",
+                "implementation_failed",
+                "runtime_failed",
+                "result_schema_invalid",
+                "output_lock_failed",
+                "execution_outcome_unknown"
+              ]
+            },
+            "outcome_known": {"type": "boolean"}
+          }
+        },
+        {"type": "null"}
+      ]
+    },
+    "output_lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locked_at_utc", "external_timestamp_receipt_sha256", "comparison_had_started"],
+      "properties": {
+        "locked_at_utc": {"$ref": "#/$defs/timestamp"},
+        "external_timestamp_receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "comparison_had_started": {"const": false}
+      }
+    },
+    "prior_public_exposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["historical_reference_seen", "python_source_or_tests_seen", "exposure_note_commitment_sha256"],
+      "properties": {
+        "historical_reference_seen": {"type": "boolean"},
+        "python_source_or_tests_seen": {"type": "boolean"},
+        "exposure_note_commitment_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["crosscheck_type", "blindness_claim_allowed", "independent_reimplementation"],
+      "properties": {
+        "crosscheck_type": {"const": "non_blinded_independent_reproducibility"},
+        "blindness_claim_allowed": {"const": false},
+        "independent_reimplementation": {"const": true}
+      }
+    },
+    "privacy": {"$ref": "#/$defs/privacy"},
+    "execution_lock_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_reviewer_signature": {"$ref": "#/$defs/signature"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "completed"}}},
+      "then": {
+        "properties": {
+          "external_result": {"type": "object"},
+          "terminal_failure": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "failed"}}},
+      "then": {
+        "properties": {
+          "external_result": {"type": "null"},
+          "terminal_failure": {
+            "type": "object",
+            "properties": {
+              "code": {"enum": ["implementation_failed", "runtime_failed", "output_lock_failed"]},
+              "outcome_known": {"const": true}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "outcome_unknown"}}},
+      "then": {
+        "properties": {
+          "external_result": {"type": "null"},
+          "terminal_failure": {
+            "type": "object",
+            "properties": {
+              "code": {"const": "execution_outcome_unknown"},
+              "outcome_known": {"const": false}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "invalid"}}},
+      "then": {
+        "properties": {
+          "terminal_failure": {
+            "type": "object",
+            "properties": {
+              "code": {"enum": ["input_hash_mismatch", "result_schema_invalid"]},
+              "outcome_known": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "x-researchops-signing": {
+    "canonicalization": "RFC8785_JCS",
+    "domain_utf8_with_newline": "researchops-stat-xcheck-execution-lock-v1\n",
+    "preimage": "domain_bytes || JCS(document_without_execution_lock_commitment_sha256_and_statistical_reviewer_signature)",
+    "excluded_top_level_fields": ["execution_lock_commitment_sha256", "statistical_reviewer_signature"],
+    "signature_message": "UTF8(researchops-review-signature-v1\\0) || UTF8(document_type) || 0x00 || raw_32_byte_commitment",
+    "signed_sha256_must_equal": "execution_lock_commitment_sha256"
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signed_sha256", "signature_b64"],
+      "properties": {
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    },
+    "runtime_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "engine_version", "operating_system", "locale", "timezone", "blas", "lapack", "thread_count", "implementation_source_sha256", "runtime_lock_sha256", "stdout_log_sha256"],
+      "properties": {
+        "engine": {"enum": ["R", "SAS"]},
+        "engine_version": {"type": "string", "maxLength": 64},
+        "operating_system": {"type": "string", "maxLength": 128},
+        "locale": {"type": "string", "maxLength": 64},
+        "timezone": {"type": "string", "maxLength": 64},
+        "blas": {"type": "string", "maxLength": 128},
+        "lapack": {"type": "string", "maxLength": 128},
+        "thread_count": {"type": "integer", "minimum": 1, "maximum": 256},
+        "implementation_source_sha256": {"$ref": "#/$defs/sha256"},
+        "runtime_lock_sha256": {"$ref": "#/$defs/sha256"},
+        "stdout_log_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_rows_included", "direct_identifiers_included", "local_paths_included", "private_content_included", "provider_or_model_content_included"],
+      "properties": {
+        "raw_rows_included": {"const": false},
+        "direct_identifiers_included": {"const": false},
+        "local_paths_included": {"const": false},
+        "private_content_included": {"const": false},
+        "provider_or_model_content_included": {"const": false}
+      }
+    }
+  }
+}

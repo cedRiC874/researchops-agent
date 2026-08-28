@@ -1,0 +1,338 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/statistical-crosscheck-receipt-v1.json",
+  "title": "Statistical cross-check terminal receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "status",
+    "public_package_commitment_sha256",
+    "statistical_delivery_commitment_sha256",
+    "pre_governance_commitment_sha256",
+    "execution_lock",
+    "attempt_ledger_genesis_commitment_sha256",
+    "attempt_sequence",
+    "reference_projection",
+    "field_universe_sha256",
+    "tolerance_policy_sha256",
+    "external_result_sha256",
+    "comparison_matrix",
+    "comparator",
+    "summary",
+    "discrepancies",
+    "terminal_failure_code",
+    "predecessor_receipt_commitment_sha256",
+    "claim",
+    "claim_boundaries",
+    "privacy",
+    "comparison_verifier_identity_commitment_sha256",
+    "comparison_verifier_signer",
+    "completed_at_utc",
+    "document_commitment_sha256",
+    "comparison_verifier_signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "document_type": {"const": "statistical_crosscheck_terminal_receipt"},
+    "status": {"enum": ["completed_matched", "completed_with_discrepancies", "failed", "outcome_unknown", "invalid"]},
+    "public_package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "pre_governance_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "execution_lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_sha256", "bytes", "commitment_sha256", "signature_verified"],
+      "properties": {
+        "raw_sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_verified": {"const": true}
+      }
+    },
+    "attempt_ledger_genesis_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "attempt_sequence": {"type": "integer", "minimum": 1},
+    "reference_projection": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["raw_sha256", "bytes", "commitment_sha256"],
+          "properties": {
+            "raw_sha256": {"$ref": "#/$defs/sha256"},
+            "bytes": {"type": "integer", "minimum": 1},
+            "commitment_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        {"type": "null"}
+      ]
+    },
+    "field_universe_sha256": {"$ref": "#/$defs/sha256"},
+    "tolerance_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "external_result_sha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "comparison_matrix": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["raw_sha256", "bytes", "schema_valid"],
+          "properties": {
+            "raw_sha256": {"$ref": "#/$defs/sha256"},
+            "bytes": {"type": "integer", "minimum": 1},
+            "schema_valid": {"const": true}
+          }
+        },
+        {"type": "null"}
+      ]
+    },
+    "comparator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_sha256", "runtime_manifest_sha256", "report_sha256"],
+      "properties": {
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "runtime_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "report_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field_count", "compared_count", "matched_count", "outside_tolerance_count", "not_comparable_count", "binding_failed_count", "omitted_count", "duplicate_count", "unknown_count", "discrepancy_count", "unresolved_count"],
+      "properties": {
+        "field_count": {"const": 75},
+        "compared_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "matched_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "outside_tolerance_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "not_comparable_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "binding_failed_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "omitted_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "duplicate_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "unknown_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "discrepancy_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "unresolved_count": {"type": "integer", "minimum": 0, "maximum": 75}
+      }
+    },
+    "discrepancies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["discrepancy_id", "field_path", "status", "classification", "resolved"],
+        "properties": {
+          "discrepancy_id": {"type": "string", "pattern": "^RXC-DISC-[A-F0-9]{16}$"},
+          "field_path": {"type": "string", "pattern": "^RXC-[A-Z0-9-]+\\.[a-z0-9_]+$"},
+          "status": {"enum": ["outside_tolerance", "not_comparable", "binding_failed"]},
+          "classification": {
+            "enum": [
+              "input_hash_mismatch",
+              "sample_flow_mismatch",
+              "method_spec_ambiguity",
+              "implementation_defect_external",
+              "implementation_defect_reference",
+              "unresolved_numeric_mismatch"
+            ]
+          },
+          "resolved": {"type": "boolean"}
+        }
+      }
+    },
+    "terminal_failure_code": {
+      "oneOf": [
+        {
+          "enum": [
+            "execution_failed",
+            "execution_outcome_unknown",
+            "execution_lock_invalid",
+            "external_result_invalid",
+            "reference_projection_invalid",
+            "comparison_matrix_invalid",
+            "binding_mismatch"
+          ]
+        },
+        {"type": "null"}
+      ]
+    },
+    "predecessor_receipt_commitment_sha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["crosscheck_type", "blindness_claim_allowed", "matched_within_precommitted_tolerance"],
+      "properties": {
+        "crosscheck_type": {"const": "non_blinded_independent_reproducibility"},
+        "blindness_claim_allowed": {"const": false},
+        "matched_within_precommitted_tolerance": {"type": "boolean"}
+      }
+    },
+    "claim_boundaries": {"$ref": "#/$defs/claim_boundaries"},
+    "privacy": {"$ref": "#/$defs/privacy"},
+    "comparison_verifier_identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "comparison_verifier_signer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "key_id", "public_key_b64"],
+      "properties": {
+        "role": {"const": "comparison_verifier"},
+        "key_id": {"type": "string", "pattern": "^ERC-[A-F0-9]{16}$"},
+        "public_key_b64": {"$ref": "#/$defs/public_key_b64"}
+      }
+    },
+    "completed_at_utc": {"$ref": "#/$defs/timestamp"},
+    "document_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "comparison_verifier_signature": {"$ref": "#/$defs/signature"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "completed_matched"}}},
+      "then": {
+        "properties": {
+          "reference_projection": {"type": "object"},
+          "external_result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "comparison_matrix": {"type": "object"},
+          "terminal_failure_code": {"type": "null"},
+          "summary": {
+            "properties": {
+              "compared_count": {"const": 75},
+              "matched_count": {"const": 75},
+              "outside_tolerance_count": {"const": 0},
+              "not_comparable_count": {"const": 0},
+              "binding_failed_count": {"const": 0},
+              "omitted_count": {"const": 0},
+              "duplicate_count": {"const": 0},
+              "unknown_count": {"const": 0},
+              "discrepancy_count": {"const": 0},
+              "unresolved_count": {"const": 0}
+            }
+          },
+          "discrepancies": {"maxItems": 0},
+          "claim": {
+            "properties": {
+              "matched_within_precommitted_tolerance": {"const": true}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "completed_with_discrepancies"}}},
+      "then": {
+        "properties": {
+          "reference_projection": {"type": "object"},
+          "external_result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "comparison_matrix": {"type": "object"},
+          "terminal_failure_code": {"type": "null"},
+          "summary": {
+            "properties": {
+              "compared_count": {"const": 75},
+              "discrepancy_count": {"type": "integer", "minimum": 1}
+            }
+          },
+          "discrepancies": {"minItems": 1},
+          "claim": {
+            "properties": {
+              "matched_within_precommitted_tolerance": {"const": false}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"enum": ["failed", "outcome_unknown", "invalid"]}}},
+      "then": {
+        "properties": {
+          "reference_projection": {"type": "null"},
+          "external_result_sha256": {"type": "null"},
+          "comparison_matrix": {"type": "null"},
+          "terminal_failure_code": {"type": "string"},
+          "summary": {
+            "properties": {
+              "compared_count": {"const": 0},
+              "matched_count": {"const": 0},
+              "outside_tolerance_count": {"const": 0},
+              "not_comparable_count": {"const": 0},
+              "binding_failed_count": {"const": 0},
+              "omitted_count": {"const": 75},
+              "duplicate_count": {"const": 0},
+              "unknown_count": {"const": 0},
+              "discrepancy_count": {"const": 0},
+              "unresolved_count": {"const": 0}
+            }
+          },
+          "discrepancies": {"maxItems": 0},
+          "claim": {
+            "properties": {
+              "matched_within_precommitted_tolerance": {"const": false}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"attempt_sequence": {"const": 1}}},
+      "then": {
+        "properties": {
+          "predecessor_receipt_commitment_sha256": {"type": "null"}
+        }
+      },
+      "else": {
+        "properties": {
+          "predecessor_receipt_commitment_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    }
+  ],
+  "x-researchops-signing": {
+    "canonicalization": "RFC8785_JCS",
+    "domain_utf8_with_newline": "researchops-stat-xcheck-sanitized-receipt-v1\n",
+    "preimage": "domain_bytes || JCS(document_without_document_commitment_sha256_and_comparison_verifier_signature)",
+    "excluded_top_level_fields": ["document_commitment_sha256", "comparison_verifier_signature"],
+    "signature_message": "UTF8(researchops-review-signature-v1\\0) || UTF8(document_type) || 0x00 || raw_32_byte_commitment",
+    "signed_sha256_must_equal": "document_commitment_sha256"
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signed_sha256", "signature_b64"],
+      "properties": {
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    },
+    "claim_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full_campaign_frozen", "private_access_authorized", "provider_registration_authorized", "model_quality_claim_allowed", "unknown_distribution_generalization_claim_allowed", "non_synthetic_release_authorized"],
+      "properties": {
+        "full_campaign_frozen": {"const": false},
+        "private_access_authorized": {"const": false},
+        "provider_registration_authorized": {"const": false},
+        "model_quality_claim_allowed": {"const": false},
+        "unknown_distribution_generalization_claim_allowed": {"const": false},
+        "non_synthetic_release_authorized": {"const": false}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_rows_included", "direct_identifiers_included", "local_paths_included", "raw_logs_included", "private_content_included", "provider_or_model_content_included"],
+      "properties": {
+        "raw_rows_included": {"const": false},
+        "direct_identifiers_included": {"const": false},
+        "local_paths_included": {"const": false},
+        "raw_logs_included": {"const": false},
+        "private_content_included": {"const": false},
+        "provider_or_model_content_included": {"const": false}
+      }
+    }
+  }
+}

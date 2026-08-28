@@ -15,6 +15,22 @@
     "each_reviewer_reviews_full_scope": true,
     "candidate_provider_results_disclosed": false
   },
+  "role_delivery_policy": {
+    "public_package_commitment_source": "evals/v2/external_review_pre_results_v2/package_commitments.json",
+    "unified_manifest": "evals/v2/external_review_pre_results_v2/unified_review_manifest.json",
+    "unified_invitation": "evals/v2/external_review_pre_results_v2/reviewer_invitation.template.md",
+    "signing_instructions": "evals/v2/external_review_pre_results_v2/SIGNING_INSTRUCTIONS.md",
+    "roles": {
+      "domain_reviewer_a": "evals/v2/external_review_pre_results_v2/domain_review_delivery_manifest.json",
+      "domain_reviewer_b": "evals/v2/external_review_pre_results_v2/domain_review_delivery_manifest.json",
+      "statistical_reviewer": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/detached_delivery_manifest.json",
+      "comparison_verifier": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/comparison_verifier_delivery_manifest.json"
+    },
+    "domain_slots_identical_delivery_required": true,
+    "all_roles_share_one_public_package_commitment": true,
+    "role_allowlists_may_expand_after_invitation": false,
+    "completed_invitation_commitments_remain_external": true
+  },
   "reviewer_governance": {
     "roster_must_be_externally_anchored_before_invitation": true,
     "all_invitation_outcomes_must_be_committed": true,
@@ -80,6 +96,22 @@
       "crosscheck_evidence_bound_at",
       "future_model_results_start_at"
     ]
+  },
+  "signature_chain": {
+    "order": [
+      "public_package_anchor",
+      "pre_invitation_governance_anchor",
+      "domain_review_records_and_statistical_execution_lock",
+      "statistical_comparison_receipt",
+      "post_review_governance_closeout",
+      "evidence_binding",
+      "future_model_results_start"
+    ],
+    "domain_review_record_count": 2,
+    "statistical_execution_lock_signed_before_comparison": true,
+    "comparison_verifier_distinct_from_statistical_reviewer": true,
+    "negative_failed_invalid_and_outcome_unknown_records_must_be_preserved": true,
+    "signed_record_may_be_modified_in_place": false
   },
   "repository_privacy": {
     "reviewer_direct_identifiers_allowed": false,

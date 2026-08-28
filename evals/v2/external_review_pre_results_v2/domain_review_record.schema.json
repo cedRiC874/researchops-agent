@@ -7,21 +7,39 @@
   "required": [
     "schema_version",
     "document_type",
-    "package_commitment_sha256",
+    "public_package_commitment_sha256",
+    "domain_delivery_commitment_sha256",
+    "pre_governance_commitment_sha256",
+    "role_slot",
     "reviewer_identity_commitment_sha256",
+    "reviewer_signer",
     "review_started_at_utc",
     "review_completed_at_utc",
     "prior_exposure",
     "dataset_reviews",
     "task_reviews",
     "summary",
-    "record_commitment_sha256"
+    "record_commitment_sha256",
+    "reviewer_signature"
   ],
   "properties": {
     "schema_version": {"const": "2.0"},
     "document_type": {"const": "external_domain_review_work_record"},
-    "package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "public_package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "domain_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "pre_governance_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "role_slot": {"enum": ["domain_reviewer_a", "domain_reviewer_b"]},
     "reviewer_identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "reviewer_signer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "key_id", "public_key_b64"],
+      "properties": {
+        "role": {"const": "domain_reviewer"},
+        "key_id": {"type": "string", "pattern": "^ERD-[A-F0-9]{16}$"},
+        "public_key_b64": {"$ref": "#/$defs/public_key_b64"}
+      }
+    },
     "review_started_at_utc": {"$ref": "#/$defs/timestamp"},
     "review_completed_at_utc": {"$ref": "#/$defs/timestamp"},
     "prior_exposure": {
@@ -93,17 +111,30 @@
         "unresolved_major_or_critical_count": {"type": "integer", "minimum": 0, "maximum": 120}
       }
     },
-    "record_commitment_sha256": {"$ref": "#/$defs/sha256"}
+    "record_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "reviewer_signature": {"$ref": "#/$defs/signature"}
   },
-  "x-researchops-record-commitment": {
+  "x-researchops-signing": {
     "canonicalization": "RFC8785_JCS",
     "domain_utf8_with_newline": "researchops-domain-review-record-v2\n",
-    "preimage": "domain_bytes || JCS(document_without_record_commitment_sha256)",
+    "preimage": "domain_bytes || JCS(document_without_record_commitment_sha256_and_reviewer_signature)",
     "hash": "sha256",
-    "self_field_excluded": "record_commitment_sha256"
+    "excluded_top_level_fields": ["record_commitment_sha256", "reviewer_signature"],
+    "signature_message": "UTF8(researchops-review-signature-v1\\0) || UTF8(document_type) || 0x00 || raw_32_byte_commitment",
+    "signed_sha256_must_equal": "record_commitment_sha256"
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signed_sha256", "signature_b64"],
+      "properties": {
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    },
     "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
     "decision": {"enum": ["approve", "needs_revision", "reject", "out_of_scope"]},
     "severity": {"enum": ["none", "minor", "major", "critical"]},

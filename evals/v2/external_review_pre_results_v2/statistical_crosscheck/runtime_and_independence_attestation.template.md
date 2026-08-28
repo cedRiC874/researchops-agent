@@ -21,6 +21,10 @@ The statistical reviewer must attest:
 - reviewer identity differs from both domain experts and the primary Python implementation author;
 - all relevant conflicts were disclosed to and adjudicated by the external governance verifier.
 
+These statements enter the signed `statistical_execution_lock.schema.json` document. The statistical
+reviewer signs that lock before comparison; the later terminal comparison receipt is signed by the
+separate comparison verifier and must retain failed, discrepant and superseded predecessors.
+
 Required external timestamps must satisfy:
 
 ```text

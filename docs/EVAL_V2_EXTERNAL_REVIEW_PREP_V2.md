@@ -11,6 +11,12 @@
 1. 两位相互独立的领域专家，各自审阅全部 120 道 public task/golden 以及三个数据集边界；
 2. 一位与 Python 实现者及两位领域专家身份分离的统计复核人，使用 R 或 SAS 完成独立实现。
 
+三位 reviewer 共享一个由公开 Git anchor 解析的顶层 package commitment，但只接收各自的
+role allowlist。Domain A/B 的完全相同 delivery commitment 为
+`a2c3b9ee…5ec724e`；statistical delivery commitment 为 `2a15852a…a1efac`；comparison
+verifier delivery commitment 为 `a87f7175…baf02c`。统一角色映射见
+[`unified_review_manifest.json`](../evals/v2/external_review_pre_results_v2/unified_review_manifest.json)。
+
 内容审阅 scope 与模型 Candidate 解耦。它绑定 public corpus、dataset manifest、campaign、
 task schema 和 internal-review bytes，但不绑定或披露 Candidate、Provider、模型输出、成绩、
 tokens、cost 或 latency。未来 full-campaign successor 只能引用本包的内容审阅 commitment；
@@ -44,8 +50,10 @@ tokens、cost 或 latency。未来 full-campaign successor 只能引用本包的
 - 仓库只允许脱敏 commitments、受邀/完成/拒绝/退出/排除计数、结构化 reason-code 聚合、
   公钥和签名进入后续 versioned receipt。
 
-邀请函见
-[`domain_expert_invitation.template.md`](../evals/v2/external_review_pre_results_v2/domain_expert_invitation.template.md)，
+统一邀请函见
+[`reviewer_invitation.template.md`](../evals/v2/external_review_pre_results_v2/reviewer_invitation.template.md)，
+签名说明见
+[`SIGNING_INSTRUCTIONS.md`](../evals/v2/external_review_pre_results_v2/SIGNING_INSTRUCTIONS.md)，
 逐题工作表见
 [`domain_review_worksheet.template.md`](../evals/v2/external_review_pre_results_v2/domain_review_worksheet.template.md)，
 外部 roster/邀请 ledger 要求见
@@ -80,6 +88,11 @@ R/SAS 脚本与 output 在比较前先由外部时间锚锁定。公开 referenc
 因此不作 blindness 声明；但 output lock 后不得修改脚本、expected、方法或 tolerance。任何差异
 先分类并保留原 commitments。修订必须创建新版本，不能覆盖失败版本。
 
+统计分析员先签 execution lock；随后由不同的 comparison verifier 对固定 75-field universe
+生成完整 matrix 并签 terminal receipt。`failed / outcome_unknown / invalid /
+completed_with_discrepancies` 与 matched 结果同样必须保留，不能只发布成功版本。签名链和
+公私边界见统一签名说明。
+
 该 cross-check 即使成功，也只能称为 `synthetic_trial statistical-anchor cross-check`；它不会
 自动把完整 Eval v2 的 statistical cross-check、full campaign、Provider 2/2 或 private 50
 改为完成。
@@ -100,3 +113,8 @@ non-synthetic release = not authorized
 不得用内部 review、这套模板、synthetic tests 或未来单次签名替代真人身份/资格/冲突治理；
 不得使用已运行公开题、repo-local holdout 或 private 内容调整 prompt、scorer、tool schema、
 candidate 或 task selection。
+
+当前仓库冻结了签名/ledger/matrix 合同以及 reference/comparator，但尚未提供完整 closeout
+signature/ledger verifier。真实 receipt 在被接纳前，仍必须由独立外部 verifier 重算 JCS、Ed25519、
+key ID、trust/time anchors、attempt-chain 和 matrix/discrepancy 一致性；schema 中的 `verified=true`
+不能自证这些事实。

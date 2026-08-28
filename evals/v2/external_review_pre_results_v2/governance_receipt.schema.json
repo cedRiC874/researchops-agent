@@ -1,60 +1,65 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://researchops.local/schemas/eval-v2/external-review/governance-receipt-v2.json",
-  "title": "External review governance receipt v2",
+  "$id": "https://researchops.local/schemas/eval-v2/external-review/governance-closeout-v2.json",
+  "title": "External review post-review governance closeout v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
     "document_type",
     "status",
-    "package_commitment_sha256",
-    "roster_version",
+    "public_package_commitment_sha256",
+    "pre_governance_commitment_sha256",
     "roster_commitment_sha256",
     "invitation_ledger_commitment_sha256",
-    "counts",
+    "invitation_counts",
     "role_identity_commitments",
     "qualification_and_conflict_verifications",
-    "identity_commitment_policy",
+    "domain_review_records",
+    "statistical_evidence",
+    "statistical_attempt_ledger",
+    "negative_or_incomplete_record_commitment_sha256s",
     "time_anchors",
+    "claim_boundaries",
+    "governance_signer",
     "privacy",
     "document_commitment_sha256",
     "governance_signature"
   ],
   "properties": {
     "schema_version": {"const": "2.0"},
-    "document_type": {"const": "external_review_governance_receipt"},
-    "status": {"const": "completed_governance_verification"},
-    "package_commitment_sha256": {"$ref": "#/$defs/sha256"},
-    "roster_version": {"type": "string", "pattern": "^ER-ROSTER-V[1-9][0-9]*$"},
+    "document_type": {"const": "external_review_post_review_governance_closeout"},
+    "status": {"enum": ["completed_eligible_for_separate_consideration", "completed_not_ready"]},
+    "public_package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "pre_governance_commitment_sha256": {"$ref": "#/$defs/sha256"},
     "roster_commitment_sha256": {"$ref": "#/$defs/sha256"},
     "invitation_ledger_commitment_sha256": {"$ref": "#/$defs/sha256"},
-    "counts": {
+    "invitation_counts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["invited", "completed", "declined", "withdrawn", "rejected", "excluded", "replacement"],
+      "required": ["invited", "completed", "declined", "withdrawn", "rejected", "excluded", "pending", "replacement", "count_equation_verified"],
       "properties": {
-        "invited": {"type": "integer", "minimum": 2},
-        "completed": {"type": "integer", "minimum": 2},
+        "invited": {"type": "integer", "minimum": 4},
+        "completed": {"type": "integer", "minimum": 0},
         "declined": {"type": "integer", "minimum": 0},
         "withdrawn": {"type": "integer", "minimum": 0},
         "rejected": {"type": "integer", "minimum": 0},
         "excluded": {"type": "integer", "minimum": 0},
-        "replacement": {"type": "integer", "minimum": 0}
+        "pending": {"type": "integer", "minimum": 0},
+        "replacement": {"type": "integer", "minimum": 0},
+        "count_equation_verified": {"const": true}
       }
     },
     "role_identity_commitments": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["domain_reviewers", "statistical_reviewer", "primary_implementation_authors", "all_cross_role_distinct"],
+      "required": ["domain_reviewer_a", "domain_reviewer_b", "statistical_reviewer", "comparison_verifier", "governance_verifier", "primary_implementation_authors", "all_cross_role_distinct"],
       "properties": {
-        "domain_reviewers": {
-          "type": "array",
-          "minItems": 2,
-          "uniqueItems": true,
-          "items": {"$ref": "#/$defs/sha256"}
-        },
+        "domain_reviewer_a": {"$ref": "#/$defs/sha256"},
+        "domain_reviewer_b": {"$ref": "#/$defs/sha256"},
         "statistical_reviewer": {"$ref": "#/$defs/sha256"},
+        "comparison_verifier": {"$ref": "#/$defs/sha256"},
+        "governance_verifier": {"$ref": "#/$defs/sha256"},
         "primary_implementation_authors": {
           "type": "array",
           "minItems": 1,
@@ -66,14 +71,14 @@
     },
     "qualification_and_conflict_verifications": {
       "type": "array",
-      "minItems": 3,
+      "minItems": 5,
+      "maxItems": 5,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["identity_commitment_sha256", "role", "qualification_commitment_sha256", "conflict_declaration_commitment_sha256", "qualification_status", "conflict_status"],
+        "required": ["identity_commitment_sha256", "qualification_commitment_sha256", "conflict_declaration_commitment_sha256", "qualification_status", "conflict_status"],
         "properties": {
           "identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
-          "role": {"enum": ["domain_reviewer", "statistical_reviewer"]},
           "qualification_commitment_sha256": {"$ref": "#/$defs/sha256"},
           "conflict_declaration_commitment_sha256": {"$ref": "#/$defs/sha256"},
           "qualification_status": {"const": "independently_verified"},
@@ -81,30 +86,167 @@
         }
       }
     },
-    "identity_commitment_policy": {
+    "domain_review_records": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role_slot", "record_sha256", "record_bytes", "record_commitment_sha256", "signature_verified", "completion_gate_passed"],
+        "properties": {
+          "role_slot": {"enum": ["domain_reviewer_a", "domain_reviewer_b"]},
+          "record_sha256": {"$ref": "#/$defs/sha256"},
+          "record_bytes": {"type": "integer", "minimum": 1},
+          "record_commitment_sha256": {"$ref": "#/$defs/sha256"},
+          "signature_verified": {"type": "boolean"},
+          "completion_gate_passed": {"type": "boolean"}
+        }
+      }
+    },
+    "statistical_evidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["algorithm", "domain_separated", "stable_across_roles", "custodian_secret_external", "canonical_identity_policy_commitment_sha256"],
+      "required": ["execution_lock_sha256", "execution_lock_commitment_sha256", "execution_lock_signature_verified", "terminal_receipt_sha256", "terminal_receipt_commitment_sha256", "terminal_receipt_signature_verified", "terminal_status"],
       "properties": {
-        "algorithm": {"const": "HMAC-SHA256"},
-        "domain_separated": {"const": true},
-        "stable_across_roles": {"const": true},
-        "custodian_secret_external": {"const": true},
-        "canonical_identity_policy_commitment_sha256": {"$ref": "#/$defs/sha256"}
+        "execution_lock_sha256": {"$ref": "#/$defs/sha256"},
+        "execution_lock_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "execution_lock_signature_verified": {"type": "boolean"},
+        "terminal_receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "terminal_receipt_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "terminal_receipt_signature_verified": {"type": "boolean"},
+        "terminal_status": {"enum": ["completed_matched", "completed_with_discrepancies", "failed", "outcome_unknown", "invalid"]}
       }
+    },
+    "statistical_attempt_ledger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_sha256", "bytes", "genesis_commitment_sha256", "head_entry_sha256", "entry_count", "all_terminal_attempts_included", "missing_terminal_attempt_count"],
+      "properties": {
+        "raw_sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "genesis_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "head_entry_sha256": {"$ref": "#/$defs/sha256"},
+        "entry_count": {"type": "integer", "minimum": 1},
+        "all_terminal_attempts_included": {"const": true},
+        "missing_terminal_attempt_count": {"const": 0}
+      }
+    },
+    "negative_or_incomplete_record_commitment_sha256s": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sha256"}
     },
     "time_anchors": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["package_public_anchor_at", "roster_anchor_at", "first_invitation_sent_at", "last_review_receipt_at", "evidence_bound_at", "future_model_results_start_at", "strict_order_verified"],
+      "required": ["package_public_anchor_at_utc", "roster_anchor_at_utc", "first_invitation_sent_at_utc", "last_reviewer_terminal_at_utc", "comparison_terminal_at_utc", "closeout_signed_at_utc", "evidence_bound_at_utc", "future_model_results_start_at_utc", "strict_order_verified"],
       "properties": {
-        "package_public_anchor_at": {"$ref": "#/$defs/timestamp"},
-        "roster_anchor_at": {"$ref": "#/$defs/timestamp"},
-        "first_invitation_sent_at": {"$ref": "#/$defs/timestamp"},
-        "last_review_receipt_at": {"$ref": "#/$defs/timestamp"},
-        "evidence_bound_at": {"$ref": "#/$defs/timestamp"},
-        "future_model_results_start_at": {"$ref": "#/$defs/timestamp"},
+        "package_public_anchor_at_utc": {"$ref": "#/$defs/timestamp"},
+        "roster_anchor_at_utc": {"$ref": "#/$defs/timestamp"},
+        "first_invitation_sent_at_utc": {"$ref": "#/$defs/timestamp"},
+        "last_reviewer_terminal_at_utc": {"$ref": "#/$defs/timestamp"},
+        "comparison_terminal_at_utc": {"$ref": "#/$defs/timestamp"},
+        "closeout_signed_at_utc": {"$ref": "#/$defs/timestamp"},
+        "evidence_bound_at_utc": {"$ref": "#/$defs/timestamp"},
+        "future_model_results_start_at_utc": {"$ref": "#/$defs/timestamp"},
         "strict_order_verified": {"const": true}
+      }
+    },
+    "claim_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automatic_freeze_allowed", "private_access_authorized", "provider_registration_authorized", "model_quality_claim_allowed", "unknown_distribution_generalization_claim_allowed", "non_synthetic_release_authorized"],
+      "properties": {
+        "automatic_freeze_allowed": {"const": false},
+        "private_access_authorized": {"const": false},
+        "provider_registration_authorized": {"const": false},
+        "model_quality_claim_allowed": {"const": false},
+        "unknown_distribution_generalization_claim_allowed": {"const": false},
+        "non_synthetic_release_authorized": {"const": false}
+      }
+    },
+    "governance_signer": {"$ref": "#/$defs/governance_signer"},
+    "privacy": {"$ref": "#/$defs/privacy"},
+    "document_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "governance_signature": {"$ref": "#/$defs/signature"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {"const": "completed_eligible_for_separate_consideration"}
+        }
+      },
+      "then": {
+        "properties": {
+          "invitation_counts": {
+            "properties": {
+              "completed": {"type": "integer", "minimum": 4},
+              "pending": {"const": 0},
+              "count_equation_verified": {"const": true}
+            }
+          },
+          "domain_review_records": {
+            "items": {
+              "properties": {
+                "signature_verified": {"const": true},
+                "completion_gate_passed": {"const": true}
+              }
+            }
+          },
+          "statistical_evidence": {
+            "properties": {
+              "execution_lock_signature_verified": {"const": true},
+              "terminal_receipt_signature_verified": {"const": true},
+              "terminal_status": {"const": "completed_matched"}
+            }
+          },
+          "negative_or_incomplete_record_commitment_sha256s": {
+            "maxItems": 0
+          },
+          "time_anchors": {
+            "properties": {
+              "strict_order_verified": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "x-researchops-signing": {
+    "canonicalization": "RFC8785_JCS",
+    "domain_utf8_with_newline": "researchops-external-review-governance-v2\n",
+    "preimage": "domain_bytes || JCS(document_without_document_commitment_sha256_and_governance_signature)",
+    "excluded_top_level_fields": ["document_commitment_sha256", "governance_signature"],
+    "signature_message": "UTF8(researchops-review-signature-v1\\0) || UTF8(document_type) || 0x00 || raw_32_byte_commitment",
+    "signed_sha256_must_equal": "document_commitment_sha256"
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+    "governance_signer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "identity_commitment_sha256", "key_id", "public_key_b64", "trust_anchor_sha256", "trust_anchor_type", "trust_anchor_observed_at_utc"],
+      "properties": {
+        "role": {"const": "governance_verifier"},
+        "identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "key_id": {"type": "string", "pattern": "^ERG-[A-F0-9]{16}$"},
+        "public_key_b64": {"$ref": "#/$defs/public_key_b64"},
+        "trust_anchor_sha256": {"$ref": "#/$defs/sha256"},
+        "trust_anchor_type": {"enum": ["public_transparency_log", "signed_organizational_registry", "hardware_attested_registry"]},
+        "trust_anchor_observed_at_utc": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signed_sha256", "signature_b64"],
+      "properties": {
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
       }
     },
     "privacy": {
@@ -119,34 +261,6 @@
         "free_text_notes_included": {"const": false},
         "private_content_included": {"const": false}
       }
-    },
-    "document_commitment_sha256": {"$ref": "#/$defs/sha256"},
-    "governance_signature": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["algorithm", "public_key_b64", "key_id", "signed_sha256", "signature_b64", "trust_anchor_sha256"],
-      "properties": {
-        "algorithm": {"const": "ed25519"},
-        "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
-        "key_id": {"type": "string", "pattern": "^ERG-[A-F0-9]{16}$"},
-        "signed_sha256": {"$ref": "#/$defs/sha256"},
-        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"},
-        "trust_anchor_sha256": {"$ref": "#/$defs/sha256"}
-      }
     }
-  },
-  "x-researchops-document-commitment-and-signature": {
-    "canonicalization": "RFC8785_JCS",
-    "domain_utf8_with_newline": "researchops-external-review-governance-v2\n",
-    "commitment_preimage": "domain_bytes || JCS(document_without_document_commitment_sha256_and_governance_signature)",
-    "hash": "sha256",
-    "excluded_fields": ["document_commitment_sha256", "governance_signature"],
-    "signed_sha256_must_equal": "document_commitment_sha256",
-    "signature_message": "32_raw_bytes_decoded_from_signed_sha256_hex",
-    "signature_algorithm": "ed25519"
-  },
-  "$defs": {
-    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"}
   }
 }

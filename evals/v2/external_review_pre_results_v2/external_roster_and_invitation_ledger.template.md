@@ -8,6 +8,7 @@ Freeze before the first invitation:
 - package commitment and public Git anchor;
 - roster version and UTC anchor;
 - intended reviewer roles and expertise coverage;
+- a comparison-verifier role distinct from the statistical reviewer and Python authors;
 - compensation policy;
 - invitation deadline and review close;
 - replacement policy;
@@ -24,6 +25,7 @@ For each person, retain privately:
 - stable identity commitment generated as
   `HMAC-SHA256(custodian_secret, domain || canonical_identity)`;
 - role-specific public signing key and consent to publish it;
+- deterministic role key ID (`ERD-`, `ERS-`, `ERC-` or `ERG-`) recomputed from the raw public key;
 - invitation sent/received timestamps and outcome;
 - completed worksheet commitment or decline/withdraw/reject/exclusion commitment.
 
@@ -49,6 +51,9 @@ cross_role_identity_commitments_distinct
 qualification_governance_receipt_sha256
 conflict_governance_receipt_sha256
 package_anchor_at < roster_anchor_at < receipt_at < evidence_bound_at
+pre_governance_commitment_sha256
+domain_delivery_commitment_sha256
+statistical_delivery_commitment_sha256
 ```
 
 Never publish names, email addresses, phone numbers, CVs, certificates, employer/client details,
