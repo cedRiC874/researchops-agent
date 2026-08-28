@@ -1,0 +1,312 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/statistical-crosscheck-result-v1.json",
+  "title": "Independent statistical cross-check result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "package_id",
+    "public_package_commitment_sha256",
+    "detached_delivery_manifest_sha256",
+    "detached_bundle_commitment_sha256",
+    "anchor_spec_sha256",
+    "tolerance_policy_sha256",
+    "execution_id",
+    "executed_at_utc",
+    "input_dataset_sha256",
+    "input_design_sha256",
+    "engine",
+    "engine_version",
+    "implementation_source_sha256",
+    "runtime_manifest_sha256",
+    "dependency_lock_sha256",
+    "anchor_results",
+    "result_commitment_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "document_type": {"const": "independent_statistical_crosscheck_result"},
+    "package_id": {"const": "stat-xcheck-synthetic-trial-pre-results-v1"},
+    "public_package_commitment_sha256": {
+      "$ref": "#/$defs/sha256",
+      "description": "Top-level commitment from the publicly anchored package_commitments.json."
+    },
+    "detached_delivery_manifest_sha256": {
+      "$ref": "#/$defs/sha256",
+      "description": "Raw-byte SHA-256 of detached_delivery_manifest.json."
+    },
+    "detached_bundle_commitment_sha256": {
+      "$ref": "#/$defs/sha256",
+      "description": "Domain-prefixed commitment over the eight detached payload files recorded by the detached manifest."
+    },
+    "anchor_spec_sha256": {"$ref": "#/$defs/sha256"},
+    "tolerance_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "execution_id": {"type": "string", "pattern": "^RXC-[A-F0-9]{16}$"},
+    "executed_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "input_dataset_sha256": {"const": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00"},
+    "input_design_sha256": {"const": "e8ab569e2f877028431d58c3a676d68917d67237303cc194705b5850d400938b"},
+    "engine": {"enum": ["R", "SAS"]},
+    "engine_version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$"},
+    "implementation_source_sha256": {"$ref": "#/$defs/sha256"},
+    "runtime_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "dependency_lock_sha256": {"$ref": "#/$defs/sha256"},
+    "anchor_results": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "prefixItems": [
+        {"$ref": "#/$defs/ancova_sample_flow"},
+        {"$ref": "#/$defs/ancova_hc3"},
+        {"$ref": "#/$defs/ancova_means"},
+        {"$ref": "#/$defs/ancova_slope"},
+        {"$ref": "#/$defs/welch_sample_flow"},
+        {"$ref": "#/$defs/welch"},
+        {"$ref": "#/$defs/welch_effect_size"},
+        {"$ref": "#/$defs/runtime"}
+      ],
+      "items": false
+    },
+    "result_commitment_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "x-researchops-result-commitment": {
+    "canonicalization": "RFC8785_JCS",
+    "domain_utf8_with_newline": "researchops-stat-xcheck-result-v1\n",
+    "preimage": "domain_bytes || JCS(document_without_result_commitment_sha256)",
+    "hash": "sha256",
+    "self_field_excluded": "result_commitment_sha256"
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "number": {"type": "number"},
+    "sample_flow_common": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_rows",
+        "included_rows",
+        "excluded_rows",
+        "required_columns",
+        "missing_by_column",
+        "control_source",
+        "control_included",
+        "control_excluded",
+        "treatment_source",
+        "treatment_included",
+        "treatment_excluded",
+        "realized_population"
+      ],
+      "properties": {
+        "source_rows": {"type": "integer", "minimum": 0},
+        "included_rows": {"type": "integer", "minimum": 0},
+        "excluded_rows": {"type": "integer", "minimum": 0},
+        "required_columns": {"type": "array"},
+        "missing_by_column": {"type": "object"},
+        "control_source": {"type": "integer", "minimum": 0},
+        "control_included": {"type": "integer", "minimum": 0},
+        "control_excluded": {"type": "integer", "minimum": 0},
+        "treatment_source": {"type": "integer", "minimum": 0},
+        "treatment_included": {"type": "integer", "minimum": 0},
+        "treatment_excluded": {"type": "integer", "minimum": 0},
+        "realized_population": {"enum": ["intention_to_treat", "available_case"]}
+      }
+    },
+    "ancova_sample_flow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "values"],
+      "properties": {
+        "anchor_id": {"const": "RXC-SF-ANCOVA-001"},
+        "values": {
+          "allOf": [
+            {"$ref": "#/$defs/sample_flow_common"},
+            {
+              "properties": {
+                "required_columns": {"const": ["group", "followup_sbp", "baseline_sbp"]},
+                "missing_by_column": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["group", "followup_sbp", "baseline_sbp"],
+                  "properties": {
+                    "group": {"type": "integer", "minimum": 0},
+                    "followup_sbp": {"type": "integer", "minimum": 0},
+                    "baseline_sbp": {"type": "integer", "minimum": 0}
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "welch_sample_flow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "values"],
+      "properties": {
+        "anchor_id": {"const": "RXC-SF-WELCH-001"},
+        "values": {
+          "allOf": [
+            {"$ref": "#/$defs/sample_flow_common"},
+            {
+              "properties": {
+                "required_columns": {"const": ["group", "followup_sbp"]},
+                "missing_by_column": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["group", "followup_sbp"],
+                  "properties": {
+                    "group": {"type": "integer", "minimum": 0},
+                    "followup_sbp": {"type": "integer", "minimum": 0}
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ancova_hc3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "values"],
+      "properties": {
+        "anchor_id": {"const": "RXC-ANCOVA-HC3-001"},
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["adjusted_difference", "hc3_standard_error", "t_statistic", "residual_df", "two_sided_p_value", "confidence_interval_low", "confidence_interval_high"],
+          "properties": {
+            "adjusted_difference": {"$ref": "#/$defs/number"},
+            "hc3_standard_error": {"$ref": "#/$defs/number"},
+            "t_statistic": {"$ref": "#/$defs/number"},
+            "residual_df": {"$ref": "#/$defs/number"},
+            "two_sided_p_value": {"$ref": "#/$defs/number"},
+            "confidence_interval_low": {"$ref": "#/$defs/number"},
+            "confidence_interval_high": {"$ref": "#/$defs/number"}
+          }
+        }
+      }
+    },
+    "ancova_means": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "values"],
+      "properties": {
+        "anchor_id": {"const": "RXC-ANCOVA-MEANS-001"},
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["baseline_center", "control_adjusted_mean", "control_standard_error", "control_ci_low", "control_ci_high", "treatment_adjusted_mean", "treatment_standard_error", "treatment_ci_low", "treatment_ci_high"],
+          "properties": {
+            "baseline_center": {"$ref": "#/$defs/number"},
+            "control_adjusted_mean": {"$ref": "#/$defs/number"},
+            "control_standard_error": {"$ref": "#/$defs/number"},
+            "control_ci_low": {"$ref": "#/$defs/number"},
+            "control_ci_high": {"$ref": "#/$defs/number"},
+            "treatment_adjusted_mean": {"$ref": "#/$defs/number"},
+            "treatment_standard_error": {"$ref": "#/$defs/number"},
+            "treatment_ci_low": {"$ref": "#/$defs/number"},
+            "treatment_ci_high": {"$ref": "#/$defs/number"}
+          }
+        }
+      }
+    },
+    "ancova_slope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "values"],
+      "properties": {
+        "anchor_id": {"const": "RXC-ANCOVA-SLOPE-001"},
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interaction_estimate", "hc3_standard_error", "t_statistic", "residual_df", "two_sided_p_value", "confidence_interval_low", "confidence_interval_high"],
+          "properties": {
+            "interaction_estimate": {"$ref": "#/$defs/number"},
+            "hc3_standard_error": {"$ref": "#/$defs/number"},
+            "t_statistic": {"$ref": "#/$defs/number"},
+            "residual_df": {"$ref": "#/$defs/number"},
+            "two_sided_p_value": {"$ref": "#/$defs/number"},
+            "confidence_interval_low": {"$ref": "#/$defs/number"},
+            "confidence_interval_high": {"$ref": "#/$defs/number"}
+          }
+        }
+      }
+    },
+    "welch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "values"],
+      "properties": {
+        "anchor_id": {"const": "RXC-WELCH-001"},
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control_n", "control_mean", "control_sample_sd", "treatment_n", "treatment_mean", "treatment_sample_sd", "difference", "standard_error", "welch_df", "t_statistic", "two_sided_p_value", "confidence_interval_low", "confidence_interval_high"],
+          "properties": {
+            "control_n": {"type": "integer", "minimum": 1},
+            "control_mean": {"$ref": "#/$defs/number"},
+            "control_sample_sd": {"$ref": "#/$defs/number"},
+            "treatment_n": {"type": "integer", "minimum": 1},
+            "treatment_mean": {"$ref": "#/$defs/number"},
+            "treatment_sample_sd": {"$ref": "#/$defs/number"},
+            "difference": {"$ref": "#/$defs/number"},
+            "standard_error": {"$ref": "#/$defs/number"},
+            "welch_df": {"$ref": "#/$defs/number"},
+            "t_statistic": {"$ref": "#/$defs/number"},
+            "two_sided_p_value": {"$ref": "#/$defs/number"},
+            "confidence_interval_low": {"$ref": "#/$defs/number"},
+            "confidence_interval_high": {"$ref": "#/$defs/number"}
+          }
+        }
+      }
+    },
+    "welch_effect_size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "values"],
+      "properties": {
+        "anchor_id": {"const": "RXC-WELCH-HG-001"},
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pooled_standard_deviation", "cohen_d", "hedges_exact_correction", "hedges_g"],
+          "properties": {
+            "pooled_standard_deviation": {"$ref": "#/$defs/number"},
+            "cohen_d": {"$ref": "#/$defs/number"},
+            "hedges_exact_correction": {"$ref": "#/$defs/number"},
+            "hedges_g": {"$ref": "#/$defs/number"}
+          }
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "values"],
+      "properties": {
+        "anchor_id": {"const": "RXC-RUNTIME-001"},
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["engine", "engine_version", "operating_system", "locale", "timezone", "blas", "lapack", "thread_count", "implementation_source_sha256", "runtime_lock_sha256", "stdout_log_sha256"],
+          "properties": {
+            "engine": {"enum": ["R", "SAS"]},
+            "engine_version": {"type": "string", "maxLength": 64},
+            "operating_system": {"type": "string", "maxLength": 128},
+            "locale": {"type": "string", "maxLength": 64},
+            "timezone": {"type": "string", "maxLength": 64},
+            "blas": {"type": "string", "maxLength": 128},
+            "lapack": {"type": "string", "maxLength": 128},
+            "thread_count": {"type": "integer", "minimum": 1, "maximum": 256},
+            "implementation_source_sha256": {"$ref": "#/$defs/sha256"},
+            "runtime_lock_sha256": {"$ref": "#/$defs/sha256"},
+            "stdout_log_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    }
+  }
+}

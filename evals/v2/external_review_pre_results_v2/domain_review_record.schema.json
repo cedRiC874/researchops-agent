@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/external-review/domain-review-record-v2.json",
+  "title": "External domain review working record v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "package_commitment_sha256",
+    "reviewer_identity_commitment_sha256",
+    "review_started_at_utc",
+    "review_completed_at_utc",
+    "prior_exposure",
+    "dataset_reviews",
+    "task_reviews",
+    "summary",
+    "record_commitment_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "document_type": {"const": "external_domain_review_work_record"},
+    "package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "reviewer_identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "review_started_at_utc": {"$ref": "#/$defs/timestamp"},
+    "review_completed_at_utc": {"$ref": "#/$defs/timestamp"},
+    "prior_exposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "internal_review_decisions_seen",
+        "candidate_or_provider_results_seen",
+        "python_reference_material_seen",
+        "exposure_note_commitment_sha256"
+      ],
+      "properties": {
+        "internal_review_decisions_seen": {"type": "boolean"},
+        "candidate_or_provider_results_seen": {"type": "boolean"},
+        "python_reference_material_seen": {"type": "boolean"},
+        "exposure_note_commitment_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        }
+      }
+    },
+    "dataset_reviews": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dataset_id", "decision", "severity", "reason_codes", "unresolved_issue_count"],
+        "properties": {
+          "dataset_id": {
+            "enum": [
+              "palmer_penguins_v0_1_0",
+              "uci_parkinsons_telemonitoring_189",
+              "uci_heart_disease_cleveland_45"
+            ]
+          },
+          "decision": {"$ref": "#/$defs/decision"},
+          "severity": {"$ref": "#/$defs/severity"},
+          "reason_codes": {"$ref": "#/$defs/reason_codes"},
+          "unresolved_issue_count": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "task_reviews": {
+      "type": "array",
+      "minItems": 120,
+      "maxItems": 120,
+      "items": {"$ref": "#/$defs/task_review"}
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewed_task_count",
+        "reviewed_dataset_count",
+        "approve_count",
+        "needs_revision_count",
+        "reject_count",
+        "out_of_scope_count",
+        "unresolved_major_or_critical_count"
+      ],
+      "properties": {
+        "reviewed_task_count": {"const": 120},
+        "reviewed_dataset_count": {"const": 3},
+        "approve_count": {"type": "integer", "minimum": 0, "maximum": 120},
+        "needs_revision_count": {"type": "integer", "minimum": 0, "maximum": 120},
+        "reject_count": {"type": "integer", "minimum": 0, "maximum": 120},
+        "out_of_scope_count": {"type": "integer", "minimum": 0, "maximum": 120},
+        "unresolved_major_or_critical_count": {"type": "integer", "minimum": 0, "maximum": 120}
+      }
+    },
+    "record_commitment_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "x-researchops-record-commitment": {
+    "canonicalization": "RFC8785_JCS",
+    "domain_utf8_with_newline": "researchops-domain-review-record-v2\n",
+    "preimage": "domain_bytes || JCS(document_without_record_commitment_sha256)",
+    "hash": "sha256",
+    "self_field_excluded": "record_commitment_sha256"
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "decision": {"enum": ["approve", "needs_revision", "reject", "out_of_scope"]},
+    "severity": {"enum": ["none", "minor", "major", "critical"]},
+    "confidence": {"enum": ["low", "medium", "high"]},
+    "reason_code": {
+      "enum": [
+        "dataset_unit_mismatch",
+        "design_assumption_missing",
+        "repeated_measure_ignored",
+        "missingness_handling_incorrect",
+        "causal_language_overclaim",
+        "classification_continuous_mismatch",
+        "tool_sequence_incorrect",
+        "tool_argument_incorrect",
+        "numeric_direction_incorrect",
+        "tolerance_inappropriate",
+        "evidence_requirement_incomplete",
+        "required_assertion_incomplete",
+        "forbidden_assertion_incomplete",
+        "approval_boundary_incorrect",
+        "safety_boundary_incorrect",
+        "prompt_ambiguous",
+        "other_external_note_only"
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/reason_code"}
+    },
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_design_fit",
+        "expected_outcome_fit",
+        "tool_sequence_arguments_fit",
+        "numeric_evidence_direction_fit",
+        "limitations_and_language_fit",
+        "approval_safety_fit"
+      ],
+      "properties": {
+        "dataset_design_fit": {"$ref": "#/$defs/decision"},
+        "expected_outcome_fit": {"$ref": "#/$defs/decision"},
+        "tool_sequence_arguments_fit": {"$ref": "#/$defs/decision"},
+        "numeric_evidence_direction_fit": {"$ref": "#/$defs/decision"},
+        "limitations_and_language_fit": {"$ref": "#/$defs/decision"},
+        "approval_safety_fit": {"$ref": "#/$defs/decision"}
+      }
+    },
+    "task_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "dataset_id",
+        "scenario",
+        "axes",
+        "overall_decision",
+        "severity",
+        "confidence",
+        "reason_codes",
+        "free_text_note_commitment_sha256"
+      ],
+      "properties": {
+        "task_id": {"type": "string", "pattern": "^V2-(DEV|PUB)-[0-9]{3}$"},
+        "dataset_id": {
+          "enum": [
+            "palmer_penguins_v0_1_0",
+            "uci_parkinsons_telemonitoring_189",
+            "uci_heart_disease_cleveland_45"
+          ]
+        },
+        "scenario": {
+          "enum": [
+            "approval_pause",
+            "clarification_required",
+            "duplicate_tool_call",
+            "output_truncation",
+            "prompt_injection",
+            "provider_timeout",
+            "safe_refusal",
+            "side_effect_outcome_unknown",
+            "standard_analysis",
+            "unauthorized_resource"
+          ]
+        },
+        "axes": {"$ref": "#/$defs/axes"},
+        "overall_decision": {"$ref": "#/$defs/decision"},
+        "severity": {"$ref": "#/$defs/severity"},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "reason_codes": {"$ref": "#/$defs/reason_codes"},
+        "free_text_note_commitment_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        }
+      }
+    }
+  }
+}

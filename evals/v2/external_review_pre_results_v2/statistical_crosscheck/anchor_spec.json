@@ -1,0 +1,150 @@
+{
+  "schema_version": "1.0",
+  "package_id": "stat-xcheck-synthetic-trial-pre-results-v1",
+  "status": "specification_only_not_run",
+  "base_commit_sha": "b905477449938b471c4b9af84398ad6e7ba2212b",
+  "candidate_bound": false,
+  "provider_bound": false,
+  "inputs": {
+    "dataset": {
+      "delivery_name": "synthetic_trial.csv",
+      "repository_source": "data/synthetic_trial.csv",
+      "git_blob": "794a2853f3281a53833a23a8b8edb51d550b3684",
+      "bytes": 15247,
+      "sha256": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00"
+    },
+    "design": {
+      "delivery_name": "synthetic_trial_design.json",
+      "repository_source": "data/synthetic_trial_design.json",
+      "git_blob": "3eb4ef2a14e962b6e82bd15d45c801dd85f75442",
+      "bytes": 760,
+      "sha256": "e8ab569e2f877028431d58c3a676d68917d67237303cc194705b5850d400938b"
+    }
+  },
+  "delivery_boundary": {
+    "python_source_included": false,
+    "python_output_included": false,
+    "reference_values_included": false,
+    "repository_tests_included": false,
+    "eval_goldens_included": false,
+    "prior_artifacts_included": false,
+    "private_or_non_synthetic_data_included": false
+  },
+  "independence_claims": {
+    "blindness_claim_allowed": false,
+    "non_blinded_independent_reproducibility_claim_allowed": true,
+    "prior_public_material_exposure_must_be_disclosed": true
+  },
+  "sample_flow_semantics": {
+    "source_rows": "all CSV data records after the single header row",
+    "missing_value": "an empty CSV field in a method-specific required column",
+    "invalid_numeric_value": "fail_closed_not_excluded",
+    "unexpected_nonmissing_group_label": "fail_closed_not_excluded",
+    "missing_group_label": "method_specific_required_field_missing_and_available_case_excluded",
+    "allowed_group_labels": ["control", "treatment"],
+    "included_rows": "rows with an allowed group and finite parseable values for every method-specific required column",
+    "excluded_rows": "source_rows minus included_rows due only to method-specific missing required fields",
+    "group_source_count": "all source rows with the exact allowed group label before method-specific missingness exclusion",
+    "group_included_count": "included rows with the exact allowed group label",
+    "group_excluded_count": "group_source_count minus group_included_count",
+    "required_count_identities": [
+      "source_rows = included_rows + excluded_rows",
+      "source_rows = control_source + treatment_source",
+      "included_rows = control_included + treatment_included",
+      "excluded_rows = control_excluded + treatment_excluded"
+    ],
+    "automatic_outlier_deletion": false,
+    "row_weighting": "one_row_one_observation"
+  },
+  "methods": {
+    "ancova_hc3": {
+      "required_columns": ["group", "followup_sbp", "baseline_sbp"],
+      "raw_group_labels": ["control", "treatment"],
+      "analysis_encoding": {"control": 0, "treatment": 1},
+      "contrast_direction": "treatment_minus_control",
+      "analysis_population": "complete_cases_for_required_columns",
+      "imputation": "none",
+      "automatic_outlier_deletion": false,
+      "baseline_center": "pooled_mean_within_ancova_complete_cases",
+      "model": "followup_sbp ~ treatment + centered_baseline_sbp",
+      "design_matrix_column_order": ["intercept", "treatment", "centered_baseline_sbp"],
+      "point_estimator": "ordinary_least_squares",
+      "covariance": "HC3",
+      "hc3_covariance_formula": "inverse(X_transpose_X) X_transpose diag(residual_i_squared / (1 - leverage_i)^2) X inverse(X_transpose_X)",
+      "inference_distribution": "student_t_with_residual_df",
+      "confidence_level": 0.95,
+      "adjusted_means_at": "pooled_baseline_mean_within_ancova_complete_cases",
+      "control_adjusted_mean_contrast_vector": [1, 0, 0],
+      "treatment_adjusted_mean_contrast_vector": [1, 1, 0],
+      "treatment_minus_control_contrast_vector": [0, 1, 0],
+      "contrast_standard_error_formula": "sqrt(contrast_transpose HC3_covariance contrast)",
+      "contrast_ci_formula": "estimate plus_or_minus t_quantile_1_minus_alpha_over_2_with_residual_df times standard_error",
+      "slope_check_model": "followup_sbp ~ treatment * centered_baseline_sbp",
+      "slope_design_matrix_column_order": ["intercept", "treatment", "centered_baseline_sbp", "treatment_times_centered_baseline_sbp"],
+      "slope_interaction_contrast_vector": [0, 0, 0, 1],
+      "slope_covariance": "HC3",
+      "slope_inference_distribution": "student_t_with_slope_model_residual_df",
+      "slope_confidence_level": 0.95,
+      "slope_nonsignificance_proves_equal_slopes": false
+    },
+    "welch": {
+      "required_columns": ["group", "followup_sbp"],
+      "raw_group_labels": ["control", "treatment"],
+      "analysis_encoding": {"control": 0, "treatment": 1},
+      "contrast_direction": "treatment_minus_control",
+      "analysis_population": "complete_cases_for_required_columns",
+      "imputation": "none",
+      "automatic_outlier_deletion": false,
+      "sample_standard_deviation_denominator": "n_minus_1",
+      "variance": "welch_unequal_variance",
+      "degrees_of_freedom": "welch_satterthwaite",
+      "inference_distribution": "student_t",
+      "confidence_level": 0.95,
+      "effect_size": "cohen_d_pooled_sd_and_hedges_g_exact_gamma_correction",
+      "pooled_standard_deviation_formula": "sqrt(((control_n - 1) * control_sample_sd^2 + (treatment_n - 1) * treatment_sample_sd^2) / (control_n + treatment_n - 2))",
+      "cohen_d_formula": "(treatment_mean - control_mean) / pooled_standard_deviation",
+      "hedges_exact_correction_formula": "gamma(df_pooled / 2) / (sqrt(df_pooled / 2) * gamma((df_pooled - 1) / 2))",
+      "hedges_df_pooled": "control_n + treatment_n - 2"
+    }
+  },
+  "anchors": [
+    {
+      "anchor_id": "RXC-SF-ANCOVA-001",
+      "required_outputs": ["source_rows", "included_rows", "excluded_rows", "required_columns", "missing_by_column", "control_source", "control_included", "control_excluded", "treatment_source", "treatment_included", "treatment_excluded", "realized_population"]
+    },
+    {
+      "anchor_id": "RXC-ANCOVA-HC3-001",
+      "required_outputs": ["adjusted_difference", "hc3_standard_error", "t_statistic", "residual_df", "two_sided_p_value", "confidence_interval_low", "confidence_interval_high"]
+    },
+    {
+      "anchor_id": "RXC-ANCOVA-MEANS-001",
+      "required_outputs": ["baseline_center", "control_adjusted_mean", "control_standard_error", "control_ci_low", "control_ci_high", "treatment_adjusted_mean", "treatment_standard_error", "treatment_ci_low", "treatment_ci_high"]
+    },
+    {
+      "anchor_id": "RXC-ANCOVA-SLOPE-001",
+      "required_outputs": ["interaction_estimate", "hc3_standard_error", "t_statistic", "residual_df", "two_sided_p_value", "confidence_interval_low", "confidence_interval_high"]
+    },
+    {
+      "anchor_id": "RXC-SF-WELCH-001",
+      "required_outputs": ["source_rows", "included_rows", "excluded_rows", "required_columns", "missing_by_column", "control_source", "control_included", "control_excluded", "treatment_source", "treatment_included", "treatment_excluded", "realized_population"]
+    },
+    {
+      "anchor_id": "RXC-WELCH-001",
+      "required_outputs": ["control_n", "control_mean", "control_sample_sd", "treatment_n", "treatment_mean", "treatment_sample_sd", "difference", "standard_error", "welch_df", "t_statistic", "two_sided_p_value", "confidence_interval_low", "confidence_interval_high"]
+    },
+    {
+      "anchor_id": "RXC-WELCH-HG-001",
+      "required_outputs": ["pooled_standard_deviation", "cohen_d", "hedges_exact_correction", "hedges_g"]
+    },
+    {
+      "anchor_id": "RXC-RUNTIME-001",
+      "required_outputs": ["engine", "engine_version", "operating_system", "locale", "timezone", "blas", "lapack", "thread_count", "implementation_source_sha256", "runtime_lock_sha256", "stdout_log_sha256"]
+    }
+  ],
+  "requested_population": "intention_to_treat",
+  "realized_population_when_rows_excluded": "available_case",
+  "random_steps": false,
+  "network_allowed": false,
+  "python_allowed": false,
+  "crosscheck_completed": false
+}

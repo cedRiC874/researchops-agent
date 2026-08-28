@@ -1,0 +1,151 @@
+{
+  "schema_version": "2.0",
+  "manifest_id": "eval-v2-public-content-review-scope-v2",
+  "status": "frozen_scope_not_review_evidence",
+  "base_commit_sha": "b905477449938b471c4b9af84398ad6e7ba2212b",
+  "base_tree_sha": "5b0be18e61bc14dd255e56f775e278e83ffad094",
+  "candidate_neutral": true,
+  "provider_neutral": true,
+  "inputs": {
+    "campaign": {
+      "path": "evals/v2/campaign.json",
+      "bytes": 6256,
+      "sha256": "1ed97cde3a939c5e5d7de8448a372a6a615998e799abc9ae3bc78fcb51b71f7c"
+    },
+    "dataset_manifest": {
+      "path": "evals/v2/external_datasets.json",
+      "bytes": 6938,
+      "sha256": "1de86be662fec197bf06e0f6e0f2920c491191dba46ded2f93e7344b76663ca1"
+    },
+    "public_corpus": {
+      "path": "evals/v2/public_tasks.jsonl",
+      "bytes": 105524,
+      "sha256": "675c89dbfaa98cf211694c166c4df2d685afd3778572a95bd2fd3bb7fd3aeba3"
+    },
+    "public_task_schema": {
+      "path": "evals/v2/public_task_schema.json",
+      "bytes": 5634,
+      "sha256": "d83ea8228b99510012321133fa3ddcff2e68c0956bc76dd9328de1903fcdf554"
+    },
+    "internal_review": {
+      "path": "evals/v2/internal_review.json",
+      "bytes": 11828,
+      "sha256": "20e828b1c7df15435046a97ac96b8757c75bf34fb5ef2a01b59d87d857bb4c0a",
+      "classification": "project_internal_non_external",
+      "bound_for_provenance": true,
+      "decisions_disclosed_to_external_reviewers": false
+    }
+  },
+  "control_plane_bindings": {
+    "tool_contract_sha256": "aa89e9d660a0b923126a10f09d426ca5e95c3232b2d21c1585623cddd531ff90",
+    "scorer_bundle_sha256": "da8b3780788129ad715c1467242e67fc40019d0e12b907b14b16338d3ede41d8",
+    "split_manifest_sha256": "6201a36285b6e8ff7c2cacb2206d7293ddbbbe2640c3b22f7b2b2106a6dc9b35",
+    "tool_contract": {
+      "path": "evals/v2/tool_contract.json",
+      "bytes": 695,
+      "sha256": "aa89e9d660a0b923126a10f09d426ca5e95c3232b2d21c1585623cddd531ff90"
+    },
+    "split_manifest": {
+      "path": "evals/v2/public_regression_split_manifest.json",
+      "bytes": 3484,
+      "sha256": "6201a36285b6e8ff7c2cacb2206d7293ddbbbe2640c3b22f7b2b2106a6dc9b35"
+    },
+    "scorer_bundle": {
+      "algorithm": "sha256_bundle_v1_sorted_posix_path_with_u64be_path_length_path_u64be_content_length_content",
+      "paths": [
+        {
+          "path": "src/researchops/eval_v2_contracts.py",
+          "bytes": 33892,
+          "sha256": "cc14690279be4647be38d65fafda83d766fac541b568fcf385dd6f491c9d81ea"
+        },
+        {
+          "path": "src/researchops/eval_v2_public.py",
+          "bytes": 45680,
+          "sha256": "e041e2f94dacfa13acaef45e0218df92bcb02d4617d69498498a30d43b1bab77"
+        },
+        {
+          "path": "src/researchops/eval_v2_runner.py",
+          "bytes": 40031,
+          "sha256": "35e650904e19722dd4410530551e10b68e2aab341a752c52cdb74f8dec3d10a8"
+        }
+      ]
+    },
+    "candidate_selection_or_result_included": false
+  },
+  "selection": {
+    "method": "all_tasks_in_bound_public_corpus_in_file_order",
+    "seed": null,
+    "sampling_performed": false,
+    "task_count": 120,
+    "unique_task_id_count": 120,
+    "development_count": 80,
+    "public_regression_count": 40,
+    "reviewed_by_each_domain_reviewer_target": 120
+  },
+  "dataset_counts": {
+    "palmer_penguins_v0_1_0": {
+      "task_count": 40,
+      "development_count": 27,
+      "public_regression_count": 13,
+      "domain": "ecology_observational_morphometrics",
+      "asset_sha256": "f204db2c753b0937caac3cb35258562c14f073e4bbc76be24b4c51ce22767a93",
+      "asset_bytes": 15241,
+      "rows": 344,
+      "columns": 8,
+      "missing_cells": 19,
+      "license": "CC0-1.0"
+    },
+    "uci_parkinsons_telemonitoring_189": {
+      "task_count": 40,
+      "development_count": 27,
+      "public_regression_count": 13,
+      "domain": "health_repeated_measure_telemonitoring",
+      "asset_sha256": "f2c7d5025dec4e92e7feae367a5f7ccf58789a10ac6b54bdf15976c599f9dd39",
+      "asset_bytes": 911261,
+      "rows": 5875,
+      "columns": 22,
+      "missing_cells": 0,
+      "subject_count": 42,
+      "subject_identifier_must_not_enter_review_output": true,
+      "license": "CC-BY-4.0"
+    },
+    "uci_heart_disease_cleveland_45": {
+      "task_count": 40,
+      "development_count": 26,
+      "public_regression_count": 14,
+      "domain": "health_observational_classification",
+      "asset_sha256": "a74b7efa387bc9d108d7d0115d831fe9b414b29ae7124f331b622b4efa0427c8",
+      "asset_bytes": 18461,
+      "rows": 303,
+      "columns": 14,
+      "missing_cells": 6,
+      "license": "CC-BY-4.0"
+    }
+  },
+  "scenario_counts": {
+    "approval_pause": 6,
+    "clarification_required": 22,
+    "duplicate_tool_call": 12,
+    "output_truncation": 6,
+    "prompt_injection": 11,
+    "provider_timeout": 6,
+    "safe_refusal": 19,
+    "side_effect_outcome_unknown": 6,
+    "standard_analysis": 20,
+    "unauthorized_resource": 12
+  },
+  "review_axes": [
+    "dataset_and_design_boundary",
+    "expected_outcome",
+    "tool_sequence_and_arguments",
+    "numeric_claim_direction_and_tolerance",
+    "evidence_requirements",
+    "missingness_and_repeated_measure_handling",
+    "observational_and_causal_language",
+    "approval_and_safety_boundary",
+    "required_and_forbidden_assertions"
+  ],
+  "model_or_provider_results_included": false,
+  "private_content_included": false,
+  "external_review_completed": false
+}

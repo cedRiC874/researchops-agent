@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "policy_id": "stat-xcheck-tolerance-v1",
+  "status": "pre_results_locked_policy",
+  "comparison_formula": "absolute_error <= atol + rtol * max(abs(reference), abs(external))",
+  "compare_unrounded_values": true,
+  "minimum_significant_digits_persisted": 17,
+  "exact_fields": [
+    "public_package_commitment_sha256",
+    "detached_delivery_manifest_sha256",
+    "detached_bundle_commitment_sha256",
+    "anchor_spec_sha256",
+    "tolerance_policy_sha256",
+    "input_dataset_sha256",
+    "input_design_sha256",
+    "anchor_id",
+    "direction",
+    "enum_values",
+    "counts",
+    "required_columns",
+    "missing_by_column",
+    "realized_population"
+  ],
+  "numeric_classes": {
+    "estimate_mean_sd_se_t_df_ci_center_effect_size": {
+      "atol": 1e-10,
+      "rtol": 1e-8
+    },
+    "p_value": {
+      "atol": 1e-12,
+      "rtol": 1e-6
+    }
+  },
+  "field_tolerance_map": {
+    "RXC-ANCOVA-HC3-001.adjusted_difference": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-HC3-001.hc3_standard_error": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-HC3-001.t_statistic": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-HC3-001.residual_df": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-HC3-001.two_sided_p_value": "p_value",
+    "RXC-ANCOVA-HC3-001.confidence_interval_low": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-HC3-001.confidence_interval_high": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.baseline_center": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.control_adjusted_mean": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.control_standard_error": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.control_ci_low": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.control_ci_high": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.treatment_adjusted_mean": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.treatment_standard_error": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.treatment_ci_low": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-MEANS-001.treatment_ci_high": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-SLOPE-001.interaction_estimate": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-SLOPE-001.hc3_standard_error": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-SLOPE-001.t_statistic": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-SLOPE-001.residual_df": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-SLOPE-001.two_sided_p_value": "p_value",
+    "RXC-ANCOVA-SLOPE-001.confidence_interval_low": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-ANCOVA-SLOPE-001.confidence_interval_high": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.control_mean": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.control_sample_sd": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.treatment_mean": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.treatment_sample_sd": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.difference": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.standard_error": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.welch_df": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.t_statistic": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.two_sided_p_value": "p_value",
+    "RXC-WELCH-001.confidence_interval_low": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-001.confidence_interval_high": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-HG-001.pooled_standard_deviation": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-HG-001.cohen_d": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-HG-001.hedges_exact_correction": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+    "RXC-WELCH-HG-001.hedges_g": "estimate_mean_sd_se_t_df_ci_center_effect_size"
+  },
+  "exact_anchor_classes": {
+    "RXC-SF-ANCOVA-001": "all_fields_exact",
+    "RXC-SF-WELCH-001": "all_fields_exact",
+    "RXC-RUNTIME-001": "all_fields_exact_except_engine_specific_descriptive_strings_must_match_the_prelocked_runtime_manifest"
+  },
+  "exact_numeric_fields": [
+    "RXC-WELCH-001.control_n",
+    "RXC-WELCH-001.treatment_n"
+  ],
+  "secondary_diagnostics_not_in_v1_pass_fail": [
+    "breusch_pagan",
+    "condition_number",
+    "skewness"
+  ],
+  "post_result_tolerance_change_allowed": false,
+  "round_before_compare_allowed": false,
+  "non_finite_values_allowed": false,
+  "discrepancy_order": [
+    "input_hash_mismatch",
+    "sample_flow_mismatch",
+    "method_spec_ambiguity",
+    "implementation_defect_external",
+    "implementation_defect_reference",
+    "unresolved_numeric_mismatch"
+  ],
+  "failed_version_must_be_preserved": true,
+  "repair_requires_new_version": true
+}

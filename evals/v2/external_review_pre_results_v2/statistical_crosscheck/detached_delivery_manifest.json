@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "manifest_id": "stat-xcheck-detached-delivery-v1",
+  "status": "frozen_delivery_not_run",
+  "base_commit_sha": "b905477449938b471c4b9af84398ad6e7ba2212b",
+  "base_tree_sha": "5b0be18e61bc14dd255e56f775e278e83ffad094",
+  "public_anchor_verification": {
+    "package_commitments_repository_source": "evals/v2/external_review_pre_results_v2/package_commitments.json",
+    "package_commitments_must_be_obtained_from_public_anchor": true,
+    "this_manifest_sha256_must_match_public_package_entry": true,
+    "manifest_self_included_in_detached_commitment": false
+  },
+  "commitment_algorithm": "sha256_utf8_domain_prefixed_ordinal_delivery_name_tab_bytes_tab_sha256_lines_v1",
+  "commitment_domain": "researchops-stat-xcheck-detached-bundle-v1",
+  "file_count": 8,
+  "detached_bundle_commitment_sha256": "7e6835df49cd94dc4712ee50c71bc32f1147d00038f5114df54dc5c241755114",
+  "files": [
+    {
+      "delivery_name": "CROSSCHECK_README.md",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/README.md",
+      "bytes": 2219,
+      "sha256": "8c773eb57dc3499d7336e30041180916a0881f407f864b6fb3d97e75c347425d"
+    },
+    {
+      "delivery_name": "anchor_spec.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/anchor_spec.json",
+      "bytes": 8107,
+      "sha256": "64fc50e4aa7e11f252087fdad7790a56e1c79242d2ffeb2000da4489c3345dbb"
+    },
+    {
+      "delivery_name": "external_review_protocol.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/protocol.json",
+      "bytes": 4268,
+      "sha256": "acaf7565c0e324520eda28b7c1e68ea5804ede1e5bc156123dd036444f0c0720"
+    },
+    {
+      "delivery_name": "result_contract.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/result_contract.json",
+      "bytes": 12788,
+      "sha256": "e2248f2d6cf66d18cd05cb96f87378920202f763ccb4e4c32070c9f58f9f947e"
+    },
+    {
+      "delivery_name": "runtime_and_independence_attestation.template.md",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/runtime_and_independence_attestation.template.md",
+      "bytes": 1779,
+      "sha256": "b00daf240fa56cb0eae82e01e49eddcb0f7c01f6749b5a0c3c64810db2aebdbf"
+    },
+    {
+      "delivery_name": "synthetic_trial.csv",
+      "repository_source": "data/synthetic_trial.csv",
+      "bytes": 15247,
+      "sha256": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00"
+    },
+    {
+      "delivery_name": "synthetic_trial_design.json",
+      "repository_source": "data/synthetic_trial_design.json",
+      "bytes": 760,
+      "sha256": "e8ab569e2f877028431d58c3a676d68917d67237303cc194705b5850d400938b"
+    },
+    {
+      "delivery_name": "tolerance_policy.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/tolerance_policy.json",
+      "bytes": 5235,
+      "sha256": "f20d15c952ca88d91b2ac07b6bd3fd54b59f4f9b9f4d764624c02eb914db769e"
+    }
+  ],
+  "proactively_excluded": [
+    "repository README and portfolio documents",
+    "artifacts and prior aggregate/reference outputs",
+    "tests",
+    "eval tasks and goldens",
+    "src/researchops and Python source",
+    "Provider or model outputs",
+    "private or non-synthetic content"
+  ],
+  "blindness_claim_allowed": false,
+  "crosscheck_completed": false,
+  "network_calls": 0
+}

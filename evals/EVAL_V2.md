@@ -278,6 +278,12 @@ cross-check 未完成。`synthetic=false` release 固定拒绝；`check-private-
 
 因此当前可声称“Eval v2 设计合同、Completion Telemetry v2、Kimi Models preflight、Candidate v8 Chat/Pilot v3 离线脱敏诊断合同、两次脱敏 post-lock failure evidence，以及历史一次性 DeepSeek v1 public candidate run 已完成”；不能把历史或 post-lock observations 归给 v2–v8，也不能声称 Kimi Chat/usage/tool/error compatibility、质量或注册已验证、完整 Eval v2 campaign 已 frozen、已有 private holdout、跨 Provider 或未知生产泛化。
 
+外部复核的 v2 预结果准备包位于
+[`external_review_pre_results_v2/`](v2/external_review_pre_results_v2/README.md)，package commitment
+为 `2debdcd1…76f5be`。它与模型 Candidate 解耦，固定两位专家各自审阅全部 120 道 public
+task/golden、完整邀请 outcome ledger、严格外部时间锚和独立 R/SAS detached delivery；当前仍是
+`preparation_only / not_invited / not_run / not_evidence`，不能替代任何真人 receipt 或统计结果。
+
 ## 9. 下一实现批次
 
 接下来按以下顺序推进：

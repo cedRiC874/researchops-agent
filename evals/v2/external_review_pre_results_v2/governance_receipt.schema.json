@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/external-review/governance-receipt-v2.json",
+  "title": "External review governance receipt v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "status",
+    "package_commitment_sha256",
+    "roster_version",
+    "roster_commitment_sha256",
+    "invitation_ledger_commitment_sha256",
+    "counts",
+    "role_identity_commitments",
+    "qualification_and_conflict_verifications",
+    "identity_commitment_policy",
+    "time_anchors",
+    "privacy",
+    "document_commitment_sha256",
+    "governance_signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "document_type": {"const": "external_review_governance_receipt"},
+    "status": {"const": "completed_governance_verification"},
+    "package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "roster_version": {"type": "string", "pattern": "^ER-ROSTER-V[1-9][0-9]*$"},
+    "roster_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "invitation_ledger_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invited", "completed", "declined", "withdrawn", "rejected", "excluded", "replacement"],
+      "properties": {
+        "invited": {"type": "integer", "minimum": 2},
+        "completed": {"type": "integer", "minimum": 2},
+        "declined": {"type": "integer", "minimum": 0},
+        "withdrawn": {"type": "integer", "minimum": 0},
+        "rejected": {"type": "integer", "minimum": 0},
+        "excluded": {"type": "integer", "minimum": 0},
+        "replacement": {"type": "integer", "minimum": 0}
+      }
+    },
+    "role_identity_commitments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain_reviewers", "statistical_reviewer", "primary_implementation_authors", "all_cross_role_distinct"],
+      "properties": {
+        "domain_reviewers": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "statistical_reviewer": {"$ref": "#/$defs/sha256"},
+        "primary_implementation_authors": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "all_cross_role_distinct": {"const": true}
+      }
+    },
+    "qualification_and_conflict_verifications": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity_commitment_sha256", "role", "qualification_commitment_sha256", "conflict_declaration_commitment_sha256", "qualification_status", "conflict_status"],
+        "properties": {
+          "identity_commitment_sha256": {"$ref": "#/$defs/sha256"},
+          "role": {"enum": ["domain_reviewer", "statistical_reviewer"]},
+          "qualification_commitment_sha256": {"$ref": "#/$defs/sha256"},
+          "conflict_declaration_commitment_sha256": {"$ref": "#/$defs/sha256"},
+          "qualification_status": {"const": "independently_verified"},
+          "conflict_status": {"const": "no_unmanaged_conflict"}
+        }
+      }
+    },
+    "identity_commitment_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "domain_separated", "stable_across_roles", "custodian_secret_external", "canonical_identity_policy_commitment_sha256"],
+      "properties": {
+        "algorithm": {"const": "HMAC-SHA256"},
+        "domain_separated": {"const": true},
+        "stable_across_roles": {"const": true},
+        "custodian_secret_external": {"const": true},
+        "canonical_identity_policy_commitment_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "time_anchors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_public_anchor_at", "roster_anchor_at", "first_invitation_sent_at", "last_review_receipt_at", "evidence_bound_at", "future_model_results_start_at", "strict_order_verified"],
+      "properties": {
+        "package_public_anchor_at": {"$ref": "#/$defs/timestamp"},
+        "roster_anchor_at": {"$ref": "#/$defs/timestamp"},
+        "first_invitation_sent_at": {"$ref": "#/$defs/timestamp"},
+        "last_review_receipt_at": {"$ref": "#/$defs/timestamp"},
+        "evidence_bound_at": {"$ref": "#/$defs/timestamp"},
+        "future_model_results_start_at": {"$ref": "#/$defs/timestamp"},
+        "strict_order_verified": {"const": true}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direct_identifiers_included", "contact_details_included", "qualification_originals_included", "conflict_originals_included", "free_text_notes_included", "private_content_included"],
+      "properties": {
+        "direct_identifiers_included": {"const": false},
+        "contact_details_included": {"const": false},
+        "qualification_originals_included": {"const": false},
+        "conflict_originals_included": {"const": false},
+        "free_text_notes_included": {"const": false},
+        "private_content_included": {"const": false}
+      }
+    },
+    "document_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "governance_signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "public_key_b64", "key_id", "signed_sha256", "signature_b64", "trust_anchor_sha256"],
+      "properties": {
+        "algorithm": {"const": "ed25519"},
+        "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+        "key_id": {"type": "string", "pattern": "^ERG-[A-F0-9]{16}$"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"},
+        "trust_anchor_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "x-researchops-document-commitment-and-signature": {
+    "canonicalization": "RFC8785_JCS",
+    "domain_utf8_with_newline": "researchops-external-review-governance-v2\n",
+    "commitment_preimage": "domain_bytes || JCS(document_without_document_commitment_sha256_and_governance_signature)",
+    "hash": "sha256",
+    "excluded_fields": ["document_commitment_sha256", "governance_signature"],
+    "signed_sha256_must_equal": "document_commitment_sha256",
+    "signature_message": "32_raw_bytes_decoded_from_signed_sha256_hex",
+    "signature_algorithm": "ed25519"
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"}
+  }
+}
