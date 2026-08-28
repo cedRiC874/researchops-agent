@@ -1,0 +1,145 @@
+{
+  "schema_version": "1.0",
+  "manifest_id": "stat-xcheck-comparison-verifier-delivery-v1",
+  "status": "frozen_delivery_not_run",
+  "role_class": "comparison_verifier",
+  "role_slots": ["comparison_verifier"],
+  "public_package_commitment_source": "evals/v2/external_review_pre_results_v2/package_commitments.json",
+  "manifest_self_included_in_delivery_commitment": false,
+  "commitment_algorithm": "sha256_utf8_domain_prefixed_ordinal_delivery_name_tab_bytes_tab_sha256_lines_v1",
+  "commitment_domain": "researchops-stat-xcheck-comparison-verifier-delivery-v1",
+  "file_count": 20,
+  "role_delivery_commitment_sha256": "a87f7175f64a0f39766b4a3bb5a50618b5bffd9bb0cee82c36b7a87bb2baf02c",
+  "files": [
+    {
+      "delivery_name": "CROSSCHECK_README.md",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/README.md",
+      "bytes": 2964,
+      "sha256": "dc32d21b4c89aa155e862377ee91f14468273cf2f0279b6f568ddcf01e096700"
+    },
+    {
+      "delivery_name": "SIGNING_INSTRUCTIONS.md",
+      "repository_source": "evals/v2/external_review_pre_results_v2/SIGNING_INSTRUCTIONS.md",
+      "bytes": 6463,
+      "sha256": "1f621130c53766f52bc791bec2a445d0b794759c2b71da65b9a20c10a7f98339"
+    },
+    {
+      "delivery_name": "anchor_spec.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/anchor_spec.json",
+      "bytes": 8107,
+      "sha256": "64fc50e4aa7e11f252087fdad7790a56e1c79242d2ffeb2000da4489c3345dbb"
+    },
+    {
+      "delivery_name": "comparison_field_universe.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/comparison_field_universe.json",
+      "bytes": 4881,
+      "sha256": "59e4210c298e51684ee9cf0831e408020ca1d2ca01a689e422e44f33e16d3e90"
+    },
+    {
+      "delivery_name": "comparison_matrix.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/comparison_matrix.schema.json",
+      "bytes": 14453,
+      "sha256": "88c97417c6551e1bf805a524111b13b70bee7d524811f8b6d6e3cf14b5e26106"
+    },
+    {
+      "delivery_name": "eval_v2_reference_projection.py",
+      "repository_source": "scripts/eval_v2_reference_projection.py",
+      "bytes": 18302,
+      "sha256": "c9f5dc439e18951fc52b9aa898d582f30ab2da8a7e39d17a06b8df23aff76269"
+    },
+    {
+      "delivery_name": "eval_v2_statistical_compare.py",
+      "repository_source": "scripts/eval_v2_statistical_compare.py",
+      "bytes": 21224,
+      "sha256": "bf039f1060185639b5b8c795396a14c5a7a75e855e5a7459f90dbea09b10da58"
+    },
+    {
+      "delivery_name": "governance_receipt.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/governance_receipt.schema.json",
+      "bytes": 12052,
+      "sha256": "de1cf4853fdf843ca418b4636a74beca2f52973a65f32788707dc7119a283cec"
+    },
+    {
+      "delivery_name": "pre_invitation_governance_anchor.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/pre_invitation_governance_anchor.schema.json",
+      "bytes": 7267,
+      "sha256": "27b704b40ca03d720a427e1ac1469e46a7ff03ef9f42b9f77cd8874c92ccdfd6"
+    },
+    {
+      "delivery_name": "protocol.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/protocol.json",
+      "bytes": 6066,
+      "sha256": "28d193e31d98a82a3a614b7e31af8cc2835af554b8c683c7b20779387af9ae53"
+    },
+    {
+      "delivery_name": "reference_projection.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/reference_projection.schema.json",
+      "bytes": 3604,
+      "sha256": "e0683753d65f5be6590860b99abd76359aab4a3328205b816696584636ba1700"
+    },
+    {
+      "delivery_name": "reference_source_manifest.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/reference_source_manifest.json",
+      "bytes": 1937,
+      "sha256": "a3482b934273370ae1908e3d0441e439011fca398251259072fd54ecfcb33a76"
+    },
+    {
+      "delivery_name": "requirements.lock",
+      "repository_source": "requirements.lock",
+      "bytes": 1431,
+      "sha256": "15a40bd036716b0145823f42ea3004be70769ce3ca41f8a0fd9696fc19afd86b"
+    },
+    {
+      "delivery_name": "result_contract.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/result_contract.json",
+      "bytes": 12452,
+      "sha256": "410ff71363a574f28efc461c81025d1d3398d744aef65ba1950ca1ba6a5762ba"
+    },
+    {
+      "delivery_name": "reviewer_invitation.template.md",
+      "repository_source": "evals/v2/external_review_pre_results_v2/reviewer_invitation.template.md",
+      "bytes": 4708,
+      "sha256": "647492ddaff4d914d1223124294db72fe825a888d0ae3107c828e99107fdc579"
+    },
+    {
+      "delivery_name": "statistical_attempt_ledger.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/statistical_attempt_ledger.schema.json",
+      "bytes": 3670,
+      "sha256": "33e3fa18d6c58d24117b2612b86421bee109482c0d841f96eb7e038b100edcb6"
+    },
+    {
+      "delivery_name": "statistical_crosscheck_receipt.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/statistical_crosscheck_receipt.schema.json",
+      "bytes": 13208,
+      "sha256": "b17cc15ed6fd2c54815651619b55438eb7f705d681b195032d5c7e85a0eabba5"
+    },
+    {
+      "delivery_name": "statistical_delivery_manifest.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/detached_delivery_manifest.json",
+      "bytes": 6165,
+      "sha256": "c862f74a7bc161d501f849c328cd19616224a0be51e02aea936dbb8eccce95a4"
+    },
+    {
+      "delivery_name": "statistical_execution_lock.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/statistical_execution_lock.schema.json",
+      "bytes": 9608,
+      "sha256": "5d7fe6bf6a7bc211df857583b1e5dc83b10c871ef4a47b8e345c99f6efbaeb35"
+    },
+    {
+      "delivery_name": "tolerance_policy.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/tolerance_policy.json",
+      "bytes": 5310,
+      "sha256": "ad7f8e84e866df569553261372b151e668c463e9e5ce1fb7d853c3c70c7251c1"
+    }
+  ],
+  "explicitly_excluded": [
+    "reviewer direct identity, contact, qualification and conflict originals",
+    "private keys and HMAC secrets",
+    "raw R/SAS logs and local paths",
+    "private/non-synthetic tasks or data",
+    "Provider/model outputs and scores"
+  ],
+  "comparison_started": false,
+  "terminal_receipt_signed": false,
+  "network_calls": 0
+}

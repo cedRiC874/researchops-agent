@@ -1,0 +1,138 @@
+{
+  "schema_version": "2.0",
+  "protocol_id": "eval-v2-external-review-pre-results-v2",
+  "status": "preparation_only_not_evidence",
+  "base_commit_sha": "b905477449938b471c4b9af84398ad6e7ba2212b",
+  "base_tree_sha": "5b0be18e61bc14dd255e56f775e278e83ffad094",
+  "content_review_scope": {
+    "candidate_bound": false,
+    "provider_bound": false,
+    "selection_method": "all_tasks_in_bound_public_corpus_in_file_order",
+    "reviewed_task_target": 120,
+    "reviewed_dataset_target": 3,
+    "minimum_independent_domain_reviewers": 2,
+    "same_package_required": true,
+    "each_reviewer_reviews_full_scope": true,
+    "candidate_provider_results_disclosed": false
+  },
+  "role_delivery_policy": {
+    "public_package_commitment_source": "evals/v2/external_review_pre_results_v2/package_commitments.json",
+    "unified_manifest": "evals/v2/external_review_pre_results_v2/unified_review_manifest.json",
+    "unified_invitation": "evals/v2/external_review_pre_results_v2/reviewer_invitation.template.md",
+    "signing_instructions": "evals/v2/external_review_pre_results_v2/SIGNING_INSTRUCTIONS.md",
+    "roles": {
+      "domain_reviewer_a": "evals/v2/external_review_pre_results_v2/domain_review_delivery_manifest.json",
+      "domain_reviewer_b": "evals/v2/external_review_pre_results_v2/domain_review_delivery_manifest.json",
+      "statistical_reviewer": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/detached_delivery_manifest.json",
+      "comparison_verifier": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/comparison_verifier_delivery_manifest.json"
+    },
+    "domain_slots_identical_delivery_required": true,
+    "all_roles_share_one_public_package_commitment": true,
+    "role_allowlists_may_expand_after_invitation": false,
+    "completed_invitation_commitments_remain_external": true
+  },
+  "reviewer_governance": {
+    "roster_must_be_externally_anchored_before_invitation": true,
+    "all_invitation_outcomes_must_be_committed": true,
+    "allowed_invitation_outcomes": [
+      "invited_pending",
+      "completed",
+      "declined",
+      "withdrawn",
+      "rejected",
+      "excluded_with_reason"
+    ],
+    "publish_only_approved_receipts_allowed": false,
+    "replacement_requires_new_versioned_roster": true,
+    "stable_domain_separated_keyed_identity_commitments_required": true,
+    "identity_hmac_key_must_remain_external": true,
+    "independent_qualification_and_conflict_governance_required": true,
+    "cross_role_identity_separation_required": true,
+    "reviewer_consent_for_public_key_and_commitment_publication_required": true
+  },
+  "domain_review_completion_gate": {
+    "record_schema": "evals/v2/external_review_pre_results_v2/domain_review_record.schema.json",
+    "minimum_distinct_completed_reviewers": 2,
+    "each_record_exact_unique_bound_task_ids": 120,
+    "each_record_exact_unique_bound_dataset_ids": 3,
+    "every_dataset_decision_must_equal": "approve",
+    "every_task_overall_decision_must_equal": "approve",
+    "every_task_axis_decision_must_equal": "approve",
+    "needs_revision_count_must_equal": 0,
+    "reject_count_must_equal": 0,
+    "out_of_scope_count_must_equal": 0,
+    "unresolved_major_or_critical_count_must_equal": 0,
+    "cross_reviewer_disagreement_count_must_equal": 0,
+    "severity_cannot_override_non_approved_decision": true,
+    "negative_or_incomplete_record_commitments_must_be_preserved": true,
+    "task_or_golden_fix_requires_new_corpus_version": true
+  },
+  "strict_time_order": [
+    "package_public_anchor_at",
+    "reviewer_roster_anchor_at",
+    "first_invitation_sent_at",
+    "review_receipt_signed_at",
+    "review_evidence_bound_at",
+    "future_model_results_start_at"
+  ],
+  "strict_time_comparator": "less_than_only",
+  "external_timestamp_anchor_required": true,
+  "statistical_crosscheck": {
+    "accepted_engines": ["R", "SAS"],
+    "independent_reimplementation_required": true,
+    "blindness_claim_allowed": false,
+    "non_blinded_independent_reproducibility_claim_allowed": true,
+    "excluded_material_proactively_delivered": false,
+    "prior_exposure_must_be_disclosed": true,
+    "tolerance_may_change_after_output_lock": false,
+    "failed_version_must_be_preserved": true,
+    "strict_time_order": [
+      "package_public_anchor_at",
+      "statistical_reviewer_roster_anchor_at",
+      "external_implementation_lock_at",
+      "external_execution_at",
+      "external_output_lock_at",
+      "comparison_at",
+      "crosscheck_evidence_bound_at",
+      "future_model_results_start_at"
+    ]
+  },
+  "signature_chain": {
+    "order": [
+      "public_package_anchor",
+      "pre_invitation_governance_anchor",
+      "domain_review_records_and_statistical_execution_lock",
+      "statistical_comparison_receipt",
+      "post_review_governance_closeout",
+      "evidence_binding",
+      "future_model_results_start"
+    ],
+    "domain_review_record_count": 2,
+    "statistical_execution_lock_signed_before_comparison": true,
+    "comparison_verifier_distinct_from_statistical_reviewer": true,
+    "negative_failed_invalid_and_outcome_unknown_records_must_be_preserved": true,
+    "signed_record_may_be_modified_in_place": false
+  },
+  "repository_privacy": {
+    "reviewer_direct_identifiers_allowed": false,
+    "reviewer_contact_details_allowed": false,
+    "qualification_or_conflict_originals_allowed": false,
+    "free_text_review_notes_allowed": false,
+    "private_tasks_goldens_ids_or_locators_allowed": false,
+    "health_data_rows_or_subject_ids_allowed": false,
+    "credentials_or_private_keys_allowed": false,
+    "provider_outputs_or_scores_allowed": false
+  },
+  "claim_boundaries": {
+    "external_review_completed": false,
+    "statistical_crosscheck_completed": false,
+    "full_campaign_frozen": false,
+    "private_access_authorized": false,
+    "provider_registration_authorized": false,
+    "model_quality_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "non_synthetic_release_authorized": false,
+    "automatic_freeze_allowed": false
+  },
+  "network_calls": 0
+}

@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/statistical-comparison-matrix-v1.json",
+  "title": "Statistical cross-check comparison matrix v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "public_package_commitment_sha256",
+    "statistical_delivery_commitment_sha256",
+    "execution_lock_commitment_sha256",
+    "external_result_sha256",
+    "external_result_bytes",
+    "reference_projection_sha256",
+    "reference_projection_commitment_sha256",
+    "field_universe_sha256",
+    "tolerance_policy_sha256",
+    "rows",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "document_type": {"const": "statistical_crosscheck_comparison_matrix"},
+    "public_package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "execution_lock_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "external_result_sha256": {"$ref": "#/$defs/sha256"},
+    "external_result_bytes": {"type": "integer", "minimum": 1},
+    "reference_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "reference_projection_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "field_universe_sha256": {"$ref": "#/$defs/sha256"},
+    "tolerance_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "rows": {
+      "type": "array",
+      "minItems": 75,
+      "maxItems": 75,
+      "prefixItems": [{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.source_rows"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.included_rows"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.excluded_rows"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.required_columns"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.missing_by_column"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.control_source"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.control_included"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.control_excluded"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.treatment_source"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.treatment_included"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.treatment_excluded"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-ANCOVA-001.realized_population"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-HC3-001.adjusted_difference"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-HC3-001.hc3_standard_error"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-HC3-001.t_statistic"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-HC3-001.residual_df"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-HC3-001.two_sided_p_value"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-HC3-001.confidence_interval_low"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-HC3-001.confidence_interval_high"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.baseline_center"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.control_adjusted_mean"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.control_standard_error"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.control_ci_low"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.control_ci_high"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.treatment_adjusted_mean"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.treatment_standard_error"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.treatment_ci_low"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-MEANS-001.treatment_ci_high"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-SLOPE-001.interaction_estimate"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-SLOPE-001.hc3_standard_error"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-SLOPE-001.t_statistic"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-SLOPE-001.residual_df"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-SLOPE-001.two_sided_p_value"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-SLOPE-001.confidence_interval_low"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-ANCOVA-SLOPE-001.confidence_interval_high"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.source_rows"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.included_rows"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.excluded_rows"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.required_columns"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.missing_by_column"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.control_source"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.control_included"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.control_excluded"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.treatment_source"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.treatment_included"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.treatment_excluded"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-SF-WELCH-001.realized_population"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.control_n"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.control_mean"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.control_sample_sd"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.treatment_n"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.treatment_mean"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.treatment_sample_sd"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.difference"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.standard_error"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.welch_df"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.t_statistic"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.two_sided_p_value"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.confidence_interval_low"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-001.confidence_interval_high"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-HG-001.pooled_standard_deviation"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-HG-001.cohen_d"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-HG-001.hedges_exact_correction"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-WELCH-HG-001.hedges_g"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.engine"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.engine_version"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.operating_system"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.locale"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.timezone"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.blas"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.lapack"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.thread_count"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.implementation_source_sha256"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.runtime_lock_sha256"}}}]},{"allOf":[{"$ref":"#/$defs/row"},{"properties":{"field_path":{"const":"RXC-RUNTIME-001.stdout_log_sha256"}}}]}],
+      "items": false
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field_count", "unique_field_path_count", "matched_count", "outside_tolerance_count", "not_comparable_count", "binding_failed_count", "omitted_count", "duplicate_count", "unknown_count", "discrepancy_count", "unresolved_count"],
+      "properties": {
+        "field_count": {"const": 75},
+        "unique_field_path_count": {"const": 75},
+        "matched_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "outside_tolerance_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "not_comparable_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "binding_failed_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "omitted_count": {"const": 0},
+        "duplicate_count": {"const": 0},
+        "unknown_count": {"const": 0},
+        "discrepancy_count": {"type": "integer", "minimum": 0, "maximum": 75},
+        "unresolved_count": {"type": "integer", "minimum": 0, "maximum": 75}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "canonical_decimal": {"type": "string", "pattern": "^-?[0-9]\\.[0-9]{16}e[+-][0-9]{2,3}$"},
+    "canonical_value": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field_path", "comparison_mode", "comparison_class", "external_canonical_value", "reference_canonical_value", "external_value_sha256", "reference_value_sha256", "atol", "rtol", "absolute_error", "allowed_error", "status", "discrepancy_id"],
+      "properties": {
+        "field_path": {"type": "string", "pattern": "^RXC-[A-Z0-9-]+\\.[a-z0-9_]+$"},
+        "comparison_mode": {"enum": ["exact", "numeric"]},
+        "comparison_class": {
+          "enum": [
+            "all_fields_exact",
+            "exact_numeric",
+            "estimate_mean_sd_se_t_df_ci_center_effect_size",
+            "p_value",
+            "prelocked_runtime_manifest_exact"
+          ]
+        },
+        "external_canonical_value": {"$ref": "#/$defs/canonical_value"},
+        "reference_canonical_value": {"$ref": "#/$defs/canonical_value"},
+        "external_value_sha256": {"$ref": "#/$defs/sha256"},
+        "reference_value_sha256": {"$ref": "#/$defs/sha256"},
+        "atol": {"oneOf": [{"$ref": "#/$defs/canonical_decimal"}, {"type": "null"}]},
+        "rtol": {"oneOf": [{"$ref": "#/$defs/canonical_decimal"}, {"type": "null"}]},
+        "absolute_error": {"oneOf": [{"$ref": "#/$defs/canonical_decimal"}, {"type": "null"}]},
+        "allowed_error": {"oneOf": [{"$ref": "#/$defs/canonical_decimal"}, {"type": "null"}]},
+        "status": {"enum": ["matched", "outside_tolerance", "not_comparable", "binding_failed"]},
+        "discrepancy_id": {
+          "oneOf": [
+            {"type": "string", "pattern": "^RXC-DISC-[A-F0-9]{16}$"},
+            {"type": "null"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"comparison_mode": {"const": "exact"}}},
+          "then": {
+            "properties": {
+              "atol": {"type": "null"},
+              "rtol": {"type": "null"},
+              "absolute_error": {"type": "null"},
+              "allowed_error": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "comparison_mode": {"const": "numeric"},
+              "status": {"enum": ["matched", "outside_tolerance"]}
+            }
+          },
+          "then": {
+            "properties": {
+              "atol": {"$ref": "#/$defs/canonical_decimal"},
+              "rtol": {"$ref": "#/$defs/canonical_decimal"},
+              "absolute_error": {"$ref": "#/$defs/canonical_decimal"},
+              "allowed_error": {"$ref": "#/$defs/canonical_decimal"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "comparison_mode": {"const": "numeric"},
+              "status": {"enum": ["not_comparable", "binding_failed"]}
+            }
+          },
+          "then": {
+            "properties": {
+              "absolute_error": {"type": "null"},
+              "allowed_error": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "matched"}}},
+          "then": {"properties": {"discrepancy_id": {"type": "null"}}},
+          "else": {"properties": {"discrepancy_id": {"type": "string", "pattern": "^RXC-DISC-[A-F0-9]{16}$"}}}
+        }
+      ]
+    }
+  }
+}

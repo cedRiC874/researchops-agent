@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/statistical-reference-projection-v1.json",
+  "title": "Sanitized statistical reference projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "public_package_commitment_sha256",
+    "statistical_delivery_commitment_sha256",
+    "pre_governance_commitment_sha256",
+    "input_dataset_sha256",
+    "input_design_sha256",
+    "field_universe_sha256",
+    "reference_source_manifest_sha256",
+    "reference_source_bundle_sha256",
+    "reference_generator_sha256",
+    "requirements_lock_sha256",
+    "reference_runtime_manifest_sha256",
+    "value_count",
+    "values",
+    "privacy",
+    "reference_projection_commitment_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "document_type": {"const": "sanitized_statistical_reference_projection"},
+    "public_package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "pre_governance_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "input_dataset_sha256": {"const": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00"},
+    "input_design_sha256": {"const": "e8ab569e2f877028431d58c3a676d68917d67237303cc194705b5850d400938b"},
+    "field_universe_sha256": {"$ref": "#/$defs/sha256"},
+    "reference_source_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "reference_source_bundle_sha256": {"$ref": "#/$defs/sha256"},
+    "reference_generator_sha256": {"$ref": "#/$defs/sha256"},
+    "requirements_lock_sha256": {"$ref": "#/$defs/sha256"},
+    "reference_runtime_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "value_count": {"const": 64},
+    "values": {
+      "type": "array",
+      "minItems": 64,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field_path", "canonical_value", "value_sha256"],
+        "properties": {
+          "field_path": {"type": "string", "pattern": "^RXC-[A-Z0-9-]+\\.[a-z0-9_]+$"},
+          "canonical_value": {"type": "string", "minLength": 1, "maxLength": 2048},
+          "value_sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_rows_included", "direct_identifiers_included", "local_paths_included", "private_content_included", "provider_or_model_content_included"],
+      "properties": {
+        "raw_rows_included": {"const": false},
+        "direct_identifiers_included": {"const": false},
+        "local_paths_included": {"const": false},
+        "private_content_included": {"const": false},
+        "provider_or_model_content_included": {"const": false}
+      }
+    },
+    "reference_projection_commitment_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "x-researchops-commitment": {
+    "canonicalization": "RFC8785_JCS_ASCII_NO_FLOAT_SUBSET",
+    "subset_constraints": "all strings ASCII, no JSON floating numbers, integers within IEEE-754 safe range",
+    "implementation_equivalence": "UTF-8 JSON with recursively sorted keys and compact separators after subset validation",
+    "domain_utf8_with_newline": "researchops-stat-xcheck-reference-projection-v1\n",
+    "preimage": "domain_bytes || JCS(document_without_reference_projection_commitment_sha256)",
+    "excluded_top_level_fields": ["reference_projection_commitment_sha256"]
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

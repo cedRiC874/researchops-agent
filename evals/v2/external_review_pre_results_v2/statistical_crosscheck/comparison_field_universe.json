@@ -1,0 +1,145 @@
+{
+  "schema_version": "1.0",
+  "universe_id": "stat-xcheck-comparison-field-universe-v1",
+  "status": "pre_results_locked",
+  "field_count": 75,
+  "field_path_construction": "anchor_id + dot + field_name",
+  "anchors": [
+    {
+      "anchor_id": "RXC-SF-ANCOVA-001",
+      "comparison_mode": "exact",
+      "comparison_class": "all_fields_exact",
+      "fields": [
+        "source_rows",
+        "included_rows",
+        "excluded_rows",
+        "required_columns",
+        "missing_by_column",
+        "control_source",
+        "control_included",
+        "control_excluded",
+        "treatment_source",
+        "treatment_included",
+        "treatment_excluded",
+        "realized_population"
+      ]
+    },
+    {
+      "anchor_id": "RXC-ANCOVA-HC3-001",
+      "fields": {
+        "adjusted_difference": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "hc3_standard_error": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "t_statistic": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "residual_df": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "two_sided_p_value": "p_value",
+        "confidence_interval_low": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "confidence_interval_high": "estimate_mean_sd_se_t_df_ci_center_effect_size"
+      },
+      "comparison_mode": "numeric"
+    },
+    {
+      "anchor_id": "RXC-ANCOVA-MEANS-001",
+      "comparison_mode": "numeric",
+      "comparison_class": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+      "fields": [
+        "baseline_center",
+        "control_adjusted_mean",
+        "control_standard_error",
+        "control_ci_low",
+        "control_ci_high",
+        "treatment_adjusted_mean",
+        "treatment_standard_error",
+        "treatment_ci_low",
+        "treatment_ci_high"
+      ]
+    },
+    {
+      "anchor_id": "RXC-ANCOVA-SLOPE-001",
+      "fields": {
+        "interaction_estimate": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "hc3_standard_error": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "t_statistic": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "residual_df": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "two_sided_p_value": "p_value",
+        "confidence_interval_low": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "confidence_interval_high": "estimate_mean_sd_se_t_df_ci_center_effect_size"
+      },
+      "comparison_mode": "numeric"
+    },
+    {
+      "anchor_id": "RXC-SF-WELCH-001",
+      "comparison_mode": "exact",
+      "comparison_class": "all_fields_exact",
+      "fields": [
+        "source_rows",
+        "included_rows",
+        "excluded_rows",
+        "required_columns",
+        "missing_by_column",
+        "control_source",
+        "control_included",
+        "control_excluded",
+        "treatment_source",
+        "treatment_included",
+        "treatment_excluded",
+        "realized_population"
+      ]
+    },
+    {
+      "anchor_id": "RXC-WELCH-001",
+      "comparison_mode": "mixed",
+      "fields": {
+        "control_n": "exact_numeric",
+        "control_mean": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "control_sample_sd": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "treatment_n": "exact_numeric",
+        "treatment_mean": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "treatment_sample_sd": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "difference": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "standard_error": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "welch_df": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "t_statistic": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "two_sided_p_value": "p_value",
+        "confidence_interval_low": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+        "confidence_interval_high": "estimate_mean_sd_se_t_df_ci_center_effect_size"
+      }
+    },
+    {
+      "anchor_id": "RXC-WELCH-HG-001",
+      "comparison_mode": "numeric",
+      "comparison_class": "estimate_mean_sd_se_t_df_ci_center_effect_size",
+      "fields": [
+        "pooled_standard_deviation",
+        "cohen_d",
+        "hedges_exact_correction",
+        "hedges_g"
+      ]
+    },
+    {
+      "anchor_id": "RXC-RUNTIME-001",
+      "comparison_mode": "exact",
+      "comparison_class": "prelocked_runtime_manifest_exact",
+      "fields": [
+        "engine",
+        "engine_version",
+        "operating_system",
+        "locale",
+        "timezone",
+        "blas",
+        "lapack",
+        "thread_count",
+        "implementation_source_sha256",
+        "runtime_lock_sha256",
+        "stdout_log_sha256"
+      ]
+    }
+  ],
+  "coverage_requirements": {
+    "row_count": 75,
+    "unique_field_path_count": 75,
+    "omitted_count": 0,
+    "duplicate_count": 0,
+    "unknown_count": 0
+  },
+  "post_results_change_allowed": false
+}

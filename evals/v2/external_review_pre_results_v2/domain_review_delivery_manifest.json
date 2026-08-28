@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "manifest_id": "eval-v2-domain-review-delivery-v1",
+  "status": "frozen_delivery_not_invited",
+  "role_class": "domain_reviewer",
+  "role_slots": ["domain_reviewer_a", "domain_reviewer_b"],
+  "both_slots_identical_delivery_required": true,
+  "public_package_commitment_source": "evals/v2/external_review_pre_results_v2/package_commitments.json",
+  "manifest_self_included_in_delivery_commitment": false,
+  "commitment_algorithm": "sha256_utf8_domain_prefixed_ordinal_delivery_name_tab_bytes_tab_sha256_lines_v1",
+  "commitment_domain": "researchops-domain-review-delivery-v1",
+  "file_count": 12,
+  "role_delivery_commitment_sha256": "a2c3b9ee2f27438852ebddb3ed4ff5bb577e4230d3b4d461ebb65acfd5ec724e",
+  "files": [
+    {
+      "delivery_name": "SIGNING_INSTRUCTIONS.md",
+      "repository_source": "evals/v2/external_review_pre_results_v2/SIGNING_INSTRUCTIONS.md",
+      "bytes": 6463,
+      "sha256": "1f621130c53766f52bc791bec2a445d0b794759c2b71da65b9a20c10a7f98339"
+    },
+    {
+      "delivery_name": "campaign.json",
+      "repository_source": "evals/v2/campaign.json",
+      "bytes": 6256,
+      "sha256": "1ed97cde3a939c5e5d7de8448a372a6a615998e799abc9ae3bc78fcb51b71f7c"
+    },
+    {
+      "delivery_name": "content_review_manifest.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/content_review_manifest.json",
+      "bytes": 5338,
+      "sha256": "5860e8b5553870f892937c3479353072c2889369c6dbc6a1bca776b6d111cd8b"
+    },
+    {
+      "delivery_name": "domain_review_record.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/domain_review_record.schema.json",
+      "bytes": 8511,
+      "sha256": "b6224e5341b7311957fddabb42d941f7341a9e58c0948f14de7888b12365aded"
+    },
+    {
+      "delivery_name": "domain_review_worksheet.template.md",
+      "repository_source": "evals/v2/external_review_pre_results_v2/domain_review_worksheet.template.md",
+      "bytes": 3473,
+      "sha256": "e353d95078d41c1b31ea1bcc988ea90a556f7f33f2b60479b458a303ed08a016"
+    },
+    {
+      "delivery_name": "external_datasets.json",
+      "repository_source": "evals/v2/external_datasets.json",
+      "bytes": 6938,
+      "sha256": "1de86be662fec197bf06e0f6e0f2920c491191dba46ded2f93e7344b76663ca1"
+    },
+    {
+      "delivery_name": "pre_invitation_governance_anchor.schema.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/pre_invitation_governance_anchor.schema.json",
+      "bytes": 7267,
+      "sha256": "27b704b40ca03d720a427e1ac1469e46a7ff03ef9f42b9f77cd8874c92ccdfd6"
+    },
+    {
+      "delivery_name": "protocol.json",
+      "repository_source": "evals/v2/external_review_pre_results_v2/protocol.json",
+      "bytes": 6066,
+      "sha256": "28d193e31d98a82a3a614b7e31af8cc2835af554b8c683c7b20779387af9ae53"
+    },
+    {
+      "delivery_name": "public_task_schema.json",
+      "repository_source": "evals/v2/public_task_schema.json",
+      "bytes": 5634,
+      "sha256": "d83ea8228b99510012321133fa3ddcff2e68c0956bc76dd9328de1903fcdf554"
+    },
+    {
+      "delivery_name": "public_tasks.jsonl",
+      "repository_source": "evals/v2/public_tasks.jsonl",
+      "bytes": 105524,
+      "sha256": "675c89dbfaa98cf211694c166c4df2d685afd3778572a95bd2fd3bb7fd3aeba3"
+    },
+    {
+      "delivery_name": "reviewer_invitation.template.md",
+      "repository_source": "evals/v2/external_review_pre_results_v2/reviewer_invitation.template.md",
+      "bytes": 4708,
+      "sha256": "647492ddaff4d914d1223124294db72fe825a888d0ae3107c828e99107fdc579"
+    },
+    {
+      "delivery_name": "tool_contract.json",
+      "repository_source": "evals/v2/tool_contract.json",
+      "bytes": 695,
+      "sha256": "aa89e9d660a0b923126a10f09d426ca5e95c3232b2d21c1585623cddd531ff90"
+    }
+  ],
+  "explicitly_excluded": [
+    "evals/v2/internal_review.json and its 120/120 internal decisions",
+    "all Candidate and Provider configurations",
+    "all model outputs, scores, token usage, cost, latency and failure diagnostics",
+    "scorer and Python source",
+    "repo-local holdout and private tasks or goldens",
+    "reviewer identity, contact, qualification and conflict originals"
+  ],
+  "reviewed_task_target_per_slot": 120,
+  "reviewed_dataset_target_per_slot": 3,
+  "invitation_completed": false,
+  "external_review_completed": false,
+  "network_calls": 0
+}

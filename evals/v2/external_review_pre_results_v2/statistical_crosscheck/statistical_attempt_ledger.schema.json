@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/eval-v2/statistical-attempt-ledger-v1.json",
+  "title": "Statistical cross-check attempt ledger v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "ledger_id",
+    "public_package_commitment_sha256",
+    "statistical_delivery_commitment_sha256",
+    "pre_governance_commitment_sha256",
+    "genesis_commitment_sha256",
+    "entries",
+    "head_entry_sha256",
+    "all_terminal_attempts_included",
+    "missing_terminal_attempt_count",
+    "network_calls"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "document_type": {"const": "statistical_crosscheck_attempt_ledger"},
+    "ledger_id": {"type": "string", "pattern": "^RXC-LEDGER-[A-F0-9]{16}$"},
+    "public_package_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "statistical_delivery_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "pre_governance_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "genesis_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/entry"}
+    },
+    "head_entry_sha256": {"$ref": "#/$defs/sha256"},
+    "all_terminal_attempts_included": {"const": true},
+    "missing_terminal_attempt_count": {"const": 0},
+    "network_calls": {"const": 0}
+  },
+  "x-researchops-entry-chain": {
+    "canonicalization": "RFC8785_JCS",
+    "domain_utf8_with_newline": "researchops-stat-xcheck-attempt-ledger-entry-v1\n",
+    "entry_preimage": "domain_bytes || JCS(entry_without_entry_sha256)",
+    "first_prev_entry_sha256": "genesis_commitment_sha256",
+    "sequence_starts_at": 1,
+    "sequence_contiguous": true,
+    "head_equals_last_entry_sha256": true,
+    "append_only": true
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "execution_id",
+        "execution_lock_raw_sha256",
+        "execution_lock_commitment_sha256",
+        "execution_lock_signature_verified",
+        "terminal_receipt_raw_sha256",
+        "terminal_receipt_commitment_sha256",
+        "terminal_receipt_signature_verified",
+        "terminal_status",
+        "predecessor_receipt_commitment_sha256",
+        "terminal_at_utc",
+        "included_in_governance_closeout",
+        "prev_entry_sha256",
+        "entry_sha256"
+      ],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 1},
+        "execution_id": {"type": "string", "pattern": "^RXC-[A-F0-9]{16}$"},
+        "execution_lock_raw_sha256": {"$ref": "#/$defs/sha256"},
+        "execution_lock_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "execution_lock_signature_verified": {"const": true},
+        "terminal_receipt_raw_sha256": {"$ref": "#/$defs/sha256"},
+        "terminal_receipt_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "terminal_receipt_signature_verified": {"const": true},
+        "terminal_status": {"enum": ["completed_matched", "completed_with_discrepancies", "failed", "outcome_unknown", "invalid"]},
+        "predecessor_receipt_commitment_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "terminal_at_utc": {"$ref": "#/$defs/timestamp"},
+        "included_in_governance_closeout": {"const": true},
+        "prev_entry_sha256": {"$ref": "#/$defs/sha256"},
+        "entry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "manifest_id": "stat-xcheck-reference-source-v1",
+  "status": "pre_results_locked",
+  "base_commit_sha": "b905477449938b471c4b9af84398ad6e7ba2212b",
+  "base_tree_sha": "5b0be18e61bc14dd255e56f775e278e83ffad094",
+  "commitment_algorithm": "sha256_utf8_domain_prefixed_ordinal_path_tab_bytes_tab_sha256_lines_v1",
+  "commitment_domain": "researchops-stat-xcheck-reference-source-v1",
+  "file_count": 8,
+  "reference_source_bundle_sha256": "af62716617a8ddb630103c07ff0cee08a1f1769cbc7a6869fa8385cb7d963483",
+  "files": [
+    {
+      "path": "data/synthetic_trial.csv",
+      "bytes": 15247,
+      "sha256": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00"
+    },
+    {
+      "path": "data/synthetic_trial_design.json",
+      "bytes": 760,
+      "sha256": "e8ab569e2f877028431d58c3a676d68917d67237303cc194705b5850d400938b"
+    },
+    {
+      "path": "requirements.lock",
+      "bytes": 1431,
+      "sha256": "15a40bd036716b0145823f42ea3004be70769ce3ca41f8a0fd9696fc19afd86b"
+    },
+    {
+      "path": "scripts/eval_v2_reference_projection.py",
+      "bytes": 18302,
+      "sha256": "c9f5dc439e18951fc52b9aa898d582f30ab2da8a7e39d17a06b8df23aff76269"
+    },
+    {
+      "path": "scripts/eval_v2_statistical_compare.py",
+      "bytes": 21224,
+      "sha256": "bf039f1060185639b5b8c795396a14c5a7a75e855e5a7459f90dbea09b10da58"
+    },
+    {
+      "path": "src/researchops/analysis_tools.py",
+      "bytes": 25974,
+      "sha256": "6f3cc42621960be52cca9b3bcaf950855a1e4bb0d8c07f298f85b6f874afa2cb"
+    },
+    {
+      "path": "src/researchops/contracts.py",
+      "bytes": 5755,
+      "sha256": "ba5924b2d803dd392d53bb5cfc3f0a7d687fd9bf4e9b9ae1d6938ed87992675a"
+    },
+    {
+      "path": "src/researchops/data_quality.py",
+      "bytes": 11224,
+      "sha256": "d690b7b70c01e2c34322a80cdc6d4b98b7cbe22ac1e2f31019dedc6c39c29bc7"
+    }
+  ],
+  "output_values_included": false,
+  "network_calls": 0
+}

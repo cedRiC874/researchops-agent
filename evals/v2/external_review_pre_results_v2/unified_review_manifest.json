@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "manifest_id": "eval-v2-unified-external-review-package-v1",
+  "status": "frozen_pre_results_not_invited_not_run_not_evidence",
+  "base_commit_sha": "b905477449938b471c4b9af84398ad6e7ba2212b",
+  "base_tree_sha": "5b0be18e61bc14dd255e56f775e278e83ffad094",
+  "public_package_commitment": {
+    "source": "evals/v2/external_review_pre_results_v2/package_commitments.json",
+    "must_be_resolved_from_public_git_anchor": true,
+    "literal_digest_embedded_here": false
+  },
+  "shared_documents": {
+    "invitation": "evals/v2/external_review_pre_results_v2/reviewer_invitation.template.md",
+    "signing_instructions": "evals/v2/external_review_pre_results_v2/SIGNING_INSTRUCTIONS.md",
+    "protocol": "evals/v2/external_review_pre_results_v2/protocol.json",
+    "pre_invitation_governance_schema": "evals/v2/external_review_pre_results_v2/pre_invitation_governance_anchor.schema.json",
+    "post_review_governance_schema": "evals/v2/external_review_pre_results_v2/governance_receipt.schema.json"
+  },
+  "roles": {
+    "domain_reviewer_a": {
+      "role_class": "domain_reviewer",
+      "delivery_manifest": "evals/v2/external_review_pre_results_v2/domain_review_delivery_manifest.json",
+      "role_delivery_commitment_sha256": "a2c3b9ee2f27438852ebddb3ed4ff5bb577e4230d3b4d461ebb65acfd5ec724e",
+      "target_tasks": 120,
+      "target_datasets": 3
+    },
+    "domain_reviewer_b": {
+      "role_class": "domain_reviewer",
+      "delivery_manifest": "evals/v2/external_review_pre_results_v2/domain_review_delivery_manifest.json",
+      "role_delivery_commitment_sha256": "a2c3b9ee2f27438852ebddb3ed4ff5bb577e4230d3b4d461ebb65acfd5ec724e",
+      "target_tasks": 120,
+      "target_datasets": 3
+    },
+    "statistical_reviewer": {
+      "role_class": "statistical_reviewer",
+      "delivery_manifest": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/detached_delivery_manifest.json",
+      "role_delivery_commitment_sha256": "2a15852ab70edfd70b45670936413a44e0cab3e7619ba35fe820b0e1f4a1efac",
+      "crosscheck_type": "non_blinded_independent_reproducibility",
+      "field_target": 75
+    },
+    "comparison_verifier": {
+      "role_class": "comparison_verifier",
+      "delivery_manifest": "evals/v2/external_review_pre_results_v2/statistical_crosscheck/comparison_verifier_delivery_manifest.json",
+      "role_delivery_commitment_sha256": "a87f7175f64a0f39766b4a3bb5a50618b5bffd9bb0cee82c36b7a87bb2baf02c",
+      "field_target": 75,
+      "terminal_receipt_required": true
+    }
+  },
+  "role_constraints": {
+    "domain_a_and_b_delivery_commitments_identical": true,
+    "domain_reviewer_identity_commitments_distinct": true,
+    "statistical_reviewer_distinct_from_domain_reviewers": true,
+    "comparison_verifier_distinct_from_all_reviewers_and_primary_authors": true,
+    "all_invitation_outcomes_committed": true,
+    "role_delivery_allowlists_expand_after_invitation": false
+  },
+  "signature_chain": [
+    "pre_invitation_governance_anchor",
+    "two_domain_review_records_and_statistical_execution_lock",
+    "statistical_comparison_receipt",
+    "post_review_governance_closeout"
+  ],
+  "claim_boundaries": {
+    "external_review_completed": false,
+    "statistical_crosscheck_completed": false,
+    "full_campaign_frozen": false,
+    "private_access_authorized": false,
+    "provider_registration_authorized": false,
+    "model_quality_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "non_synthetic_release_authorized": false
+  },
+  "network_calls": 0
+}
