@@ -9,7 +9,7 @@ holdout tasks remain byte-for-byte unchanged and are not selected or rerun.
 ## Frozen identity
 
 - Plan: `phase6-deepseek-depth60-v1`
-- Commitment: `012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3`
+- Commitment: `8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e`
 - Provider/model alias: `deepseek / deepseek-v4-flash`
 - Official version observed at lock: `DeepSeek-V4-Flash-0731`
 - Transport: `openai_compatible_responses`
@@ -77,7 +77,7 @@ After authorization, the controlled command is:
 $env:PYTHONPATH = "src"
 .\.venv\Scripts\python.exe -m researchops.cli phase6-run-deepseek-depth60-online `
   --output-dir artifacts/phase6_deepseek_depth60/run-01 `
-  --expected-plan-commitment 012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3 `
+  --expected-plan-commitment 8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e `
   --authorization-id <AUTHORIZATION_ID> `
   --authorization-expires-at-utc <YYYY-MM-DDTHH:MM:SSZ> `
   --confirm-online
@@ -87,6 +87,11 @@ The CLI has no Key argument. Plan, exact commitment, authorization, path, compon
 checks precede a Key-presence readiness check; only after the exclusive receipt is created is the
 Key handed to the Provider transport. A second component check occurs inside the runner after
 receipt consumption. Success, failure, timeout or setup error does not authorize a second attempt.
+
+The bound Python source is the deterministic transitive local-import closure of the Depth-60 CLI,
+runner, scorer, tool runtime and freeze gates. A reachable source edit or new reachable import
+changes the commitment; merely adding an unimported Provider successor does not. The artifact
+manifest reports both this bound bundle hash and the observational full source-tree hash.
 
 The consume receipt is immutable and a separate terminal receipt binds the outcome and final
 report/manifest hashes. This is a local single-worktree control, not a globally immutable external

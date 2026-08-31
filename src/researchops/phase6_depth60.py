@@ -15,6 +15,7 @@ from .phase6_runner import (
     _run_phase6_online_evaluation_impl,
     phase6_status,
 )
+from .phase6_source_bundle import phase6_depth60_source_bundle_sha256
 
 
 DEPTH60_PLAN_ID = "phase6-deepseek-depth60-v1"
@@ -52,7 +53,7 @@ _OFFICIAL_SOURCES = (
 def build_depth60_component_hashes(project_root: str | Path) -> dict[str, str]:
     root = Path(project_root).resolve()
     return {
-        "source_tree_sha256": _source_tree_sha256(root / "src/researchops"),
+        "source_bundle_sha256": phase6_depth60_source_bundle_sha256(root),
         "phase6_tasks_sha256": _sha256_file(root / "evals/phase6_agent_tasks.jsonl"),
         "phase6_splits_sha256": _sha256_file(root / "evals/phase6_splits.json"),
         "requirements_lock_sha256": _sha256_file(root / "requirements.lock"),
@@ -576,16 +577,6 @@ def _require_exact_fields(
         raise Phase6RunError(
             "phase6_depth60_plan_invalid", f"{label} fields 不精确。"
         )
-
-
-def _source_tree_sha256(source_root: Path) -> str:
-    digest = hashlib.sha256()
-    for path in sorted(source_root.glob("*.py"), key=lambda item: item.name):
-        digest.update(path.name.encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()
 
 
 def _sha256_file(path: Path) -> str:

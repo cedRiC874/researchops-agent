@@ -1,8 +1,8 @@
 # ResearchOps Agent — Current Status
 
 > Snapshot: 2026-09-01 (Asia/Shanghai)
-> Public Git anchor: `main@168f49376eaac6009fb8119cdbaa5d57af4c5c63`
-> Tree: `2022812613018c001e3fe0b80dd773e8eb7a128a`
+> Public Git anchor: `main@47e5f422152752467af7df8f9a0668c6522a18da`
+> Tree: `24d8ffbe231334d7c149560f3719cca5fd599f34`
 
 本页是给深度评审者看的状态账本，不是首页营销材料。机器合同、版本化 evidence 和冻结 artifacts 是最终事实来源；本页只做可读投影。`not_run`、`failed`、`unknown` 和 `0` 不可互换。
 
@@ -23,7 +23,7 @@ ResearchOps Agent 已完成 evidence-first 科研数据分析原型、确定性�
 | Phase 5 | `offline_deterministic / components_and_control_plane`：50/50、evidence 21/21、model calls 0 | LLM 规划准确率 |
 | 审计 | 50 条评测审计链有效；事件链覆盖工具、attempt、错误、审批和副作用 | 外部不可篡改时间戳或完全防止数据库控制者重建 |
 | Phase 6 DeepSeek | development 16/16；repo-local holdout 4/4 | 抗污染 holdout、未知请求泛化、生产 SLA |
-| DeepSeek Depth-60 successor | 60 个 development tasks、完整成本/延迟/失败分母 runner 与 single-use plan 已冻结；commitment `012aecfa…ee9a3`；0 online/model calls | 新在线成绩、holdout 结果、未知分布泛化或 Provider 账单硬上限 |
+| DeepSeek Depth-60 successor | 60 个 development tasks、完整成本/延迟/失败分母 runner 与 single-use plan 已冻结；commitment `8019ef29…c216e`；0 online/model calls | 新在线成绩、holdout 结果、未知分布泛化或 Provider 账单硬上限 |
 | Eval v2 DeepSeek public v1 | 31 个 Provider-behavior tasks × 3：93/93 完成、68/93 通过；141 model requests | 模型单体准确率、private holdout、完整 Eval v2 |
 | Deterministic fault channel | 9 个本地 fault tasks × 3：27/27 | Provider 或模型质量；该分母与 68/93 分开 |
 | Production-like slice | FastAPI → PostgreSQL lease queue → MinIO/S3 → OTel 的真实单机 Compose E2E | HA、云 IAM/KMS、备份恢复、生产负载与 SLO |
@@ -36,6 +36,7 @@ ResearchOps Agent 已完成 evidence-first 科研数据分析原型、确定性�
 | Anthropic | CLI/offline adapter、Models preflight 合同与 MockTransport 测试 | 官方 Key 可用性、Messages/tools/usage/质量；post-lock 官方 origin 请求使用错误 CCTK token并返回 403 |
 | Kimi Models metadata | 一次官方中国区 GET 为 HTTP 200，exact `kimi-k3` visible，0 generation tokens | Chat/tools/usage/cost/质量或正式 Provider 注册 |
 | Kimi Chat/Pilot line | v6/v7 各一次首请求 fail-closed；v8 为离线诊断 successor，未运行且不可在线执行 | 成功兼容、根因归属、实际账单或模型质量 |
+| Kimi K3 non-streaming handshake | 新 parser、tool replay、usage/error contract、single-use receipt 与 synthetic handshake plan 已冻结；commitment `8979dfa8…e7cd`；0 online/model calls | Chat/tool/usage/error 兼容已成功、模型质量、Provider 注册或 non-synthetic/private 能力 |
 
 ## 3. DeepSeek 在线基线
 
@@ -67,7 +68,7 @@ Phase 6 没有绑定完整版本化价格表：`pricing.status=not_provided`、`
 ### Depth-60 successor（已冻结，未运行）
 
 - Plan: `phase6-deepseek-depth60-v1`
-- Commitment: `012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3`
+- Commitment: `8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e`
 - Scope: `P6-DEV-001..060` 各运行一次；历史 `P6-HOLD-001..004` 保持逐字不变且禁止重跑
 - Local stops: CNY 6 observed-cost stop、750k input tokens、350k output tokens、450 requests、90 minutes
 - Enforcement: 单线程、0 client retries、0 resume；本地 pre-case reserve + post-case observed stop，不是 Provider 账单硬上限，单题 overshoot 仍可能发生
@@ -82,7 +83,7 @@ Phase 6 没有绑定完整版本化价格表：`pricing.status=not_provided`、`
 | DeepSeek | Eval v2 唯一正式注册 Provider；Depth-60 successor 已离线冻结 | Phase 6 与 public-regression 在线证据；60 题 runner/plan 离线验证 | 新 60 题尚未运行；单 Provider、公开/仓库可见任务；无 private 结果 |
 | OpenAI | external_blocked | 最小请求返回 HTTP 429 | 没有有效模型响应或质量结论 |
 | Anthropic | `offline_contract_only` | Adapter、CLI、preflight contract 与离线测试 | 没有验证官方 Anthropic credential、Messages、tools 或 usage |
-| Kimi | `planned_not_registered` | metadata-only 可见性；Chat/Pilot fail-closed 历史 | 没有成功 Chat/tool/usage/error-semantics evidence |
+| Kimi | `planned_not_registered` | metadata-only 可见性；v6/v7 fail-closed 历史；新 non-streaming synthetic handshake 离线就绪 | 新 handshake 尚未运行；没有成功 Chat/tool/usage/error-semantics evidence |
 
 ### Kimi 历史合并记录
 
@@ -92,8 +93,9 @@ Phase 6 没有绑定完整版本化价格表：`pricing.status=not_provided`、`
 | Chat/Pilot v6 | 一次授权、首请求；在本地 usage validation 阶段 fail-closed，0/3 scenarios，0 trusted tool calls，0 tool executions | `failed / planned_not_registered`；授权已消费，不重试 |
 | Chat/Pilot v7 | 一次新授权、首个 required-tool 请求；在本地 response validation 阶段 fail-closed，0/3 scenarios，0 trusted tool calls，0 tool executions，0 usage observations | `failed / planned_not_registered`；raw payload 未保存，根因未定，授权已消费 |
 | Diagnostic successor v8 | 保持 v7 request bytes/acceptance semantics，只新增固定本地诊断 branch code | `implemented_offline_tested_not_run / online_not_authorized`；v6/v7 已封存，当前没有可执行的在线 successor |
+| K3 non-streaming handshake v1 | 基于 2026-08-31 官方 K3 非流式 Chat/tool 文档重新实现严格 parser、完整 assistant/tool replay、usage projection 与固定 400 probe | `implemented_offline_tested_not_run`；独立 plan commitment `8979dfa8…e7cd`，必须使用全新一次性授权 |
 
-不能把 v8 写成第三次在线失败：v8 没有调用 Provider。也不能把 v6 写成 response-validation failure：v6 的精确阶段是 usage validation。三者不占 README 首页，只在这里保留。
+不能把 v8 写成第三次在线失败：v8 没有调用 Provider。也不能把 v6 写成 response-validation failure：v6 的精确阶段是 usage validation。新的 handshake 不继承 v6/v7/v8 结果或授权，当前也不能写成“Kimi 已成功”；这些状态不占 README 首页，只在这里保留。
 
 ## 5. Eval v2、Pilot 与 Private Holdout
 
@@ -145,10 +147,10 @@ Operator-side observation（只读核验于 `2026-08-31`）：四封 Gmail 草�
 
 | 项目 | 当前事实 |
 | --- | --- |
-| Remote main | `168f49376eaac6009fb8119cdbaa5d57af4c5c63`，PR #28 regular merge |
-| Main offline | [run 33411624914](https://github.com/cedRiC874/researchops-agent/actions/runs/33411624914) on `168f493…`：success |
-| Main pilot | [run 33168768834](https://github.com/cedRiC874/researchops-agent/actions/runs/33168768834)：success |
-| Latest production E2E | [run 33106332748](https://github.com/cedRiC874/researchops-agent/actions/runs/33106332748) on `b905477…`：success；PR #27 未命中 production path filter |
+| Remote main | `47e5f422152752467af7df8f9a0668c6522a18da`，PR #29 regular merge |
+| Main offline | [run 33414534140](https://github.com/cedRiC874/researchops-agent/actions/runs/33414534140) on `47e5f42…`：success |
+| Main pilot | [run 33414533966](https://github.com/cedRiC874/researchops-agent/actions/runs/33414533966) on `47e5f42…`：success |
+| Latest production E2E | [run 33414534036](https://github.com/cedRiC874/researchops-agent/actions/runs/33414534036) on `47e5f42…`：success |
 | Open PR | [PR #26](https://github.com/cedRiC874/researchops-agent/pull/26)：Kimi v8 main-CI evidence；checks success，尚未进入 main |
 | Release | `v0.2.0 / phase6-deepseek-v1`；晚于该 tag 的工作尚未发布为新 Release |
 
@@ -166,6 +168,7 @@ Operator-side observation（只读核验于 `2026-08-31`）：四封 Gmail 草�
 - DeepSeek Depth-60 目前只证明 60 题语料、runner、预算和报告合同已冻结并通过离线验证；不代表已经执行。
 - Production-like slice 已通过真实单机 Compose E2E。
 - Kimi/Anthropic 的失败与未运行状态被保留；上述受控 Models-preflight 与 Kimi Chat/Pilot 路径在已观测错误下 fail-closed。
+- Kimi K3 non-streaming handshake 目前只证明 parser、合同、资源上限、脱敏 receipt 与 CLI gate 已离线冻结；在线兼容尚未执行。
 
 不得表述：
 

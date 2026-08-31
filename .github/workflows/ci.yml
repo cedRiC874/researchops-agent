@@ -71,6 +71,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m researchops.cli phase6-status
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $depth60Raw = (& python -m researchops.cli `
+            phase6-validate-deepseek-depth60 | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $depth60 = $depth60Raw | ConvertFrom-Json
+          if ($depth60.status -ne "valid" -or
+              $depth60.plan_commitment_sha256 -ne "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e" -or
+              $depth60.selected_task_count -ne 60 -or
+              $depth60.holdout_executed -ne $false -or
+              $depth60.network_calls -ne 0 -or
+              $depth60.model_calls -ne 0) {
+            Write-Output "::error title=depth60_contract_invalid::DeepSeek Depth-60 plan must remain valid, offline and holdout-free."
+            exit 1
+          }
           python -m researchops.cli eval-v2-validate
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $historicalV7Raw = (& python -m researchops.cli `
@@ -154,6 +167,20 @@ jobs:
               $kimiPreflight.authorizes_model_run -or
               $kimiPreflight.authorizes_provider_registration) {
             Write-Output "::error title=kimi_preflight_contract_invalid::Unconfirmed Kimi preflight must remain offline and non-authorizing."
+            exit 1
+          }
+          $kimiHandshakeRaw = (& python -m researchops.kimi_k3_handshake_cli `
+            validate | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $kimiHandshake = $kimiHandshakeRaw | ConvertFrom-Json
+          if ($kimiHandshake.status -ne "valid" -or
+              $kimiHandshake.plan_commitment_sha256 -ne "8979dfa8b8826afc6e9e44fadc64ed515b767a421ea122d5ffee5ac40c15e7cd" -or
+              $kimiHandshake.network_attempts -ne 0 -or
+              $kimiHandshake.network_calls -ne 0 -or
+              $kimiHandshake.model_calls -ne 0 -or
+              $kimiHandshake.key_loaded -ne $false -or
+              $kimiHandshake.online_authorized -ne $false) {
+            Write-Output "::error title=kimi_k3_handshake_contract_invalid::Kimi K3 handshake must remain valid, offline and non-authorizing."
             exit 1
           }
           try {

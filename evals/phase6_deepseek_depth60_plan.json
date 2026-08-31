@@ -89,7 +89,7 @@
     }
   ],
   "component_hashes": {
-    "source_tree_sha256": "2bd86384718a704b51003cafe7b867bbceac6c30234a387d772d66fa6a16dc20",
+    "source_bundle_sha256": "914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84",
     "phase6_tasks_sha256": "af945e5bd780b39e7639102dab75c446350a81e9e9464fe156e41d2a45cebc2c",
     "phase6_splits_sha256": "777256c08d78f8f84f0c56ee86d9f8f669add75717148e9e4b5ae27da6820a0f",
     "requirements_lock_sha256": "15a40bd036716b0145823f42ea3004be70769ce3ca41f8a0fd9696fc19afd86b",
@@ -116,5 +116,5 @@
     "result_attributed_to_model_alone": false,
     "result_attribution": "deepseek_plus_frozen_control_plane"
   },
-  "plan_commitment_sha256": "012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3"
+  "plan_commitment_sha256": "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e"
 }

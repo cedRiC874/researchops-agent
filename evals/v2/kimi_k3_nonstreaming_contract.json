@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "kimi-k3-nonstreaming-chat-v1",
+  "status": "implemented_offline_tested_not_run",
+  "provider_id": "moonshot_kimi",
+  "model_id": "kimi-k3",
+  "transport_id": "moonshot_direct_chat_completions_json_v1",
+  "api_origin": "https://api.moonshot.cn",
+  "path": "/v1/chat/completions",
+  "stream": false,
+  "reasoning_effort": "low",
+  "first_request_tool_choice": "required",
+  "specified_function_tool_choice_allowed": false,
+  "complete_assistant_message_replay_required": true,
+  "usage_required": true,
+  "response_schema_profile": {
+    "profile_id": "kimi-k3-json-2026-08-31-v1",
+    "unknown_fields_allowed": false,
+    "top_level_optional_compatibility_fields": [
+      "service_tier",
+      "system_fingerprint"
+    ],
+    "choice_optional_null_fields": [
+      "logprobs"
+    ],
+    "message_optional_null_fields": [
+      "refusal"
+    ],
+    "tool_call_content_may_be_null_empty_or_nonempty_string": true
+  },
+  "usage_schema_profile": {
+    "required_core_fields": [
+      "prompt_tokens",
+      "completion_tokens",
+      "total_tokens"
+    ],
+    "accepted_cache_projections": [
+      "cached_tokens",
+      "prompt_tokens_details.cached_tokens",
+      "both_equal"
+    ],
+    "prompt_tokens_detail_fields": [
+      "audio_tokens",
+      "cached_tokens"
+    ],
+    "completion_tokens_detail_fields": [
+      "accepted_prediction_tokens",
+      "audio_tokens",
+      "reasoning_tokens",
+      "rejected_prediction_tokens"
+    ],
+    "top_and_nested_cache_must_reconcile": true,
+    "unknown_usage_or_detail_fields_allowed": false,
+    "missing_usage_error_code": "kimi_chat_usage_missing",
+    "missing_usage_outcome_unknown": true,
+    "validated_usage_attached_to_later_protocol_errors": true
+  },
+  "error_privacy": {
+    "raw_json_retained_in_exception_cause": false,
+    "key_loader_exception_chained": false,
+    "sensitive_locals_cleared_before_terminal_error": true,
+    "primary_error_preserved_over_close_error": true,
+    "cancellation_propagated_after_owned_close": true
+  },
+  "client_retries": 0,
+  "fallbacks_allowed": false,
+  "synthetic_only": true,
+  "raw_prompt_output_reasoning_or_tool_payload_persisted": false,
+  "official_sources": [
+    {
+      "source_id": "kimi_k3_quickstart",
+      "url": "https://platform.kimi.com/docs/guide/kimi-k3-quickstart.md",
+      "captured_at_utc": "2026-08-31T14:03:47.639Z",
+      "decoded_utf8_bytes": 17475,
+      "sha256": "26d03bce3343f0addd3be22a8cbc6d6cbe7dc00fe635cbe738e574386616af93"
+    },
+    {
+      "source_id": "kimi_k3_pricing",
+      "url": "https://platform.kimi.com/docs/pricing/chat-k3.md",
+      "captured_at_utc": "2026-08-31T14:03:47.639Z",
+      "decoded_utf8_bytes": 2773,
+      "sha256": "e0942aeaf39a8f14697044421a0246036926269a866b63616b3ca4beea014ad9"
+    },
+    {
+      "source_id": "chat_completions_api",
+      "url": "https://platform.kimi.com/docs/api/chat.md",
+      "captured_at_utc": "2026-08-31T14:03:47.639Z",
+      "decoded_utf8_bytes": 52724,
+      "sha256": "e293aab6c8532d8c3fe5fba3ef53b9eb85fd27fe88a20b3eaf7b0d9ad2c903d6"
+    },
+    {
+      "source_id": "effective_service_terms",
+      "url": "https://platform.kimi.com/docs/agreement/modeluse.md",
+      "captured_at_utc": "2026-08-31T14:03:47.639Z",
+      "decoded_utf8_bytes": 25811,
+      "sha256": "8c94cb749ac7a76cde87f97b7c42d20839fda7b128a0c40a28d722730d803ad8"
+    },
+    {
+      "source_id": "effective_privacy_policy",
+      "url": "https://platform.kimi.com/docs/agreement/userprivacy.md",
+      "captured_at_utc": "2026-08-31T14:03:47.639Z",
+      "decoded_utf8_bytes": 24252,
+      "sha256": "3587098df970972804fa3c15aec146e6bded3370dd3c8a653019b05de3cb3b10"
+    },
+    {
+      "source_id": "effective_payment_terms",
+      "url": "https://platform.kimi.com/docs/agreement/payment.md",
+      "captured_at_utc": "2026-08-31T14:03:47.639Z",
+      "decoded_utf8_bytes": 6841,
+      "sha256": "6936e69d09fe7c3823c8fa9ef3f61413cb346f221d73f9508c4b2a00ca566a89"
+    }
+  ],
+  "effective_terms_allow_model_service_optimization_use": true,
+  "non_synthetic_or_private_allowed": false,
+  "network_calls": 0,
+  "model_calls": 0,
+  "model_quality_claim_allowed": false
+}
