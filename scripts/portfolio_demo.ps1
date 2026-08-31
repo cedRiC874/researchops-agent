@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 运行 ResearchOps Agent 的完全离线作品集演示。
 
@@ -46,8 +46,18 @@ function Invoke-PythonStep {
     )
 
     Write-Section $Title
-    $capturedOutput = @(& $script:PythonExecutable @Arguments 2>&1)
-    $exitCode = $LASTEXITCODE
+    $stepErrorActionPreference = $ErrorActionPreference
+    try {
+        # A successful native process may emit a warning on stderr. Windows
+        # PowerShell 5 promotes that stream to an ErrorRecord when the global
+        # preference is Stop, so capture it first and judge success by exit code.
+        $ErrorActionPreference = "Continue"
+        $capturedOutput = @(& $script:PythonExecutable @Arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $stepErrorActionPreference
+    }
     $renderedOutput = ($capturedOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
 
     if ($exitCode -ne 0) {
@@ -129,15 +139,76 @@ try {
     $previousLocation = (Get-Location).Path
     $hadPythonPath = Test-Path Env:PYTHONPATH
     $previousPythonPath = if ($hadPythonPath) { $env:PYTHONPATH } else { $null }
+    $numericalEnvironment = [ordered]@{
+        OPENBLAS_CORETYPE = "NEHALEM"
+        OPENBLAS_NUM_THREADS = "1"
+        OMP_NUM_THREADS = "1"
+        MKL_NUM_THREADS = "1"
+        NUMEXPR_NUM_THREADS = "1"
+        NPY_DISABLE_CPU_FEATURES = "X86_V3,X86_V4"
+    }
+    $previousNumericalEnvironment = @{}
     try {
         Set-Location -LiteralPath $repoRoot
         $env:PYTHONPATH = $sourceRoot
+        foreach ($name in $numericalEnvironment.Keys) {
+            $previousNumericalEnvironment[$name] = [Environment]::GetEnvironmentVariable(
+                $name,
+                [EnvironmentVariableTarget]::Process
+            )
+        }
+        foreach ($name in $numericalEnvironment.Keys) {
+            [Environment]::SetEnvironmentVariable(
+                $name,
+                $numericalEnvironment[$name],
+                [EnvironmentVariableTarget]::Process
+            )
+        }
 
         Invoke-PythonStep `
             -Title "1/4 校验 Python 环境" `
             -Arguments @(
                 "-c",
                 "import sys; print('Python ' + sys.version.split()[0]); raise SystemExit(0 if sys.version_info >= (3, 11) else 2)"
+            ) `
+            -ShowOutput
+
+        Write-Section "固定并验证 Nehalem/x86-v2 数值基线"
+        $previousOpenBlasVerbose = [Environment]::GetEnvironmentVariable(
+            "OPENBLAS_VERBOSE",
+            [EnvironmentVariableTarget]::Process
+        )
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $env:OPENBLAS_VERBOSE = "2"
+            # OpenBLAS reports its selected kernel on stderr even when the probe
+            # succeeds. Capture that diagnostic without turning it into a
+            # terminating PowerShell error.
+            $ErrorActionPreference = "Continue"
+            $probeOutput = @(
+                & $script:PythonExecutable -c "import numpy as np; np.linalg.svd(np.eye(4))" 2>&1
+            )
+            $probeExitCode = $LASTEXITCODE
+            $probeText = ($probeOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+        }
+        finally {
+            [Environment]::SetEnvironmentVariable(
+                "OPENBLAS_VERBOSE",
+                $previousOpenBlasVerbose,
+                [EnvironmentVariableTarget]::Process
+            )
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        if ($probeExitCode -ne 0 -or $probeText -notmatch '(?im)^Core:\s*Nehalem\s*$') {
+            throw "固定的 Nehalem OpenBLAS kernel 未激活，拒绝生成不可比较的 evidence ID。"
+        }
+        Write-Host "OpenBLAS core：Nehalem" -ForegroundColor Green
+
+        Invoke-PythonStep `
+            -Title "验证 canonical ANCOVA evidence identity" `
+            -Arguments @(
+                "-c",
+                "import json,pandas as pd; from pathlib import Path; from researchops.analysis_tools import run_ancova; from researchops.contracts import ResearchDesign; from researchops.data_quality import profile_csv; p=Path('data/synthetic_trial.csv'); f=pd.read_csv(p,encoding='utf-8-sig',low_memory=False); d=ResearchDesign.from_dict(json.loads(Path('data/synthetic_trial_design.json').read_text(encoding='utf-8'))); got=run_ancova(f,profile_csv(p),d).evidence_id; print(got); raise SystemExit(0 if got=='E-36034128278C' else 3)"
             ) `
             -ShowOutput
 
@@ -174,6 +245,13 @@ try {
         }
         else {
             Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+        }
+        foreach ($name in $numericalEnvironment.Keys) {
+            [Environment]::SetEnvironmentVariable(
+                $name,
+                $previousNumericalEnvironment[$name],
+                [EnvironmentVariableTarget]::Process
+            )
         }
     }
 
