@@ -155,6 +155,22 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
         self.assertIn("phase5_offline_quality_gate_failed", workflow)
         self.assertIn("exit 1", workflow)
 
+    def test_portfolio_demo_uses_the_same_canonical_numerical_baseline(self) -> None:
+        script_path = PROJECT_ROOT / "scripts" / "portfolio_demo.ps1"
+        self.assertTrue(script_path.read_bytes().startswith(b"\xef\xbb\xbf"))
+        script = script_path.read_text(encoding="utf-8-sig")
+
+        self.assertIn('OPENBLAS_CORETYPE = "NEHALEM"', script)
+        self.assertIn('OPENBLAS_NUM_THREADS = "1"', script)
+        self.assertIn('OMP_NUM_THREADS = "1"', script)
+        self.assertIn('MKL_NUM_THREADS = "1"', script)
+        self.assertIn('NUMEXPR_NUM_THREADS = "1"', script)
+        self.assertIn('NPY_DISABLE_CPU_FEATURES = "X86_V3,X86_V4"', script)
+        self.assertIn("Core:\\s*Nehalem", script)
+        self.assertIn("E-36034128278C", script)
+        self.assertIn("$stepErrorActionPreference = $ErrorActionPreference", script)
+        self.assertIn("$ErrorActionPreference = $stepErrorActionPreference", script)
+
 
 if __name__ == "__main__":
     unittest.main()
