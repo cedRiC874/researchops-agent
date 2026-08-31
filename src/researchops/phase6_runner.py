@@ -47,6 +47,7 @@ from .phase6_eval import (
     phase6_failed_run,
     score_phase6_run,
 )
+from .phase6_source_bundle import phase6_depth60_source_bundle_sha256
 from .tool_runtime import ControlledToolExecutor, build_project_tool_registry
 
 
@@ -849,10 +850,11 @@ async def _run_phase6_online_evaluation_impl(
             if isinstance(bound_components, Mapping)
             else _sha256_file(split_source)
         )
-        source_tree_sha256 = (
-            str(bound_components["source_tree_sha256"])
+        source_tree_sha256 = _source_tree_sha256(root / "src" / "researchops")
+        depth60_source_bundle_sha256 = (
+            str(bound_components["source_bundle_sha256"])
             if isinstance(bound_components, Mapping)
-            else _source_tree_sha256(root / "src" / "researchops")
+            else None
         )
         manifest = {
             "schema_version": "1.1",
@@ -946,6 +948,7 @@ async def _run_phase6_online_evaluation_impl(
                 ),
             },
             "source_tree_sha256": source_tree_sha256,
+            "depth60_source_bundle_sha256": depth60_source_bundle_sha256,
             "artifacts": {
                 path.name: {
                     "sha256": _sha256_file(path),
@@ -1340,7 +1343,7 @@ def _validate_depth60_runtime_binding(
             "Depth-60 component binding 无效。",
         )
     actual_components = {
-        "source_tree_sha256": _source_tree_sha256(root / "src/researchops"),
+        "source_bundle_sha256": phase6_depth60_source_bundle_sha256(root),
         "phase6_tasks_sha256": _sha256_file(task_source),
         "phase6_splits_sha256": _sha256_file(split_source),
         "requirements_lock_sha256": _sha256_file(root / "requirements.lock"),

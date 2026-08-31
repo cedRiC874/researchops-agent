@@ -1,0 +1,162 @@
+{
+  "schema_version": "kimi-k3-handshake-plan/1.0",
+  "handshake_id": "kimi-k3-controlled-synthetic-handshake-v1",
+  "status": "frozen_not_run",
+  "purpose": "tool_usage_and_invalid_request_semantics_only",
+  "provider_id": "moonshot_kimi",
+  "model_id": "kimi-k3",
+  "api_origin": "https://api.moonshot.cn",
+  "transport_id": "moonshot_direct_chat_completions_json_v1",
+  "predecessor_candidate_commitment_sha256": "b41269ac6db96e2999fedc95f08f3b77a48699f8c0b50b63764bcb6e1f9e962c",
+  "scenario": {
+    "scenario_id": "kimi_k3_synthetic_success_handshake_v1",
+    "dataset_id": "kimi_synth_success_v1",
+    "metric_id": "effect_size",
+    "tool_name": "lookup_synthetic_metric",
+    "expected_value": "0.375",
+    "synthetic_only": true
+  },
+  "sequence": [
+    {
+      "step": 1,
+      "kind": "model_request",
+      "stream": false,
+      "tool_choice": "required",
+      "expected_finish_reason": "tool_calls",
+      "expected_tool_call_count": 1
+    },
+    {
+      "step": 2,
+      "kind": "local_tool_execution",
+      "tool_name": "lookup_synthetic_metric",
+      "expected_execution_count": 1
+    },
+    {
+      "step": 3,
+      "kind": "model_request",
+      "stream": false,
+      "tool_choice": "none",
+      "complete_assistant_message_replay_required": true,
+      "tool_result_replay_required": true,
+      "expected_finish_reason": "stop"
+    },
+    {
+      "step": 4,
+      "kind": "fixed_invalid_request_probe",
+      "body_sha256": "b07a395baa11d449dcb58666363e56daa60a3686edb27bf4e57eb1d8cfa76cd7",
+      "expected_http_status": 400,
+      "expected_provider_error_type": "invalid_request_error"
+    }
+  ],
+  "locked_caps": {
+    "network_attempts": 3,
+    "network_calls": 3,
+    "model_requests": 2,
+    "concurrency": 1,
+    "client_retries": 0,
+    "input_tokens_per_model_request": 8000,
+    "input_tokens_total": 16000,
+    "output_tokens_per_model_request": 1536,
+    "output_tokens_total": 3072,
+    "tool_executions": 1,
+    "total_timeout_seconds": 300,
+    "local_observed_usage_cost_stop_cny": "2.000000",
+    "strict_provider_billing_hard_cap": false,
+    "single_response_overshoot_possible": true,
+    "fallback": false,
+    "resume": false
+  },
+  "pricing": {
+    "currency": "CNY",
+    "billing_unit_tokens": 1000000,
+    "uncached_input_per_million": "20.000000",
+    "output_per_million": "100.000000",
+    "actual_provider_bill_claimed": false
+  },
+  "terms_review": {
+    "reviewed_at_utc": "2026-08-31T14:03:47.639Z",
+    "displayed_effective_date": "2026-08-31",
+    "official_source_commitments": [
+      {
+        "source_id": "kimi_k3_quickstart",
+        "url": "https://platform.kimi.com/docs/guide/kimi-k3-quickstart.md",
+        "captured_at_utc": "2026-08-31T14:03:47.639Z",
+        "decoded_utf8_bytes": 17475,
+        "sha256": "26d03bce3343f0addd3be22a8cbc6d6cbe7dc00fe635cbe738e574386616af93"
+      },
+      {
+        "source_id": "kimi_k3_pricing",
+        "url": "https://platform.kimi.com/docs/pricing/chat-k3.md",
+        "captured_at_utc": "2026-08-31T14:03:47.639Z",
+        "decoded_utf8_bytes": 2773,
+        "sha256": "e0942aeaf39a8f14697044421a0246036926269a866b63616b3ca4beea014ad9"
+      },
+      {
+        "source_id": "chat_completions_api",
+        "url": "https://platform.kimi.com/docs/api/chat.md",
+        "captured_at_utc": "2026-08-31T14:03:47.639Z",
+        "decoded_utf8_bytes": 52724,
+        "sha256": "e293aab6c8532d8c3fe5fba3ef53b9eb85fd27fe88a20b3eaf7b0d9ad2c903d6"
+      },
+      {
+        "source_id": "effective_service_terms",
+        "url": "https://platform.kimi.com/docs/agreement/modeluse.md",
+        "captured_at_utc": "2026-08-31T14:03:47.639Z",
+        "decoded_utf8_bytes": 25811,
+        "sha256": "8c94cb749ac7a76cde87f97b7c42d20839fda7b128a0c40a28d722730d803ad8"
+      },
+      {
+        "source_id": "effective_privacy_policy",
+        "url": "https://platform.kimi.com/docs/agreement/userprivacy.md",
+        "captured_at_utc": "2026-08-31T14:03:47.639Z",
+        "decoded_utf8_bytes": 24252,
+        "sha256": "3587098df970972804fa3c15aec146e6bded3370dd3c8a653019b05de3cb3b10"
+      },
+      {
+        "source_id": "effective_payment_terms",
+        "url": "https://platform.kimi.com/docs/agreement/payment.md",
+        "captured_at_utc": "2026-08-31T14:03:47.639Z",
+        "decoded_utf8_bytes": 6841,
+        "sha256": "6936e69d09fe7c3823c8fa9ef3f61413cb346f221d73f9508c4b2a00ca566a89"
+      }
+    ],
+    "provider_service_optimization_use_disclosed": true,
+    "synthetic_only_required": true,
+    "runtime_no_material_delta_attestation_required": true
+  },
+  "authorization": {
+    "single_use": true,
+    "authorization_id_required": true,
+    "authorization_expiry_utc_required": true,
+    "expected_plan_commitment_required": true,
+    "maximum_future_horizon_hours": 24,
+    "consume_before_key_load": true,
+    "absolute_deadline_enforced": true,
+    "network_attempt_preflight_expiry_check": true
+  },
+  "persistence": {
+    "consumption_receipt_required": true,
+    "terminal_receipt_attempted_on_handled_exit": true,
+    "process_crash_or_unrecoverable_io_may_leave_orphan": true,
+    "authorization_id_persisted": false,
+    "api_key_persisted": false,
+    "raw_prompt_output_reasoning_tool_arguments_or_result_persisted": false
+  },
+  "component_hashes": {
+    "nonstreaming_transport_source_sha256": "55961a952c7e238ea22f48a9466f4726d775c6048bee148c2fd39b106fc48391",
+    "handshake_runner_source_sha256": "4e622e0eff50b6fcdb96fc4f1381040a45c7591ac44569ca878ad82ac122eee2",
+    "handshake_cli_source_sha256": "6fbb8f1e8fa94c1db4df4a43a60ffa1e93fe613c2b0db1c0e22928403a1c4fca",
+    "shared_transport_source_sha256": "6e4be581ebf3d11c96bec4cb4cb8d58de62c24f8b025912cc1af5a3774977279",
+    "usage_contract_source_sha256": "6a702c9edb4153b258c5ea1dcc8a9047b2d46fa8281a38fac7c0ee93a475bdef",
+    "synthetic_tool_source_sha256": "e097d5371b36afc5dc7bf5a87cd206d62092a262db4feed35d2a0f4d6b5fc130",
+    "requirements_lock_sha256": "15a40bd036716b0145823f42ea3004be70769ce3ca41f8a0fd9696fc19afd86b",
+    "pyproject_sha256": "d87693e733f460e3f5034d434a0e2e519fc1c3250e84b17314014f7f34516d33"
+  },
+  "claims": {
+    "model_quality": false,
+    "provider_registration": false,
+    "private_evaluation": false,
+    "non_synthetic_data": false,
+    "prompt_or_candidate_tuning": false
+  }
+}

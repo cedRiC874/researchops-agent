@@ -1165,6 +1165,10 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
                 (output / "phase6_manifest.json").read_text(encoding="utf-8")
             )
             self.assertEqual(manifest["depth60_plan_binding"], binding)
+            self.assertEqual(
+                manifest["depth60_source_bundle_sha256"],
+                binding["component_hashes"]["source_bundle_sha256"],
+            )
 
     async def test_deepseek_harness_identity_failure_stops_before_second_case(self) -> None:
         calls = 0

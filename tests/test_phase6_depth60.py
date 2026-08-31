@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import ast
 import json
 import hashlib
+import shutil
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -18,11 +20,16 @@ from researchops.phase6_depth60 import (
     validate_phase6_depth60_plan,
 )
 from researchops.phase6_runner import Phase6RunError
+from researchops.phase6_source_bundle import (
+    _local_import_targets,
+    phase6_depth60_source_bundle_sha256,
+    phase6_depth60_source_files,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = ROOT / DEPTH60_PLAN_PATH
-EXPECTED_COMMITMENT = "012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3"
+EXPECTED_COMMITMENT = "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e"
 
 
 class Phase6Depth60PlanTests(unittest.TestCase):
@@ -65,7 +72,7 @@ class Phase6Depth60PlanTests(unittest.TestCase):
     def test_component_drift_fails_closed(self) -> None:
         actual = depth60_module.build_depth60_component_hashes(ROOT)
         drifted = dict(actual)
-        drifted["source_tree_sha256"] = "0" * 64
+        drifted["source_bundle_sha256"] = "0" * 64
         with patch.object(
             depth60_module,
             "build_depth60_component_hashes",
@@ -74,6 +81,38 @@ class Phase6Depth60PlanTests(unittest.TestCase):
             with self.assertRaises(Phase6RunError) as caught:
                 validate_phase6_depth60_plan(ROOT, PLAN)
         self.assertEqual(caught.exception.code, "phase6_depth60_component_drift")
+
+    def test_source_bundle_tracks_dependency_closure_not_unrelated_new_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / "src/researchops", root / "src/researchops")
+            original = phase6_depth60_source_bundle_sha256(root)
+            files = phase6_depth60_source_files(root)
+            self.assertIn("phase6_runner.py", files)
+            self.assertIn("phase6_source_bundle.py", files)
+            self.assertNotIn("kimi_chat_nonstreaming.py", files)
+
+            (root / "src/researchops/unrelated_successor.py").write_text(
+                "VALUE = 1\n", encoding="utf-8"
+            )
+            self.assertEqual(phase6_depth60_source_bundle_sha256(root), original)
+
+            runner = root / "src/researchops/phase6_runner.py"
+            runner.write_text(
+                runner.read_text(encoding="utf-8") + "\n# dependency drift\n",
+                encoding="utf-8",
+            )
+            self.assertNotEqual(phase6_depth60_source_bundle_sha256(root), original)
+
+    def test_source_bundle_parser_captures_absolute_import_from_forms(self) -> None:
+        tree = ast.parse(
+            "from researchops import helper\n"
+            "from researchops.second_helper import VALUE\n"
+        )
+        self.assertEqual(
+            _local_import_targets(tree),
+            {"helper.py", "second_helper.py"},
+        )
 
     def test_holdout_rows_are_unchanged_historical_tasks(self) -> None:
         lines = (ROOT / "evals/phase6_agent_tasks.jsonl").read_text(
@@ -115,6 +154,15 @@ class Phase6Depth60PlanTests(unittest.TestCase):
         self.assertEqual(parsed.plan, DEPTH60_PLAN_PATH)
         self.assertFalse(hasattr(parsed, "api_key"))
         self.assertFalse(parsed.confirm_online)
+
+    def test_offline_ci_binds_zero_call_depth60_validation(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("phase6-validate-deepseek-depth60 | Out-String)", workflow)
+        self.assertIn(EXPECTED_COMMITMENT, workflow)
+        self.assertIn("$depth60.selected_task_count -ne 60", workflow)
+        self.assertIn("$depth60.holdout_executed -ne $false", workflow)
+        self.assertIn("$depth60.network_calls -ne 0", workflow)
+        self.assertIn("$depth60.model_calls -ne 0", workflow)
 
 
 class Phase6Depth60ExecutionGateTests(unittest.IsolatedAsyncioTestCase):
