@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import os
 import sqlite3
 import tempfile
 import unittest
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
 import researchops.phase6_runner as phase6_runner_module
+import researchops.phase6_depth60 as phase6_depth60_module
 
 from researchops.phase6_agent import (
     AgentRunRecord,
@@ -46,6 +49,128 @@ def _usage() -> AgentUsage:
 
 
 class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
+    async def test_depth60_extension_and_holdout_cannot_use_generic_entrypoint(self) -> None:
+        class ForbiddenEnvironment(dict[str, str]):
+            def get(self, key, default=None):
+                del key, default
+                raise AssertionError("Key lookup must follow scope gate")
+
+        async def forbidden_runner(request, backend, **kwargs):
+            del request, backend, kwargs
+            raise AssertionError("runner must not start")
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            for split, max_cases, expected_code in (
+                ("development", 17, "phase6_depth60_plan_required"),
+                ("development", 60, "phase6_depth60_plan_required"),
+                ("holdout", 4, "phase6_repo_local_holdout_rerun_forbidden"),
+            ):
+                output = Path(directory) / f"blocked-{split}-{max_cases}"
+                with self.subTest(split=split, max_cases=max_cases):
+                    with self.assertRaises(Phase6RunError) as caught:
+                        await run_phase6_online_evaluation(
+                            project_root=ROOT,
+                            tasks_path=CORPUS,
+                            split_manifest_path=SPLITS,
+                            output_directory=output,
+                            provider="deepseek",
+                            model="deepseek-v4-flash",
+                            split=split,
+                            max_cases=max_cases,
+                            confirm_online=True,
+                            environment=ForbiddenEnvironment(),
+                            agent_runner=forbidden_runner,
+                        )
+                    self.assertEqual(caught.exception.code, expected_code)
+                    self.assertFalse(output.exists())
+
+            openai_output = Path(directory) / "blocked-openai-extension"
+            with self.assertRaises(Phase6RunError) as caught:
+                await run_phase6_online_evaluation(
+                    project_root=ROOT,
+                    tasks_path=CORPUS,
+                    split_manifest_path=SPLITS,
+                    output_directory=openai_output,
+                    provider="openai",
+                    model="gpt-5",
+                    split="development",
+                    max_cases=17,
+                    confirm_online=True,
+                    environment=ForbiddenEnvironment(),
+                    agent_runner=forbidden_runner,
+                )
+            self.assertEqual(
+                caught.exception.code, "phase6_depth60_plan_required"
+            )
+            self.assertFalse(openai_output.exists())
+
+    async def test_public_entrypoint_exposes_no_depth60_binding_seam(self) -> None:
+        class ForbiddenEnvironment(dict[str, str]):
+            def get(self, key, default=None):
+                del key, default
+                raise AssertionError("Key lookup must follow binding verification")
+
+        deadline = datetime.now(timezone.utc) + timedelta(hours=2)
+        forged_binding = {
+            "plan_id": "phase6-deepseek-depth60-v1",
+            "plan_commitment_sha256": "0" * 64,
+            "selected_task_ids": [
+                f"P6-DEV-{index:03d}" for index in range(1, 61)
+            ],
+            "component_hashes": (
+                phase6_depth60_module.build_depth60_component_hashes(ROOT)
+            ),
+            "authorization_id_sha256": "1" * 64,
+            "authorization_expires_at_utc": deadline.isoformat().replace(
+                "+00:00", "Z"
+            ),
+            "consume_receipt_relative_path": (
+                "artifacts/phase6_deepseek_depth60/fake.receipt.json"
+            ),
+            "consume_receipt_sha256": "2" * 64,
+            "claim_boundary": {
+                "model_quality_claim_allowed": False,
+                "private_holdout_claim_allowed": False,
+                "unknown_distribution_generalization_claim_allowed": False,
+                "production_sla_claim_allowed": False,
+                "cross_provider_claim_allowed": False,
+                "result_attributed_to_model_alone": False,
+                "result_attribution": "deepseek_plus_frozen_control_plane",
+            },
+        }
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            output = Path(directory) / "forged-depth60"
+            self.assertNotIn(
+                "_depth60_plan_binding",
+                inspect.signature(run_phase6_online_evaluation).parameters,
+            )
+            with self.assertRaises(TypeError):
+                await run_phase6_online_evaluation(
+                    project_root=ROOT,
+                    tasks_path=CORPUS,
+                    split_manifest_path=SPLITS,
+                    output_directory=output,
+                    provider="deepseek",
+                    model="deepseek-v4-flash",
+                    split="development",
+                    max_cases=60,
+                    confirm_online=True,
+                    deepseek_pricing_snapshot_date="2026-08-31",
+                    deepseek_pricing_source_url=(
+                        "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+                    ),
+                    local_observed_cost_stop_cny=6,
+                    total_input_tokens_cap=750_000,
+                    total_output_tokens_cap=350_000,
+                    total_requests_cap=450,
+                    total_timeout_seconds=5_400,
+                    authorization_deadline_utc=deadline,
+                    environment=ForbiddenEnvironment(),
+                    agent_runner=None,
+                    _depth60_plan_binding=forged_binding,
+                )
+            self.assertFalse(output.exists())
+
     async def test_generic_anthropic_entrypoint_denies_before_key_output_or_runner(self) -> None:
         class ForbiddenEnvironment(dict[str, str]):
             def get(self, key, default=None):
@@ -133,9 +258,9 @@ class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
         validation = validate_phase6_suite(CORPUS, SPLITS)
         self.assertEqual(validation["status"], "valid")
         self.assertEqual(validation["task_schema_version"], "1.2")
-        self.assertEqual(validation["task_count"], 20)
+        self.assertEqual(validation["task_count"], 64)
         self.assertEqual(
-            validation["split_counts"], {"development": 16, "holdout": 4}
+            validation["split_counts"], {"development": 60, "holdout": 4}
         )
 
     def test_safe_text_preserves_slash_terms_and_redacts_absolute_paths(self) -> None:
@@ -401,6 +526,37 @@ class Phase6RunnerPreflightTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
         self.assertEqual(online.provider, "deepseek")
+        deepseek_budgeted = build_parser().parse_args(
+            [
+                "phase6-run-online",
+                "--output-dir",
+                "artifacts/test-provider-cli-budgeted",
+                "--provider",
+                "deepseek",
+                "--model",
+                "deepseek-v4-flash",
+                "--split",
+                "development",
+                "--max-cases",
+                "60",
+                "--deepseek-pricing-snapshot-date",
+                "2026-08-31",
+                "--deepseek-pricing-source-url",
+                "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+                "--local-observed-cost-stop-cny",
+                "6",
+                "--max-total-input-tokens",
+                "750000",
+                "--max-total-output-tokens",
+                "350000",
+                "--max-total-requests",
+                "450",
+                "--total-timeout-seconds",
+                "5400",
+            ]
+        )
+        self.assertEqual(deepseek_budgeted.local_observed_cost_stop_cny, 6.0)
+        self.assertEqual(deepseek_budgeted.max_total_requests, 450)
         anthropic = build_parser().parse_args(
             [
                 "phase6-run-online",
@@ -556,7 +712,7 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertTrue(manifest["audit"]["all_chains_valid"])
             self.assertEqual(manifest["schema_version"], "1.1")
-            self.assertEqual(manifest["runner_version"], "1.8.0")
+            self.assertEqual(manifest["runner_version"], "1.9.0")
             self.assertEqual(manifest["selection"]["max_output_tokens"], 2000)
             self.assertEqual(manifest["provider"], "openai")
             self.assertEqual(manifest["transport"], "openai_responses")
@@ -710,6 +866,367 @@ class Phase6RunnerArtifactTests(unittest.IsolatedAsyncioTestCase):
                 path.read_bytes() for path in output.iterdir() if path.is_file()
             )
             self.assertNotIn(b"deepseek-test-secret", artifact_bytes)
+
+    async def test_deepseek_cny_policy_reports_complete_budget_and_denominators(self) -> None:
+        async def fake_runner(
+            request: LogicalAgentRequest,
+            backend,
+            *,
+            api_key: str,
+            provider,
+            model: str,
+            max_turns: int,
+            tracing_disabled: bool,
+            **kwargs,
+        ) -> AgentRunRecord:
+            del max_turns, kwargs
+            self.assertEqual(api_key, "deepseek-budget-secret")
+            self.assertTrue(tracing_disabled)
+            payload = backend.inspect_dataset(request.dataset_id)
+            self.assertEqual(payload["row_count"], 240)
+            call_id = "sdk-deepseek-budget-inspect"
+            return AgentRunRecord(
+                status="completed",
+                model=model,
+                final_output="聚合检查：240 行、10 列，其中 38 行存在缺失。",
+                tool_calls=(
+                    AgentToolCall(
+                        call_id,
+                        "inspect_dataset",
+                        {"dataset_id": "synthetic_trial"},
+                        "succeeded",
+                    ),
+                ),
+                usage=_usage(),
+                latency_ms=8.5,
+                cost_usd=None,
+                approval_interruptions=(),
+                tracing_disabled=True,
+                tool_observations=(
+                    AgentToolObservation(
+                        call_id,
+                        "inspect_dataset",
+                        "succeeded",
+                        (),
+                        None,
+                        hashlib.sha256(b"deepseek-budget-profile").hexdigest(),
+                    ),
+                ),
+                provider=provider.provider_id,
+                transport=provider.transport_id,
+            )
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            output = Path(directory) / "deepseek-budgeted-eval"
+            result = await run_phase6_online_evaluation(
+                project_root=ROOT,
+                tasks_path=CORPUS,
+                split_manifest_path=SPLITS,
+                output_directory=output,
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                split="development",
+                max_cases=1,
+                confirm_online=True,
+                deepseek_pricing_snapshot_date="2026-08-31",
+                deepseek_pricing_source_url=(
+                    "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+                ),
+                local_observed_cost_stop_cny=6,
+                total_input_tokens_cap=750_000,
+                total_output_tokens_cap=350_000,
+                total_requests_cap=450,
+                total_timeout_seconds=5_400,
+                environment={"DEEPSEEK_API_KEY": "deepseek-budget-secret"},
+                agent_runner=fake_runner,
+            )
+            report = result["report"]
+            self.assertEqual(report["run_status"], "completed")
+            self.assertEqual(report["attempted_case_count"], 1)
+            self.assertEqual(report["completed_case_count"], 1)
+            self.assertEqual(report["not_started_case_count"], 0)
+            self.assertEqual(
+                report["failure_denominators"]["attempted_cases"], 1
+            )
+            policy = report["deepseek_cny_policy"]
+            self.assertEqual(policy["coverage"]["status"], "complete")
+            self.assertEqual(
+                policy["observed_usage"]["known_completed_requests"], 1
+            )
+            self.assertEqual(policy["observed_usage"]["input_tokens"], 100)
+            self.assertEqual(policy["observed_usage"]["output_tokens"], 25)
+            self.assertEqual(policy["total_estimated_cost_cny"], "0.000525")
+            self.assertEqual(report["cost"]["currency"], "CNY")
+            self.assertEqual(report["cost"]["total_cny"], "0.000525")
+            self.assertIn(
+                "计划/尝试/完成/未开始：1/1/1/0",
+                (output / "phase6_summary.md").read_text(encoding="utf-8"),
+            )
+
+    async def test_incomplete_deepseek_usage_stops_before_next_case(self) -> None:
+        calls = 0
+
+        async def incomplete_runner(
+            request: LogicalAgentRequest,
+            backend,
+            *,
+            provider,
+            model: str,
+            **kwargs,
+        ) -> AgentRunRecord:
+            nonlocal calls
+            del backend, kwargs
+            calls += 1
+            return AgentRunRecord(
+                status="completed",
+                model=model,
+                final_output=(
+                    "聚合检查：240 行、10 列，其中 38 行存在缺失。"
+                    if request.dataset_id
+                    else "[CLARIFICATION_REQUIRED] missing=dataset_id"
+                ),
+                tool_calls=(),
+                usage=AgentUsage(
+                    requests=1,
+                    input_tokens=None,
+                    output_tokens=None,
+                    total_tokens=None,
+                    cached_input_tokens=None,
+                    complete=False,
+                ),
+                latency_ms=5.0,
+                cost_usd=None,
+                approval_interruptions=(),
+                tracing_disabled=True,
+                provider=provider.provider_id,
+                transport=provider.transport_id,
+            )
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            output = Path(directory) / "deepseek-missing-usage"
+            result = await run_phase6_online_evaluation(
+                project_root=ROOT,
+                tasks_path=CORPUS,
+                split_manifest_path=SPLITS,
+                output_directory=output,
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                split="development",
+                max_cases=2,
+                confirm_online=True,
+                deepseek_pricing_snapshot_date="2026-08-31",
+                deepseek_pricing_source_url=(
+                    "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+                ),
+                local_observed_cost_stop_cny=6,
+                total_input_tokens_cap=750_000,
+                total_output_tokens_cap=350_000,
+                total_requests_cap=450,
+                total_timeout_seconds=5_400,
+                environment={"DEEPSEEK_API_KEY": "deepseek-budget-secret"},
+                agent_runner=incomplete_runner,
+            )
+            self.assertEqual(calls, 1)
+            report = result["report"]
+            self.assertEqual(report["run_status"], "stopped")
+            self.assertEqual(report["stop_reason"], "deepseek_usage_unavailable")
+            self.assertEqual(report["attempted_case_count"], 1)
+            self.assertEqual(report["not_started_case_count"], 1)
+            self.assertEqual(
+                report["deepseek_cny_policy"]["coverage"]["status"],
+                "unavailable",
+            )
+
+    async def test_depth60_budgeted_loop_attempts_all_development_and_no_holdout(self) -> None:
+        async def minimal_runner(
+            request: LogicalAgentRequest,
+            backend,
+            *,
+            provider,
+            model: str,
+            **kwargs,
+        ) -> AgentRunRecord:
+            del request, backend, kwargs
+            return AgentRunRecord(
+                status="completed",
+                model=model,
+                final_output="",
+                tool_calls=(),
+                usage=_usage(),
+                latency_ms=1.0,
+                cost_usd=None,
+                approval_interruptions=(),
+                tracing_disabled=True,
+                provider=provider.provider_id,
+                transport=provider.transport_id,
+            )
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            output = Path(directory) / "deepseek-depth60-loop"
+            deadline = datetime.now(timezone.utc) + timedelta(hours=2)
+            binding = {
+                "plan_id": "phase6-deepseek-depth60-v1",
+                "plan_commitment_sha256": "0" * 64,
+                "selected_task_ids": [
+                    f"P6-DEV-{index:03d}" for index in range(1, 61)
+                ],
+                "component_hashes": (
+                    phase6_depth60_module.build_depth60_component_hashes(ROOT)
+                ),
+                "authorization_id_sha256": "1" * 64,
+                "authorization_expires_at_utc": deadline.isoformat().replace(
+                    "+00:00", "Z"
+                ),
+                "consume_receipt_relative_path": (
+                    "artifacts/phase6_deepseek_depth60/test.receipt.json"
+                ),
+                "consume_receipt_sha256": "2" * 64,
+                "claim_boundary": {
+                    "model_quality_claim_allowed": False,
+                    "private_holdout_claim_allowed": False,
+                    "unknown_distribution_generalization_claim_allowed": False,
+                    "production_sla_claim_allowed": False,
+                    "cross_provider_claim_allowed": False,
+                    "result_attributed_to_model_alone": False,
+                    "result_attribution": "deepseek_plus_frozen_control_plane",
+                },
+            }
+            # This test exercises the 60-case loop after a binding has already
+            # been authenticated. Dedicated preflight tests cover rejection of
+            # forged plan/receipt bindings.
+            with patch.object(
+                phase6_runner_module,
+                "_validate_depth60_runtime_binding",
+                return_value=binding,
+            ):
+                result = await phase6_runner_module._run_phase6_online_evaluation_impl(
+                    project_root=ROOT,
+                    tasks_path=CORPUS,
+                    split_manifest_path=SPLITS,
+                    output_directory=output,
+                    provider="deepseek",
+                    model="deepseek-v4-flash",
+                    split="development",
+                    max_cases=60,
+                    confirm_online=True,
+                    deepseek_pricing_snapshot_date="2026-08-31",
+                    deepseek_pricing_source_url=(
+                        "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+                    ),
+                    local_observed_cost_stop_cny=6,
+                    total_input_tokens_cap=750_000,
+                    total_output_tokens_cap=350_000,
+                    total_requests_cap=450,
+                    total_timeout_seconds=5_400,
+                    authorization_deadline_utc=deadline,
+                    environment={"DEEPSEEK_API_KEY": "deepseek-budget-secret"},
+                    agent_runner=minimal_runner,
+                    _depth60_plan_binding=binding,
+                )
+            report = result["report"]
+            self.assertEqual(report["run_status"], "completed")
+            self.assertEqual(report["selected_case_count"], 60)
+            self.assertEqual(report["attempted_case_count"], 60)
+            self.assertEqual(report["completed_case_count"], 60)
+            self.assertEqual(report["not_started_case_count"], 0)
+            self.assertEqual(report["depth60_plan_binding"], binding)
+            self.assertEqual(
+                report["tool_input_snapshot"]["status"],
+                "ephemeral_frozen_copy_verified_then_removed",
+            )
+            self.assertTrue(report["tool_input_snapshot"]["frozen_copy_used"])
+            self.assertFalse((output / "depth60_frozen_inputs").exists())
+            self.assertEqual(
+                report["failure_denominators"]["attempted_cases"], 60
+            )
+            self.assertEqual(
+                report["deepseek_cny_policy"]["coverage"]["status"],
+                "complete",
+            )
+            self.assertEqual(
+                report["deepseek_cny_policy"]["observed_usage"][
+                    "known_completed_requests"
+                ],
+                60,
+            )
+            rows = [
+                json.loads(line)
+                for line in (output / "phase6_results.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(len(rows), 60)
+            self.assertEqual(
+                [row["task_id"] for row in rows],
+                [f"P6-DEV-{index:03d}" for index in range(1, 61)],
+            )
+            self.assertFalse(any("HOLD" in row["task_id"] for row in rows))
+            manifest = json.loads(
+                (output / "phase6_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["depth60_plan_binding"], binding)
+
+    async def test_deepseek_harness_identity_failure_stops_before_second_case(self) -> None:
+        calls = 0
+
+        async def wrong_model_runner(
+            request: LogicalAgentRequest,
+            backend,
+            *,
+            provider,
+            model: str,
+            **kwargs,
+        ) -> AgentRunRecord:
+            nonlocal calls
+            del request, backend, model, kwargs
+            calls += 1
+            return AgentRunRecord(
+                status="completed",
+                model="wrong-model",
+                final_output="",
+                tool_calls=(),
+                usage=_usage(),
+                latency_ms=1.0,
+                cost_usd=None,
+                approval_interruptions=(),
+                tracing_disabled=True,
+                provider=provider.provider_id,
+                transport=provider.transport_id,
+            )
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "artifacts") as directory:
+            output = Path(directory) / "deepseek-harness-stop"
+            result = await run_phase6_online_evaluation(
+                project_root=ROOT,
+                tasks_path=CORPUS,
+                split_manifest_path=SPLITS,
+                output_directory=output,
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                split="development",
+                max_cases=2,
+                confirm_online=True,
+                deepseek_pricing_snapshot_date="2026-08-31",
+                deepseek_pricing_source_url=(
+                    "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+                ),
+                local_observed_cost_stop_cny=6,
+                total_input_tokens_cap=750_000,
+                total_output_tokens_cap=350_000,
+                total_requests_cap=450,
+                total_timeout_seconds=5_400,
+                environment={"DEEPSEEK_API_KEY": "deepseek-budget-secret"},
+                agent_runner=wrong_model_runner,
+            )
+            self.assertEqual(calls, 1)
+            report = result["report"]
+            self.assertEqual(report["run_status"], "stopped")
+            self.assertEqual(
+                report["stop_reason"], "deepseek_harness_integrity_failure"
+            )
+            self.assertEqual(report["harness_error_count"], 1)
+            self.assertEqual(report["attempted_case_count"], 1)
+            self.assertEqual(report["not_started_case_count"], 1)
 
     async def test_runner_error_is_included_failure_and_audited(self) -> None:
         async def failing_runner(request, backend, **kwargs):

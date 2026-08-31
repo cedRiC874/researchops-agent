@@ -60,6 +60,10 @@ from .phase6_runner import (
     run_phase6_online_evaluation,
     validate_phase6_suite,
 )
+from .phase6_depth60 import (
+    run_phase6_depth60_online,
+    validate_phase6_depth60_plan,
+)
 from .self_pilot import (
     create_self_pilot_session,
     get_next_self_pilot_task,
@@ -309,6 +313,54 @@ def build_parser() -> argparse.ArgumentParser:
     )
     phase6_run_parser.add_argument(
         "--output-price-per-million-usd", type=_nonnegative_float
+    )
+    phase6_run_parser.add_argument("--deepseek-pricing-snapshot-date")
+    phase6_run_parser.add_argument("--deepseek-pricing-source-url")
+    phase6_run_parser.add_argument(
+        "--local-observed-cost-stop-cny", type=_positive_float
+    )
+    phase6_run_parser.add_argument(
+        "--max-total-input-tokens", type=_positive_int
+    )
+    phase6_run_parser.add_argument(
+        "--max-total-output-tokens", type=_positive_int
+    )
+    phase6_run_parser.add_argument(
+        "--max-total-requests", type=_positive_int
+    )
+    phase6_run_parser.add_argument(
+        "--total-timeout-seconds", type=_positive_float
+    )
+
+    phase6_depth60_parser = subparsers.add_parser(
+        "phase6-run-deepseek-depth60-online",
+        help="使用冻结单次计划运行 60 题 DeepSeek Phase 6 development 评测",
+    )
+    phase6_depth60_parser.add_argument(
+        "--plan",
+        type=Path,
+        default=Path("evals/phase6_deepseek_depth60_plan.json"),
+    )
+    phase6_depth60_parser.add_argument(
+        "--output-dir", type=Path, required=True
+    )
+    phase6_depth60_parser.add_argument("--authorization-id", required=True)
+    phase6_depth60_parser.add_argument(
+        "--expected-plan-commitment", required=True
+    )
+    phase6_depth60_parser.add_argument(
+        "--authorization-expires-at-utc", required=True
+    )
+    phase6_depth60_parser.add_argument("--confirm-online", action="store_true")
+
+    phase6_depth60_validate_parser = subparsers.add_parser(
+        "phase6-validate-deepseek-depth60",
+        help="离线验证 60 题 DeepSeek 单次计划、组件 hash 与授权边界",
+    )
+    phase6_depth60_validate_parser.add_argument(
+        "--plan",
+        type=Path,
+        default=Path("evals/phase6_deepseek_depth60_plan.json"),
     )
 
     eval_v2_validate_parser = subparsers.add_parser(
@@ -824,6 +876,17 @@ def main() -> int:
                     confirm_online=args.confirm_online,
                     input_price_per_million_usd=args.input_price_per_million_usd,
                     output_price_per_million_usd=args.output_price_per_million_usd,
+                    deepseek_pricing_snapshot_date=(
+                        args.deepseek_pricing_snapshot_date
+                    ),
+                    deepseek_pricing_source_url=args.deepseek_pricing_source_url,
+                    local_observed_cost_stop_cny=(
+                        args.local_observed_cost_stop_cny
+                    ),
+                    total_input_tokens_cap=args.max_total_input_tokens,
+                    total_output_tokens_cap=args.max_total_output_tokens,
+                    total_requests_cap=args.max_total_requests,
+                    total_timeout_seconds=args.total_timeout_seconds,
                 )
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -831,7 +894,38 @@ def main() -> int:
             return 0 if (
                 report["harness_error_count"] == 0
                 and report["passed"] == report["included"]
+                and report.get("run_status") == "completed"
+                and report.get("not_started_case_count") == 0
             ) else 5
+        elif args.command == "phase6-run-deepseek-depth60-online":
+            project_root = Path(__file__).resolve().parents[2]
+            result = asyncio.run(
+                run_phase6_depth60_online(
+                    project_root=project_root,
+                    plan_path=args.plan,
+                    output_directory=args.output_dir,
+                    authorization_id=args.authorization_id,
+                    expected_plan_commitment=args.expected_plan_commitment,
+                    authorization_expires_at_utc=(
+                        args.authorization_expires_at_utc
+                    ),
+                    confirm_online=args.confirm_online,
+                )
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            report = result["report"]
+            return 0 if (
+                report.get("run_status") == "completed"
+                and report.get("attempted_case_count") == 60
+                and report.get("not_started_case_count") == 0
+                and report.get("harness_error_count") == 0
+            ) else 5
+        elif args.command == "phase6-validate-deepseek-depth60":
+            project_root = Path(__file__).resolve().parents[2]
+            result = validate_phase6_depth60_plan(project_root, args.plan)
+            result.pop("plan", None)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         elif args.command == "eval-v2-validate":
             result = validate_eval_v2_suite(
                 campaign_path=args.campaign,

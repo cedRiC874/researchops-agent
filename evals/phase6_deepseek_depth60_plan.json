@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "phase6-deepseek-depth60-v1",
+  "status": "locked_offline_not_run",
+  "locked_at_utc": "2026-08-31T13:52:24.481Z",
+  "evaluation_scope": "repo_visible_development_provider_behavior_depth",
+  "provider": {
+    "provider_id": "deepseek",
+    "model_alias": "deepseek-v4-flash",
+    "official_version_snapshot": "DeepSeek-V4-Flash-0731",
+    "model_alias_mutable": true,
+    "transport_id": "openai_compatible_responses",
+    "split": "development",
+    "max_cases": 60,
+    "max_turns": 8,
+    "case_timeout_seconds": 120,
+    "max_output_tokens": 2000,
+    "sequential_execution": true,
+    "client_retries": 0,
+    "resume": false
+  },
+  "selection": {
+    "corpus_task_count": 64,
+    "development_task_count": 60,
+    "holdout_task_count": 4,
+    "selected_task_ids": [
+      "P6-DEV-001", "P6-DEV-002", "P6-DEV-003", "P6-DEV-004",
+      "P6-DEV-005", "P6-DEV-006", "P6-DEV-007", "P6-DEV-008",
+      "P6-DEV-009", "P6-DEV-010", "P6-DEV-011", "P6-DEV-012",
+      "P6-DEV-013", "P6-DEV-014", "P6-DEV-015", "P6-DEV-016",
+      "P6-DEV-017", "P6-DEV-018", "P6-DEV-019", "P6-DEV-020",
+      "P6-DEV-021", "P6-DEV-022", "P6-DEV-023", "P6-DEV-024",
+      "P6-DEV-025", "P6-DEV-026", "P6-DEV-027", "P6-DEV-028",
+      "P6-DEV-029", "P6-DEV-030", "P6-DEV-031", "P6-DEV-032",
+      "P6-DEV-033", "P6-DEV-034", "P6-DEV-035", "P6-DEV-036",
+      "P6-DEV-037", "P6-DEV-038", "P6-DEV-039", "P6-DEV-040",
+      "P6-DEV-041", "P6-DEV-042", "P6-DEV-043", "P6-DEV-044",
+      "P6-DEV-045", "P6-DEV-046", "P6-DEV-047", "P6-DEV-048",
+      "P6-DEV-049", "P6-DEV-050", "P6-DEV-051", "P6-DEV-052",
+      "P6-DEV-053", "P6-DEV-054", "P6-DEV-055", "P6-DEV-056",
+      "P6-DEV-057", "P6-DEV-058", "P6-DEV-059", "P6-DEV-060"
+    ],
+    "selected_task_count": 60,
+    "legacy_development_task_count": 16,
+    "new_frozen_extension_task_count": 44,
+    "holdout_executed": false,
+    "selection_used_prior_online_results": false,
+    "post_run_prompt_or_scorer_tuning_allowed": false
+  },
+  "budget": {
+    "currency": "CNY",
+    "local_observed_cost_stop_cny": "6.000000",
+    "pricing_snapshot_date": "2026-08-31",
+    "pricing_source_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+    "estimate_method": "peak_hours_all_input_cache_miss",
+    "input_cache_miss_cny_per_million": "3.000000",
+    "output_cny_per_million": "9.000000",
+    "total_input_tokens_cap": 750000,
+    "total_output_tokens_cap": 350000,
+    "total_requests_cap": 450,
+    "total_timeout_seconds": 5400,
+    "provider_billing_hard_cap": false,
+    "actual_provider_bill_known": false,
+    "strict_provider_hard_cap": false,
+    "enforcement_semantics": "pre_case_reserve_plus_post_case_observed_stop",
+    "single_case_overshoot_possible": true
+  },
+  "official_sources": [
+    {
+      "source_id": "deepseek_models_and_pricing",
+      "url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+      "captured_at_utc": "2026-08-31T13:49:09.077Z",
+      "decoded_utf8_bytes": 23354,
+      "sha256": "899affbdbc33d0be620d8dea59e86f5036c11b5410b14d060b8d2874c74f38e5"
+    },
+    {
+      "source_id": "deepseek_change_log",
+      "url": "https://api-docs.deepseek.com/updates/",
+      "captured_at_utc": "2026-08-31T13:49:09.077Z",
+      "decoded_utf8_bytes": 48149,
+      "sha256": "9f0e83b23b4e5aaf47b973a222821bb033d0541c8eae67d03a5ab73858d4713a"
+    },
+    {
+      "source_id": "deepseek_models_list_reference",
+      "url": "https://api-docs.deepseek.com/api/list-models/",
+      "captured_at_utc": "2026-08-31T13:49:09.077Z",
+      "decoded_utf8_bytes": 29721,
+      "sha256": "29cf290efb280a177f5b65e2f73ca3ec58486da1462912ad91f9211dfd482f84"
+    }
+  ],
+  "component_hashes": {
+    "source_tree_sha256": "2bd86384718a704b51003cafe7b867bbceac6c30234a387d772d66fa6a16dc20",
+    "phase6_tasks_sha256": "af945e5bd780b39e7639102dab75c446350a81e9e9464fe156e41d2a45cebc2c",
+    "phase6_splits_sha256": "777256c08d78f8f84f0c56ee86d9f8f669add75717148e9e4b5ae27da6820a0f",
+    "requirements_lock_sha256": "15a40bd036716b0145823f42ea3004be70769ce3ca41f8a0fd9696fc19afd86b",
+    "pyproject_sha256": "d87693e733f460e3f5034d434a0e2e519fc1c3250e84b17314014f7f34516d33",
+    "synthetic_trial_csv_sha256": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00",
+    "synthetic_trial_design_sha256": "e8ab569e2f877028431d58c3a676d68917d67237303cc194705b5850d400938b",
+    "phase3_analysis_bundle_sha256": "f2e1dc8b6fff3589cdf82f54766cb5371ff02a25c3239077298d70a38725b2f8",
+    "phase3_effect_estimates_png_sha256": "d4e061cde8f080dd4d053d746b13448b6d1e07d786441aa51585c5cd95ee523c"
+  },
+  "authorization_boundary": {
+    "plan_alone_authorizes_online_run": false,
+    "fresh_single_use_authorization_required": true,
+    "authorization_id_and_expiry_required": true,
+    "single_use_receipt_namespace": "artifacts/phase6_deepseek_depth60",
+    "network_calls_performed": 0,
+    "model_calls_performed": 0
+  },
+  "claim_boundary": {
+    "model_quality_claim_allowed": false,
+    "private_holdout_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "production_sla_claim_allowed": false,
+    "cross_provider_claim_allowed": false,
+    "result_attributed_to_model_alone": false,
+    "result_attribution": "deepseek_plus_frozen_control_plane"
+  },
+  "plan_commitment_sha256": "012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3"
+}

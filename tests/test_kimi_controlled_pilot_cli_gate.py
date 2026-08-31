@@ -269,7 +269,7 @@ class KimiControlledPilotCliGateTests(unittest.TestCase):
             )
         self.assertEqual(
             caught.exception.code,
-            "eval_v2_candidate_online_execution_forbidden",
+            "eval_v2_historical_candidate_execution_forbidden",
         )
         self.assertFalse(output.exists())
 
@@ -296,7 +296,7 @@ class KimiControlledPilotCliGateTests(unittest.TestCase):
             )
         self.assertEqual(exit_code, 4)
         self.assertEqual(
-            result["error_code"], "eval_v2_candidate_online_execution_forbidden"
+            result["error_code"], "eval_v2_historical_candidate_execution_forbidden"
         )
         self.assertFalse(output.exists())
 
@@ -343,6 +343,7 @@ class KimiControlledPilotCliGateTests(unittest.TestCase):
         self.assertIn("$environment.candidate_verified -ne $false", workflow)
         self.assertIn("$environment.historical_snapshot_verified -ne $false", workflow)
         self.assertIn("$historicalV7.historical_snapshot_only -ne $true", workflow)
+        self.assertIn("$diagnosticV8.historical_snapshot_only -ne $true", workflow)
 
 
 if __name__ == "__main__":

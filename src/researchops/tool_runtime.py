@@ -551,8 +551,24 @@ class ControlledToolExecutor:
         return value.astimezone(timezone.utc)
 
 
-def build_project_tool_registry(project_root: str | Path) -> ToolRegistry:
+def build_project_tool_registry(
+    project_root: str | Path,
+    *,
+    source_snapshot_root: str | Path | None = None,
+) -> ToolRegistry:
     root = Path(project_root).resolve()
+    source_candidate = root if source_snapshot_root is None else Path(source_snapshot_root)
+    if source_candidate.is_symlink():
+        raise ToolRuntimeError(
+            "tool_source_snapshot_invalid",
+            "工具输入快照目录不存在或不安全。",
+        )
+    source_root = source_candidate.resolve()
+    if not source_root.is_dir():
+        raise ToolRuntimeError(
+            "tool_source_snapshot_invalid",
+            "工具输入快照目录不存在或不安全。",
+        )
     registry = ToolRegistry()
 
     def validate_dataset_only(arguments: Mapping[str, Any]) -> dict[str, Any]:
@@ -566,8 +582,8 @@ def build_project_tool_registry(project_root: str | Path) -> ToolRegistry:
     def dataset_path(arguments: Mapping[str, Any]) -> Path:
         if arguments.get("dataset_id") != "synthetic_trial":
             raise ToolRuntimeError("tool_arguments_invalid", "未知数据集逻辑 ID。")
-        path = (root / "data" / "synthetic_trial.csv").resolve()
-        data_root = (root / "data").resolve()
+        path = (source_root / "data" / "synthetic_trial.csv").resolve()
+        data_root = (source_root / "data").resolve()
         if not path.is_relative_to(data_root) or not path.is_file():
             raise ToolRuntimeError("tool_source_not_found", "模拟数据集尚未生成。")
         return path
@@ -641,8 +657,8 @@ def build_project_tool_registry(project_root: str | Path) -> ToolRegistry:
         return {"dataset_id": "synthetic_trial", "design_id": str(design_id)}
 
     def load_design(design_id: str) -> ResearchDesign:
-        path = (root / "data" / "synthetic_trial_design.json").resolve()
-        data_root = (root / "data").resolve()
+        path = (source_root / "data" / "synthetic_trial_design.json").resolve()
+        data_root = (source_root / "data").resolve()
         if not path.is_relative_to(data_root) or not path.is_file():
             raise ToolRuntimeError("tool_source_not_found", "模拟研究设计尚未生成。")
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -716,7 +732,9 @@ def build_project_tool_registry(project_root: str | Path) -> ToolRegistry:
         return {"bundle_id": "phase3"}
 
     def bundle_scope(arguments: Mapping[str, Any]) -> dict[str, Any]:
-        bundle_path, chart_path = _bundle_paths(root, str(arguments["bundle_id"]))
+        bundle_path, chart_path = _bundle_paths(
+            source_root, str(arguments["bundle_id"])
+        )
         return {
             "source_bundle_sha256": _sha256_file(bundle_path),
             "source_chart_sha256": _sha256_file(chart_path),
@@ -725,7 +743,7 @@ def build_project_tool_registry(project_root: str | Path) -> ToolRegistry:
     def read_summary(
         arguments: Mapping[str, Any], context: ToolInvocationContext
     ) -> Mapping[str, Any]:
-        bundle_path, _ = _bundle_paths(root, str(arguments["bundle_id"]))
+        bundle_path, _ = _bundle_paths(source_root, str(arguments["bundle_id"]))
         payload = json.loads(bundle_path.read_text(encoding="utf-8"))
         evidence = []
         for item in payload["evidence"]:
@@ -805,7 +823,9 @@ def build_project_tool_registry(project_root: str | Path) -> ToolRegistry:
     def publish(
         arguments: Mapping[str, Any], context: ToolInvocationContext
     ) -> Mapping[str, Any]:
-        bundle_path, chart_path = _bundle_paths(root, str(arguments["bundle_id"]))
+        bundle_path, chart_path = _bundle_paths(
+            source_root, str(arguments["bundle_id"])
+        )
         bundle_payload = json.loads(bundle_path.read_text(encoding="utf-8"))
         if bundle_payload.get("dataset", {}).get("raw_data_embedded") is not False:
             raise PermanentToolError(
