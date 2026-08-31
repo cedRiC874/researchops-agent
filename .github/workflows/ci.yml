@@ -90,12 +90,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $diagnosticV8 = $diagnosticV8Raw | ConvertFrom-Json
           if ($diagnosticV8.status -ne "valid" -or
-              $diagnosticV8.historical_snapshot_only -ne $false -or
+              $diagnosticV8.historical_snapshot_only -ne $true -or
               $diagnosticV8.diagnostic_snapshot_only -ne $true -or
               $diagnosticV8.public_regression_online_authorized -ne $false -or
               $diagnosticV8.controlled_synthetic_pilot_online_authorized -ne $false -or
               $diagnosticV8.network_calls -ne 0) {
-            Write-Output "::error title=diagnostic_v8_contract_invalid::Candidate v8 must remain a valid offline diagnostic-only snapshot."
+            Write-Output "::error title=diagnostic_v8_contract_invalid::Candidate v8 must remain a valid offline historical diagnostic-only snapshot."
             exit 1
           }
           $environmentRaw = (& python -m researchops.cli `

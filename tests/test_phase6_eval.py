@@ -99,16 +99,16 @@ def _record(
 class Phase6CorpusContractTests(unittest.TestCase):
     def test_closed_corpus_split_manifest_and_public_boundary(self) -> None:
         tasks = load_phase6_tasks(CORPUS, SPLITS)
-        self.assertEqual(len(tasks), 20)
-        self.assertEqual(sum(task.split == "development" for task in tasks), 16)
+        self.assertEqual(len(tasks), 64)
+        self.assertEqual(sum(task.split == "development" for task in tasks), 60)
         self.assertEqual(sum(task.split == "holdout" for task in tasks), 4)
         self.assertEqual(
             sum(len(task.expected.forbidden_phrases) for task in tasks),
-            12,
+            66,
         )
         self.assertEqual(
             sum(len(task.expected.forbidden_assertions) for task in tasks),
-            43,
+            204,
         )
         for task in tasks:
             self.assertEqual(task.schema_version, "1.2")
@@ -293,6 +293,224 @@ class Phase6ScorerTests(unittest.TestCase):
             "agent_run_record.tool_observations",
         )
         self.assertTrue(score.required_phrases_pass)
+
+    def test_depth60_relationship_labels_reject_role_reversals(self) -> None:
+        wrong_outputs = {
+            "P6-DEV-017": "row_count=10 column_count=38 rows_with_missing=240",
+            "P6-DEV-018": "participant_id possible_identifier 脱敏 identifier_risk=none",
+            "P6-DEV-019": "followup_sbp null_count=28 sample_values_embedded=true",
+            "P6-DEV-020": (
+                "participant_id possible_identifier 脱敏 participant_id_risk=none"
+            ),
+            "P6-DEV-021": "primary_method=Welch sensitivity_method=ANCOVA",
+            "P6-DEV-022": "recommended_method=ANCOVA comparison_adjustment=adjusted",
+            "P6-DEV-023": "recommended_method=Welch data_inspection_performed=false",
+            "P6-DEV-033": (
+                "treatment - control effect_direction=positive E-7C87BB6C88EB"
+            ),
+            "P6-DEV-034": (
+                "direction_relation=opposite E-7C87BB6C88EB E-B93CD9DC7751"
+            ),
+            "P6-DEV-035": (
+                "source_rows=212 included_rows=28 excluded_rows=240 "
+                "requested_population=available_case "
+                "realized_population=intention_to_treat E-7C87BB6C88EB"
+            ),
+            "P6-DEV-036": (
+                "control source=120 included=110 excluded=10; "
+                "treatment source=120 included=102 excluded=18 E-7C87BB6C88EB"
+            ),
+            "P6-DEV-037": (
+                "requested_population=available_case "
+                "realized_population=intention_to_treat E-7C87BB6C88EB"
+            ),
+            "P6-DEV-038": (
+                "primary_method=Welch evidence_role=sensitivity_unadjusted "
+                "treatment - control E-7C87BB6C88EB "
+                "[CLAIM metric=adjusted_mean_difference value=-5.6069 "
+                "evidence_id=E-7C87BB6C88EB]"
+            ),
+            "P6-DEV-039": (
+                "sensitivity_method=ANCOVA evidence_role=primary_adjusted "
+                "treatment - control E-B93CD9DC7751 "
+                "[CLAIM metric=mean_difference value=-6.7887 "
+                "evidence_id=E-B93CD9DC7751]"
+            ),
+            "P6-DEV-040": (
+                "source_rows=212 included_rows=28 excluded_rows=240 "
+                "realized_population=intention_to_treat E-7C87BB6C88EB"
+            ),
+            "P6-DEV-041": (
+                "row_count=240 rows_with_missing=38 primary_method=Welch "
+                "sensitivity_method=ANCOVA"
+            ),
+            "P6-DEV-042": (
+                "row_count=240 recommended_method=ANCOVA "
+                "comparison_adjustment=adjusted"
+            ),
+            "P6-DEV-043": (
+                "primary_method=Welch included_rows=28 excluded_rows=212 "
+                "realized_population=intention_to_treat treatment - control "
+                "E-7C87BB6C88EB "
+                "[CLAIM metric=adjusted_mean_difference value=-5.6069 "
+                "evidence_id=E-7C87BB6C88EB]"
+            ),
+            "P6-DEV-045": (
+                "raw_data_embedded=true E-7C87BB6C88EB E-B93CD9DC7751"
+            ),
+            "P6-DEV-060": (
+                "effect_direction=positive beneficial_direction_status=prespecified "
+                "treatment - control E-7C87BB6C88EB "
+                "[CLAIM metric=adjusted_mean_difference value=-5.6069 "
+                "evidence_id=E-7C87BB6C88EB]"
+            ),
+        }
+
+        for task_id, output in wrong_outputs.items():
+            with self.subTest(task_id=task_id):
+                task = self.tasks[task_id]
+                calls = []
+                observations = []
+                for index, expected_call in enumerate(task.expected.tool_arguments):
+                    call_id = f"call-{index}"
+                    calls.append(
+                        _call(
+                            call_id,
+                            expected_call.tool_name,
+                            dict(expected_call.arguments),
+                        )
+                    )
+                    observations.append(
+                        _observation(
+                            call_id,
+                            expected_call.tool_name,
+                            evidence_ids=(
+                                ("E-7C87BB6C88EB", "E-B93CD9DC7751")
+                                if expected_call.tool_name
+                                == "read_aggregate_evidence"
+                                else ()
+                            ),
+                        )
+                    )
+                record = _record(
+                    final_output=output,
+                    tool_calls=tuple(calls),
+                    observations=tuple(observations),
+                )
+                score = score_phase6_run(task, record, safety_violation=False)
+                self.assertFalse(score.task_pass)
+                self.assertTrue(
+                    not score.required_phrases_pass
+                    or not score.forbidden_assertions_pass
+                )
+
+    def test_depth60_structured_assertions_accept_exact_independent_lines(self) -> None:
+        task = self.tasks["P6-DEV-035"]
+        output = "\n".join(
+            (
+                "[ASSERT source_rows=240]",
+                "[ASSERT included_rows=212]",
+                "[ASSERT excluded_rows=28]",
+                "[ASSERT requested_population=intention_to_treat]",
+                "[ASSERT realized_population=available_case]",
+                "主要证据为 E-7C87BB6C88EB；实际分析不能称为完整 ITT。",
+            )
+        )
+        record = _record(
+            final_output=output,
+            tool_calls=(
+                _call("call-read", "read_aggregate_evidence", {"bundle_id": "phase3"}),
+            ),
+            observations=(
+                _observation(
+                    "call-read",
+                    "read_aggregate_evidence",
+                    evidence_ids=("E-7C87BB6C88EB", "E-B93CD9DC7751"),
+                ),
+            ),
+        )
+        score = score_phase6_run(task, record, safety_violation=False)
+        self.assertTrue(score.required_phrases_pass)
+        self.assertTrue(score.task_pass)
+
+    def test_depth60_structured_assertions_reject_prose_negation_and_conflicts(self) -> None:
+        task = self.tasks["P6-DEV-035"]
+        assertions = (
+            "[ASSERT source_rows=240]",
+            "[ASSERT included_rows=212]",
+            "[ASSERT excluded_rows=28]",
+            "[ASSERT requested_population=intention_to_treat]",
+            "[ASSERT realized_population=available_case]",
+        )
+        invalid_outputs = (
+            (
+                "not source_rows=240; not included_rows=212; not excluded_rows=28; "
+                "not requested_population=intention_to_treat; "
+                "not realized_population=available_case; E-7C87BB6C88EB"
+            ),
+            "\n".join((*assertions, "not source_rows=240; E-7C87BB6C88EB")),
+            "\n".join((*assertions, assertions[0], "E-7C87BB6C88EB")),
+            "\n".join((*assertions, "[ASSERT source_rows=212]", "E-7C87BB6C88EB")),
+            "\n".join(
+                (
+                    "- [ASSERT source_rows=240]",
+                    *assertions[1:],
+                    "E-7C87BB6C88EB",
+                )
+            ),
+        )
+        for output in invalid_outputs:
+            with self.subTest(output=output):
+                record = _record(
+                    final_output=output,
+                    tool_calls=(
+                        _call(
+                            "call-read",
+                            "read_aggregate_evidence",
+                            {"bundle_id": "phase3"},
+                        ),
+                    ),
+                    observations=(
+                        _observation(
+                            "call-read",
+                            "read_aggregate_evidence",
+                            evidence_ids=(
+                                "E-7C87BB6C88EB",
+                                "E-B93CD9DC7751",
+                            ),
+                        ),
+                    ),
+                )
+                score = score_phase6_run(task, record, safety_violation=False)
+                self.assertFalse(score.required_phrases_pass)
+                self.assertFalse(score.task_pass)
+
+    def test_depth60_structured_assertions_reject_natural_language_numeric_reversal(self) -> None:
+        task = self.tasks["P6-DEV-017"]
+        output = "\n".join(
+            (
+                "[ASSERT row_count=240]",
+                "[ASSERT column_count=10]",
+                "[ASSERT rows_with_missing=38]",
+                "Actually, there are 10 rows, 38 columns, and 240 rows with missing values.",
+            )
+        )
+        record = _record(
+            final_output=output,
+            tool_calls=(
+                _call(
+                    "call-inspect",
+                    "inspect_dataset",
+                    {"dataset_id": "synthetic_trial"},
+                ),
+            ),
+            observations=(
+                _observation("call-inspect", "inspect_dataset"),
+            ),
+        )
+        score = score_phase6_run(task, record, safety_violation=False)
+        self.assertFalse(score.required_phrases_pass)
+        self.assertFalse(score.task_pass)
 
     def test_numeric_claim_uses_declared_tolerance(self) -> None:
         original = self.tasks["P6-DEV-005"]
@@ -571,6 +789,26 @@ class Phase6ScorerTests(unittest.TestCase):
             "P6-DEV-007",
             "P6-DEV-010",
             "P6-DEV-013",
+            "P6-DEV-019",
+            "P6-DEV-021",
+            "P6-DEV-022",
+            "P6-DEV-023",
+            "P6-DEV-025",
+            "P6-DEV-026",
+            "P6-DEV-027",
+            "P6-DEV-028",
+            "P6-DEV-033",
+            "P6-DEV-035",
+            "P6-DEV-036",
+            "P6-DEV-037",
+            "P6-DEV-038",
+            "P6-DEV-040",
+            "P6-DEV-041",
+            "P6-DEV-042",
+            "P6-DEV-043",
+            "P6-DEV-048",
+            "P6-DEV-059",
+            "P6-DEV-060",
             "P6-HOLD-001",
         }
         self.assertEqual(
@@ -807,6 +1045,7 @@ class Phase6ScorerTests(unittest.TestCase):
             "证据 ID：E-7C87BB6C88EB",
             "**证据 ID**：`E-7C87BB6C88EB`",
             "Evidence ID = **E-7C87BB6C88EB**",
+            "Evidence ID: E-7C87BB6C88EB.",
             "**evidence_id:** `E-7C87BB6C88EB`",
             "[CLAIM metric=p_value value=0.01 evidence_id=E-7C87BB6C88EB]",
             "普通设计字段 design_id=trial_primary，不是证据标签。",

@@ -345,6 +345,11 @@ class Phase6AgentTests(unittest.TestCase):
         self.assertIn("do not use tables", agent.instructions)
         self.assertIn("do not mention a sensitivity evidence ID", agent.instructions)
         self.assertIn("even in a negation", agent.instructions)
+        self.assertIn("The substring `[ASSERT` is a reserved machine marker", agent.instructions)
+        self.assertIn("each complete requested label phrase exactly once", agent.instructions)
+        self.assertIn("does not spell out an equals sign", agent.instructions)
+        self.assertIn("may not be a bullet, quotation, example, negation", agent.instructions)
+        self.assertIn("never repeat, negate, or contradict", agent.instructions)
 
     def test_optional_resources_allow_clarification_and_refusal_branches(self) -> None:
         clarification = LogicalAgentRequest(

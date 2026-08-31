@@ -572,7 +572,7 @@ def test_diagnostic_candidate_is_rejected_before_environment_or_provider(
             budget_cny=6,
             confirm_online=True,
         )
-    assert caught.value.code == "eval_v2_candidate_online_execution_forbidden"
+    assert caught.value.code == "eval_v2_historical_candidate_execution_forbidden"
     assert not output.exists()
 
 

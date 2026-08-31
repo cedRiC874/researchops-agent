@@ -11,7 +11,6 @@ from unittest.mock import patch
 from researchops import eval_v2_freeze as freeze_module
 from researchops.eval_v2_contracts import EvalV2ContractError
 from researchops.eval_v2_freeze import (
-    build_v8_diagnostic_candidate_component_hashes,
     candidate_commitment_sha256,
     load_public_regression_task_orders,
     sha256_bundle_v1,
@@ -105,11 +104,11 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertEqual(result["dependency_lock"]["environment_mismatch_count"], 0)
         self.assertEqual(result["network_calls"], 0)
 
-    def test_v8_diagnostic_candidate_is_current_but_not_online_authorized(self) -> None:
+    def test_v8_diagnostic_candidate_is_historical_and_not_online_authorized(self) -> None:
         result = validate_public_regression_candidate(
             project_root=REPO_ROOT,
             candidate_path=V8_CANDIDATE_PATH,
-            verify_environment=True,
+            verify_environment=False,
         )
         self.assertEqual(result["status"], "valid")
         self.assertEqual(
@@ -120,7 +119,7 @@ class EvalV2FreezeTests(unittest.TestCase):
             result["candidate_commitment_sha256"],
             "b41269ac6db96e2999fedc95f08f3b77a48699f8c0b50b63764bcb6e1f9e962c",
         )
-        self.assertFalse(result["historical_snapshot_only"])
+        self.assertTrue(result["historical_snapshot_only"])
         self.assertTrue(result["diagnostic_snapshot_only"])
         self.assertFalse(result["public_regression_online_authorized"])
         self.assertFalse(result["controlled_synthetic_pilot_online_authorized"])
@@ -129,24 +128,45 @@ class EvalV2FreezeTests(unittest.TestCase):
         self.assertFalse(result["prior_results_inherited"])
         self.assertFalse(result["predecessor_failure_result_inherited"])
         self.assertFalse(result["predecessor_authorization_reused"])
-        self.assertTrue(result["dependency_lock"]["environment_verified"])
-        self.assertEqual(result["dependency_lock"]["environment_mismatch_count"], 0)
+        self.assertEqual(result["historical_component_count"], 7)
         self.assertEqual(result["network_calls"], 0)
         self.assertEqual(
             hashlib.sha256(V8_CANDIDATE_PATH.read_bytes()).hexdigest(),
             "6615cc6638e79dc854265e46cf61dd4de9932e57a6fe2415b721f0a408b4eac0",
         )
 
-    def test_v8_candidate_component_and_runtime_hashes_are_exact(self) -> None:
-        candidate = json.loads(V8_CANDIDATE_PATH.read_text(encoding="utf-8"))
+    def test_historical_v8_rejects_current_environment_verification(self) -> None:
+        with self.assertRaises(EvalV2ContractError) as caught:
+            validate_public_regression_candidate(
+                project_root=REPO_ROOT,
+                candidate_path=V8_CANDIDATE_PATH,
+                verify_environment=True,
+            )
         self.assertEqual(
-            candidate["component_hashes"],
-            build_v8_diagnostic_candidate_component_hashes(REPO_ROOT),
+            caught.exception.code,
+            "eval_v2_historical_candidate_environment_verification_unsupported",
         )
+
+    def test_v8_candidate_frozen_component_and_runtime_hashes_are_exact(self) -> None:
+        candidate = json.loads(V8_CANDIDATE_PATH.read_text(encoding="utf-8"))
         self.assertEqual(
             candidate_commitment_sha256(candidate),
             candidate["candidate_commitment_sha256"],
         )
+        frozen_components = {
+            "src/researchops/kimi_chat_transport_v3.py": "6a702c9edb4153b258c5ea1dcc8a9047b2d46fa8281a38fac7c0ee93a475bdef",
+            "evals/v2/kimi_chat_completions_contract_v3.json": "464b87bb4a1db9b66c252ef502a73dfb5037637ad75c3619fbc61349fad873c2",
+            "src/researchops/kimi_controlled_pilot_v3.py": "39e03a20d64e6907231233b087bb4517b3de854e4db1493b81038e44485cab00",
+            "evals/v2/kimi_controlled_pilot_contract_v3.json": "8e0b9b67f5427ddde1097c2d1ff9769a309f1031bd0b224a328f430ec675079b",
+            "evals/v2/kimi_controlled_pilot_scenarios_v1.json": "f5f51f57f46d5b98677bb9809f28f3e211bb553fd8f4f8d873f848a9ef6f649b",
+            "evals/v2/kimi_terms_g2a_provisional_contract.json": "be9b3b609675b6965d81d078c6c260b75bad4b99f98276b811ac533deadfdc49",
+        }
+        for relative_path, expected_sha256 in frozen_components.items():
+            with self.subTest(relative_path=relative_path):
+                self.assertEqual(
+                    hashlib.sha256((REPO_ROOT / relative_path).read_bytes()).hexdigest(),
+                    expected_sha256,
+                )
         runtime = json.loads(V8_RUNTIME_PATH.read_text(encoding="utf-8"))
         self.assertEqual(
             candidate["component_hashes"]["kimi_runtime_candidate_contract_sha256"],

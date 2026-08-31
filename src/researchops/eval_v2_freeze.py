@@ -43,6 +43,9 @@ HISTORICAL_V6_CANDIDATE_COMMITMENT_SHA256 = (
 HISTORICAL_V7_CANDIDATE_COMMITMENT_SHA256 = (
     "2d0b9952a556eed6982eac2b4e4d050efb40f518551738e51ceaf671a1d223d5"
 )
+HISTORICAL_V8_CANDIDATE_COMMITMENT_SHA256 = (
+    "b41269ac6db96e2999fedc95f08f3b77a48699f8c0b50b63764bcb6e1f9e962c"
+)
 V8_CANDIDATE_SCHEMA_VERSION = "8.0"
 V8_CANDIDATE_ID = "eval-v2-public-regression-deepseek-kimi-controlled-chat-v8"
 V8_PREDECESSOR_CANDIDATE_COMMITMENT_SHA256 = (
@@ -629,11 +632,10 @@ def _validate_v8_runtime_contract(root: Path) -> Mapping[str, Any]:
     return runtime
 
 
-def _validate_current_v8_candidate(
+def _validate_historical_v8_candidate(
     *,
     root: Path,
     candidate_path: Path,
-    verify_environment: bool,
 ) -> dict[str, Any]:
     expected_path = (
         root / "evals/v2/public_regression_candidate_v8.json"
@@ -643,14 +645,19 @@ def _validate_current_v8_candidate(
             "eval_v2_public_candidate_path_invalid",
             "Candidate v8 必须使用固定 manifest 路径。",
         )
-    candidate = _load_json_object(candidate_path, "Candidate v8")
-    _require_exact_fields(candidate, _HISTORICAL_V7_CANDIDATE_FIELDS, "Candidate v8")
+    candidate = _load_json_object(candidate_path, "historical Candidate v8")
+    _require_exact_fields(
+        candidate,
+        _HISTORICAL_V7_CANDIDATE_FIELDS,
+        "historical Candidate v8",
+    )
     if (
-        candidate.get("schema_version") != V8_CANDIDATE_SCHEMA_VERSION
+        _sha256_file(candidate_path)
+        != "6615cc6638e79dc854265e46cf61dd4de9932e57a6fe2415b721f0a408b4eac0"
+        or candidate.get("schema_version") != V8_CANDIDATE_SCHEMA_VERSION
         or candidate.get("candidate_id") != V8_CANDIDATE_ID
         or candidate.get("status") != "candidate_locked"
-        or not isinstance(candidate.get("locked_at_utc"), str)
-        or not candidate["locked_at_utc"].endswith("Z")
+        or candidate.get("locked_at_utc") != "2026-08-27T13:31:49Z"
         or candidate.get("scope") != "public_regression"
         or candidate.get("campaign_id") != "researchops-eval-v2-draft"
         or candidate.get("campaign_status_expected") != "design_only"
@@ -682,10 +689,12 @@ def _validate_current_v8_candidate(
         != "eval-v2-kimi-runtime-candidate-v8"
         or candidate.get("hash_algorithm") != "sha256-bundle-v1"
         or candidate.get("limitations") != list(_V8_CANDIDATE_LIMITATIONS)
+        or candidate.get("candidate_commitment_sha256")
+        != HISTORICAL_V8_CANDIDATE_COMMITMENT_SHA256
     ):
         raise EvalV2ContractError(
-            "eval_v2_public_candidate_v8_invalid",
-            "Candidate v8 manifest 状态或声明边界无效。",
+            "eval_v2_historical_candidate_v8_invalid",
+            "Historical Candidate v8 manifest 与冻结快照不一致。",
         )
     execution = _strict_object(
         candidate["execution_policy"], _EXECUTION_POLICY_FIELDS, "execution_policy"
@@ -754,16 +763,38 @@ def _validate_current_v8_candidate(
     expected_hashes = _strict_object(
         candidate["component_hashes"], _V8_COMPONENT_KEYS, "component_hashes"
     )
-    actual_hashes = build_v8_diagnostic_candidate_component_hashes(root)
-    if dict(expected_hashes) != actual_hashes:
-        changed = sorted(
-            key
-            for key in _V8_COMPONENT_KEYS
-            if expected_hashes.get(key) != actual_hashes[key]
-        )
+    frozen_components = {
+        "evals/v2/kimi_runtime_candidate_v8_contract.json": (
+            "b5b74b08a34ed346fbc12999b8ddb76505c3b6728361560aa32638c122e3eb98"
+        ),
+        "src/researchops/kimi_chat_transport_v3.py": (
+            "6a702c9edb4153b258c5ea1dcc8a9047b2d46fa8281a38fac7c0ee93a475bdef"
+        ),
+        "evals/v2/kimi_chat_completions_contract_v3.json": (
+            "464b87bb4a1db9b66c252ef502a73dfb5037637ad75c3619fbc61349fad873c2"
+        ),
+        "src/researchops/kimi_controlled_pilot_v3.py": (
+            "39e03a20d64e6907231233b087bb4517b3de854e4db1493b81038e44485cab00"
+        ),
+        "evals/v2/kimi_controlled_pilot_contract_v3.json": (
+            "8e0b9b67f5427ddde1097c2d1ff9769a309f1031bd0b224a328f430ec675079b"
+        ),
+        "evals/v2/kimi_controlled_pilot_scenarios_v1.json": (
+            "f5f51f57f46d5b98677bb9809f28f3e211bb553fd8f4f8d873f848a9ef6f649b"
+        ),
+        "evals/v2/kimi_terms_g2a_provisional_contract.json": (
+            "be9b3b609675b6965d81d078c6c260b75bad4b99f98276b811ac533deadfdc49"
+        ),
+    }
+    if any(
+        (root / relative_path).is_symlink()
+        or not (root / relative_path).is_file()
+        or _sha256_file(root / relative_path) != expected_sha256
+        for relative_path, expected_sha256 in frozen_components.items()
+    ):
         raise EvalV2ContractError(
-            "eval_v2_public_candidate_component_drift",
-            "Candidate v8 component drift：" + ", ".join(changed),
+            "eval_v2_historical_candidate_v8_component_drift",
+            "Historical Candidate v8 frozen components 缺失或漂移。",
         )
     commitment = candidate.get("candidate_commitment_sha256")
     if (
@@ -775,9 +806,6 @@ def _validate_current_v8_candidate(
             "eval_v2_public_candidate_commitment_mismatch",
             "Candidate v8 commitment 与 manifest 内容不匹配。",
         )
-    dependency_lock = _validate_requirements_lock(
-        root / "requirements.lock", verify_environment=verify_environment
-    )
     return {
         "status": "valid",
         "candidate_status": "candidate_locked",
@@ -786,7 +814,7 @@ def _validate_current_v8_candidate(
         "predecessor_candidate_commitment_sha256": (
             V8_PREDECESSOR_CANDIDATE_COMMITMENT_SHA256
         ),
-        "historical_snapshot_only": False,
+        "historical_snapshot_only": True,
         "diagnostic_snapshot_only": True,
         "public_regression_online_authorized": False,
         "controlled_synthetic_pilot_online_authorized": False,
@@ -796,7 +824,8 @@ def _validate_current_v8_candidate(
         "prior_results_inherited": False,
         "predecessor_failure_result_inherited": False,
         "predecessor_authorization_reused": False,
-        "dependency_lock": dependency_lock,
+        "historical_component_count": len(frozen_components),
+        "frozen_manifest_component_count": len(expected_hashes),
         "network_calls": 0,
     }
 
@@ -810,10 +839,14 @@ def validate_public_regression_candidate(
     root = Path(project_root).resolve()
     resolved_candidate_path = Path(candidate_path).resolve()
     if resolved_candidate_path.name == "public_regression_candidate_v8.json":
-        return _validate_current_v8_candidate(
+        if verify_environment:
+            raise EvalV2ContractError(
+                "eval_v2_historical_candidate_environment_verification_unsupported",
+                "Historical Candidate v8 只能复核冻结 artifact；不能据此声明当前环境已验证。",
+            )
+        return _validate_historical_v8_candidate(
             root=root,
             candidate_path=resolved_candidate_path,
-            verify_environment=verify_environment,
         )
     if resolved_candidate_path.name == "public_regression_candidate_v7.json":
         if verify_environment:

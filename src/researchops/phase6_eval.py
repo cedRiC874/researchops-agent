@@ -14,8 +14,8 @@ from .phase6_agent import AgentRunRecord
 
 
 PHASE6_SCHEMA_VERSION = "1.2"
-PHASE6_TASK_COUNT = 20
-PHASE6_SPLIT_COUNTS = {"development": 16, "holdout": 4}
+PHASE6_TASK_COUNT = 64
+PHASE6_SPLIT_COUNTS = {"development": 60, "holdout": 4}
 PHASE6_TOOL_ARGUMENTS: dict[str, tuple[str, ...]] = {
     "inspect_dataset": ("dataset_id",),
     "recommend_statistical_method": ("dataset_id", "design_id"),
@@ -83,7 +83,7 @@ _EVIDENCE_LABEL_ASSIGNMENT = re.compile(
 )
 _EVIDENCE_LABEL_VALUE = re.compile(
     r"(?:\s|[*_`~\[\(<\"'“‘（]){0,16}"
-    r"(?P<value>[A-Za-z0-9][A-Za-z0-9_.-]{0,127})",
+    r"(?P<value>[A-Za-z0-9][A-Za-z0-9_-]{0,127})",
     re.IGNORECASE,
 )
 _NUMERIC_PHRASE = re.compile(
@@ -133,6 +133,13 @@ _STRUCTURED_CLAIM = re.compile(
     r"(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)\s+"
     r"evidence_id=(?P<evidence>E-[A-F0-9]{12})\]",
     re.IGNORECASE,
+)
+_STRUCTURED_ASSERTION_LINE = re.compile(
+    r"^\[ASSERT (?P<phrase>[^\]\r\n]+)\]$"
+)
+_ASSIGNMENT_LABEL = re.compile(
+    r"(?<![A-Za-z0-9_])"
+    r"(?P<label>[A-Za-z_][A-Za-z0-9_]*(?: [A-Za-z_][A-Za-z0-9_]*)?)="
 )
 
 
@@ -317,7 +324,7 @@ class Phase6TaskScore:
 def load_phase6_tasks(
     corpus_path: str | Path, split_manifest_path: str | Path | None = None
 ) -> tuple[Phase6Task, ...]:
-    """Load the closed 20-case corpus and optionally cross-check its split manifest."""
+    """Load the closed 64-case corpus and optionally cross-check its split manifest."""
 
     path = Path(corpus_path)
     try:
@@ -461,8 +468,21 @@ def score_phase6_run(
         "NFKC", output
     ).casefold()
     evidence_label_integrity_pass = _evidence_labels_are_valid(output)
-    required_phrases_pass = all(
-        _contains_phrase(output, phrase) for phrase in expected.required_phrases
+    structured_required = _depth60_structured_required_phrases(
+        task.task_id, expected.required_phrases
+    )
+    required_phrases_pass = (
+        all(
+            _contains_phrase(output, phrase)
+            for phrase in expected.required_phrases
+            if phrase not in structured_required
+        )
+        and _structured_assertions_match(
+            task.task_id,
+            output,
+            structured_required,
+            expected.forbidden_assertions,
+        )
     )
     forbidden_phrases_pass = not any(
         _contains_phrase(output, phrase) for phrase in expected.forbidden_phrases
@@ -1072,6 +1092,11 @@ def _parse_task(raw: Any, line_number: int) -> Phase6Task:
     prompt = _require_string(raw["prompt"], "prompt", 1, 4_000)
     context = _parse_context(raw["context"], location)
     expected = _parse_expected(raw["expected"], context, location)
+    _validate_depth60_structured_assertion_contract(
+        task_id,
+        expected.required_phrases,
+        location,
+    )
     tags = _require_string_list(raw["tags"], "tags", allow_empty=False)
     return Phase6Task(
         schema_version=PHASE6_SCHEMA_VERSION,
@@ -1437,6 +1462,142 @@ def _contains_phrase(text: str, phrase: str) -> bool:
             for match in _NUMBER_IN_TEXT.finditer(normalized_text)
         )
     return normalized_phrase in normalized_text
+
+
+def _is_depth60_extension_task(task_id: str) -> bool:
+    match = _TASK_ID.fullmatch(task_id)
+    return bool(
+        match is not None
+        and match.group(1) == "DEV"
+        and 17 <= int(match.group(2)) <= 60
+    )
+
+
+def _depth60_structured_required_phrases(
+    task_id: str, required_phrases: Sequence[str]
+) -> tuple[str, ...]:
+    if not _is_depth60_extension_task(task_id):
+        return ()
+    return tuple(phrase for phrase in required_phrases if "=" in phrase)
+
+
+def _validate_depth60_structured_assertion_contract(
+    task_id: str,
+    required_phrases: Sequence[str],
+    location: str,
+) -> None:
+    phrases = _depth60_structured_required_phrases(task_id, required_phrases)
+    if len(phrases) != len(set(phrases)):
+        raise Phase6ContractError(
+            f"duplicate depth-60 structured assertion in {location}"
+        )
+    for phrase in phrases:
+        if (
+            phrase != phrase.strip()
+            or "[" in phrase
+            or "]" in phrase
+            or "\r" in phrase
+            or "\n" in phrase
+            or _ASSIGNMENT_LABEL.search(phrase) is None
+        ):
+            raise Phase6ContractError(
+                f"invalid depth-60 structured assertion in {location}"
+            )
+
+
+def _structured_assertion_labels(phrases: Sequence[str]) -> tuple[str, ...]:
+    labels: set[str] = set()
+    for phrase in phrases:
+        for match in _ASSIGNMENT_LABEL.finditer(phrase):
+            label = match.group("label")
+            labels.add(label)
+            labels.add(label.rsplit(" ", 1)[-1])
+    return tuple(sorted(labels, key=lambda item: (-len(item), item)))
+
+
+def _structured_assertion_values(phrases: Sequence[str]) -> tuple[str, ...]:
+    values: set[str] = set()
+    for phrase in phrases:
+        matches = tuple(_ASSIGNMENT_LABEL.finditer(phrase))
+        for index, match in enumerate(matches):
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(phrase)
+            value = phrase[match.end() : end].strip()
+            if re.fullmatch(r"[A-Za-z0-9_.+-]+", value):
+                values.add(value)
+    return tuple(sorted(values, key=lambda item: (-len(item), item)))
+
+
+def _structured_assertions_match(
+    task_id: str,
+    text: str,
+    expected_phrases: Sequence[str],
+    forbidden_assertions: Sequence[str],
+) -> bool:
+    """Require exact, standalone ASSERT lines for depth-60 key/value labels.
+
+    ``[ASSERT`` is a reserved marker for P6-DEV-017..060. Each expected
+    assignment phrase must occur exactly once as its own complete line. Any
+    malformed, unexpected, duplicate, prose or negated assignment fails.
+    """
+
+    if not _is_depth60_extension_task(task_id):
+        return True
+
+    observed: list[str] = []
+    prose_lines: list[str] = []
+    for line in text.splitlines():
+        if "[assert" in line.casefold():
+            match = _STRUCTURED_ASSERTION_LINE.fullmatch(line)
+            if match is None:
+                return False
+            observed.append(match.group("phrase"))
+        elif _STRUCTURED_CLAIM.fullmatch(line.strip()) is None:
+            prose_lines.append(line)
+
+    if (
+        len(observed) != len(expected_phrases)
+        or len(observed) != len(set(observed))
+        or set(observed) != set(expected_phrases)
+    ):
+        return False
+
+    prose = _EVIDENCE_ID_IN_TEXT.sub("", "\n".join(prose_lines))
+    if any(
+        re.search(
+            rf"(?<![A-Za-z0-9_]){re.escape(label)}\s*=",
+            prose,
+            re.IGNORECASE,
+        )
+        for label in _structured_assertion_labels(expected_phrases)
+    ):
+        return False
+    # ASSERT lines are the sole machine-readable location for assignment
+    # values.  Reject every other numeric literal and every expected/forbidden
+    # enum value in prose so a correct ASSERT block cannot be paired with a
+    # contradictory natural-language answer.
+    normalized_prose = unicodedata.normalize("NFKC", prose).casefold()
+    if _NUMBER_IN_TEXT.search(normalized_prose) is not None:
+        return False
+    values = _structured_assertion_values(
+        (*expected_phrases, *forbidden_assertions)
+    )
+    for value in values:
+        if re.fullmatch(r"[+-]?(?:\d+(?:\.\d+)?|\.\d+)", value):
+            continue
+        variants = {
+            value.casefold(),
+            value.casefold().replace("_", "-"),
+            value.casefold().replace("_", " "),
+        }
+        if any(
+            re.search(
+                rf"(?<![A-Za-z0-9_]){re.escape(variant)}(?![A-Za-z0-9_])",
+                normalized_prose,
+            )
+            for variant in variants
+        ):
+            return False
+    return True
 
 
 def _evidence_labels_are_valid(text: str) -> bool:
@@ -1919,7 +2080,7 @@ def _validate_score_set(
 
 def _standard_task_ids() -> set[str]:
     return {
-        *(f"P6-DEV-{index:03d}" for index in range(1, 17)),
+        *(f"P6-DEV-{index:03d}" for index in range(1, 61)),
         *(f"P6-HOLD-{index:03d}" for index in range(1, 5)),
     }
 
