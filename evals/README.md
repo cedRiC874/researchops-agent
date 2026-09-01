@@ -30,7 +30,7 @@ runner 只能接收 `EvalTask.public_input()`；不得向被测组件传递 `exp
 
 ## LF provenance 与 CI 门禁
 
-Phase 5 数据文件由 `.gitattributes` 固定为 LF。当前规范 lineage：
+Phase 5 数据文件由 `.gitattributes` 固定为 LF。当前 Windows x86-64 规范 lineage：
 
 - dataset SHA-256：
   `7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00`；
@@ -40,21 +40,26 @@ Phase 5 数据文件由 `.gitattributes` 固定为 LF。当前规范 lineage：
 - `tasks.jsonl`：30,490 bytes、50 LF、0 CRLF，SHA-256
   `ffa82ef11ff3e030a9b62cfa7801deab4930e131f180ab67539e774a7d88debf`。
 
-CI 在完整性 verifier 之外显式传入 `--quality-profile phase5-ci-v1`。该 profile
+Linux x86-64 使用相同 50 题、相同数值断言与相同安全契约，但单独绑定跨操作系统变化的 identity：
+
+- ANCOVA evidence：`E-14EBFFCA843E`；
+- Welch evidence：`E-5FBD2DA79692`；
+- aggregate chart：`CH-BF5193D84458`；
+- `tasks.linux-x86_64.jsonl`：30,490 bytes、50 LF、0 CRLF，SHA-256
+  `68ea85b79a43d8bb32834ae5d990aa2135bbfe5775c50ee7d7b2f239f4b68b23`。
+
+Windows CI 在完整性 verifier 之外显式传入 `--quality-profile phase5-ci-v1`；Linux x86-64 demo 使用 `phase5-linux-x86-ci-v1`。两个 profile
 精确要求任务 50/50、失败 0、success rate 1、evidence citations 21/21 与 citation
-accuracy 1；workflow 分别保存 evaluation/verifier 的 native exit code，任一非零
-都会失败。无 profile 的 verifier 保留历史语义，只证明 hash、provenance、审计链和
+accuracy 1。Windows workflow 显式保留 evaluation/verifier 的两个 native exit code，Linux 共享核心逐步传播非零退出码；任一阶段失败都会 fail closed。无 profile 的 verifier 保留历史语义，只证明 hash、provenance、审计链和
 脱敏完整性，不代表质量阈值通过。
 
-Phase 5 evidence ID 会绑定统计结果的完整数值。Windows hosted runner 的不同 CPU
-可能选择不同 OpenBLAS/NumPy dispatch，并在数值仍处于评分容差内时产生末位浮点
-差异。CI 因此固定 `OPENBLAS_CORETYPE=NEHALEM`、相关数值库的单线程执行，并禁用
+Phase 5 evidence ID 会绑定统计结果的完整数值。不同操作系统或 CPU 可能在数值仍处于评分容差内时产生末位浮点差异；因此 Windows 与 Linux 使用独立 identity lineage。两端都固定 `OPENBLAS_CORETYPE=NEHALEM`、相关数值库的单线程执行，并禁用
 NumPy `X86_V3/X86_V4` dispatch groups。评测前要求 OpenBLAS 实际回报
 `Core: Nehalem`，并运行 canonical ANCOVA 核验最终 evidence ID；不依赖 NumPy
 内部 feature-flag 的报告语义。不支持、静默回退或数值 identity 漂移都会
 fail-closed。
 
-这一 x86-v2 lineage 只重绑定硬件敏感的 evidence/chart IDs 与 corpus hash；统计数值、
+这两条 x86-v2 lineages 只重绑定平台敏感的 evidence/chart IDs 与 corpus hash；统计数值、
 scorer、被测组件和 Eval v2 candidate 源码均未修改。先前 Haswell/x86-v3 的
 `E-8EDFAE7ED8F0` / `CH-11F349FABC44` 属于历史 lineage，不再是当前 Phase 5 CI
 golden。任一 50/50 或 21/21 偏差仍由上述 quality profile fail-closed。

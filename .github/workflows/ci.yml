@@ -9,6 +9,36 @@ permissions:
   contents: read
 
 jobs:
+  linux-x86-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.linux.lock
+
+      - name: Install locked dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.linux.lock
+          python -m pip check
+
+      - name: Run Linux x86-64 offline demo
+        shell: bash
+        run: |
+          test "$(uname -m)" = "x86_64"
+          bash -n scripts/portfolio_demo.sh
+          PYTHON_PATH="$(command -v python)" bash scripts/portfolio_demo.sh --output-dir artifacts/ci_linux_x86_demo
+          test ! -e handoff.md
+          test -f docs/internal/handoff.md
+
   offline-evaluation:
     runs-on: windows-latest
     timeout-minutes: 20
