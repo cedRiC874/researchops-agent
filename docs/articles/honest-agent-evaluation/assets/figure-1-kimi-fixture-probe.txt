@@ -1,0 +1,16 @@
+case                                             result  detail
+------------------------------------------------------------------------------------------------------------
+GOLDEN (v2-conformant)                           PASS    finish=tool_calls; parser accepted golden fixture
+A. top-level system_fingerprint                  FAIL    kimi_chat_response_invalid
+B. non-terminal chunks omit finish_reason        FAIL    kimi_chat_response_invalid
+C. role repeated in every chunk                  FAIL    kimi_chat_response_invalid
+D. dated model id (kimi-k3-20260801)             FAIL    kimi_chat_response_invalid
+E. OpenAI-style empty-choices usage trailer      FAIL    kimi_chat_usage_missing
+F. delta carries refusal:null                    FAIL    kimi_chat_response_invalid
+G. usage has completion_tokens_details           FAIL    kimi_chat_usage_invalid
+H. total_tokens includes reasoning               FAIL    kimi_chat_usage_invalid
+I. delta carries content:null alongside tool_calls PASS
+J. leading empty-content chunk                   PASS
+K. reasoning_content before tool_calls           PASS
+
+REMOTE_NETWORK_ATTEMPTS=0
