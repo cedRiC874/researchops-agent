@@ -10,6 +10,7 @@
 *.jsonl text eol=lf
 *.csv text eol=lf
 *.lock text eol=lf
+*.svg text eol=lf
 
 *.png binary
 *.sqlite3 binary
