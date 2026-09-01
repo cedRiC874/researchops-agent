@@ -4,13 +4,13 @@
 
 ## 当前验证快照
 
-验证日期：2026-08-28。
+验证日期：2026-09-01。
 
 | 声明 | 当前结果 | 证据 |
 | --- | --- | --- |
 | Phase 5 历史作品集基线 | 对应其冻结 source/manifest 的 50/50，6 类均为 100% | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md)、[`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | Phase 5 P1 事故快照 | 旧 main run 32568017243 为 44/50、evidence 10/21，但 workflow 错误显示绿色 | [门禁审计](evidence/main-offline-gate-20260822/README.md)、[旧 GitHub run](https://github.com/cedRiC874/researchops-agent/actions/runs/32568017243) |
-| 当前 `main` Phase 5 | `main@27fad953` run 33092660167：534 个根测试通过；canonical Nehalem/x86-v2 identity、Phase 5 50/50、evidence 21/21、profile valid | [current main run](https://github.com/cedRiC874/researchops-agent/actions/runs/33092660167)、[PR #23 main 快照](evidence/kimi-controlled-pilot-history-main-ci-v1/README.md)、[历史门禁审计](evidence/main-offline-gate-20260822/README.md) |
+| 当前 `main` Phase 5 | `main@66f8c52d` run 33418902259：683 个根测试通过；canonical Nehalem/x86-v2 identity、Phase 5 50/50、evidence 21/21、profile valid | [current main run](https://github.com/cedRiC874/researchops-agent/actions/runs/33418902259)、[历史门禁审计](evidence/main-offline-gate-20260822/README.md) |
 | 非预期工具错误 | 0/45 attempts，0% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | 主动注入错误被正确处理 | 毛工具错误 11/45，24.44% | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
 | 安全违规 | 0/50 | [`eval_report.json`](../artifacts/portfolio_baseline_provider/eval_report.json) |
@@ -18,9 +18,11 @@
 | 离线延迟 | P50 100.38 ms；P95 411.03 ms | [`eval_summary.md`](../artifacts/portfolio_baseline_provider/eval_summary.md) |
 | 评测来源可复现 | 语料、源码、数据、依赖和产物 SHA-256 已记录 | [`eval_manifest.json`](../artifacts/portfolio_baseline_provider/eval_manifest.json) |
 | 50 条审计链有效 | audit index 中全部 `valid=true` | [`eval_audit_index.json`](../artifacts/portfolio_baseline_provider/eval_audit_index.json) |
-| 当前自动化测试 | `main@27fad953` 的 offline run 33092660167、pilot run 33092660220 与 production run 33092660267 均成功 | [offline run](https://github.com/cedRiC874/researchops-agent/actions/runs/33092660167)、[pilot run](https://github.com/cedRiC874/researchops-agent/actions/runs/33092660220)、[production run](https://github.com/cedRiC874/researchops-agent/actions/runs/33092660267)、[PR #23 main 快照](evidence/kimi-controlled-pilot-history-main-ci-v1/README.md) |
+| 当前自动化测试 | `main@66f8c52d` 的 offline run 33418902259、pilot run 33418902346 与 production run 33418902197 均成功 | [offline run](https://github.com/cedRiC874/researchops-agent/actions/runs/33418902259)、[pilot run](https://github.com/cedRiC874/researchops-agent/actions/runs/33418902346)、[production run](https://github.com/cedRiC874/researchops-agent/actions/runs/33418902197) |
 | DeepSeek development | 16/16；28 requests；71,039 tokens；P50/P95 7.65/17.40 s | [summary](evidence/phase6-deepseek-v1/development/phase6_summary.md)、[report](evidence/phase6-deepseek-v1/development/phase6_report.json)、[manifest](evidence/phase6-deepseek-v1/development/phase6_manifest.json)、[audit index](evidence/phase6-deepseek-v1/development/phase6_audit_index.json) |
 | DeepSeek repo-local holdout | 4/4；6 requests；16,854 tokens；P50/P95 5.05/14.59 s | [summary](evidence/phase6-deepseek-v1/holdout/phase6_summary.md)、[report](evidence/phase6-deepseek-v1/holdout/phase6_report.json)、[manifest](evidence/phase6-deepseek-v1/holdout/phase6_manifest.json)、[audit index](evidence/phase6-deepseek-v1/holdout/phase6_audit_index.json) |
+| DeepSeek Depth-60 online v1 | 60/60 completed、20 passed、40 failed；103 requests；235,943/54,396 input/output tokens；P50/P95 7.52/16.77 s；估算 CNY 1.197393；0 holdout | [证据说明](evidence/phase6-deepseek-depth60-v1/README.md)、[public projection](evidence/phase6-deepseek-depth60-v1/public_summary.json)、[artifact commitments](evidence/phase6-deepseek-depth60-v1/artifact_commitments.json) |
+| Kimi K3 non-streaming handshake v1 | 一次 synthetic attempt 在首响应 tool-protocol validation fail-closed：1 network/model call、283/116 input/output tokens、0 tool execution、估算 CNY 0.017260；授权已消费，不重试，Kimi 未注册 | [证据说明](evidence/kimi-k3-handshake-v1/README.md)、[public projection](evidence/kimi-k3-handshake-v1/public_receipt_projection.json)、[artifact commitments](evidence/kimi-k3-handshake-v1/artifact_commitments.json)、[联合 manifest](evidence/online-depth60-kimi-20260901/evidence_manifest.json) |
 | Eval v2 public foundation | 完整 campaign 仍为 `design_only`；120 public tasks 全部 internal-ready；private holdout 未授权 | [设计](../evals/EVAL_V2.md)、[campaign](../evals/v2/campaign.json)、[dataset manifest](../evals/v2/external_datasets.json)、[task schema](../evals/v2/public_task_schema.json)、[internal review](../evals/v2/internal_review.json) |
 | Eval v2 private custodian kit v1.1（已进入 main） | PR #14 regular merged 至 `main@16a9133d`；main offline run 32829222869 与 pilot/PostgreSQL run 32829223001 均成功；synthetic-only，真实 private release 固定拒绝，当前 request/access/claims 均为 false | [main 长期快照](evidence/eval-v2-private-custodian-main-ci-v1/README.md)、[kit](../evals/v2/private_holdout_kit/README.md)、[guide](PRIVATE_HOLDOUT_CUSTODIAN_KIT.md)、[protocol](../evals/v2/private_holdout_kit/protocol.json) |
 | Completion Telemetry v2（已进入 main） | 四类受控 failure source、legacy unknown coverage、v1/v2 双 telemetry digest 与 PostgreSQL mixed-retention 已由 clean main 验证；candidate `1f6ac18e…e5ce5` 无在线成绩且不继承 v1 | [长期证据](evidence/completion-telemetry-v2-main-ci-v1/README.md)、[RFC](COMPLETION_TELEMETRY_V2_RFC.md)、[machine contract](../evals/v2/completion_telemetry_contract.json)、[candidate](../evals/v2/public_regression_candidate_v2.json) |

@@ -1,0 +1,32 @@
+{
+  "schema_version": "kimi-k3-handshake-artifact-commitments/1.0",
+  "public_evidence_id": "c731ba7f-1de2-48f3-b0e2-66acc6f87f72",
+  "original_artifacts_published": false,
+  "opaque_commitments_are_intentionally_linkable": true,
+  "opaque_commitments": {
+    "consumption_receipt.json": {
+      "bytes": 775,
+      "sha256": "ed667055f2cd2c7152a0fc0c716fe888c29beb9c7a65c0c4682b838dcfaf9b59"
+    },
+    "terminal_receipt.json": {
+      "bytes": 2393,
+      "sha256": "e29113964d6d39e5bec3cc0d0dc08ae4316df29517da0c3b2c18e64284aefc39"
+    }
+  },
+  "offline_verification": {
+    "strict_json_valid": true,
+    "consume_terminal_binding_valid": true,
+    "usage_and_cost_projection_valid": true,
+    "artifact_sanitizer_valid": true,
+    "network_calls": 0
+  },
+  "publication_omissions": {
+    "authorization_identifier_or_hash": true,
+    "authorization_derived_bindings": true,
+    "exact_authorization_expiry": true,
+    "api_key_or_request_headers": true,
+    "raw_prompt_response_reasoning_or_tool_payload": true,
+    "provider_request_identifier": true,
+    "local_absolute_paths": true
+  }
+}

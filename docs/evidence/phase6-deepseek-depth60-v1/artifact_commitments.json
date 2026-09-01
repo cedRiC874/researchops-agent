@@ -1,0 +1,56 @@
+{
+  "schema_version": "phase6-deepseek-depth60-artifact-commitments/1.0",
+  "public_evidence_id": "8805d914-9974-4eeb-8fb4-0b081a5215d1",
+  "original_artifacts_published": false,
+  "opaque_commitments_are_intentionally_linkable": true,
+  "opaque_commitments": {
+    "phase6_report.json": {
+      "bytes": 89733,
+      "sha256": "ae341aa12137490b0fa09d9df0ea2546f9243345a2e108ce95c41b3cb929140a"
+    },
+    "phase6_summary.md": {
+      "bytes": 1480,
+      "sha256": "c4adf7904c6b57ee81db7b3c86984f3b5bfb0b3045a5ebd4a12a98758552320d"
+    },
+    "phase6_manifest.json": {
+      "bytes": 10747,
+      "sha256": "4429991754c6d67a181b7dfaf1ba6222fccd23a5f42847963ac49c725c3190b8"
+    },
+    "phase6_audit_index.json": {
+      "bytes": 27578,
+      "sha256": "2894f7c3c84018e3b24ea35a4684f122d52ef4cf0d3c803b81e82f672cce32b9"
+    },
+    "phase6_results.jsonl": {
+      "bytes": 252003,
+      "sha256": "f1854e43bfb34ac584a220837dd78d5be8e7035e280dcc8b3dc205289e5cd9ac"
+    },
+    "phase6_audit.sqlite3": {
+      "bytes": 712704,
+      "sha256": "9e241035b4450dcf4e870800724f96b39de4abfb1c9a0043e9dccd7aea49f9ca"
+    },
+    "consume_receipt.json": {
+      "bytes": 659,
+      "sha256": "55b189eb51cd10aedae5d969293ad7ff7a0cb1d7bcd55c1e66bcf2d749ea45e7"
+    },
+    "terminal_receipt.json": {
+      "bytes": 782,
+      "sha256": "272f96ed514b0ef4745a1402f78a3d66df443322619d9b5ac655acbf8fcabfac"
+    }
+  },
+  "offline_verification": {
+    "artifact_hashes_valid": true,
+    "terminal_report_hash_valid": true,
+    "terminal_manifest_hash_valid": true,
+    "consume_terminal_binding_valid": true,
+    "audit_chains_valid": true,
+    "network_calls": 0
+  },
+  "publication_omissions": {
+    "authorization_identifier_or_hash": true,
+    "authorization_derived_bindings": true,
+    "per_task_results_or_model_outputs": true,
+    "audit_database_or_event_payloads": true,
+    "api_key_headers_or_raw_provider_payload": true,
+    "local_absolute_paths": true
+  }
+}

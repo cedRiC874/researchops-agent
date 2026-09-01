@@ -1,0 +1,68 @@
+{
+  "schema_version": "researchops-online-evidence-manifest/1.0",
+  "public_evidence_id": "1159a1ad-6553-44c0-b619-91e797130aa2",
+  "documented_at_utc": "2026-09-01T06:06:18.383Z",
+  "repository_anchor": {
+    "commit": "66f8c52dbe211adc8db9b9d3097f70bebff5f7ce",
+    "tree": "3be2ba493592afe06b8f25d161168489f8dc6c2b"
+  },
+  "evidence_sets": [
+    {
+      "evidence_id": "8805d914-9974-4eeb-8fb4-0b081a5215d1",
+      "kind": "deepseek_repo_visible_development_depth60",
+      "status": "completed",
+      "plan_commitment_sha256": "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e"
+    },
+    {
+      "evidence_id": "c731ba7f-1de2-48f3-b0e2-66acc6f87f72",
+      "kind": "kimi_k3_controlled_synthetic_handshake",
+      "status": "failed",
+      "plan_commitment_sha256": "8979dfa8b8826afc6e9e44fadc64ed515b767a421ea122d5ffee5ac40c15e7cd"
+    }
+  ],
+  "published_files": {
+    "docs/evidence/phase6-deepseek-depth60-v1/README.md": {
+      "bytes": 3711,
+      "sha256": "57b69d5395f460cbdbf8d7ea678ee9ec49b82b0f2ec4b9ff7500d033fc6685cf"
+    },
+    "docs/evidence/phase6-deepseek-depth60-v1/public_summary.json": {
+      "bytes": 3885,
+      "sha256": "b0a549aac1f42b7a389fcffca91172299897979ed8d2b677b55d941c80a4bb9e"
+    },
+    "docs/evidence/phase6-deepseek-depth60-v1/artifact_commitments.json": {
+      "bytes": 1951,
+      "sha256": "003731f40bffa6480bc4c174bc60eec4ed4007797818d436d66a08f5ff9b2229"
+    },
+    "docs/evidence/kimi-k3-handshake-v1/README.md": {
+      "bytes": 2874,
+      "sha256": "2daf1870d1714ccf7f4cdb950740667a08705cafec37f255cf64369e69deb159"
+    },
+    "docs/evidence/kimi-k3-handshake-v1/public_receipt_projection.json": {
+      "bytes": 2549,
+      "sha256": "a8e4e94460c3abbf517f15fde1f23aba855612b31d2d6fb91efabca44a6b30ac"
+    },
+    "docs/evidence/kimi-k3-handshake-v1/artifact_commitments.json": {
+      "bytes": 1098,
+      "sha256": "5d871972a45e7aabfe054b38f147cd012a7bf107e15b11d61c1a86efc1ebc8f5"
+    }
+  },
+  "publication_boundary": {
+    "original_online_artifacts_published": false,
+    "api_keys_or_headers_published": false,
+    "authorization_identifiers_or_hashes_published": false,
+    "authorization_derived_bindings_published": false,
+    "raw_provider_payloads_published": false,
+    "per_task_model_outputs_published": false,
+    "audit_sqlite_or_event_payloads_published": false,
+    "private_or_non_synthetic_data_published": false
+  },
+  "claim_boundary": {
+    "private_holdout_executed": false,
+    "registered_provider_count": 1,
+    "kimi_provider_registered": false,
+    "model_quality_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "production_sla_claim_allowed": false,
+    "same_plan_tuning_or_retry_allowed": false
+  }
+}
