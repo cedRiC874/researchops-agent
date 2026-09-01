@@ -30,7 +30,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.12.10"
           cache: pip
           cache-dependency-path: requirements.lock
 
@@ -369,3 +369,23 @@ jobs:
             artifacts/ci_phase5/eval_report.json
             artifacts/ci_phase5/eval_summary.md
             artifacts/ci_phase5/eval_audit_index.json
+
+  depth60-counterexample-runtime-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up canonical counterexample Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+
+      - name: Replay the pinned Python and Unicode counterexample
+        env:
+          PYTHONPATH: src
+        run: |
+          python scripts/verify_phase6_depth60_95pct_counterexample.py --verify
+          python -m unittest tests.test_phase6_depth60_95pct_counterexample -v
