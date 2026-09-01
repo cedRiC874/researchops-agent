@@ -450,7 +450,12 @@ class CounterexampleRuntimeRoutingTests(unittest.TestCase):
         canonical_job = workflow.split(
             "depth60-counterexample-runtime-replay:", maxsplit=1
         )[1]
-        self.assertNotIn("pip install", canonical_job)
+        self.assertIn("grep -v '^pywin32==' requirements.lock", canonical_job)
+        self.assertIn(
+            "python -m pip install -r /tmp/researchops-linux.lock",
+            canonical_job,
+        )
+        self.assertNotIn("pip install -r requirements.lock", canonical_job)
 
 
 if __name__ == "__main__":

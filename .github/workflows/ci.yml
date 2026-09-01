@@ -383,6 +383,12 @@ jobs:
         with:
           python-version: "3.12.13"
 
+      - name: Install platform-compatible locked dependencies
+        run: |
+          grep -v '^pywin32==' requirements.lock > /tmp/researchops-linux.lock
+          python -m pip install -r /tmp/researchops-linux.lock
+          python -m pip check
+
       - name: Replay the pinned Python and Unicode counterexample
         env:
           PYTHONPATH: src

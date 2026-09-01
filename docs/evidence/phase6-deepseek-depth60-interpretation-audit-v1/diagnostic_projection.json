@@ -215,8 +215,8 @@
     "verifier_bytes": 24381,
     "verifier_sha256": "7eec675b9176b09f85ca821944b2d2836df5502a5018892f3f2d046b86f69a51",
     "test": "tests/test_phase6_depth60_95pct_counterexample.py",
-    "test_bytes": 20405,
-    "test_sha256": "4ec61bfea2d0c6b586dd79de47fc7e8515c296ac27bf71f9c13ecdea9ebee705",
+    "test_bytes": 20633,
+    "test_sha256": "d8295526e71255dfaf5c823152fb9da0711db0475b26669659927643fbfedd02",
     "compared_value_count": 1006,
     "mismatch_count": 0,
     "natural_witnesses_fail_only_required_phrases": 5,
@@ -399,8 +399,8 @@
   },
   "source_commitments": {
     ".github/workflows/ci.yml": {
-      "bytes": 19366,
-      "sha256": "da4faa4c930e491535876a9799188934e583217df9b36f948e7694ade3124fad"
+      "bytes": 19616,
+      "sha256": "8e5d1ca92a4fef35846c2390ee956f5095c0a9b0690ff13229a4cb055763c4b7"
     },
     "evals/phase6_agent_tasks.jsonl": {
       "bytes": 69499,
