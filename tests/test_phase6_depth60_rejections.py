@@ -59,6 +59,46 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
             "P6-DEV-017", text, required, forbidden
         )
 
+    @contextlib.contextmanager
+    def _historical_source_binding(self):
+        published = json.loads(PUBLISHED_ARTIFACT.read_text(encoding="utf-8"))
+        recorded = published["source_bindings"]
+        recorded_source = recorded["commitments"][
+            analysis.SOURCE_BUNDLE_RELATIVE_PATH.as_posix()
+        ]
+        locked_bundle = recorded["locked_source_bundle_sha256"]
+        self.assertEqual(
+            recorded_source,
+            {
+                "bytes": 3301,
+                "sha256": (
+                    "c0ab1700f6de0c5370eaa85ea70d9594b40d6554d3cc2740eaf3cd225a9612ce"
+                ),
+            },
+        )
+        self.assertEqual(
+            locked_bundle,
+            "914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84",
+        )
+        source_path = (ROOT / analysis.SOURCE_BUNDLE_RELATIVE_PATH).resolve()
+        original_source_commitment = analysis._source_commitment
+
+        def source_commitment(path: Path) -> dict[str, object]:
+            if Path(path).resolve() == source_path:
+                return dict(recorded_source)
+            return original_source_commitment(Path(path))
+
+        with patch.object(
+            analysis,
+            "phase6_depth60_source_bundle_sha256",
+            return_value=locked_bundle,
+        ), patch.object(
+            analysis,
+            "_source_commitment",
+            side_effect=source_commitment,
+        ):
+            yield
+
     def test_imports_the_actual_locked_private_matcher_and_regexes(self) -> None:
         self.assertIs(analysis._contains_phrase, analysis.phase6_eval_module._contains_phrase)
         self.assertIs(
@@ -204,7 +244,8 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
             hashlib.sha256(PUBLISHED_ARTIFACT.read_bytes()).hexdigest(),
             EXPECTED_ARTIFACT_SHA256,
         )
-        summary = analysis.verify_phase6_depth60_rejection_histogram(ROOT)
+        with self._historical_source_binding():
+            summary = analysis.verify_phase6_depth60_rejection_histogram(ROOT)
         self.assertEqual(summary["status"], "valid")
         self.assertTrue(summary["published_commitment_verified"])
         self.assertFalse(summary["out_of_band_expected_sha256_verified"])
@@ -335,10 +376,18 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
                 "sanitized_only_content_bearing_task_ids": ["P6-DEV-057"],
             },
         )
-        out_of_band = analysis.verify_phase6_depth60_rejection_histogram(
-            ROOT, expected_artifact_sha256=EXPECTED_ARTIFACT_SHA256
-        )
+        with self._historical_source_binding():
+            out_of_band = analysis.verify_phase6_depth60_rejection_histogram(
+                ROOT, expected_artifact_sha256=EXPECTED_ARTIFACT_SHA256
+            )
         self.assertTrue(out_of_band["out_of_band_expected_sha256_verified"])
+
+    def test_default_verifier_rejects_current_source_bundle_successor(self) -> None:
+        with self.assertRaisesRegex(
+            analysis.RejectionAnalysisError,
+            "source commitment mismatch",
+        ):
+            analysis.verify_phase6_depth60_rejection_histogram(ROOT)
 
     def test_default_verifier_rejects_tampering_and_sensitive_fields(self) -> None:
         published = json.loads(PUBLISHED_ARTIFACT.read_text(encoding="utf-8"))
@@ -368,19 +417,21 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
 
         matcher_drift = json.loads(json.dumps(published))
         matcher_drift["matcher_binding"]["structured_matcher"] = "other"
-        with self.assertRaisesRegex(
-            analysis.RejectionAnalysisError, "matcher binding"
-        ):
-            analysis._validate_sanitized_artifact(matcher_drift, ROOT)
+        with self._historical_source_binding():
+            with self.assertRaisesRegex(
+                analysis.RejectionAnalysisError, "matcher binding"
+            ):
+                analysis._validate_sanitized_artifact(matcher_drift, ROOT)
 
         delivery_drift = json.loads(json.dumps(published))
         delivery_drift["histograms"]["delivery_aware_interpretation"][
             "content_bearing_failed_task_count"
         ] = 39
-        with self.assertRaisesRegex(
-            analysis.RejectionAnalysisError, "histogram does not match"
-        ):
-            analysis._validate_sanitized_artifact(delivery_drift, ROOT)
+        with self._historical_source_binding():
+            with self.assertRaisesRegex(
+                analysis.RejectionAnalysisError, "histogram does not match"
+            ):
+                analysis._validate_sanitized_artifact(delivery_drift, ROOT)
 
     def test_svg_histogram_is_bound_to_the_published_counts(self) -> None:
         self.assertTrue(PUBLISHED_SVG.is_file())
@@ -440,9 +491,10 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
     def test_optional_locked_projection_recomputation_is_complete_and_canonical(self) -> None:
         if not LOCAL_RESULTS_CANDIDATE.exists() or not LOCAL_AUDIT_DB_CANDIDATE.exists():
             self.skipTest("omitted SHA-matching raw artifact is not present in CI")
-        artifact = analysis.build_phase6_depth60_rejection_histogram(
-            LOCAL_RESULTS_CANDIDATE, LOCAL_AUDIT_DB_CANDIDATE, ROOT
-        )
+        with self._historical_source_binding():
+            artifact = analysis.build_phase6_depth60_rejection_histogram(
+                LOCAL_RESULTS_CANDIDATE, LOCAL_AUDIT_DB_CANDIDATE, ROOT
+            )
         def keys(value):
             if isinstance(value, dict):
                 for key, child in value.items():
@@ -543,13 +595,14 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             artifact_path = Path(directory) / "rejection_reason_histogram.json"
             artifact_path.write_bytes(emitted)
-            summary = analysis.verify_phase6_depth60_rejection_histogram(
-                ROOT,
-                artifact_path,
-                LOCAL_RESULTS_CANDIDATE,
-                LOCAL_AUDIT_DB_CANDIDATE,
-                EXPECTED_ARTIFACT_SHA256,
-            )
+            with self._historical_source_binding():
+                summary = analysis.verify_phase6_depth60_rejection_histogram(
+                    ROOT,
+                    artifact_path,
+                    LOCAL_RESULTS_CANDIDATE,
+                    LOCAL_AUDIT_DB_CANDIDATE,
+                    EXPECTED_ARTIFACT_SHA256,
+                )
         self.assertEqual(summary["status"], "valid")
         self.assertTrue(summary["published_commitment_verified"])
         self.assertTrue(summary["out_of_band_expected_sha256_verified"])
@@ -580,7 +633,7 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
                 del default
                 raise AssertionError(f"environment read is forbidden: {key}")
 
-        with patch.object(
+        with self._historical_source_binding(), patch.object(
             socket, "socket", side_effect=AssertionError("network is forbidden")
         ), patch.object(
             socket,
