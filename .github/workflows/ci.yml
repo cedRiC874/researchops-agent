@@ -71,17 +71,28 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m researchops.cli phase6-status
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $historicalDepth60Path = "evals/phase6_deepseek_depth60_plan.json"
+          $historicalDepth60Bytes = (Get-Item $historicalDepth60Path).Length
+          $historicalDepth60Sha = (Get-FileHash `
+            -Algorithm SHA256 $historicalDepth60Path).Hash.ToLowerInvariant()
+          if ($historicalDepth60Bytes -ne 5398 -or
+              $historicalDepth60Sha -ne "f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20") {
+            Write-Output "::error title=historical_depth60_plan_drift::Historical Depth-60 plan bytes must remain unchanged."
+            exit 1
+          }
           $depth60Raw = (& python -m researchops.cli `
-            phase6-validate-deepseek-depth60 | Out-String)
+            phase6-validate-deepseek-depth60 `
+            --plan evals/phase6_deepseek_depth60_plan_v2.json | Out-String)
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $depth60 = $depth60Raw | ConvertFrom-Json
           if ($depth60.status -ne "valid" -or
-              $depth60.plan_commitment_sha256 -ne "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e" -or
-              $depth60.selected_task_count -ne 60 -or
-              $depth60.holdout_executed -ne $false -or
+              $depth60.plan_commitment_sha256 -ne "3077a55e09f3f2137155a68d96a5bda60d8553cc9b5dd36ca83d33bbbc3dcf7e" -or
+              $depth60.source_bundle_algorithm -ne "v2" -or
+              $depth60.supersedes_plan_id -ne "phase6-deepseek-depth60-v1" -or
+              $depth60.online_execution_authorized -ne $false -or
               $depth60.network_calls -ne 0 -or
               $depth60.model_calls -ne 0) {
-            Write-Output "::error title=depth60_contract_invalid::DeepSeek Depth-60 plan must remain valid, offline and holdout-free."
+            Write-Output "::error title=depth60_successor_contract_invalid::Depth-60 successor must remain valid, offline and non-executable."
             exit 1
           }
           python -m researchops.cli eval-v2-validate

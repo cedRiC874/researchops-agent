@@ -1,10 +1,11 @@
 # DeepSeek Phase 6 depth-60 runbook
 
-Status: `locked_offline_not_run / requires_fresh_single_use_authorization`.
+Status: `historical_run_preserved / current_tree_successor_valid_non_executable`.
 
-This run deepens the existing Phase 6 DeepSeek line instead of adding another Provider. It executes
-exactly 60 repository-visible development tasks once, sequentially. The four historical repo-local
-holdout tasks remain byte-for-byte unchanged and are not selected or rerun.
+This historical run deepened the existing Phase 6 DeepSeek line instead of adding another Provider.
+It executed exactly 60 repository-visible development tasks once, sequentially.
+The four historical repo-local holdout tasks remain byte-for-byte unchanged and are not selected or
+rerun.
 
 ## Frozen identity
 
@@ -26,15 +27,23 @@ does not redistribute the third-party response bodies. Those source hashes are m
 capture metadata, not independently recomputable repository evidence; a reviewer must refetch the
 current official pages or verify an externally retained capture before authorizing the run.
 
-Validate locally without reading a Key or making a network request:
+The historical plan and result remain immutable. The current source tree intentionally differs from
+the historical v1 source bundle, so validating that plan against current code now fails closed with
+`phase6_depth60_component_drift`. Validate the current-tree v2 source-integrity successor without
+reading a Key or making a network request:
 
 ```powershell
 $env:PYTHONPATH = "src"
-.\.venv\Scripts\python.exe -m researchops.cli phase6-validate-deepseek-depth60
+.\.venv\Scripts\python.exe -m researchops.cli phase6-validate-deepseek-depth60 `
+  --plan evals/phase6_deepseek_depth60_plan_v2.json
 ```
 
-Expected terminal fields are `status=valid`, `selected_task_count=60`, `holdout_executed=false`,
-`network_calls=0` and `model_calls=0`.
+Expected terminal fields are `status=valid`, `source_bundle_algorithm=v2`,
+`supersedes_plan_id=phase6-deepseek-depth60-v1`, `online_execution_authorized=false`,
+`network_calls=0` and `model_calls=0`. The successor is a current-tree integrity commitment only;
+it does not revalidate the historical result and cannot be used as a runtime binding.
+Here, current-tree integrity is limited to the enumerated source closure and component hashes in the
+successor plan; it is not a commitment to every file in the repository.
 
 ## Frozen local stops and request bounds
 
@@ -58,7 +67,11 @@ CNY 3/M input and CNY 9/M output. Enforcement is a pre-case reserve plus a post-
 one in-flight Agent case can overshoot the local totals before usage is returned. It is not a strict
 Provider billing hard cap, and the actual Provider bill remains unknown unless separately reconciled.
 
-## Required authorization
+## Historical authorization procedure — not currently executable
+
+The procedure below records how the consumed historical v1 run was authorized. It is not a current
+run instruction: the current tree rejects v1 for component drift and rejects v2 as
+`phase6_depth60_successor_plan_not_executable`. There is currently no executable Depth-60 plan.
 
 The plan does not authorize itself. A fresh user authorization must state:
 
@@ -71,7 +84,7 @@ The plan does not authorize itself. A fresh user authorization must state:
 - results cannot tune the same prompt, scorer, tools or task selection;
 - no private, non-synthetic or repo-local holdout execution.
 
-After authorization, the controlled command is:
+At the time of the historical run, the controlled command was:
 
 ```powershell
 $env:PYTHONPATH = "src"
@@ -88,10 +101,12 @@ checks precede a Key-presence readiness check; only after the exclusive receipt 
 Key handed to the Provider transport. A second component check occurs inside the runner after
 receipt consumption. Success, failure, timeout or setup error does not authorize a second attempt.
 
-The bound Python source is the deterministic transitive local-import closure of the Depth-60 CLI,
-runner, scorer, tool runtime and freeze gates. A reachable source edit or new reachable import
-changes the commitment; merely adding an unimported Provider successor does not. The artifact
-manifest reports both this bound bundle hash and the observational full source-tree hash.
+The historical v1 bound Python source is the deterministic transitive local-import closure of the
+Depth-60 CLI, runner, scorer, tool runtime and freeze gates. The v2 successor retains that closure
+model while adding domain separation, package-initializer coverage and fail-closed relative-import
+escape handling. A reachable source edit or new reachable import changes the applicable
+commitment; merely adding an unimported Provider successor does not. The historical artifact
+manifest reports both its bound v1 bundle hash and the observational full source-tree hash.
 
 The consume receipt is immutable and a separate terminal receipt binds the outcome and final
 report/manifest hashes. This is a local single-worktree control, not a globally immutable external

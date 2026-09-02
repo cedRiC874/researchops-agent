@@ -15,13 +15,32 @@ from .phase6_runner import (
     _run_phase6_online_evaluation_impl,
     phase6_status,
 )
-from .phase6_source_bundle import phase6_depth60_source_bundle_sha256
+from .phase6_source_bundle import (
+    phase6_depth60_source_bundle_sha256_for,
+)
 
 
 DEPTH60_PLAN_ID = "phase6-deepseek-depth60-v1"
 DEPTH60_PLAN_SCHEMA_VERSION = "1.0"
 DEPTH60_PLAN_DOMAIN = b"researchops-phase6-deepseek-depth60-plan-v1\0"
 DEPTH60_PLAN_PATH = Path("evals/phase6_deepseek_depth60_plan.json")
+DEPTH60_SUCCESSOR_PLAN_ID = "phase6-deepseek-depth60-v2"
+DEPTH60_SUCCESSOR_PLAN_SCHEMA_VERSION = "2.0"
+DEPTH60_SUCCESSOR_PLAN_DOMAIN = (
+    b"researchops-phase6-deepseek-depth60-successor-plan-v2\0"
+)
+DEPTH60_SUCCESSOR_PLAN_PATH = Path(
+    "evals/phase6_deepseek_depth60_plan_v2.json"
+)
+# The historical commitment is an assertion about a commit, not about HEAD.
+# These literals exist so the successor cannot be validated while the history
+# it claims to supersede has been altered or removed.
+DEPTH60_HISTORICAL_SOURCE_BUNDLE_SHA256 = (
+    "914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84"
+)
+DEPTH60_HISTORICAL_PLAN_COMMITMENT_SHA256 = (
+    "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e"
+)
 DEPTH60_TASK_IDS = tuple(f"P6-DEV-{index:03d}" for index in range(1, 61))
 _AUTHORIZATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
@@ -50,10 +69,21 @@ _OFFICIAL_SOURCES = (
 )
 
 
-def build_depth60_component_hashes(project_root: str | Path) -> dict[str, str]:
+def build_depth60_component_hashes(
+    project_root: str | Path, algorithm: str | None = None
+) -> dict[str, str]:
+    """Component hashes for a Depth-60 plan.
+
+    ``algorithm=None`` keeps the v1 source-bundle digest, so every existing
+    caller — including the historical plan validator and the runtime re-check —
+    is behaviorally unaffected.
+    """
+
     root = Path(project_root).resolve()
     return {
-        "source_bundle_sha256": phase6_depth60_source_bundle_sha256(root),
+        "source_bundle_sha256": phase6_depth60_source_bundle_sha256_for(
+            root, algorithm
+        ),
         "phase6_tasks_sha256": _sha256_file(root / "evals/phase6_agent_tasks.jsonl"),
         "phase6_splits_sha256": _sha256_file(root / "evals/phase6_splits.json"),
         "requirements_lock_sha256": _sha256_file(root / "requirements.lock"),
@@ -95,6 +125,8 @@ def validate_phase6_depth60_plan(
     if not resolved_plan.is_absolute():
         resolved_plan = root / resolved_plan
     resolved_plan = resolved_plan.resolve()
+    if resolved_plan == (root / DEPTH60_SUCCESSOR_PLAN_PATH).resolve():
+        return _validate_depth60_successor_plan(root, resolved_plan)
     expected_plan = (root / DEPTH60_PLAN_PATH).resolve()
     if resolved_plan != expected_plan:
         raise Phase6RunError(
@@ -268,6 +300,162 @@ def validate_phase6_depth60_plan(
     }
 
 
+def _validate_depth60_successor_plan(
+    root: Path, resolved_plan: Path
+) -> dict[str, Any]:
+    """Validate the successor source-integrity plan.
+
+    The successor commits the current enumerated components under the v2 bundle
+    algorithm. It is deliberately not an online authorization: it carries no
+    provider, budget, or selection, and :func:`run_phase6_depth60_online`
+    refuses it outright.
+    """
+
+    plan = _load_json_object(resolved_plan)
+    _require_exact_fields(
+        plan,
+        {
+            "schema_version",
+            "plan_id",
+            "status",
+            "locked_at_utc",
+            "evaluation_scope",
+            "source_bundle_algorithm",
+            "component_hashes",
+            "supersedes",
+            "authorization_boundary",
+            "claim_boundary",
+            "plan_commitment_sha256",
+        },
+        "depth60 successor plan",
+    )
+    if (
+        plan.get("schema_version") != DEPTH60_SUCCESSOR_PLAN_SCHEMA_VERSION
+        or plan.get("plan_id") != DEPTH60_SUCCESSOR_PLAN_ID
+        or plan.get("status") != "locked_offline_not_run"
+        or plan.get("evaluation_scope") != "source_integrity_commitment_only"
+        or plan.get("source_bundle_algorithm") != "v2"
+        or not isinstance(plan.get("locked_at_utc"), str)
+        or not plan["locked_at_utc"].endswith("Z")
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_successor_plan_invalid",
+            "Depth-60 后继 plan identity/status/algorithm 无效。",
+        )
+
+    # Preserve, do not overwrite: refuse to validate a successor whose claimed
+    # predecessor is no longer on disk in its committed form.
+    historical_path = (root / DEPTH60_PLAN_PATH).resolve()
+    if historical_path.is_symlink() or not historical_path.is_file():
+        raise Phase6RunError(
+            "phase6_depth60_historical_commitment_missing",
+            "历史 Depth-60 plan 缺失，后继 plan 不得生效。",
+        )
+    historical = _load_json_object(historical_path)
+    historical_components = historical.get("component_hashes")
+    computed_historical_commitment = depth60_plan_commitment_sha256(historical)
+    if (
+        historical.get("plan_id") != DEPTH60_PLAN_ID
+        or historical.get("plan_commitment_sha256")
+        != DEPTH60_HISTORICAL_PLAN_COMMITMENT_SHA256
+        or computed_historical_commitment
+        != DEPTH60_HISTORICAL_PLAN_COMMITMENT_SHA256
+        or not isinstance(historical_components, Mapping)
+        or historical_components.get("source_bundle_sha256")
+        != DEPTH60_HISTORICAL_SOURCE_BUNDLE_SHA256
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_historical_commitment_missing",
+            "历史 Depth-60 commitment 已被改写，后继 plan 不得生效。",
+        )
+
+    if plan.get("supersedes") != {
+        "plan_id": DEPTH60_PLAN_ID,
+        "plan_commitment_sha256": DEPTH60_HISTORICAL_PLAN_COMMITMENT_SHA256,
+        "source_bundle_sha256": DEPTH60_HISTORICAL_SOURCE_BUNDLE_SHA256,
+        "source_bundle_algorithm": "v1",
+        "historical_plan_relative_path": DEPTH60_PLAN_PATH.as_posix(),
+        "historical_commitment_preserved": True,
+        "historical_run_superseded": False,
+    }:
+        raise Phase6RunError(
+            "phase6_depth60_successor_lineage_invalid",
+            "Depth-60 后继 plan 的 supersedes 血缘块不正确。",
+        )
+
+    if plan.get("authorization_boundary") != {
+        "plan_alone_authorizes_online_run": False,
+        "online_execution_authorized": False,
+        "usable_as_runtime_binding": False,
+        "supersedes_historical_online_authorization": False,
+    }:
+        raise Phase6RunError(
+            "phase6_depth60_successor_plan_invalid",
+            "Depth-60 后继 plan 的 authorization_boundary 漂移。",
+        )
+    if plan.get("claim_boundary") != {
+        "model_quality_claim_allowed": False,
+        "reproduces_historical_depth60_run": False,
+        "historical_result_revalidated": False,
+        "source_integrity_scope": "current_tree_only",
+    }:
+        raise Phase6RunError(
+            "phase6_depth60_successor_plan_invalid",
+            "Depth-60 后继 plan 的 claim_boundary 漂移。",
+        )
+
+    actual_components = build_depth60_component_hashes(root, "v2")
+    if plan.get("component_hashes") != actual_components:
+        raise Phase6RunError(
+            "phase6_depth60_successor_component_drift",
+            "Depth-60 后继 plan 的 component 与当前树不一致。",
+        )
+    if plan["component_hashes"]["source_bundle_sha256"] == (
+        DEPTH60_HISTORICAL_SOURCE_BUNDLE_SHA256
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_successor_lineage_invalid",
+            "后继 source bundle 不得与历史 commitment 相同。",
+        )
+
+    commitment = plan.get("plan_commitment_sha256")
+    body = {
+        key: value
+        for key, value in plan.items()
+        if key != "plan_commitment_sha256"
+    }
+    payload = json.dumps(
+        body,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    computed = hashlib.sha256(
+        DEPTH60_SUCCESSOR_PLAN_DOMAIN + payload
+    ).hexdigest()
+    if (
+        not isinstance(commitment, str)
+        or _SHA256.fullmatch(commitment) is None
+        or commitment != computed
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_successor_plan_invalid",
+            "Depth-60 后继 plan commitment 无效。",
+        )
+    return {
+        "status": "valid",
+        "plan_id": DEPTH60_SUCCESSOR_PLAN_ID,
+        "plan_commitment_sha256": commitment,
+        "source_bundle_algorithm": "v2",
+        "supersedes_plan_id": DEPTH60_PLAN_ID,
+        "online_execution_authorized": False,
+        "network_calls": 0,
+        "model_calls": 0,
+        "plan": plan,
+    }
+
+
 async def run_phase6_depth60_online(
     *,
     project_root: str | Path,
@@ -287,6 +475,12 @@ async def run_phase6_depth60_online(
             not_run=True,
         )
     validation = validate_phase6_depth60_plan(project_root, plan_path)
+    if validation.get("plan_id") != DEPTH60_PLAN_ID:
+        raise Phase6RunError(
+            "phase6_depth60_successor_plan_not_executable",
+            "Depth-60 后继 plan 只是源码完整性承诺，不能授权在线运行。",
+            not_run=True,
+        )
     if (
         not isinstance(expected_plan_commitment, str)
         or _SHA256.fullmatch(expected_plan_commitment) is None
