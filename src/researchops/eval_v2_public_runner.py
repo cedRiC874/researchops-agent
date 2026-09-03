@@ -237,6 +237,10 @@ def run_public_regression_online(
             "eval_v2_provider_key_missing",
             "未配置 candidate Provider 的 API key；未创建在线请求。",
         )
+    raise EvalV2ContractError(
+        "eval_v2_completion_telemetry_session_required",
+        "Public-regression Provider 路径尚未绑定 verified runtime completion telemetry；在线运行被拒绝。",
+    )
     validate_eval_v2_dependency_environment(root)
     candidate = _load_json_object(candidate_source, "candidate")
     provider_config = candidate["provider_config"]

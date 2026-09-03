@@ -63,7 +63,8 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
     def _historical_source_binding(self):
         published = json.loads(PUBLISHED_ARTIFACT.read_text(encoding="utf-8"))
         recorded = published["source_bindings"]
-        recorded_source = recorded["commitments"][
+        recorded_commitments = recorded["commitments"]
+        recorded_source = recorded_commitments[
             analysis.SOURCE_BUNDLE_RELATIVE_PATH.as_posix()
         ]
         locked_bundle = recorded["locked_source_bundle_sha256"]
@@ -80,13 +81,37 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
             locked_bundle,
             "914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84",
         )
-        source_path = (ROOT / analysis.SOURCE_BUNDLE_RELATIVE_PATH).resolve()
         original_source_commitment = analysis._source_commitment
+        original_ast_symbols = analysis._ast_symbol_locations
 
         def source_commitment(path: Path) -> dict[str, object]:
-            if Path(path).resolve() == source_path:
-                return dict(recorded_source)
+            resolved = Path(path).resolve()
+            try:
+                relative = resolved.relative_to(ROOT.resolve()).as_posix()
+            except ValueError:
+                return original_source_commitment(Path(path))
+            if relative in recorded_commitments:
+                return dict(recorded_commitments[relative])
             return original_source_commitment(Path(path))
+
+        def ast_symbols(path: Path, symbols=None):
+            try:
+                relative = Path(path).resolve().relative_to(ROOT.resolve()).as_posix()
+            except ValueError:
+                return (
+                    original_ast_symbols(Path(path))
+                    if symbols is None
+                    else original_ast_symbols(Path(path), symbols)
+                )
+            if relative == analysis.SCORER_RELATIVE_PATH.as_posix():
+                return dict(recorded["scorer_ast_symbols"])
+            if relative == analysis.RUNNER_RELATIVE_PATH.as_posix():
+                return dict(recorded["runner_ast_symbols"])
+            return (
+                original_ast_symbols(Path(path))
+                if symbols is None
+                else original_ast_symbols(Path(path), symbols)
+            )
 
         with patch.object(
             analysis,
@@ -96,6 +121,10 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
             analysis,
             "_source_commitment",
             side_effect=source_commitment,
+        ), patch.object(
+            analysis,
+            "_ast_symbol_locations",
+            side_effect=ast_symbols,
         ):
             yield
 
@@ -396,24 +425,27 @@ class Phase6Depth60RejectionAnalysisTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "rejection_reason_histogram.json"
             path.write_bytes(analysis._canonical_json_bytes(tampered))
-            with self.assertRaisesRegex(
-                analysis.RejectionAnalysisError, "published commitment"
-            ):
-                analysis.verify_phase6_depth60_rejection_histogram(ROOT, path)
+            with self._historical_source_binding():
+                with self.assertRaisesRegex(
+                    analysis.RejectionAnalysisError, "published commitment"
+                ):
+                    analysis.verify_phase6_depth60_rejection_histogram(ROOT, path)
 
-        with self.assertRaisesRegex(
-            analysis.RejectionAnalysisError, "out-of-band expected SHA-256"
-        ):
-            analysis.verify_phase6_depth60_rejection_histogram(
-                ROOT, expected_artifact_sha256="f" * 64
-            )
+        with self._historical_source_binding():
+            with self.assertRaisesRegex(
+                analysis.RejectionAnalysisError, "out-of-band expected SHA-256"
+            ):
+                analysis.verify_phase6_depth60_rejection_histogram(
+                    ROOT, expected_artifact_sha256="f" * 64
+                )
 
         hidden_output = json.loads(json.dumps(published))
         hidden_output["rows"][0]["final_output"] = "must not be published"
-        with self.assertRaisesRegex(
-            analysis.RejectionAnalysisError, "forbidden publication field"
-        ):
-            analysis._validate_sanitized_artifact(hidden_output, ROOT)
+        with self._historical_source_binding():
+            with self.assertRaisesRegex(
+                analysis.RejectionAnalysisError, "forbidden publication field"
+            ):
+                analysis._validate_sanitized_artifact(hidden_output, ROOT)
 
         matcher_drift = json.loads(json.dumps(published))
         matcher_drift["matcher_binding"]["structured_matcher"] = "other"

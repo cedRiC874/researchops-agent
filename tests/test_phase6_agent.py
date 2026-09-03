@@ -24,7 +24,22 @@ from researchops.phase6_agent import (
     phase6_sdk_status,
     run_phase6_agent,
 )
-from researchops.model_providers import ProviderModel
+from researchops.model_providers import DeepSeekProvider, ProviderModel
+
+
+class _TestOfflineSdkRunner:
+    def __init__(self, runner):
+        self.runner = runner
+
+
+def _offline_runner(runner):
+    return _TestOfflineSdkRunner(runner)
+
+
+def _resolve_test_sdk_runner(runner):
+    if type(runner) is _TestOfflineSdkRunner:
+        return runner.runner, True
+    return runner, False
 
 
 class _Backend:
@@ -91,6 +106,8 @@ class _FakeProvider:
     provider_id = "deepseek"
     api_key_env = "DEEPSEEK_API_KEY"
     transport_id = "openai_compatible_responses"
+    api_surface = "responses"
+    adapter_version = "deepseek-responses-adapter/1.0"
 
     def __init__(self, *, returned_model: str | None = None) -> None:
         self.returned_model = returned_model
@@ -98,6 +115,7 @@ class _FakeProvider:
         self.opened = False
         self.closed = False
         self.api_key_seen: str | None = None
+        self.session_seen = None
 
     def validate_model(self, model_id: str) -> str:
         if model_id != "deepseek-v4-flash":
@@ -106,20 +124,57 @@ class _FakeProvider:
 
     @asynccontextmanager
     async def open_model(
-        self, *, model_id: str, api_key: str, timeout_seconds: float = 120.0
+        self,
+        *,
+        model_id: str,
+        api_key: str,
+        timeout_seconds: float = 120.0,
+        completion_telemetry_session=None,
     ):
         self.opened = True
         self.api_key_seen = api_key
         self.timeout_seen = timeout_seconds
+        self.session_seen = completion_telemetry_session
         try:
             yield ProviderModel(
                 provider_id=self.provider_id,
                 model_id=self.returned_model or model_id,
                 transport_id=self.transport_id,
+                api_surface=self.api_surface,
+                adapter_version=self.adapter_version,
                 sdk_model=self.sdk_model,
+                completion_telemetry_session=completion_telemetry_session,
             )
         finally:
             self.closed = True
+
+
+class _TelemetrySession:
+    provider_id = "deepseek"
+    api_surface = "responses"
+    transport_id = "openai_compatible_responses"
+    adapter_version = "deepseek-responses-adapter/1.0"
+
+    def begin_attempt(self):
+        return object()
+
+    def finalize_response_accepted(self, handle, capture):
+        del handle, capture
+
+    def finalize_response_rejected(self, handle, error_code):
+        del handle, error_code
+
+    def finalize_http_error(self, handle, error_code):
+        del handle, error_code
+
+    def finalize_no_response(self, handle, error_code):
+        del handle, error_code
+
+    def finalize_cancelled(self, handle):
+        del handle
+
+    def finalize_outcome_unknown(self, handle, error_code):
+        del handle, error_code
 
 
 class _ProposeOnlyExecutor:
@@ -160,6 +215,32 @@ def _result(*, final_output="done", new_items=(), interruptions=()):
     )
 
 
+def _raw_response(*, request_usage_count: int = 1):
+    entries = [
+        SimpleNamespace(
+            input_tokens=10,
+            output_tokens=2,
+            total_tokens=12,
+            input_tokens_details=SimpleNamespace(cached_tokens=0),
+            output_tokens_details=SimpleNamespace(reasoning_tokens=0),
+        )
+        for _ in range(request_usage_count)
+    ]
+    return SimpleNamespace(
+        usage=SimpleNamespace(
+            requests=request_usage_count,
+            input_tokens=10 * request_usage_count,
+            output_tokens=2 * request_usage_count,
+            total_tokens=12 * request_usage_count,
+            input_tokens_details=SimpleNamespace(cached_tokens=0),
+            request_usage_entries=entries,
+        ),
+        response_id=None,
+        request_id=None,
+        output=[],
+    )
+
+
 class Phase6AgentTests(unittest.TestCase):
     def test_direct_anthropic_agent_entrypoint_denies_before_model_key_or_runner(self) -> None:
         class ForbiddenAnthropicProvider:
@@ -184,7 +265,7 @@ class Phase6AgentTests(unittest.TestCase):
                     api_key="must-not-be-used",
                     model="claude-sonnet-5",
                     provider=ForbiddenAnthropicProvider(),
-                    runner=runner,
+                    runner=_offline_runner(runner),
                 )
             )
 
@@ -253,6 +334,12 @@ class Phase6AgentTests(unittest.TestCase):
         )
 
     def setUp(self) -> None:
+        resolver = patch(
+            "researchops.phase6_agent._resolve_sdk_runner",
+            side_effect=_resolve_test_sdk_runner,
+        )
+        resolver.start()
+        self.addCleanup(resolver.stop)
         self.request = LogicalAgentRequest(
             research_question="What is the adjusted treatment effect?",
             dataset_id="synthetic_v1",
@@ -625,7 +712,7 @@ class Phase6AgentTests(unittest.TestCase):
             with self.assertRaises(Phase6AgentError) as caught:
                 asyncio.run(
                     run_phase6_agent(
-                        self.request, self.backend, runner=runner
+                        self.request, self.backend, runner=_offline_runner(runner)
                     )
                 )
         self.assertEqual(caught.exception.code, "api_key_missing")
@@ -645,7 +732,7 @@ class Phase6AgentTests(unittest.TestCase):
                         self.backend,
                         model="deepseek-v4-flash",
                         provider=provider,
-                        runner=runner,
+                        runner=_offline_runner(runner),
                     )
                 )
         global_key_setter.assert_not_called()
@@ -660,6 +747,229 @@ class Phase6AgentTests(unittest.TestCase):
         self.assertEqual(
             record.to_dict()["transport"], "openai_compatible_responses"
         )
+        self.assertFalse(record.completion_telemetry_enabled)
+        self.assertEqual(record.sdk_reconciliation.source, "unavailable")
+
+    def test_real_runner_requires_session_before_key_client_or_network(self) -> None:
+        provider = _FakeProvider()
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(Phase6AgentError) as caught:
+                asyncio.run(
+                    run_phase6_agent(
+                        self.request,
+                        self.backend,
+                        model="deepseek-v4-flash",
+                        provider=provider,
+                    )
+                )
+        self.assertEqual(
+            caught.exception.code, "completion_telemetry_session_required"
+        )
+        self.assertFalse(provider.opened)
+        self.assertIsNone(provider.api_key_seen)
+
+    def test_explicit_agents_runner_cannot_bypass_session_gate(self) -> None:
+        from agents import Runner
+
+        provider = _FakeProvider()
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(Phase6AgentError) as caught:
+                asyncio.run(
+                    run_phase6_agent(
+                        self.request,
+                        self.backend,
+                        model="deepseek-v4-flash",
+                        provider=provider,
+                        runner=Runner,
+                    )
+                )
+        self.assertEqual(
+            caught.exception.code, "completion_telemetry_session_required"
+        )
+        self.assertFalse(provider.opened)
+        self.assertIsNone(provider.api_key_seen)
+
+    def test_session_is_passed_and_provider_model_binding_is_rechecked(self) -> None:
+        provider = _FakeProvider()
+        session = _TelemetrySession()
+        result = _result()
+        result.raw_responses = [_raw_response()]
+        result.context_wrapper.usage.requests = 1
+        runner = _CapturingRunner(result)
+        record = asyncio.run(
+            run_phase6_agent(
+                self.request,
+                self.backend,
+                api_key="deepseek-test-only",
+                model="deepseek-v4-flash",
+                provider=provider,
+                runner=_offline_runner(runner),
+                completion_telemetry_session=session,
+            )
+        )
+        self.assertIs(provider.session_seen, session)
+        self.assertIs(runner.agent.model, provider.sdk_model)
+        self.assertTrue(record.completion_telemetry_enabled)
+        self.assertEqual(record.sdk_reconciliation.raw_response_count, 1)
+
+        class WrongSurfaceProvider(_FakeProvider):
+            @asynccontextmanager
+            async def open_model(self, **kwargs):
+                async with super().open_model(**kwargs) as bound:
+                    yield ProviderModel(
+                        provider_id=bound.provider_id,
+                        model_id=bound.model_id,
+                        transport_id=bound.transport_id,
+                        api_surface="wrong_surface",
+                        adapter_version=bound.adapter_version,
+                        sdk_model=bound.sdk_model,
+                        completion_telemetry_session=bound.completion_telemetry_session,
+                    )
+
+        with self.assertRaises(Phase6AgentError) as mismatch:
+            asyncio.run(
+                run_phase6_agent(
+                    self.request,
+                    self.backend,
+                    api_key="deepseek-test-only",
+                    model="deepseek-v4-flash",
+                    provider=WrongSurfaceProvider(),
+                    runner=_offline_runner(_CapturingRunner(result)),
+                    completion_telemetry_session=session,
+                )
+            )
+        self.assertEqual(mismatch.exception.code, "provider_model_identity_mismatch")
+
+    def test_session_identity_mismatch_stops_before_open_model(self) -> None:
+        provider = _FakeProvider()
+        session = _TelemetrySession()
+        session.provider_id = "openai"
+        with self.assertRaises(Phase6AgentError) as caught:
+            asyncio.run(
+                run_phase6_agent(
+                    self.request,
+                    self.backend,
+                    api_key="deepseek-test-only",
+                    model="deepseek-v4-flash",
+                    provider=provider,
+                    runner=_offline_runner(_CapturingRunner(_result())),
+                    completion_telemetry_session=session,
+                )
+            )
+        self.assertEqual(
+            caught.exception.code, "completion_telemetry_session_binding_mismatch"
+        )
+        self.assertFalse(provider.opened)
+
+    def test_offline_sdk_runner_and_duck_session_cannot_reach_provider_client(
+        self,
+    ) -> None:
+        self.assertFalse(hasattr(phase6_module, "_offline_test_sdk_runner"))
+        self.assertFalse(hasattr(phase6_module, "_OfflineSdkRunner"))
+        client_loads = 0
+
+        def forbidden_transport_load():
+            nonlocal client_loads
+            client_loads += 1
+            raise AssertionError("provider client transport must not be loaded")
+
+        with patch(
+            "researchops.model_providers._load_responses_transport",
+            side_effect=forbidden_transport_load,
+        ), self.assertRaises(Phase6AgentError) as caught:
+            asyncio.run(
+                run_phase6_agent(
+                    self.request,
+                    self.backend,
+                    api_key="deepseek-test-only",
+                    model="deepseek-v4-flash",
+                    provider=DeepSeekProvider(),
+                    runner=_offline_runner(_CapturingRunner(_result())),
+                    completion_telemetry_session=_TelemetrySession(),
+                )
+            )
+        self.assertEqual(
+            caught.exception.code, "provider_completion_session_binding_mismatch"
+        )
+        self.assertEqual(client_loads, 0)
+
+    def test_success_reconciliation_counts_multiple_responses_and_nested_usage(self) -> None:
+        result = _result()
+        result.raw_responses = [
+            _raw_response(request_usage_count=2),
+            _raw_response(request_usage_count=1),
+        ]
+        result.context_wrapper.usage.requests = 3
+        record = phase6_module._record_result(
+            result,
+            model="deepseek-v4-flash",
+            latency_ms=1.0,
+            tracing_disabled=True,
+            provider="deepseek",
+            transport="openai_compatible_responses",
+            completion_telemetry_enabled=True,
+        )
+        reconciliation = record.sdk_reconciliation
+        self.assertEqual(reconciliation.source, "run_result")
+        self.assertEqual(reconciliation.raw_response_count, 2)
+        self.assertEqual(reconciliation.aggregate_usage_request_count, 3)
+        self.assertEqual(
+            reconciliation.sdk_request_usage_indices_by_response,
+            ((0, (0, 1)), (1, (0,))),
+        )
+        serialized = json.dumps(record.to_dict(), ensure_ascii=False)
+        self.assertNotIn("final_output", json.dumps(reconciliation.to_dict()))
+        self.assertNotIn("response body sentinel", serialized)
+
+    def test_sdk_exception_partial_run_data_is_counted_without_body_or_error_text(self) -> None:
+        secret = "PRIVATE RESPONSE BODY SENTINEL"
+
+        class PartialFailureRunner:
+            @staticmethod
+            async def run(*args, **kwargs):
+                del args, kwargs
+                error = RuntimeError(secret)
+                error.run_data = SimpleNamespace(
+                    raw_responses=[
+                        SimpleNamespace(
+                            usage=SimpleNamespace(
+                                request_usage_entries=[object(), object()]
+                            ),
+                            body=secret,
+                        )
+                    ],
+                    context_wrapper=SimpleNamespace(
+                        usage=SimpleNamespace(requests=2)
+                    ),
+                    input=secret,
+                )
+                raise error
+
+        with self.assertRaises(Phase6AgentError) as caught:
+            asyncio.run(
+                run_phase6_agent(
+                    self.request,
+                    self.backend,
+                    api_key="deepseek-test-only",
+                    model="deepseek-v4-flash",
+                    provider=_FakeProvider(),
+                    runner=_offline_runner(PartialFailureRunner()),
+                    completion_telemetry_session=_TelemetrySession(),
+                )
+            )
+        error = caught.exception
+        self.assertEqual(error.sdk_reconciliation.source, "exception_run_data")
+        self.assertEqual(error.sdk_reconciliation.raw_response_count, 1)
+        self.assertEqual(error.sdk_reconciliation.aggregate_usage_request_count, 2)
+        self.assertEqual(
+            error.sdk_reconciliation.sdk_request_usage_indices_by_response,
+            ((0, (0, 1)),),
+        )
+        safe = json.dumps(error.sdk_reconciliation.to_dict(), ensure_ascii=False)
+        self.assertNotIn(secret, safe)
+        self.assertNotIn(secret, str(error))
+        self.assertIsNone(error.__cause__)
+        self.assertIsNone(error.__context__)
 
     def test_third_party_provider_requires_its_own_key_and_disabled_tracing(self) -> None:
         provider = _FakeProvider()
@@ -672,7 +982,7 @@ class Phase6AgentTests(unittest.TestCase):
                         self.backend,
                         model="deepseek-v4-flash",
                         provider=provider,
-                        runner=runner,
+                        runner=_offline_runner(runner),
                     )
                 )
         self.assertEqual(caught.exception.code, "api_key_missing")
@@ -687,7 +997,7 @@ class Phase6AgentTests(unittest.TestCase):
                     api_key="deepseek-test-only",
                     model="deepseek-v4-flash",
                     provider=provider,
-                    runner=runner,
+                    runner=_offline_runner(runner),
                     tracing_disabled=False,
                 )
             )
@@ -708,7 +1018,7 @@ class Phase6AgentTests(unittest.TestCase):
                     api_key="deepseek-test-only",
                     model="deepseek-v4-flash",
                     provider=provider,
-                    runner=runner,
+                    runner=_offline_runner(runner),
                 )
             )
         self.assertEqual(caught.exception.code, "provider_model_identity_mismatch")
@@ -735,7 +1045,7 @@ class Phase6AgentTests(unittest.TestCase):
                     request,
                     self.backend,
                     api_key="sk-test-only",
-                    runner=runner,
+                    runner=_offline_runner(runner),
                 )
             )
         transmitted = json.dumps(
@@ -780,7 +1090,7 @@ class Phase6AgentTests(unittest.TestCase):
                     self.request,
                     self.backend,
                     api_key="sk-test-only",
-                    runner=runner,
+                    runner=_offline_runner(runner),
                 )
             )
         self.assertEqual(len(record.tool_calls), 1)
@@ -819,7 +1129,7 @@ class Phase6AgentTests(unittest.TestCase):
                     self.request,
                     self.backend,
                     api_key="sk-test-only",
-                    runner=runner,
+                    runner=_offline_runner(runner),
                 )
             )
         self.assertEqual(
@@ -842,7 +1152,7 @@ class Phase6AgentTests(unittest.TestCase):
                         self.request,
                         self.backend,
                         api_key="sk-test-only",
-                        runner=SlowRunner,
+                        runner=_offline_runner(SlowRunner),
                         run_timeout_seconds=0.001,
                     )
                 )
@@ -1159,7 +1469,7 @@ class Phase6AgentTests(unittest.TestCase):
                     self.request,
                     self.backend,
                     api_key="sk-test-only",
-                    runner=runner,
+                    runner=_offline_runner(runner),
                 )
             )
         self.assertFalse(record.usage.complete)
@@ -1291,7 +1601,7 @@ class Phase6AgentTests(unittest.TestCase):
                     self.request,
                     self.backend,
                     api_key="sk-test-only",
-                    runner=runner,
+                    runner=_offline_runner(runner),
                 )
             )
         self.assertEqual(record.status, "waiting_approval")
@@ -1354,7 +1664,7 @@ class Phase6AgentTests(unittest.TestCase):
                     self.request,
                     self.backend,
                     api_key="sk-test-only",
-                    runner=runner,
+                    runner=_offline_runner(runner),
                 )
             )
         statuses = [call.status for call in record.tool_calls]

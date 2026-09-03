@@ -1,8 +1,8 @@
 # ResearchOps Agent — Current Status
 
-> Snapshot: 2026-09-02 (Asia/Shanghai)
-> Public Git anchor: `main@66f8c52dbe211adc8db9b9d3097f70bebff5f7ce`
-> Tree: `3be2ba493592afe06b8f25d161168489f8dc6c2b`
+> Snapshot: 2026-09-03 (Asia/Shanghai)
+> Implementation base Git anchor: `main@db183ffbbaf5947e96fb20034b20883d48faac78`
+> Base tree: `663a439f30e2c4b2afc0e1efb50230340adaa232`
 
 本页是给深度评审者看的状态账本，不是首页营销材料。机器合同、版本化 evidence 和冻结 artifacts 是最终事实来源；本页只做可读投影。`not_run`、`failed`、`unknown` 和 `0` 不可互换。
 
@@ -14,7 +14,7 @@ ResearchOps Agent 已完成 evidence-first 科研数据分析原型、确定性�
 
 准确定位：**已有真实但集中于单一 Provider 的在线证据、尚未通过独立外部验证的 research prototype / portfolio。**
 
-## OPEN ENGINEERING DEFECT — Provider-native completion metadata is not persisted
+## OPEN ENGINEERING DEFECT — Provider-native completion telemetry is not live-validated
 
 状态：`open / cross-cutting / causal attribution incomplete`。
 
@@ -25,13 +25,19 @@ ResearchOps Agent 已完成 evidence-first 科研数据分析原型、确定性�
 
 要求的修复不是保存完整 prompt/response body。Provider adapter 应把经过 allowlist、大小限制与脱敏的 response-level `status`、`incomplete_details`、native `finish_reason` 和 usage 一起写入 append-only event chain，并绑定 adapter/contract version。该修复只能改善后续运行的归因；不能追溯恢复既有 Kimi 或 Depth-60 payload，也不授权重跑已见任务。
 
+当前 runtime 接线已完成 local offline implementation 与完整 diff 审阅，但尚未执行 live validation：generic Eval v2 与 self-pilot 尚未接入 verified runtime denominator plan、case-scoped telemetry session 和同一事件 usage，因此真实 Provider 路径在保存或使用 Key、构造 Provider client 之前以 `eval_v2_completion_telemetry_session_required` fail-closed。确定性测试仅在测试进程内局部替换 runner resolver；CLI 与生产模块不提供授权铸造入口，该测试替换不授权真实 SDK Runner、在线调用、历史回填或新质量主张。
+
+T1–T4 已完成本地离线接线与审阅，尚未完成 live validation：T1 固定 record/missing/version/closure 合同；T2 实现写入前脱敏、UTF-8/结构限界、surface-aware mapping、opaque runtime authority 与动态分母；T3 在 Provider Adapter、Agent、append-only ledger bridge 和受控 runner 之间传递 case-scoped session，并把 accepted response 与 usage 写在同一个 reserved event；T4 使用 MockTransport、隐私 canary、终态状态机、双索引/SDK reconciliation 和 hash-chain tamper 测试覆盖这些路径。它们没有执行新的 Provider 请求或评测，也没有恢复 Kimi/Depth-60 的历史归因，不能据此关闭本缺陷、注册第二 Provider或产生新的准确率数字。真实关闭仍要求预注册的全新未见任务、实际 live telemetry 完整分母、有效事件链及全部 `truncation_signal_source=native_status`。
+
 ### Depth-60 source-bundle successor（offline source integrity only）
 
-历史 v1 plan 保持 5,398 bytes、文件 SHA-256 `f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20`、plan commitment `8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e` 与 source-bundle commitment `914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84`，未被覆盖。当前树有意追加 v2 source-bundle 算法与独立 successor validator，故 current-tree v1 hash 为 `9de0bb7b53c4aa08f100eb0f32816cbb1aa4162b788ee3ac731e414304acdbb9`，历史 plan 在当前树上应以 `phase6_depth60_component_drift` fail-closed；这不是历史 commitment 失效。
+历史 v1 plan 保持 5,398 bytes、文件 SHA-256 `f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20`、plan commitment `8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e` 与 source-bundle commitment `914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84`，未被覆盖。当前树与其冻结源码不同，因此历史 plan 在当前树上应以 `phase6_depth60_component_drift` fail-closed；这不是历史 commitment 失效。
 
-v2 算法使用独立 domain，纳入直接子模块导入会执行的每一级 package `__init__.py` 及其依赖，并覆盖 namespace-package fromlist 子模块，保留 whole-package conservative closure，在相对导入逃逸 `researchops` 时拒绝。successor validator 只接受两个固定 plan 路径；它重新计算历史 plan 的完整 commitment，而不是只相信其中两个字面量。当前 v1/v2 closure 均为 45 个文件；v2 source-bundle SHA-256 为 `cd46dc03771fc0ebca7ea50798fe2b32fa76248882881f7249c777cd3270ab25`。
+v2 算法使用独立 domain，纳入直接子模块导入会执行的每一级 package `__init__.py` 及其依赖，并覆盖 namespace-package fromlist 子模块，保留 whole-package conservative closure，在相对导入逃逸 `researchops` 时拒绝。validator 只接受 v1/v2/v3 三个固定 plan 路径，并重新计算 predecessor 的完整 commitment。冻结 v2 source-bundle SHA-256 为 `cd46dc03771fc0ebca7ea50798fe2b32fa76248882881f7249c777cd3270ab25`。
 
-重新生成的 `phase6-deepseek-depth60-v2` plan 为 2,170 bytes、文件 SHA-256 `fc4ca5cc2131efb36d82f1d739f65ad2a026e1c7534f0da9c873942a40c1002f`、plan commitment `3077a55e09f3f2137155a68d96a5bda60d8553cc9b5dd36ca83d33bbbc3dcf7e`；validator 返回 `valid`、`online_execution_authorized=false`、`network_calls=0`、`model_calls=0`。它只承诺当前源码完整性，不重验历史结果，不覆盖历史运行，也不能作为 runtime binding；`run_phase6_depth60_online` 在验证后立即以 `phase6_depth60_successor_plan_not_executable` 拒绝。因此当前没有可执行的 Depth-60 plan，且本项未修改 `phase6_runner.py`、未调用 Provider。
+冻结的 `phase6-deepseek-depth60-v2` plan 保持 2,170 bytes、文件 SHA-256 `fc4ca5cc2131efb36d82f1d739f65ad2a026e1c7534f0da9c873942a40c1002f`、plan commitment `3077a55e09f3f2137155a68d96a5bda60d8553cc9b5dd36ca83d33bbbc3dcf7e`；它对当前新增 telemetry/Adapter 树报告 component drift 是预期历史状态，不应被误判为 plan 损坏。
+
+`phase6-deepseek-depth60-v3` 已在 PR-A/PR-B 字节稳定后重新生成并通过离线验证：plan 2,850 bytes，文件 SHA-256 `5602f940a8627b9c785a1b785d757119a616050ebbc2e31e9dd26aacf448c05e`，plan commitment `979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af`；source/runtime/contract 三组件分别为 `f5af13c7475f7c152a3cbe2053c7b0f81f6d4b15034e8a58786ab9e7124a19bf`、`694c948a1d79fd38532304846577a94a4c75ca1410dd97c363df71a4ba944a63`、`c9c54c425932770254b9f460d7ab5120401ba02f6802626fb7399d3333700011`。它仍只允许作为离线源码/合同完整性承诺，不重验历史结果、不能作为在线授权；runner 必须以 `phase6_depth60_successor_plan_not_executable` 拒绝。因此当前仍没有可执行的 Depth-60 plan，也没有发生新的 Provider 调用。
 
 历史 rejection-audit artifact 仍绑定旧的 3,301-byte `phase6_source_bundle.py` 与 v1 bundle hash；历史 evidence 文件未修改。其默认 verifier 在当前 successor 树上应以 `source commitment mismatch` 拒绝，而不是把当前 source 冒充历史 source。测试同时锁住这条 current-tree 拒绝，并在显式 test-only historical binding 下继续复核历史 artifact 的 1,390/1,541 项派生比较；该测试注入只使用 artifact 已记录的旧 commitment，不声称当前文件具有历史字节。要做默认有效重放，仍需历史绑定 checkout 或独立保留的历史 source bytes。
 

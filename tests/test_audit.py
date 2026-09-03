@@ -8,7 +8,13 @@ from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
-from researchops.audit import AuditLedger, canonical_json, safe_audit_value
+from researchops.audit import (
+    COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES,
+    AuditError,
+    AuditLedger,
+    canonical_json,
+    safe_audit_value,
+)
 
 
 class AuditLedgerTests(unittest.TestCase):
@@ -93,6 +99,19 @@ class AuditLedgerTests(unittest.TestCase):
         text = json.dumps(exported, ensure_ascii=False)
         self.assertNotIn("prompt", text.lower())
         self.assertNotIn("response", text.lower())
+
+    def test_generic_append_rejects_completion_telemetry_reserved_events(self) -> None:
+        run_id = self.ledger.start_run(
+            mode="test", request_summary={"objective": "reserved events"}
+        )
+        for event_type in COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES:
+            with self.subTest(event_type=event_type):
+                with self.assertRaises(AuditError) as caught:
+                    self.ledger.append_event(run_id, event_type, {})
+                self.assertEqual(
+                    caught.exception.code,
+                    "audit_completion_reserved_event_type",
+                )
 
 
 if __name__ == "__main__":

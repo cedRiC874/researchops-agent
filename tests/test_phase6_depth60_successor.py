@@ -62,7 +62,7 @@ class Phase6Depth60SuccessorPlanTests(unittest.TestCase):
         )
         self.assertNotIn(str(ROOT), completed.stderr)
 
-    def test_successor_plan_validates_as_offline_source_integrity_only(self) -> None:
+    def test_successor_plan_bytes_are_preserved_and_current_tree_reports_drift(self) -> None:
         payload = SUCCESSOR_PLAN.read_bytes()
         self.assertEqual(len(payload), 2170)
         self.assertEqual(
@@ -70,28 +70,23 @@ class Phase6Depth60SuccessorPlanTests(unittest.TestCase):
             EXPECTED_SUCCESSOR_FILE_SHA256,
         )
 
-        result = validate_phase6_depth60_plan(ROOT, SUCCESSOR_PLAN)
-        self.assertEqual(result["status"], "valid")
-        self.assertEqual(result["plan_id"], DEPTH60_SUCCESSOR_PLAN_ID)
+        plan = _read_json(SUCCESSOR_PLAN)
+        self.assertEqual(plan["plan_id"], DEPTH60_SUCCESSOR_PLAN_ID)
         self.assertEqual(
-            result["plan_commitment_sha256"],
-            EXPECTED_SUCCESSOR_COMMITMENT,
+            plan["plan_commitment_sha256"], EXPECTED_SUCCESSOR_COMMITMENT
         )
-        self.assertEqual(result["source_bundle_algorithm"], "v2")
-        self.assertFalse(result["online_execution_authorized"])
-        self.assertEqual(result["network_calls"], 0)
-        self.assertEqual(result["model_calls"], 0)
         self.assertEqual(
-            result["plan"]["component_hashes"]["source_bundle_sha256"],
+            plan["component_hashes"]["source_bundle_sha256"],
             EXPECTED_SUCCESSOR_SOURCE_BUNDLE,
         )
-        self.assertFalse(
-            result["plan"]["authorization_boundary"][
-                "plan_alone_authorizes_online_run"
-            ]
+        with self.assertRaises(Phase6RunError) as caught:
+            validate_phase6_depth60_plan(ROOT, SUCCESSOR_PLAN)
+        self.assertEqual(
+            caught.exception.code,
+            "phase6_depth60_successor_component_drift",
         )
 
-    def test_validator_accepts_only_the_two_fixed_plan_paths(self) -> None:
+    def test_validator_rejects_non_whitelisted_plan_paths(self) -> None:
         for relative_path in (
             "evals/phase6_deepseek_depth60_plan_copy.json",
             "evals/../phase6_deepseek_depth60_plan_v2.json",
@@ -149,7 +144,7 @@ class Phase6Depth60SuccessorPlanTests(unittest.TestCase):
             "phase6_depth60_successor_component_drift",
         )
 
-    def test_successor_validates_then_real_closure_edit_fails_closed(self) -> None:
+    def test_frozen_v2_plan_does_not_silently_rebind_a_new_tree(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             tmp = Path(directory)
             shutil.copytree(
@@ -173,11 +168,15 @@ class Phase6Depth60SuccessorPlanTests(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ROOT / relative, target)
 
-            result = validate_phase6_depth60_plan(
-                tmp,
-                tmp / DEPTH60_SUCCESSOR_PLAN_PATH,
+            with self.assertRaises(Phase6RunError) as initial:
+                validate_phase6_depth60_plan(
+                    tmp,
+                    tmp / DEPTH60_SUCCESSOR_PLAN_PATH,
+                )
+            self.assertEqual(
+                initial.exception.code,
+                "phase6_depth60_successor_component_drift",
             )
-            self.assertEqual(result["status"], "valid")
 
             runner = tmp / "src/researchops/phase6_runner.py"
             runner.write_text(
@@ -218,6 +217,10 @@ class Phase6Depth60SuccessorPlanTests(unittest.TestCase):
                     depth60_module,
                     "_load_json_object",
                     side_effect=load,
+                ), patch.object(
+                    depth60_module,
+                    "build_depth60_component_hashes",
+                    return_value=copy.deepcopy(base["component_hashes"]),
                 ):
                     with self.assertRaises(Phase6RunError) as caught:
                         validate_phase6_depth60_plan(ROOT, SUCCESSOR_PLAN)
@@ -225,7 +228,7 @@ class Phase6Depth60SuccessorPlanTests(unittest.TestCase):
 
 
 class Phase6Depth60SuccessorExecutionTests(unittest.IsolatedAsyncioTestCase):
-    async def test_successor_is_rejected_before_environment_or_output(self) -> None:
+    async def test_historical_successor_drift_precedes_environment_or_output(self) -> None:
         class ForbiddenEnvironment(dict[str, str]):
             def get(self, key, default=None):
                 del key, default
@@ -246,7 +249,7 @@ class Phase6Depth60SuccessorExecutionTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(
             caught.exception.code,
-            "phase6_depth60_successor_plan_not_executable",
+            "phase6_depth60_successor_component_drift",
         )
         self.assertTrue(caught.exception.not_run)
         self.assertFalse(output.exists())

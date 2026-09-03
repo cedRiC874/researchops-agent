@@ -39,6 +39,29 @@ EXPECTED_LINES = [26, 28, 30, 32, 44]
 EXPECTED_PUBLISHED_ARTIFACT_SHA256 = (
     "36cad26b69002e9d55aa9d086e7b1b2d2fefa4893ccf18dbf6c99a1f91b278fc"
 )
+PUBLISHED_PROOF_PATH = (
+    ROOT
+    / "docs/evidence/phase6-deepseek-depth60-interpretation-audit-v1/"
+    "95_percent_lexical_counterexample.json"
+)
+
+
+@contextlib.contextmanager
+def _explicit_test_only_historical_source_binding():
+    """Replay derived content while preserving the artifact's historical source bytes."""
+
+    recorded = json.loads(PUBLISHED_PROOF_PATH.read_text(encoding="utf-8"))
+    commitments = recorded["source_bindings"]["commitments"]
+    original = counterexample._source_commitment
+
+    def historical(path: Path):
+        relative = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        if relative in commitments:
+            return dict(commitments[relative])
+        return original(path)
+
+    with patch.object(counterexample, "_source_commitment", side_effect=historical):
+        yield
 CURRENT_PYTHON_PATCH = (
     f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 )
@@ -254,7 +277,8 @@ class Phase6Depth6095PercentCounterexampleTests(unittest.TestCase):
                 self.assertTrue(all(escaped["score"]["checks"].values()))
 
     def test_source_bytes_hashes_and_ast_lines_are_bound(self) -> None:
-        commitments = self.proof["source_bindings"]["commitments"]
+        recorded = json.loads(PUBLISHED_PROOF_PATH.read_text(encoding="utf-8"))
+        commitments = recorded["source_bindings"]["commitments"]
         expected = {
             "evals/phase6_agent_tasks.jsonl": (
                 69499,
@@ -272,11 +296,17 @@ class Phase6Depth6095PercentCounterexampleTests(unittest.TestCase):
         for relative, (size, digest) in expected.items():
             payload = (ROOT / relative).read_bytes()
             self.assertEqual(commitments[relative]["bytes"], size)
-            self.assertEqual(commitments[relative]["bytes"], len(payload))
             self.assertEqual(commitments[relative]["sha256"], digest)
-            self.assertEqual(
-                commitments[relative]["sha256"], hashlib.sha256(payload).hexdigest()
-            )
+            if relative == "src/researchops/phase6_agent.py":
+                self.assertNotEqual(commitments[relative]["bytes"], len(payload))
+                self.assertNotEqual(
+                    commitments[relative]["sha256"], hashlib.sha256(payload).hexdigest()
+                )
+            else:
+                self.assertEqual(commitments[relative]["bytes"], len(payload))
+                self.assertEqual(
+                    commitments[relative]["sha256"], hashlib.sha256(payload).hexdigest()
+                )
         verifier_payload = SCRIPT.read_bytes()
         self.assertEqual(
             commitments["scripts/verify_phase6_depth60_95pct_counterexample.py"],
@@ -296,7 +326,7 @@ class Phase6Depth6095PercentCounterexampleTests(unittest.TestCase):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         top_level_lines[target.id] = node.lineno
-        locations = self.proof["source_bindings"]["scorer_ast_symbols"]
+        locations = recorded["source_bindings"]["scorer_ast_symbols"]
         for symbol, location in locations.items():
             self.assertEqual(location["line"], top_level_lines[symbol])
 
@@ -338,8 +368,19 @@ class Phase6Depth6095PercentCounterexampleTests(unittest.TestCase):
             self.assertNotIn('"expected"', str(caught.exception))
             self.assertNotIn('"actual"', str(caught.exception))
 
-    def test_published_artifact_default_path_is_verified(self) -> None:
-        summary = counterexample.verify_phase6_depth60_95pct_counterexample(ROOT)
+    def test_published_artifact_rejects_current_source_and_verifies_historical_binding(self) -> None:
+        self.assertEqual(
+            hashlib.sha256(PUBLISHED_PROOF_PATH.read_bytes()).hexdigest(),
+            EXPECTED_PUBLISHED_ARTIFACT_SHA256,
+        )
+        with self.assertRaises(counterexample.CounterexampleProofError) as current:
+            counterexample.verify_phase6_depth60_95pct_counterexample(ROOT)
+        self.assertIn(
+            "$.source_bindings.commitments.src/researchops/phase6_agent.py",
+            str(current.exception),
+        )
+        with _explicit_test_only_historical_source_binding():
+            summary = counterexample.verify_phase6_depth60_95pct_counterexample(ROOT)
         self.assertEqual(summary["status"], "valid")
         self.assertEqual(summary["mismatch_count"], 0)
         self.assertEqual(

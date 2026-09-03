@@ -22,9 +22,13 @@ _SECRET_KEY = re.compile(
     re.IGNORECASE,
 )
 _SAFE_USAGE_KEYS = {
+    "cache_write_tokens",
+    "cached_input_tokens",
     "cached_tokens",
     "input_tokens",
+    "output_token_cap",
     "output_tokens",
+    "reasoning_tokens",
     "total_tokens",
 }
 _ROW_CONTAINER_KEY = re.compile(
@@ -33,6 +37,140 @@ _ROW_CONTAINER_KEY = re.compile(
 _PARTICIPANT_ID = re.compile(r"\bP\d{3,}\b", re.IGNORECASE)
 _API_KEY_VALUE = re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b")
 _WINDOWS_PATH = re.compile(r"(?i)(?:[A-Z]:\\|\\\\)[^\r\n\t\"']+")
+COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION = (
+    "provider-completion-ledger-event/1.0"
+)
+COMPLETION_TELEMETRY_STARTED_EVENT = "model_request_started"
+COMPLETION_TELEMETRY_TERMINAL_EVENT_TYPES = frozenset(
+    {
+        "model_response_telemetry_recorded",
+        "model_response_telemetry_rejected",
+        "model_request_http_error",
+        "model_request_no_response",
+        "model_request_cancelled",
+        "model_request_outcome_unknown",
+    }
+)
+COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES = frozenset(
+    {COMPLETION_TELEMETRY_STARTED_EVENT, *COMPLETION_TELEMETRY_TERMINAL_EVENT_TYPES}
+)
+_COMPLETION_TERMINAL_KIND_BY_EVENT = {
+    "model_response_telemetry_recorded": "response_accepted",
+    "model_response_telemetry_rejected": "response_rejected",
+    "model_request_http_error": "http_error",
+    "model_request_no_response": "no_response",
+    "model_request_cancelled": "cancelled",
+    "model_request_outcome_unknown": "outcome_unknown",
+}
+_COMPLETION_SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+_COMPLETION_SAFE_ERROR = re.compile(r"^[a-z][a-z0-9_]{0,95}$")
+_COMPLETION_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_COMPLETION_BINDING_FIELDS = frozenset(
+    {
+        "telemetry_schema_sha256",
+        "adapter_version",
+        "mapping_schema_version",
+        "mapping_version",
+        "mapping_sha256",
+        "provider_id",
+        "api_surface",
+        "transport_id",
+        "output_counter_comparability",
+        "output_counter_path",
+    }
+)
+_COMPLETION_STARTED_FIELDS = frozenset(
+    {
+        "schema_version",
+        "case_id",
+        "attempt_index",
+        "case_attempt_index",
+        "binding",
+    }
+)
+_COMPLETION_TERMINAL_FIELDS = frozenset(
+    {
+        "schema_version",
+        "case_id",
+        "attempt_index",
+        "case_attempt_index",
+        "terminal_kind",
+        "response_index",
+        "error_code",
+        "binding",
+    }
+)
+_COMPLETION_ACCEPTED_FIELDS = _COMPLETION_TERMINAL_FIELDS | {
+    "completion_record"
+}
+_COMPLETION_WRITE_CAPABILITY_TOKEN = object()
+
+
+class _CompletionTelemetryWriteCapability:
+    """Opaque authority for one run/case/runtime-session ledger bridge."""
+
+    __slots__ = (
+        "_authority_token",
+        "_binding_summary",
+        "_case_id",
+        "_ledger_token",
+        "_locked",
+        "_plan_binding",
+        "_run_id",
+        "_runtime_binding",
+        "_session",
+        "_started_handles",
+        "_terminal_attempts",
+    )
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise TypeError("completion telemetry write capability is private")
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_locked", False):
+            raise AttributeError("completion telemetry write capability is immutable")
+        object.__setattr__(self, name, value)
+
+    @classmethod
+    def _create(
+        cls,
+        token: object,
+        *,
+        ledger_token: object,
+        run_id: str,
+        case_id: str,
+        plan_binding: object,
+        session: object,
+        runtime_binding: object,
+        binding_summary: Mapping[str, str],
+    ) -> _CompletionTelemetryWriteCapability:
+        if token is not _COMPLETION_WRITE_CAPABILITY_TOKEN:
+            raise TypeError("invalid completion telemetry write capability token")
+        instance = object.__new__(cls)
+        object.__setattr__(instance, "_authority_token", token)
+        object.__setattr__(instance, "_ledger_token", ledger_token)
+        object.__setattr__(instance, "_run_id", run_id)
+        object.__setattr__(instance, "_case_id", case_id)
+        object.__setattr__(instance, "_plan_binding", plan_binding)
+        object.__setattr__(instance, "_session", session)
+        object.__setattr__(instance, "_runtime_binding", runtime_binding)
+        object.__setattr__(instance, "_binding_summary", dict(binding_summary))
+        object.__setattr__(instance, "_started_handles", {})
+        object.__setattr__(instance, "_terminal_attempts", set())
+        object.__setattr__(instance, "_locked", True)
+        return instance
+
+    def _assert_authority(self, ledger_token: object) -> None:
+        if (
+            type(self) is not _CompletionTelemetryWriteCapability
+            or self._authority_token is not _COMPLETION_WRITE_CAPABILITY_TOKEN
+            or self._ledger_token is not ledger_token
+        ):
+            raise AuditError(
+                "audit_completion_write_capability_required",
+                "Completion telemetry 写入需要 bridge-only capability。",
+            )
 
 
 class AuditError(RuntimeError):
@@ -117,6 +255,22 @@ def safe_audit_value(value: Any, *, _depth: int = 0) -> Any:
                             and not isinstance(item, bool)
                             and item >= 0
                         )
+                        or (
+                            key.casefold() == "output_token_cap"
+                            and isinstance(item, Mapping)
+                            and set(item) == {"availability", "value"}
+                            and isinstance(item.get("availability"), str)
+                            and item.get("availability")
+                            in {"provided", "not_provided", "not_persisted"}
+                            and (
+                                item.get("value") is None
+                                or (
+                                    isinstance(item.get("value"), int)
+                                    and not isinstance(item.get("value"), bool)
+                                    and item.get("value") >= 0
+                                )
+                            )
+                        )
                     )
                 )
                 result[key] = (
@@ -149,6 +303,7 @@ class AuditLedger:
         self.database_path = Path(database_path).resolve()
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._completion_capability_token = object()
         self._initialize()
 
     @contextmanager
@@ -368,6 +523,132 @@ class AuditLedger:
                 actor_kind=actor_kind,
                 occurred_at=self._now(),
             )
+
+    def _create_completion_telemetry_write_capability(
+        self,
+        run_id: str,
+        *,
+        plan_binding: object,
+        session: object,
+    ) -> _CompletionTelemetryWriteCapability:
+        """Mint one bridge-only run/case write authority."""
+
+        from researchops_completion_telemetry.capture import (
+            RuntimeCaseTelemetrySession,
+            VerifiedRuntimeDenominatorPlanBinding,
+        )
+
+        if (
+            type(plan_binding) is not VerifiedRuntimeDenominatorPlanBinding
+            or type(session) is not RuntimeCaseTelemetrySession
+        ):
+            raise AuditError(
+                "audit_completion_write_capability_required",
+                "Completion telemetry capability 需要 verified plan/case session。",
+            )
+        try:
+            plan_binding.assert_plan_authority()
+            runtime_binding = plan_binding.runtime_binding()
+            binding = _validated_completion_runtime_binding(runtime_binding)
+            session_binding = session.binding_snapshot()
+        except Exception:
+            raise AuditError(
+                "audit_completion_write_capability_required",
+                "Completion telemetry plan/case authority 无效。",
+            ) from None
+        if (
+            session.case_id not in plan_binding.case_ids
+            or session_binding != binding
+            or session._tracker._plan is not plan_binding
+        ):
+            raise AuditError(
+                "audit_completion_write_capability_required",
+                "Completion telemetry case session 与 plan binding 不匹配。",
+            )
+        with self._connect() as connection:
+            run = connection.execute(
+                "SELECT status FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        if run is None:
+            raise AuditError("audit_run_not_found", "找不到审计运行。")
+        if str(run["status"]) != "running":
+            raise AuditError(
+                "audit_completion_run_not_running",
+                "Completion telemetry 只能绑定 running run。",
+            )
+        return _CompletionTelemetryWriteCapability._create(
+            _COMPLETION_WRITE_CAPABILITY_TOKEN,
+            ledger_token=self._completion_capability_token,
+            run_id=run_id,
+            case_id=session.case_id,
+            plan_binding=plan_binding,
+            session=session,
+            runtime_binding=runtime_binding,
+            binding_summary=binding,
+        )
+
+    def append_completion_telemetry_event(
+        self,
+        event_type: str,
+        payload: Mapping[str, Any],
+        *,
+        capability: object,
+        attempt_handle: object,
+        terminal: object | None = None,
+    ) -> str:
+        """Append one reserved event using a bridge-only case capability."""
+
+        if type(capability) is not _CompletionTelemetryWriteCapability:
+            raise AuditError(
+                "audit_completion_write_capability_required",
+                "Completion telemetry 写入需要 bridge-only capability。",
+            )
+        capability._assert_authority(self._completion_capability_token)
+        _validate_completion_capability_identity(
+            capability,
+            event_type,
+            payload,
+            attempt_handle=attempt_handle,
+            terminal=terminal,
+        )
+        validated = _validated_completion_event_payload(
+            event_type,
+            payload,
+            runtime_binding=capability._runtime_binding,
+            binding=capability._binding_summary,
+        )
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            run = connection.execute(
+                "SELECT status FROM runs WHERE run_id = ?", (capability._run_id,)
+            ).fetchone()
+            if run is None:
+                raise AuditError("audit_run_not_found", "找不到审计运行。")
+            if str(run["status"]) != "running":
+                raise AuditError(
+                    "audit_completion_run_not_running",
+                    "Completion telemetry 只能写入 running run。",
+                )
+            _validate_completion_event_transition(
+                connection,
+                capability._run_id,
+                event_type,
+                validated,
+            )
+            event_hash = self._append_event_tx(
+                connection,
+                capability._run_id,
+                event_type,
+                validated,
+                actor_kind="provider_adapter",
+                occurred_at=self._now(),
+                allow_reserved_event=True,
+            )
+        if event_type == COMPLETION_TELEMETRY_STARTED_EVENT:
+            capability._started_handles[validated["attempt_index"]] = attempt_handle
+        else:
+            capability._terminal_attempts.add(validated["attempt_index"])
+        return event_hash
 
     def create_tool_call(
         self,
@@ -908,7 +1189,16 @@ class AuditLedger:
         *,
         actor_kind: str,
         occurred_at: str,
+        allow_reserved_event: bool = False,
     ) -> str:
+        if (
+            event_type in COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES
+            and not allow_reserved_event
+        ):
+            raise AuditError(
+                "audit_completion_reserved_event_type",
+                "Completion telemetry reserved event 必须使用专用写入方法。",
+            )
         last = connection.execute(
             """SELECT sequence, event_hash FROM audit_events
             WHERE run_id = ? ORDER BY sequence DESC LIMIT 1""",
@@ -918,7 +1208,9 @@ class AuditLedger:
             sequence, previous = 1, ZERO_HASH
         else:
             sequence, previous = int(last["sequence"]) + 1, str(last["event_hash"])
-        safe_payload_json = canonical_json(safe_audit_value(payload))
+        safe_payload_json = canonical_json(
+            payload if allow_reserved_event else safe_audit_value(payload)
+        )
         event_hash = _event_hash(
             run_id=run_id,
             sequence=sequence,
@@ -951,6 +1243,383 @@ class AuditLedger:
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc).isoformat()
+
+
+def _completion_exact_mapping(
+    value: object,
+    fields: frozenset[str],
+    code: str,
+) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != fields:
+        raise AuditError(code, "Completion telemetry event fields 不精确。")
+    return value
+
+
+def _completion_index(value: object, code: str) -> int:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 <= value <= 2_147_483_647
+    ):
+        raise AuditError(code, "Completion telemetry index 无效。")
+    return value
+
+
+def _validated_completion_runtime_binding(
+    runtime_binding: object,
+) -> dict[str, str]:
+    from researchops_completion_telemetry.surface_mapping import (
+        VerifiedRuntimeCompletionBinding,
+    )
+
+    if type(runtime_binding) is not VerifiedRuntimeCompletionBinding:
+        raise AuditError(
+            "audit_completion_runtime_binding_required",
+            "Completion telemetry 写入需要 verified runtime binding。",
+        )
+    try:
+        runtime_binding.assert_runtime_authority()
+        raw = runtime_binding.runtime_snapshot()
+    except Exception:
+        raise AuditError(
+            "audit_completion_runtime_binding_required",
+            "Completion telemetry runtime binding authority 无效。",
+        ) from None
+    binding = _completion_exact_mapping(
+        raw,
+        _COMPLETION_BINDING_FIELDS,
+        "audit_completion_runtime_binding_invalid",
+    )
+    for field in (
+        "adapter_version",
+        "mapping_schema_version",
+        "mapping_version",
+        "provider_id",
+        "api_surface",
+        "transport_id",
+        "output_counter_path",
+    ):
+        value = binding[field]
+        if not isinstance(value, str) or not _COMPLETION_SAFE_ID.fullmatch(value):
+            raise AuditError(
+                "audit_completion_runtime_binding_invalid",
+                "Completion telemetry runtime binding identifier 无效。",
+            )
+    if (
+        not isinstance(binding["telemetry_schema_sha256"], str)
+        or not _COMPLETION_SHA256.fullmatch(binding["telemetry_schema_sha256"])
+        or not isinstance(binding["mapping_sha256"], str)
+        or not _COMPLETION_SHA256.fullmatch(binding["mapping_sha256"])
+        or binding["output_counter_comparability"]
+        not in {"comparable", "not_comparable", "not_provided"}
+    ):
+        raise AuditError(
+            "audit_completion_runtime_binding_invalid",
+            "Completion telemetry runtime binding hash/usage contract 无效。",
+        )
+    return dict(binding)
+
+
+def _validated_completion_event_payload(
+    event_type: str,
+    payload: Mapping[str, Any],
+    *,
+    runtime_binding: object,
+    binding: Mapping[str, str],
+) -> dict[str, Any]:
+    if event_type not in COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES:
+        raise AuditError(
+            "audit_completion_event_type_invalid",
+            "Completion telemetry event type 无效。",
+        )
+    expected_fields = (
+        _COMPLETION_STARTED_FIELDS
+        if event_type == COMPLETION_TELEMETRY_STARTED_EVENT
+        else (
+            _COMPLETION_ACCEPTED_FIELDS
+            if event_type == "model_response_telemetry_recorded"
+            else _COMPLETION_TERMINAL_FIELDS
+        )
+    )
+    value = _completion_exact_mapping(
+        payload,
+        frozenset(expected_fields),
+        "audit_completion_event_payload_invalid",
+    )
+    if value.get("schema_version") != COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION:
+        raise AuditError(
+            "audit_completion_event_payload_invalid",
+            "Completion telemetry event schema version 无效。",
+        )
+    case_id = value.get("case_id")
+    if not isinstance(case_id, str) or not _COMPLETION_SAFE_ID.fullmatch(case_id):
+        raise AuditError(
+            "audit_completion_event_payload_invalid",
+            "Completion telemetry case ID 无效。",
+        )
+    attempt_index = _completion_index(
+        value.get("attempt_index"), "audit_completion_event_payload_invalid"
+    )
+    case_attempt_index = _completion_index(
+        value.get("case_attempt_index"),
+        "audit_completion_event_payload_invalid",
+    )
+    payload_binding = _completion_exact_mapping(
+        value.get("binding"),
+        _COMPLETION_BINDING_FIELDS,
+        "audit_completion_event_payload_invalid",
+    )
+    if dict(payload_binding) != dict(binding):
+        raise AuditError(
+            "audit_completion_binding_mismatch",
+            "Completion telemetry event binding 不匹配。",
+        )
+
+    if event_type != COMPLETION_TELEMETRY_STARTED_EVENT:
+        terminal_kind = _COMPLETION_TERMINAL_KIND_BY_EVENT[event_type]
+        if value.get("terminal_kind") != terminal_kind:
+            raise AuditError(
+                "audit_completion_terminal_invalid",
+                "Completion telemetry terminal kind 与 event type 不匹配。",
+            )
+        response_index = value.get("response_index")
+        error_code = value.get("error_code")
+        if terminal_kind in {"response_accepted", "response_rejected"}:
+            response_index = _completion_index(
+                response_index, "audit_completion_terminal_invalid"
+            )
+        elif response_index is not None:
+            raise AuditError(
+                "audit_completion_terminal_invalid",
+                "No-response terminal 不得占用 response index。",
+            )
+        if terminal_kind in {"response_accepted", "cancelled"}:
+            if error_code is not None:
+                raise AuditError(
+                    "audit_completion_terminal_invalid",
+                    "Accepted/cancelled terminal 不得带 error code。",
+                )
+        elif (
+            not isinstance(error_code, str)
+            or not _COMPLETION_SAFE_ERROR.fullmatch(error_code)
+        ):
+            raise AuditError(
+                "audit_completion_terminal_invalid",
+                "Completion terminal 只允许稳定 error code。",
+            )
+        if terminal_kind == "response_accepted":
+            from researchops_completion_telemetry.sanitization import (
+                validate_completion_record,
+            )
+
+            record = value.get("completion_record")
+            if not isinstance(record, Mapping):
+                raise AuditError(
+                    "audit_completion_record_invalid",
+                    "Accepted terminal 缺少 completion record。",
+                )
+            try:
+                validate_completion_record(record, binding=runtime_binding)
+            except Exception:
+                raise AuditError(
+                    "audit_completion_record_invalid",
+                    "Accepted completion record 未通过严格验证。",
+                ) from None
+            if (
+                record.get("response_index") != response_index
+                or record.get("request_index") != attempt_index
+                or record.get("provider_id") != binding["provider_id"]
+                or record.get("api_surface") != binding["api_surface"]
+                or record.get("transport_id") != binding["transport_id"]
+                or record.get("adapter_version") != binding["adapter_version"]
+                or record.get("telemetry_schema_sha256")
+                != binding["telemetry_schema_sha256"]
+                or record.get("mapping_sha256") != binding["mapping_sha256"]
+                or not isinstance(record.get("usage"), Mapping)
+            ):
+                raise AuditError(
+                    "audit_completion_record_invalid",
+                    "Accepted completion record identity/usage 不匹配。",
+                )
+    try:
+        canonical_json(value)
+    except AuditError:
+        raise
+    except Exception:
+        raise AuditError(
+            "audit_completion_event_payload_invalid",
+            "Completion telemetry event 不是规范 JSON。",
+        ) from None
+    return dict(value)
+
+
+def _validate_completion_capability_identity(
+    capability: _CompletionTelemetryWriteCapability,
+    event_type: str,
+    payload: Mapping[str, Any],
+    *,
+    attempt_handle: object,
+    terminal: object | None,
+) -> None:
+    from researchops_completion_telemetry.capture import (
+        RuntimeAttemptHandle,
+        RuntimeAttemptTerminal,
+    )
+
+    if type(attempt_handle) is not RuntimeAttemptHandle:
+        raise AuditError(
+            "audit_completion_attempt_handle_invalid",
+            "Completion telemetry write handle 无效。",
+        )
+    if (
+        attempt_handle.case_id != capability._case_id
+        or payload.get("case_id") != capability._case_id
+        or payload.get("attempt_index") != attempt_handle.attempt_index
+        or payload.get("case_attempt_index") != attempt_handle.case_attempt_index
+    ):
+        raise AuditError(
+            "audit_completion_attempt_handle_invalid",
+            "Completion telemetry write identity 与 case capability 不匹配。",
+        )
+    tracker = capability._session._tracker
+    if event_type == COMPLETION_TELEMETRY_STARTED_EVENT:
+        if (
+            terminal is not None
+            or attempt_handle.attempt_index in capability._started_handles
+            or tracker._pending.get(attempt_handle.attempt_index) is not attempt_handle
+        ):
+            raise AuditError(
+                "audit_completion_attempt_handle_invalid",
+                "Completion start 必须对应当前 tracker 的唯一 pending handle。",
+            )
+        return
+    if (
+        type(terminal) is not RuntimeAttemptTerminal
+        or capability._started_handles.get(attempt_handle.attempt_index)
+        is not attempt_handle
+        or attempt_handle.attempt_index in capability._terminal_attempts
+        or tracker._terminals.get(attempt_handle.attempt_index) is not terminal
+        or terminal.case_id != capability._case_id
+        or terminal.attempt_index != attempt_handle.attempt_index
+        or terminal.case_attempt_index != attempt_handle.case_attempt_index
+        or payload.get("terminal_kind") != terminal.terminal_kind
+        or payload.get("response_index") != terminal.response_index
+        or payload.get("error_code") != terminal.error_code
+    ):
+        raise AuditError(
+            "audit_completion_terminal_identity_invalid",
+            "Completion terminal 与 tracker/handle/capability 不匹配。",
+        )
+
+
+def _validate_completion_event_transition(
+    connection: sqlite3.Connection,
+    run_id: str,
+    event_type: str,
+    payload: Mapping[str, Any],
+) -> None:
+    placeholders = ",".join("?" for _ in COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES)
+    rows = connection.execute(
+        "SELECT event_type, safe_payload_json FROM audit_events "
+        f"WHERE run_id = ? AND event_type IN ({placeholders}) ORDER BY sequence",
+        (run_id, *sorted(COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES)),
+    ).fetchall()
+    prior: list[tuple[str, Mapping[str, Any]]] = []
+    for row in rows:
+        try:
+            item = json.loads(str(row["safe_payload_json"]))
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise AuditError(
+                "audit_completion_event_state_invalid",
+                "已写入的 completion telemetry event 无法解析。",
+            ) from exc
+        if not isinstance(item, Mapping):
+            raise AuditError(
+                "audit_completion_event_state_invalid",
+                "已写入的 completion telemetry payload 无效。",
+            )
+        prior.append((str(row["event_type"]), item))
+
+    attempt_index = payload["attempt_index"]
+    case_id = payload["case_id"]
+    case_attempt_index = payload["case_attempt_index"]
+    same_attempt = [
+        (kind, item)
+        for kind, item in prior
+        if item.get("attempt_index") == attempt_index
+    ]
+    if event_type == COMPLETION_TELEMETRY_STARTED_EVENT:
+        case_starts = [
+            item
+            for kind, item in prior
+            if kind == COMPLETION_TELEMETRY_STARTED_EVENT
+            and item.get("case_id") == case_id
+        ]
+        terminal_attempt_indices = {
+            item.get("attempt_index")
+            for kind, item in prior
+            if kind in COMPLETION_TELEMETRY_TERMINAL_EVENT_TYPES
+        }
+        case_has_unfinished_start = any(
+            item.get("attempt_index") not in terminal_attempt_indices
+            for item in case_starts
+        )
+        if (
+            case_attempt_index != len(case_starts)
+            or case_has_unfinished_start
+            or same_attempt
+            or any(
+            item.get("case_id") == case_id
+            and item.get("case_attempt_index") == case_attempt_index
+            for _, item in prior
+            )
+        ):
+            raise AuditError(
+                "audit_completion_attempt_duplicate",
+                "Completion telemetry attempt 已存在。",
+            )
+        return
+
+    starts = [
+        item
+        for kind, item in same_attempt
+        if kind == COMPLETION_TELEMETRY_STARTED_EVENT
+    ]
+    terminals = [
+        item
+        for kind, item in same_attempt
+        if kind in COMPLETION_TELEMETRY_TERMINAL_EVENT_TYPES
+    ]
+    if len(starts) != 1:
+        raise AuditError(
+            "audit_completion_start_missing",
+            "Completion terminal 必须对应唯一 start event。",
+        )
+    if terminals:
+        raise AuditError(
+            "audit_completion_terminal_duplicate",
+            "Completion attempt 已有 terminal event。",
+        )
+    start = starts[0]
+    if (
+        start.get("case_id") != case_id
+        or start.get("case_attempt_index") != case_attempt_index
+        or start.get("binding") != payload.get("binding")
+    ):
+        raise AuditError(
+            "audit_completion_attempt_mismatch",
+            "Completion terminal 与 start identity 不匹配。",
+        )
+    response_index = payload.get("response_index")
+    if response_index is not None and any(
+        kind in COMPLETION_TELEMETRY_TERMINAL_EVENT_TYPES
+        and item.get("response_index") == response_index
+        for kind, item in prior
+    ):
+        raise AuditError(
+            "audit_completion_response_duplicate",
+            "Completion response index 已被使用。",
+        )
 
 
 def _normalize_json(value: Any) -> Any:

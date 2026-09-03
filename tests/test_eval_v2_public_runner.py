@@ -546,6 +546,43 @@ def test_historical_candidate_is_rejected_before_environment_or_provider(
     assert not output.exists()
 
 
+def test_runtime_completion_telemetry_gate_precedes_environment_and_provider(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "project"
+    output = root / "artifacts" / "run-telemetry-blocked"
+    with (
+        patch(
+            "researchops.eval_v2_public_runner.validate_public_regression_candidate",
+            return_value={
+                "historical_snapshot_only": False,
+                "public_regression_online_authorized": True,
+            },
+        ),
+        patch(
+            "researchops.eval_v2_public_runner.validate_eval_v2_dependency_environment",
+            side_effect=AssertionError("telemetry gate must precede environment"),
+        ),
+        patch(
+            "researchops.eval_v2_public_runner.get_provider",
+            side_effect=AssertionError("telemetry gate must precede Provider"),
+        ),
+        _raises(EvalV2ContractError) as caught,
+    ):
+        run_public_regression_online(
+            project_root=root,
+            candidate_path=root / "candidate.json",
+            registry_path=root / "registry.json",
+            output_directory=output,
+            api_key="OPAQUE-KEY-MUST-NOT-BE-USED",
+            budget_cny=6,
+            confirm_online=True,
+        )
+    assert caught.value.code == "eval_v2_completion_telemetry_session_required"
+    assert "OPAQUE-KEY-MUST-NOT-BE-USED" not in str(caught.value)
+    assert not output.exists()
+
+
 def test_diagnostic_candidate_is_rejected_before_environment_or_provider(
     tmp_path: Path,
 ) -> None:

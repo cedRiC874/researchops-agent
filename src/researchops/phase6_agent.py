@@ -9,14 +9,17 @@ import os
 import re
 import threading
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Protocol
 
 from .model_providers import (
     ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
+    CompletionTelemetrySession,
     OpenAIProvider,
     ProviderAdapter,
     ProviderConfigurationError,
+    _validate_completion_session,
 )
 
 
@@ -24,6 +27,7 @@ DEFAULT_PHASE6_MODEL = "gpt-5.6"
 PHASE6_MAX_OUTPUT_TOKENS = 2_000
 RESUME_SUPPORTED = False
 _LOGICAL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+_TELEMETRY_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$")
 _SAFE_ERROR_CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _EVIDENCE_ID = re.compile(r"^E-[A-F0-9]{12}$")
 _ROW_IDENTIFIER_VALUE = re.compile(r"\bP\d{4}\b", re.IGNORECASE)
@@ -56,14 +60,66 @@ _FORBIDDEN_RESULT_KEYS = {
     "records",
     "rows",
 }
+def _resolve_sdk_runner(runner: Any | None) -> tuple[Any | None, bool]:
+    """Production resolver never grants offline authorization.
+
+    Deterministic tests patch this narrow resolver with a test-local wrapper.  The
+    production module intentionally exposes no callable capability mint.
+    """
+
+    return runner, False
+
+
+@dataclass(frozen=True)
+class AgentSdkReconciliation:
+    """Body-free SDK counts used by the runner to seal one dynamic case."""
+
+    source: str
+    raw_response_count: int | None
+    aggregate_usage_request_count: int | None
+    sdk_request_usage_indices_by_response: tuple[tuple[int, tuple[int, ...]], ...]
+
+    @property
+    def available(self) -> bool:
+        return self.raw_response_count is not None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source": self.source,
+            "raw_response_count": self.raw_response_count,
+            "aggregate_usage_request_count": self.aggregate_usage_request_count,
+            "sdk_request_usage_indices_by_response": [
+                {
+                    "sdk_raw_response_index": response_index,
+                    "sdk_request_usage_indices": list(request_indices),
+                }
+                for response_index, request_indices in self.sdk_request_usage_indices_by_response
+            ],
+            "available": self.available,
+        }
+
+
+def _unavailable_sdk_reconciliation() -> AgentSdkReconciliation:
+    return AgentSdkReconciliation("unavailable", None, None, ())
 
 
 class Phase6AgentError(RuntimeError):
     """A stable, non-secret-bearing failure raised by the online adapter."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        *,
+        sdk_reconciliation: AgentSdkReconciliation | None = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
+        self.sdk_reconciliation = (
+            sdk_reconciliation
+            if sdk_reconciliation is not None
+            else _unavailable_sdk_reconciliation()
+        )
 
     def to_dict(self) -> dict[str, str]:
         return {"status": "error", "error_code": self.code, "message": str(self)}
@@ -386,6 +442,10 @@ class AgentRunRecord:
     transport: str = "openai_responses"
     completion_integrity: bool = True
     completion_error_code: str | None = None
+    completion_telemetry_enabled: bool = False
+    sdk_reconciliation: AgentSdkReconciliation = field(
+        default_factory=_unavailable_sdk_reconciliation
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -406,6 +466,8 @@ class AgentRunRecord:
             "transport": self.transport,
             "completion_integrity": self.completion_integrity,
             "completion_error_code": self.completion_error_code,
+            "completion_telemetry_enabled": self.completion_telemetry_enabled,
+            "sdk_reconciliation": self.sdk_reconciliation.to_dict(),
         }
 
 
@@ -726,10 +788,15 @@ async def run_phase6_agent(
     tracing_disabled: bool = True,
     max_turns: int = 8,
     run_timeout_seconds: float = 120.0,
+    completion_telemetry_session: CompletionTelemetrySession | None = None,
 ) -> AgentRunRecord:
     """Run the online agent; a runner can be injected for deterministic no-network tests."""
 
+    runner, offline_runner_authorized = _resolve_sdk_runner(runner)
+
     adapter = provider if provider is not None else OpenAIProvider()
+    adapter_api_surface: str | None = None
+    adapter_version: str | None = None
     try:
         provider_id = _provider_identity(adapter, "provider_id")
         transport_id = _provider_identity(adapter, "transport_id")
@@ -740,6 +807,9 @@ async def run_phase6_agent(
                 "Generic Phase 6 Agent 不接受 Anthropic；受控 pilot capability 尚未实现。",
             )
         validated_model = adapter.validate_model(model)
+        if completion_telemetry_session is not None:
+            adapter_api_surface = _telemetry_identity(adapter, "api_surface")
+            adapter_version = _telemetry_identity(adapter, "adapter_version")
     except Phase6AgentError:
         raise
     except ProviderConfigurationError as exc:
@@ -749,6 +819,36 @@ async def run_phase6_agent(
             "provider_configuration_invalid",
             f"Provider 配置无效：{type(exc).__name__}；未记录异常正文。",
         ) from exc
+    if not offline_runner_authorized and completion_telemetry_session is None:
+        raise Phase6AgentError(
+            "completion_telemetry_session_required",
+            "真实 Phase 6 Runner 必须在创建 Provider client 前绑定 case-scoped completion telemetry session。",
+        )
+    if completion_telemetry_session is not None:
+        if (
+            getattr(completion_telemetry_session, "provider_id", None) != provider_id
+            or getattr(completion_telemetry_session, "api_surface", None)
+            != adapter_api_surface
+            or getattr(completion_telemetry_session, "transport_id", None)
+            != transport_id
+            or getattr(completion_telemetry_session, "adapter_version", None)
+            != adapter_version
+        ):
+            raise Phase6AgentError(
+                "completion_telemetry_session_binding_mismatch",
+                "Completion telemetry session 与 Phase 6 Provider 绑定不一致。",
+            )
+        if not offline_runner_authorized:
+            try:
+                _validate_completion_session(
+                    completion_telemetry_session,
+                    provider_id=provider_id,
+                    api_surface=adapter_api_surface,
+                    transport_id=transport_id,
+                    adapter_version=adapter_version,
+                )
+            except ProviderConfigurationError as exc:
+                raise Phase6AgentError(exc.code, str(exc)) from None
     key = _require_api_key(api_key, environment_variable=api_key_env)
     if provider_id != "openai" and tracing_disabled is not True:
         raise Phase6AgentError(
@@ -785,17 +885,32 @@ async def run_phase6_agent(
         raise Phase6AgentError("runner_invalid", "注入的 runner 必须提供可调用的 run。")
 
     started = time.perf_counter()
+    pending_error: Phase6AgentError | None = None
     try:
-        async with adapter.open_model(
-            model_id=validated_model,
-            api_key=key,
-            timeout_seconds=float(run_timeout_seconds),
-        ) as provider_model:
+        open_model_kwargs: dict[str, Any] = {
+            "model_id": validated_model,
+            "api_key": key,
+            "timeout_seconds": float(run_timeout_seconds),
+        }
+        if completion_telemetry_session is not None:
+            open_model_kwargs["completion_telemetry_session"] = (
+                completion_telemetry_session
+            )
+        async with adapter.open_model(**open_model_kwargs) as provider_model:
             if (
                 provider_model.provider_id != provider_id
                 or provider_model.model_id != validated_model
                 or provider_model.transport_id != transport_id
                 or provider_model.sdk_model is None
+                or (
+                    completion_telemetry_session is not None
+                    and (
+                        provider_model.api_surface != adapter_api_surface
+                        or provider_model.adapter_version != adapter_version
+                        or provider_model.completion_telemetry_session
+                        is not completion_telemetry_session
+                    )
+                )
             ):
                 raise Phase6AgentError(
                     "provider_model_identity_mismatch",
@@ -821,19 +936,30 @@ async def run_phase6_agent(
                 else result_or_awaitable
             )
     except TimeoutError as exc:
-        raise Phase6AgentError(
-            "agent_run_timeout", "Agents SDK 运行超过受控总时限。"
-        ) from exc
+        pending_error = Phase6AgentError(
+            "agent_run_timeout",
+            "Agents SDK 运行超过受控总时限。",
+            sdk_reconciliation=_sdk_reconciliation_from_exception(exc),
+        )
     except Phase6AgentError:
         raise
     except ProviderConfigurationError as exc:
-        raise Phase6AgentError(exc.code, str(exc)) from exc
+        pending_error = Phase6AgentError(
+            exc.code,
+            str(exc),
+            sdk_reconciliation=_sdk_reconciliation_from_exception(exc),
+        )
     except Exception as exc:
         error_code = _classify_provider_error(exc)
-        raise Phase6AgentError(
+        pending_error = Phase6AgentError(
             error_code,
             f"Provider/Agents SDK 运行失败：{type(exc).__name__}；未记录异常正文。",
-        ) from exc
+            sdk_reconciliation=_sdk_reconciliation_from_exception(exc),
+        )
+    if pending_error is not None:
+        # Raise after leaving the provider exception handler so the safe error
+        # does not retain the original response-bearing exception as context.
+        raise pending_error from None
     latency_ms = max((time.perf_counter() - started) * 1000.0, 0.0)
     return _record_result(
         result,
@@ -842,6 +968,7 @@ async def run_phase6_agent(
         tracing_disabled=tracing_disabled,
         provider=provider_id,
         transport=transport_id,
+        completion_telemetry_enabled=completion_telemetry_session is not None,
     )
 
 
@@ -910,6 +1037,16 @@ def _provider_identity(adapter: Any, attribute: str) -> str:
         raise ProviderConfigurationError(
             "provider_configuration_invalid",
             f"Provider {attribute} 必须是安全的逻辑 ID。",
+        )
+    return value
+
+
+def _telemetry_identity(adapter: Any, attribute: str) -> str:
+    value = getattr(adapter, attribute, None)
+    if not isinstance(value, str) or not _TELEMETRY_ID.fullmatch(value):
+        raise ProviderConfigurationError(
+            "provider_configuration_invalid",
+            f"Provider {attribute} 必须是安全的 telemetry ID。",
         )
     return value
 
@@ -1097,6 +1234,7 @@ def _record_result(
     tracing_disabled: bool,
     provider: str = "openai",
     transport: str = "openai_responses",
+    completion_telemetry_enabled: bool = False,
 ) -> AgentRunRecord:
     interruptions = _extract_interruptions(result)
     tool_calls = _extract_tool_calls(result, interruptions)
@@ -1119,7 +1257,59 @@ def _record_result(
         transport=transport,
         completion_integrity=completion_error_code is None,
         completion_error_code=completion_error_code,
+        completion_telemetry_enabled=completion_telemetry_enabled,
+        sdk_reconciliation=_sdk_reconciliation_from_object(
+            result, source="run_result"
+        ),
     )
+
+
+_SDK_ATTRIBUTE_MISSING = object()
+
+
+def _sdk_reconciliation_from_object(
+    value: object,
+    *,
+    source: str,
+) -> AgentSdkReconciliation:
+    """Read counts and nested indices only; never retain SDK response objects."""
+
+    raw_responses = getattr(value, "raw_responses", _SDK_ATTRIBUTE_MISSING)
+    if (
+        raw_responses is _SDK_ATTRIBUTE_MISSING
+        or not isinstance(raw_responses, Sequence)
+        or isinstance(raw_responses, (str, bytes, bytearray))
+    ):
+        return _unavailable_sdk_reconciliation()
+    nested: list[tuple[int, tuple[int, ...]]] = []
+    for response_index, response in enumerate(raw_responses):
+        usage = getattr(response, "usage", None)
+        entries = getattr(usage, "request_usage_entries", ()) if usage is not None else ()
+        if not isinstance(entries, Sequence) or isinstance(
+            entries, (str, bytes, bytearray)
+        ):
+            request_indices: tuple[int, ...] = ()
+        else:
+            request_indices = tuple(range(len(entries)))
+        nested.append((response_index, request_indices))
+    wrapper = getattr(value, "context_wrapper", None)
+    aggregate_usage = getattr(wrapper, "usage", None)
+    aggregate_requests = _optional_nonnegative_int(
+        getattr(aggregate_usage, "requests", None)
+    )
+    return AgentSdkReconciliation(
+        source=source,
+        raw_response_count=len(raw_responses),
+        aggregate_usage_request_count=aggregate_requests,
+        sdk_request_usage_indices_by_response=tuple(nested),
+    )
+
+
+def _sdk_reconciliation_from_exception(exc: BaseException) -> AgentSdkReconciliation:
+    run_data = getattr(exc, "run_data", None)
+    if run_data is None:
+        return _unavailable_sdk_reconciliation()
+    return _sdk_reconciliation_from_object(run_data, source="exception_run_data")
 
 
 def _extract_interruptions(result: Any) -> tuple[ApprovalInterruption, ...]:
