@@ -185,8 +185,9 @@ class Phase6Depth60PlanTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("phase6-validate-deepseek-depth60 `", workflow)
         self.assertIn("evals/phase6_deepseek_depth60_plan_v2.json", workflow)
+        self.assertIn("evals/phase6_deepseek_depth60_plan_v3.json", workflow)
         self.assertIn(
-            "3077a55e09f3f2137155a68d96a5bda60d8553cc9b5dd36ca83d33bbbc3dcf7e",
+            "979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af",
             workflow,
         )
         self.assertIn(
@@ -194,6 +195,8 @@ class Phase6Depth60PlanTests(unittest.TestCase):
             workflow,
         )
         self.assertIn("$historicalDepth60Bytes -ne 5398", workflow)
+        self.assertIn("$historicalDepth60V2Bytes -ne 2170", workflow)
+        self.assertIn("$depth60V3Bytes -ne 2850", workflow)
         self.assertIn("$depth60.source_bundle_algorithm -ne \"v2\"", workflow)
         self.assertIn("$depth60.online_execution_authorized -ne $false", workflow)
         self.assertIn("$depth60.network_calls -ne 0", workflow)

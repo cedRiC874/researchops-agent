@@ -16,6 +16,8 @@ from .phase6_runner import (
     phase6_status,
 )
 from .phase6_source_bundle import (
+    completion_telemetry_contract_bundle_sha256,
+    completion_telemetry_runtime_bundle_sha256,
     phase6_depth60_source_bundle_sha256_for,
 )
 
@@ -32,6 +34,14 @@ DEPTH60_SUCCESSOR_PLAN_DOMAIN = (
 DEPTH60_SUCCESSOR_PLAN_PATH = Path(
     "evals/phase6_deepseek_depth60_plan_v2.json"
 )
+DEPTH60_SUCCESSOR_V3_PLAN_ID = "phase6-deepseek-depth60-v3"
+DEPTH60_SUCCESSOR_V3_PLAN_SCHEMA_VERSION = "3.0"
+DEPTH60_SUCCESSOR_V3_PLAN_DOMAIN = (
+    b"researchops-phase6-deepseek-depth60-successor-plan-v3\0"
+)
+DEPTH60_SUCCESSOR_V3_PLAN_PATH = Path(
+    "evals/phase6_deepseek_depth60_plan_v3.json"
+)
 # The historical commitment is an assertion about a commit, not about HEAD.
 # These literals exist so the successor cannot be validated while the history
 # it claims to supersede has been altered or removed.
@@ -40,6 +50,16 @@ DEPTH60_HISTORICAL_SOURCE_BUNDLE_SHA256 = (
 )
 DEPTH60_HISTORICAL_PLAN_COMMITMENT_SHA256 = (
     "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e"
+)
+DEPTH60_V2_PLAN_BYTES = 2170
+DEPTH60_V2_PLAN_FILE_SHA256 = (
+    "fc4ca5cc2131efb36d82f1d739f65ad2a026e1c7534f0da9c873942a40c1002f"
+)
+DEPTH60_V2_PLAN_COMMITMENT_SHA256 = (
+    "3077a55e09f3f2137155a68d96a5bda60d8553cc9b5dd36ca83d33bbbc3dcf7e"
+)
+DEPTH60_V2_SOURCE_BUNDLE_SHA256 = (
+    "cd46dc03771fc0ebca7ea50798fe2b32fa76248882881f7249c777cd3270ab25"
 )
 DEPTH60_TASK_IDS = tuple(f"P6-DEV-{index:03d}" for index in range(1, 61))
 _AUTHORIZATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
@@ -103,6 +123,22 @@ def build_depth60_component_hashes(
     }
 
 
+def build_depth60_component_hashes_v3(
+    project_root: str | Path,
+) -> dict[str, str]:
+    """Bind the v2 ResearchOps closure plus both telemetry sibling bundles."""
+
+    root = Path(project_root).resolve()
+    components = build_depth60_component_hashes(root, "v2")
+    components["completion_telemetry_runtime_bundle_sha256"] = (
+        completion_telemetry_runtime_bundle_sha256(root)
+    )
+    components["completion_telemetry_contract_bundle_sha256"] = (
+        completion_telemetry_contract_bundle_sha256(root)
+    )
+    return components
+
+
 def depth60_plan_commitment_sha256(plan: Mapping[str, Any]) -> str:
     body = dict(plan)
     body.pop("plan_commitment_sha256", None)
@@ -116,6 +152,86 @@ def depth60_plan_commitment_sha256(plan: Mapping[str, Any]) -> str:
     return hashlib.sha256(DEPTH60_PLAN_DOMAIN + payload).hexdigest()
 
 
+def depth60_successor_v3_plan_commitment_sha256(
+    plan: Mapping[str, Any],
+) -> str:
+    body = dict(plan)
+    body.pop("plan_commitment_sha256", None)
+    payload = json.dumps(
+        body,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(DEPTH60_SUCCESSOR_V3_PLAN_DOMAIN + payload).hexdigest()
+
+
+def build_depth60_successor_plan_v3(
+    project_root: str | Path,
+    *,
+    locked_at_utc: str,
+) -> dict[str, Any]:
+    """Build, but do not write, a v3 source-integrity successor plan."""
+
+    if not isinstance(locked_at_utc, str) or not locked_at_utc.endswith("Z"):
+        raise Phase6RunError(
+            "phase6_depth60_v3_locked_at_invalid",
+            "Depth-60 v3 locked_at_utc 必须是以 Z 结尾的 UTC 字符串。",
+        )
+    root = Path(project_root).resolve()
+    body: dict[str, Any] = {
+        "schema_version": DEPTH60_SUCCESSOR_V3_PLAN_SCHEMA_VERSION,
+        "plan_id": DEPTH60_SUCCESSOR_V3_PLAN_ID,
+        "status": "locked_offline_not_run",
+        "locked_at_utc": locked_at_utc,
+        "evaluation_scope": "source_integrity_commitment_only",
+        "source_bundle_algorithm": "v2",
+        "component_hash_algorithms": {
+            "source_bundle_sha256": "v2",
+            "completion_telemetry_runtime_bundle_sha256": (
+                "completion_telemetry_runtime_bundle_v1"
+            ),
+            "completion_telemetry_contract_bundle_sha256": (
+                "completion_telemetry_contract_bundle_v1"
+            ),
+        },
+        "component_hashes": build_depth60_component_hashes_v3(root),
+        "supersedes": {
+            "plan_id": DEPTH60_SUCCESSOR_PLAN_ID,
+            "plan_commitment_sha256": DEPTH60_V2_PLAN_COMMITMENT_SHA256,
+            "source_bundle_sha256": DEPTH60_V2_SOURCE_BUNDLE_SHA256,
+            "source_bundle_algorithm": "v2",
+            "historical_plan_relative_path": (
+                DEPTH60_SUCCESSOR_PLAN_PATH.as_posix()
+            ),
+            "historical_plan_bytes": DEPTH60_V2_PLAN_BYTES,
+            "historical_plan_sha256": DEPTH60_V2_PLAN_FILE_SHA256,
+            "historical_commitment_preserved": True,
+            "historical_run_superseded": False,
+        },
+        "authorization_boundary": {
+            "plan_alone_authorizes_online_run": False,
+            "online_execution_authorized": False,
+            "usable_as_runtime_binding": False,
+            "supersedes_historical_online_authorization": False,
+        },
+        "claim_boundary": {
+            "model_quality_claim_allowed": False,
+            "reproduces_historical_depth60_run": False,
+            "historical_result_revalidated": False,
+            "source_integrity_scope": (
+                "current_tree_plus_completion_telemetry_runtime_and_contract_bundles"
+            ),
+        },
+    }
+    plan = dict(body)
+    plan["plan_commitment_sha256"] = (
+        depth60_successor_v3_plan_commitment_sha256(plan)
+    )
+    return plan
+
+
 def validate_phase6_depth60_plan(
     project_root: str | Path,
     plan_path: str | Path = DEPTH60_PLAN_PATH,
@@ -127,6 +243,8 @@ def validate_phase6_depth60_plan(
     resolved_plan = resolved_plan.resolve()
     if resolved_plan == (root / DEPTH60_SUCCESSOR_PLAN_PATH).resolve():
         return _validate_depth60_successor_plan(root, resolved_plan)
+    if resolved_plan == (root / DEPTH60_SUCCESSOR_V3_PLAN_PATH).resolve():
+        return _validate_depth60_successor_v3_plan(root, resolved_plan)
     expected_plan = (root / DEPTH60_PLAN_PATH).resolve()
     if resolved_plan != expected_plan:
         raise Phase6RunError(
@@ -409,6 +527,7 @@ def _validate_depth60_successor_plan(
         raise Phase6RunError(
             "phase6_depth60_successor_component_drift",
             "Depth-60 后继 plan 的 component 与当前树不一致。",
+            not_run=True,
         )
     if plan["component_hashes"]["source_bundle_sha256"] == (
         DEPTH60_HISTORICAL_SOURCE_BUNDLE_SHA256
@@ -449,6 +568,254 @@ def _validate_depth60_successor_plan(
         "plan_commitment_sha256": commitment,
         "source_bundle_algorithm": "v2",
         "supersedes_plan_id": DEPTH60_PLAN_ID,
+        "online_execution_authorized": False,
+        "network_calls": 0,
+        "model_calls": 0,
+        "plan": plan,
+    }
+
+
+def _validate_frozen_depth60_v2_lineage(root: Path) -> dict[str, Any]:
+    path = (root / DEPTH60_SUCCESSOR_PLAN_PATH).resolve()
+    lexical = root / DEPTH60_SUCCESSOR_PLAN_PATH
+    if lexical.is_symlink() or not path.is_file() or not path.is_relative_to(root):
+        raise Phase6RunError(
+            "phase6_depth60_v2_lineage_invalid",
+            "冻结的 Depth-60 v2 plan 缺失、逃逸或是 symlink。",
+        )
+    try:
+        payload = path.read_bytes()
+    except OSError as exc:
+        raise Phase6RunError(
+            "phase6_depth60_v2_lineage_invalid",
+            "无法读取冻结的 Depth-60 v2 plan。",
+        ) from exc
+    if (
+        len(payload) != DEPTH60_V2_PLAN_BYTES
+        or hashlib.sha256(payload).hexdigest() != DEPTH60_V2_PLAN_FILE_SHA256
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_v2_lineage_invalid",
+            "冻结的 Depth-60 v2 plan 字节 commitment 不匹配。",
+        )
+    plan = _load_json_object(path)
+    _require_exact_fields(
+        plan,
+        {
+            "schema_version",
+            "plan_id",
+            "status",
+            "locked_at_utc",
+            "evaluation_scope",
+            "source_bundle_algorithm",
+            "component_hashes",
+            "supersedes",
+            "authorization_boundary",
+            "claim_boundary",
+            "plan_commitment_sha256",
+        },
+        "depth60 frozen v2 plan",
+    )
+    body = {key: value for key, value in plan.items() if key != "plan_commitment_sha256"}
+    computed = hashlib.sha256(
+        DEPTH60_SUCCESSOR_PLAN_DOMAIN
+        + json.dumps(
+            body,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    components = plan.get("component_hashes")
+    if (
+        plan.get("schema_version") != DEPTH60_SUCCESSOR_PLAN_SCHEMA_VERSION
+        or plan.get("plan_id") != DEPTH60_SUCCESSOR_PLAN_ID
+        or plan.get("status") != "locked_offline_not_run"
+        or plan.get("evaluation_scope") != "source_integrity_commitment_only"
+        or plan.get("source_bundle_algorithm") != "v2"
+        or plan.get("plan_commitment_sha256")
+        != DEPTH60_V2_PLAN_COMMITMENT_SHA256
+        or computed != DEPTH60_V2_PLAN_COMMITMENT_SHA256
+        or not isinstance(components, Mapping)
+        or components.get("source_bundle_sha256")
+        != DEPTH60_V2_SOURCE_BUNDLE_SHA256
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_v2_lineage_invalid",
+            "冻结的 Depth-60 v2 plan 全体字段 commitment 无效。",
+        )
+    if plan.get("supersedes") != {
+        "plan_id": DEPTH60_PLAN_ID,
+        "plan_commitment_sha256": DEPTH60_HISTORICAL_PLAN_COMMITMENT_SHA256,
+        "source_bundle_sha256": DEPTH60_HISTORICAL_SOURCE_BUNDLE_SHA256,
+        "source_bundle_algorithm": "v1",
+        "historical_plan_relative_path": DEPTH60_PLAN_PATH.as_posix(),
+        "historical_commitment_preserved": True,
+        "historical_run_superseded": False,
+    } or plan.get("authorization_boundary") != {
+        "plan_alone_authorizes_online_run": False,
+        "online_execution_authorized": False,
+        "usable_as_runtime_binding": False,
+        "supersedes_historical_online_authorization": False,
+    } or plan.get("claim_boundary") != {
+        "model_quality_claim_allowed": False,
+        "reproduces_historical_depth60_run": False,
+        "historical_result_revalidated": False,
+        "source_integrity_scope": "current_tree_only",
+    }:
+        raise Phase6RunError(
+            "phase6_depth60_v2_lineage_invalid",
+            "冻结的 Depth-60 v2 lineage 或边界字段无效。",
+        )
+
+    historical_lexical = root / DEPTH60_PLAN_PATH
+    historical_path = historical_lexical.resolve()
+    if (
+        historical_lexical.is_symlink()
+        or not historical_path.is_file()
+        or not historical_path.is_relative_to(root)
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_v2_lineage_invalid",
+            "冻结的 Depth-60 v1 predecessor 缺失、逃逸或是 symlink。",
+        )
+    historical = _load_json_object(historical_path)
+    historical_components = historical.get("component_hashes")
+    if (
+        historical.get("plan_id") != DEPTH60_PLAN_ID
+        or historical.get("plan_commitment_sha256")
+        != DEPTH60_HISTORICAL_PLAN_COMMITMENT_SHA256
+        or depth60_plan_commitment_sha256(historical)
+        != DEPTH60_HISTORICAL_PLAN_COMMITMENT_SHA256
+        or not isinstance(historical_components, Mapping)
+        or historical_components.get("source_bundle_sha256")
+        != DEPTH60_HISTORICAL_SOURCE_BUNDLE_SHA256
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_v2_lineage_invalid",
+            "冻结的 Depth-60 v1 predecessor commitment 无效。",
+        )
+    return plan
+
+
+def _validate_depth60_successor_v3_plan(
+    root: Path, resolved_plan: Path
+) -> dict[str, Any]:
+    plan = _load_json_object(resolved_plan)
+    _require_exact_fields(
+        plan,
+        {
+            "schema_version",
+            "plan_id",
+            "status",
+            "locked_at_utc",
+            "evaluation_scope",
+            "source_bundle_algorithm",
+            "component_hash_algorithms",
+            "component_hashes",
+            "supersedes",
+            "authorization_boundary",
+            "claim_boundary",
+            "plan_commitment_sha256",
+        },
+        "depth60 v3 successor plan",
+    )
+    if (
+        plan.get("schema_version") != DEPTH60_SUCCESSOR_V3_PLAN_SCHEMA_VERSION
+        or plan.get("plan_id") != DEPTH60_SUCCESSOR_V3_PLAN_ID
+        or plan.get("status") != "locked_offline_not_run"
+        or plan.get("evaluation_scope") != "source_integrity_commitment_only"
+        or plan.get("source_bundle_algorithm") != "v2"
+        or not isinstance(plan.get("locked_at_utc"), str)
+        or not plan["locked_at_utc"].endswith("Z")
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_v3_plan_invalid",
+            "Depth-60 v3 plan identity/status/algorithm 无效。",
+        )
+    if plan.get("component_hash_algorithms") != {
+        "source_bundle_sha256": "v2",
+        "completion_telemetry_runtime_bundle_sha256": (
+            "completion_telemetry_runtime_bundle_v1"
+        ),
+        "completion_telemetry_contract_bundle_sha256": (
+            "completion_telemetry_contract_bundle_v1"
+        ),
+    }:
+        raise Phase6RunError(
+            "phase6_depth60_v3_plan_invalid",
+            "Depth-60 v3 component hash algorithm 漂移。",
+        )
+
+    _validate_frozen_depth60_v2_lineage(root)
+    if plan.get("supersedes") != {
+        "plan_id": DEPTH60_SUCCESSOR_PLAN_ID,
+        "plan_commitment_sha256": DEPTH60_V2_PLAN_COMMITMENT_SHA256,
+        "source_bundle_sha256": DEPTH60_V2_SOURCE_BUNDLE_SHA256,
+        "source_bundle_algorithm": "v2",
+        "historical_plan_relative_path": DEPTH60_SUCCESSOR_PLAN_PATH.as_posix(),
+        "historical_plan_bytes": DEPTH60_V2_PLAN_BYTES,
+        "historical_plan_sha256": DEPTH60_V2_PLAN_FILE_SHA256,
+        "historical_commitment_preserved": True,
+        "historical_run_superseded": False,
+    }:
+        raise Phase6RunError(
+            "phase6_depth60_v3_lineage_invalid",
+            "Depth-60 v3 supersedes 血缘块不正确。",
+        )
+    if plan.get("authorization_boundary") != {
+        "plan_alone_authorizes_online_run": False,
+        "online_execution_authorized": False,
+        "usable_as_runtime_binding": False,
+        "supersedes_historical_online_authorization": False,
+    }:
+        raise Phase6RunError(
+            "phase6_depth60_v3_plan_invalid",
+            "Depth-60 v3 authorization boundary 漂移。",
+        )
+    if plan.get("claim_boundary") != {
+        "model_quality_claim_allowed": False,
+        "reproduces_historical_depth60_run": False,
+        "historical_result_revalidated": False,
+        "source_integrity_scope": (
+            "current_tree_plus_completion_telemetry_runtime_and_contract_bundles"
+        ),
+    }:
+        raise Phase6RunError(
+            "phase6_depth60_v3_plan_invalid",
+            "Depth-60 v3 claim boundary 漂移。",
+        )
+
+    try:
+        actual_components = build_depth60_component_hashes_v3(root)
+    except (OSError, ValueError) as exc:
+        raise Phase6RunError(
+            "phase6_depth60_v3_component_drift",
+            "Depth-60 v3 telemetry component 无法安全重算。",
+        ) from exc
+    if plan.get("component_hashes") != actual_components:
+        raise Phase6RunError(
+            "phase6_depth60_v3_component_drift",
+            "Depth-60 v3 component 与当前树不一致。",
+        )
+    commitment = plan.get("plan_commitment_sha256")
+    computed = depth60_successor_v3_plan_commitment_sha256(plan)
+    if (
+        not isinstance(commitment, str)
+        or _SHA256.fullmatch(commitment) is None
+        or commitment != computed
+    ):
+        raise Phase6RunError(
+            "phase6_depth60_v3_plan_invalid",
+            "Depth-60 v3 plan commitment 无效。",
+        )
+    return {
+        "status": "valid",
+        "plan_id": DEPTH60_SUCCESSOR_V3_PLAN_ID,
+        "plan_commitment_sha256": commitment,
+        "source_bundle_algorithm": "v2",
+        "supersedes_plan_id": DEPTH60_SUCCESSOR_PLAN_ID,
         "online_execution_authorized": False,
         "network_calls": 0,
         "model_calls": 0,

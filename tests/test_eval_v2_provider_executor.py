@@ -5,6 +5,7 @@ import unittest
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from agents.tool_context import ToolContext
 
@@ -16,6 +17,7 @@ from researchops.eval_v2_provider_executor import (
     _extract_usage,
     _policy_output_limit,
 )
+import researchops.eval_v2_provider_executor as provider_executor_module
 from researchops.eval_v2_public import EvalV2PublicTask
 from researchops.eval_v2_runner import EvalV2ToolGateway, run_eval_v2_evaluation
 from researchops.model_providers import AnthropicProvider, ProviderModel
@@ -23,6 +25,21 @@ from researchops.model_providers import AnthropicProvider, ProviderModel
 
 DATASET_ID = "palmer_penguins_v0_1_0"
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+class _TestOfflineEvalV2Runner:
+    def __init__(self, runner):
+        self.runner = runner
+
+
+def _offline_runner(runner):
+    return _TestOfflineEvalV2Runner(runner)
+
+
+def _resolve_test_sdk_runner(runner):
+    if type(runner) is _TestOfflineEvalV2Runner:
+        return runner.runner, True
+    return runner, False
 
 
 class FakeProvider:
@@ -279,6 +296,41 @@ def synthetic_completion_diagnostic_task(
 
 
 class EvalV2ProviderExecutorTests(unittest.TestCase):
+    def setUp(self) -> None:
+        resolver = patch(
+            "researchops.eval_v2_provider_executor._resolve_eval_v2_sdk_runner",
+            side_effect=_resolve_test_sdk_runner,
+        )
+        resolver.start()
+        self.addCleanup(resolver.stop)
+
+    def test_real_and_explicit_agents_runner_require_completion_telemetry(self) -> None:
+        self.assertFalse(
+            hasattr(provider_executor_module, "_offline_test_sdk_runner")
+        )
+        self.assertFalse(
+            hasattr(provider_executor_module, "_OfflineEvalV2SdkRunner")
+        )
+        from agents import Runner
+
+        for sdk_runner in (None, Runner):
+            with self.subTest(explicit=sdk_runner is not None):
+                provider = FakeProvider()
+                with self.assertRaises(EvalV2ContractError) as context:
+                    EvalV2ProviderExecutor(
+                        provider=provider,
+                        model_id="deepseek-v4-flash",
+                        api_key="SECRET-MUST-NOT-BE-STORED",
+                        confirm_online=True,
+                        sdk_runner=sdk_runner,
+                    )
+                self.assertEqual(
+                    context.exception.code,
+                    "eval_v2_completion_telemetry_session_required",
+                )
+                self.assertFalse(provider.opened)
+                self.assertNotIn("SECRET-MUST-NOT-BE-STORED", str(context.exception))
+
     def test_explicit_confirmation_is_required_before_provider_open(self) -> None:
         provider = FakeProvider()
         executor = EvalV2ProviderExecutor(
@@ -286,7 +338,9 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=False,
-            sdk_runner=CapturingRunner("[REFUSED] reason=row_level_data"),
+            sdk_runner=_offline_runner(
+                CapturingRunner("[REFUSED] reason=row_level_data")
+            ),
         )
         gateway = EvalV2ToolGateway(refusal_task(), FakeInspectBackend())
 
@@ -307,7 +361,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=True,
-            sdk_runner=runner,
+            sdk_runner=_offline_runner(runner),
         )
 
         report = run_eval_v2_evaluation(
@@ -344,7 +398,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=True,
-            sdk_runner=runner,
+            sdk_runner=_offline_runner(runner),
         )
         gateway = EvalV2ToolGateway(refusal_task(), FakeInspectBackend())
 
@@ -369,7 +423,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=True,
-            sdk_runner=runner,
+            sdk_runner=_offline_runner(runner),
             bilingual_output=True,
             max_output_tokens=10000,
         )
@@ -393,6 +447,9 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
                 model_id="deepseek-v4-flash",
                 api_key="SECRET-TEST-KEY",
                 confirm_online=True,
+                sdk_runner=_offline_runner(
+                    CapturingRunner("[REFUSED] reason=row_level_data")
+                ),
                 tracing_disabled=False,
             )
 
@@ -420,7 +477,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=True,
-            sdk_runner=runner,
+            sdk_runner=_offline_runner(runner),
             bilingual_output=True,
         )
         gateway = EvalV2ToolGateway(refusal_task(), FakeInspectBackend())
@@ -555,7 +612,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=True,
-            sdk_runner=runner,
+            sdk_runner=_offline_runner(runner),
             bilingual_output=True,
             max_output_tokens=10000,
         )
@@ -590,7 +647,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=True,
-            sdk_runner=IncompleteAfterInspectRunner(),
+            sdk_runner=_offline_runner(IncompleteAfterInspectRunner()),
             max_output_tokens=2000,
         )
         gateway = EvalV2ToolGateway(task, FakeInspectBackend())
@@ -640,7 +697,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
                 model_id="deepseek-v4-flash",
                 api_key="SECRET-TEST-KEY",
                 confirm_online=True,
-                sdk_runner=runner,
+                sdk_runner=_offline_runner(runner),
                 max_output_tokens=2000,
             ).execute(task.public_input(), EvalV2ToolGateway(task, FakeInspectBackend()))
 
@@ -694,7 +751,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=True,
-            sdk_runner=runner,
+            sdk_runner=_offline_runner(runner),
         )
 
         executor.execute(task.public_input(), EvalV2ToolGateway(task, FakeInspectBackend()))
@@ -718,7 +775,7 @@ class EvalV2ProviderExecutorTests(unittest.TestCase):
             model_id="deepseek-v4-flash",
             api_key="SECRET-TEST-KEY",
             confirm_online=True,
-            sdk_runner=DuplicateInspectRunner(),
+            sdk_runner=_offline_runner(DuplicateInspectRunner()),
         )
 
         report = run_eval_v2_evaluation(

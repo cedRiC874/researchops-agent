@@ -1,6 +1,6 @@
 # DeepSeek Phase 6 depth-60 runbook
 
-Status: `historical_run_preserved / current_tree_successor_valid_non_executable`.
+Status: `historical_v1_v2_preserved / local_offline_implementation_pending_pr_and_online_validation`.
 
 This historical run deepened the existing Phase 6 DeepSeek line instead of adding another Provider.
 It executed exactly 60 repository-visible development tasks once, sequentially.
@@ -29,21 +29,40 @@ current official pages or verify an externally retained capture before authorizi
 
 The historical plan and result remain immutable. The current source tree intentionally differs from
 the historical v1 source bundle, so validating that plan against current code now fails closed with
-`phase6_depth60_component_drift`. Validate the current-tree v2 source-integrity successor without
-reading a Key or making a network request:
+`phase6_depth60_component_drift`. The committed v2 successor is also preserved byte-for-byte. It now
+correctly reports `phase6_depth60_successor_component_drift` because later telemetry and Adapter
+work changed its bound `researchops` closure.
+
+The v3 successor adds two independently domain-separated conservative components:
+
+- every `src/researchops_completion_telemetry/**/*.py` file; and
+- the v1 record contract/schema/mapping plus the verified v2 registry, manifest-driven fixtures,
+  and bound DeepSeek probe receipt.
+
+The local offline implementation is pending PR review and online validation. After the PR-A/PR-B
+source stabilized, v3 was regenerated once and reviewed. Validate that frozen local plan without a
+Key or network request:
 
 ```powershell
 $env:PYTHONPATH = "src"
 .\.venv\Scripts\python.exe -m researchops.cli phase6-validate-deepseek-depth60 `
-  --plan evals/phase6_deepseek_depth60_plan_v2.json
+  --plan evals/phase6_deepseek_depth60_plan_v3.json
 ```
 
-Expected terminal fields are `status=valid`, `source_bundle_algorithm=v2`,
-`supersedes_plan_id=phase6-deepseek-depth60-v1`, `online_execution_authorized=false`,
-`network_calls=0` and `model_calls=0`. The successor is a current-tree integrity commitment only;
-it does not revalidate the historical result and cannot be used as a runtime binding.
-Here, current-tree integrity is limited to the enumerated source closure and component hashes in the
-successor plan; it is not a commitment to every file in the repository.
+The regenerated plan validates with `source_bundle_algorithm=v2`,
+`supersedes_plan_id=phase6-deepseek-depth60-v2`, `online_execution_authorized=false`,
+`network_calls=0` and `model_calls=0`. It is a current-tree integrity commitment only; it does not
+revalidate the historical result and cannot be used as a runtime binding. Current-tree integrity is
+limited to the enumerated source closure and component hashes in the successor plan; it is not a
+commitment to every file in the repository.
+
+Final reviewed v3 identity:
+
+- plan bytes / file SHA-256: `2,850` / `5602f940a8627b9c785a1b785d757119a616050ebbc2e31e9dd26aacf448c05e`;
+- plan commitment: `979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af`;
+- `source_bundle_sha256`: `f5af13c7475f7c152a3cbe2053c7b0f81f6d4b15034e8a58786ab9e7124a19bf`;
+- `completion_telemetry_runtime_bundle_sha256`: `694c948a1d79fd38532304846577a94a4c75ca1410dd97c363df71a4ba944a63`;
+- `completion_telemetry_contract_bundle_sha256`: `c9c54c425932770254b9f460d7ab5120401ba02f6802626fb7399d3333700011`.
 
 ## Frozen local stops and request bounds
 
@@ -70,12 +89,13 @@ Provider billing hard cap, and the actual Provider bill remains unknown unless s
 ## Historical authorization procedure — not currently executable
 
 The procedure below records how the consumed historical v1 run was authorized. It is not a current
-run instruction: the current tree rejects v1 for component drift and rejects v2 as
+run instruction: the current tree rejects v1 and v2 for their respective component drift. V3 is
+offline-only and non-executable even when valid, and is explicitly rejected as
 `phase6_depth60_successor_plan_not_executable`. There is currently no executable Depth-60 plan.
 
-The plan does not authorize itself. A fresh user authorization must state:
+The plan did not authorize itself. At the time, the consumed authorization had to state:
 
-- the exact plan commitment above;
+- the historical v1 plan commitment listed under **Frozen identity**;
 - one authorization ID and a UTC expiry at least 90 minutes in the future;
 - permission to use the locally configured `DEEPSEEK_API_KEY` without displaying, persisting or
   logging its value;
@@ -104,9 +124,10 @@ receipt consumption. Success, failure, timeout or setup error does not authorize
 The historical v1 bound Python source is the deterministic transitive local-import closure of the
 Depth-60 CLI, runner, scorer, tool runtime and freeze gates. The v2 successor retains that closure
 model while adding domain separation, package-initializer coverage and fail-closed relative-import
-escape handling. A reachable source edit or new reachable import changes the applicable
-commitment; merely adding an unimported Provider successor does not. The historical artifact
-manifest reports both its bound v1 bundle hash and the observational full source-tree hash.
+escape handling. V3 keeps v1/v2 behavior unchanged and adds conservative sibling-package and
+telemetry-contract components, so later edits there cannot escape merely because the v2 AST closure
+only recognizes `researchops.*`. The historical artifact manifest reports both its bound v1 bundle
+hash and the observational full source-tree hash.
 
 The consume receipt is immutable and a separate terminal receipt binds the outcome and final
 report/manifest hashes. This is a local single-worktree control, not a globally immutable external
