@@ -1,0 +1,356 @@
+{
+  "contract_schema_version": "provider-completion-record-contract/1.0",
+  "contract_id": "provider-completion-record-v1",
+  "status": "runtime_sanitizer_and_validator_implemented_zero_adapter_changes",
+  "event_type": "model_response_telemetry_recorded",
+  "record_schema_version": "provider-completion-record/1.0",
+  "record_schema_relative_path": "evals/provider_completion_telemetry_v1/schemas/provider_completion_record_v1.schema.json",
+  "telemetry_schema_sha256_required": true,
+  "record_provenance_enum": [
+    "live_adapter_write",
+    "offline_validation",
+    "historical_projection"
+  ],
+  "offline_validation_provenance_is_closure_eligible": false,
+  "adapter_changes_included": false,
+  "event_chain_changes_included": false,
+  "online_calls_performed": false,
+  "mapping_binding": {
+    "key_fields": [
+      "provider_id",
+      "api_surface",
+      "transport_id"
+    ],
+    "surface_mismatch_behavior": "fail_closed",
+    "transport_id_is_mapping_key": true,
+    "mapping_projection_allowed_fields": [
+      "status",
+      "finish_reason",
+      "stop_reason",
+      "stop_sequence",
+      "incomplete_details"
+    ],
+    "mapping_projection_forbidden_fields": [
+      "usage",
+      "provider_request_id_sha256",
+      "http_status",
+      "requested_output_token_cap",
+      "output_token_cap"
+    ],
+    "mapping_schema_version_required": true,
+    "mapping_version_required": true,
+    "mapping_sha256_required": true,
+    "nearest_mapping_or_enum_coercion_forbidden": true,
+    "deepseek_mapping_v1_limitation": {
+      "mapped_api_surface": "openai_compatible_chat_completions",
+      "runtime_adapter_api_surface": "responses",
+      "direct_runtime_binding_allowed": false,
+      "required_resolution": "surface_keyed_mapping_successor"
+    },
+    "anthropic_litellm_observation_blocker": {
+      "runtime_transport": "litellm_anthropic_chat_completions",
+      "required_native_api_surface": "messages",
+      "converted_openai_style_value_is_native_evidence": false,
+      "direct_runtime_binding_allowed": false,
+      "required_resolution": "prove_and_test_pre_conversion_native_stop_reason_stop_sequence_http_status_and_request_id_observation"
+    }
+  },
+  "runtime_implementation": {
+    "module": "researchops_completion_telemetry.sanitization",
+    "pure_no_io": true,
+    "imports_researchops_or_provider_adapter": false,
+    "offline_mapping_recomputation_may_use_injected_fixture_resolver": true,
+    "live_mapping_recomputation_uses_frozen_verified_runtime_binding": true,
+    "record_builder_accepts_only_sanitized_completion_capture": true,
+    "ordinary_mapping_cannot_claim_sanitized_capture": true,
+    "live_builder_and_validator_require_verified_runtime_completion_binding": true,
+    "live_artifact_validator_requires_verified_capture_plan_binding": true,
+    "live_builder_accepts_arbitrary_mapping_resolver": false,
+    "live_builder_accepts_caller_output_counter_semantics": false,
+    "offline_builder_record_provenance": "offline_validation",
+    "offline_builder_records_are_closure_eligible": false,
+    "artifact_schema_version": "provider-completion-telemetry-artifact/1.0",
+    "runtime_denominator_algorithm": "transport-response-finalization-v1",
+    "runtime_exact_response_count_preregistered": false,
+    "runtime_plan_preregisters_case_ids_turn_and_request_caps": true,
+    "runtime_attempt_must_begin_before_network": true,
+    "runtime_attempt_requires_exactly_one_terminal": true,
+    "runtime_response_count_is_derived_after_run": true,
+    "adapter_integration_included": false,
+    "event_chain_integration_included": false
+  },
+  "artifact_envelope": {
+    "schema_version": "provider-completion-telemetry-artifact/1.0",
+    "exact_fields": [
+      "schema_version",
+      "expected_response_count",
+      "preregistration_commitment",
+      "records"
+    ],
+    "expected_response_count_is_positive": true,
+    "preregistration_commitment_is_lowercase_sha256": true,
+    "record_count_equals_expected_response_count": true,
+    "response_indices_are_independently_unique_contiguous_and_zero_based": true,
+    "request_indices_are_independently_unique_contiguous_and_zero_based": true,
+    "pair_uniqueness_alone_is_insufficient": true
+  },
+  "runtime_denominator_contract": {
+    "plan_schema_version": "provider-completion-runtime-denominator-plan/1.0",
+    "artifact_schema_version": "provider-completion-runtime-denominator-artifact/1.0",
+    "denominator_unit": "provider_model_response",
+    "denominator_algorithm": "transport-response-finalization-v1",
+    "exact_response_count_preregistered": false,
+    "preregistered_fields": [
+      "case_ids",
+      "case_ids_sha256",
+      "max_turns_per_case",
+      "total_model_request_cap",
+      "agents_sdk_retries=0",
+      "http_client_retries=0",
+      "denominator_algorithm"
+    ],
+    "attempt_terminal_kinds": [
+      "response_accepted",
+      "response_rejected",
+      "http_error",
+      "no_response",
+      "cancelled",
+      "outcome_unknown"
+    ],
+    "response_index_allocated_only_for": [
+      "response_accepted",
+      "response_rejected"
+    ],
+    "attempt_index_scope": "campaign_global_transport_attempt_order",
+    "response_index_scope": "campaign_global_observed_provider_response_order",
+    "sdk_request_usage_index_scope": "nested_within_one_sdk_raw_response",
+    "seal_requires_no_pending_attempts": true,
+    "seal_requires_reaching_request_or_turn_cap": false,
+    "observed_response_count_is_derived_after_run": true,
+    "sdk_raw_response_count_mismatch_or_unavailable_forbids_claim": true,
+    "sdk_usage_request_count_mismatch_or_unavailable_forbids_claim": true
+  },
+  "write_pipeline": [
+    "adapter_observes_response_metadata_without_retaining_body",
+    "project_exact_allowlist_and_preserve_key_presence",
+    "hash_provider_request_id_in_memory_and_discard_raw_identifier",
+    "sanitize_and_bound_free_text_before_record_construction",
+    "select_mapping_by_provider_id_api_surface_and_transport_id_or_fail_closed",
+    "map_the_sanitized_projection_without_nearest_enum_coercion",
+    "validate_record_schema_and_cross_field_semantics",
+    "append_completion_metadata_and_usage_as_one_event",
+    "verify_append_only_event_chain_before_artifact_release"
+  ],
+  "write_pipeline_rules": {
+    "purpose_built_sanitizer_is_primary_control": true,
+    "generic_audit_scrubber_is_defense_in_depth_only": true,
+    "unsanitized_record_must_never_reach_event_chain": true,
+    "mapping_critical_value_changed_by_redaction_or_truncation_maps_to_unmapped": true,
+    "unsafe_or_unrepresentable_record_behavior": "emit_safe_provider_completion_telemetry_rejected_event_without_native_value",
+    "rejected_event_is_closure_eligible": false
+  },
+  "native_capture_allowlist": [
+    "status",
+    "finish_reason",
+    "stop_reason",
+    "stop_sequence",
+    "incomplete_details",
+    "usage",
+    "provider_request_id",
+    "http_status",
+    "requested_output_token_cap"
+  ],
+  "post_hash_internal_projection_fields": [
+    "provider_request_id_sha256"
+  ],
+  "provider_request_id_and_sha256_input_are_mutually_exclusive": true,
+  "input_to_record_field_renames": {
+    "requested_output_token_cap": "output_token_cap"
+  },
+  "forbidden_inputs": [
+    "message_content",
+    "response_content",
+    "response_output_body",
+    "reasoning_content",
+    "tool_call_arguments",
+    "system_prompt",
+    "developer_prompt",
+    "user_prompt",
+    "raw_request_body",
+    "raw_response_body",
+    "raw_headers",
+    "api_key",
+    "authorization_header",
+    "cookie_header",
+    "organization_id",
+    "account_id",
+    "exception_message",
+    "traceback",
+    "absolute_path"
+  ],
+  "missing_semantics": {
+    "availability_enum": [
+      "provided",
+      "not_provided",
+      "not_persisted"
+    ],
+    "provided_null": "provider_or_transport_exposed_the_field_with_json_null",
+    "not_provided": "the_current_provider_or_transport_did_not_expose_the_field",
+    "not_persisted": "a_historical_adapter_did_not_capture_the_field",
+    "unmapped": "a_native_value_or_native_metadata_combination_was_present_but_not_interpreted",
+    "provided_null_not_equal_to_not_provided": true,
+    "not_provided_not_equal_to_not_persisted": true,
+    "unmapped_not_equal_to_any_missing_state": true,
+    "new_adapter_may_emit_not_persisted": false,
+    "historical_projection_may_emit_not_persisted": true,
+    "absent_record_member_is_not_a_missing_semantic": "invalid_record"
+  },
+  "field_limits": {
+    "record_canonical_json_utf8_bytes_max": 16384,
+    "safe_identifier_utf8_bytes_max": 64,
+    "matched_rule_id_utf8_bytes_max": 128,
+    "native_status_utf8_bytes_max": 64,
+    "native_finish_reason_utf8_bytes_max": 64,
+    "native_stop_reason_utf8_bytes_max": 64,
+    "native_stop_sequence_utf8_bytes_max": 64,
+    "native_incomplete_details_canonical_json_utf8_bytes_max": 512,
+    "native_incomplete_details_reason_utf8_bytes_max": 64,
+    "usage_canonical_json_utf8_bytes_max": 4096,
+    "usage_numeric_leaf_count_max": 64,
+    "usage_numeric_tree_depth_max": 4,
+    "usage_counter_path_utf8_bytes_max": 255,
+    "provider_request_id_persistence": "sha256_only",
+    "provider_request_id_sha256_hex_chars": 64,
+    "truncation_marker": "[TRUNCATED]",
+    "redaction_marker": "[REDACTED]",
+    "utf8_byte_limits_require_runtime_validation": true
+  },
+  "native_incomplete_details_projection": {
+    "allowed_value_fields": [
+      "reason",
+      "_telemetry_truncated"
+    ],
+    "unknown_child_values_persisted": false,
+    "unknown_child_field_count_recorded": true,
+    "reason_is_mapping_critical": true,
+    "canonical_size_limit_is_measured_before_unknown_child_value_omission": true,
+    "raw_reserved_truncation_marker_is_rejected": true
+  },
+  "usage_contract": {
+    "record_is_required_even_when_usage_is_missing": true,
+    "native_value_state_enum": [
+      "object",
+      "null",
+      "not_provided",
+      "not_persisted"
+    ],
+    "native_value_state_preserves_missing_versus_explicit_null": true,
+    "native_usage_persistence": "all_numeric_or_null_leaf_counters_within_limits",
+    "native_string_or_free_text_usage_values_persisted": false,
+    "native_counter_paths_sorted": true,
+    "native_counter_paths_unique": true,
+    "booleans_are_not_integer_counters": true,
+    "numeric_counters_nonnegative": true,
+    "normalized_fields": [
+      "requests",
+      "input_tokens",
+      "output_tokens",
+      "total_tokens",
+      "cached_input_tokens",
+      "cache_write_tokens",
+      "reasoning_tokens"
+    ]
+  },
+  "token_cap_fallback_contract": {
+    "evaluated_by_record_builder_outside_provider_mapping": true,
+    "provider_mapping_may_emit_token_cap_fallback": false,
+    "matched_rule_id": "runtime-token-cap-fallback-v1",
+    "native_completion_metadata_must_be_absent": true,
+    "requested_output_token_cap_must_be_provided": true,
+    "output_counter_comparability_must_equal": "comparable",
+    "output_counter_path_must_be_persisted": true,
+    "observed_output_counter_must_exactly_equal_cap": true,
+    "normalized_completion_state": "incomplete_length",
+    "truncation_signal_source": "token_cap_fallback",
+    "unknown_native_value_precedes_fallback": true,
+    "supports_additional_truncation_exclusion_claim": false
+  },
+  "record_validator_constraints": [
+    "additional_properties_false_at_every_fixed_object",
+    "all_record_members_required",
+    "record_provenance_distinguishes_live_write_from_historical_projection",
+    "live_adapter_write_forbids_not_persisted_in_every_capture",
+    "telemetry_schema_sha256_matches_the_bound_schema",
+    "availability_and_value_are_cross_validated",
+    "provided_null_is_preserved",
+    "not_provided_and_not_persisted_require_null_values_and_no_redaction_or_truncation",
+    "provider_request_id_raw_value_is_forbidden",
+    "provider_request_id_hash_is_lowercase_sha256",
+    "mapping_result_is_recomputed_from_persisted_projection",
+    "recomputed_state_source_and_rule_id_equal_persisted_values",
+    "mapping_provider_api_surface_and_transport_match_record",
+    "mapping_sha256_matches_loaded_mapping_bytes",
+    "unknown_native_values_are_unmapped",
+    "nonterminal_provider_status_is_not_a_terminal_completion_event",
+    "token_cap_fallback_inputs_are_complete_and_exactly_comparable",
+    "utf8_and_canonical_json_byte_limits_are_enforced",
+    "all_string_leaves_pass_secret_path_authorization_traceback_and_canary_scan"
+  ],
+  "closing_gate": {
+    "claim": "additional_truncation_excluded_for_this_new_run_only",
+    "preconditions": [
+      "tasks_are_preregistered_and_new_and_unseen",
+      "case_ids_and_case_ids_sha256_are_preregistered",
+      "max_turns_per_case_and_total_model_request_cap_are_preregistered",
+      "agents_sdk_and_http_client_retries_equal_zero",
+      "denominator_algorithm_is_preregistered_as_transport_response_finalization_v1",
+      "exact_response_count_is_not_preregistered",
+      "artifact_preregistration_commitment_matches_verified_run_binding",
+      "every_started_attempt_has_exactly_one_terminal_event",
+      "no_attempt_is_pending_or_outcome_unknown",
+      "every_attempt_terminal_kind_equals_response_accepted",
+      "every_preregistered_case_has_a_final_reconciliation",
+      "observed_response_count_is_derived_from_response_accepted_and_response_rejected_terminals",
+      "sdk_raw_response_count_matches_the_derived_observed_response_count_for_every_case",
+      "sdk_usage_request_count_matches_started_attempts_for_every_case",
+      "exactly_one_model_response_telemetry_record_exists_for_each_derived_response_index",
+      "persisted_response_count_equals_the_derived_observed_response_count",
+      "response_indices_are_unique_and_cover_the_derived_observed_denominator",
+      "audit_event_chain_verifies",
+      "record_schema_version_matches_preregistration",
+      "record_schema_sha256_matches_preregistration",
+      "record_schema_and_cross_field_validator_passes_every_record",
+      "every_record_provenance_equals_live_adapter_write",
+      "adapter_version_matches_preregistration",
+      "mapping_version_and_sha256_match_preregistration",
+      "mapping_is_recomputed_for_every_persisted_record",
+      "provider_id_api_surface_and_transport_id_match_preregistration",
+      "every_provider_specific_native_terminal_discriminator_is_provided_and_non_null",
+      "every_normalized_completion_state_is_a_recognized_terminal_state",
+      "every_truncation_signal_source_equals_native_status",
+      "no_state_is_unmapped_not_provided_or_not_persisted",
+      "no_provider_completion_telemetry_rejected_event_exists"
+    ],
+    "recognized_terminal_states": [
+      "completed",
+      "incomplete_length",
+      "incomplete_content_filter",
+      "incomplete_other",
+      "error"
+    ],
+    "hardcoded_historical_response_count_forbidden": true,
+    "green_ci_alone_satisfies_gate": false,
+    "provider_registration_or_model_quality_claim_allowed": false
+  },
+  "historical_boundaries": {
+    "retroactive_kimi_attribution_recovered": false,
+    "retroactive_depth60_attribution_recovered": false,
+    "seen_task_rerun_authorized": false,
+    "locked_depth60_score_changed": false,
+    "locked_depth60_score": "20/60",
+    "new_accuracy_number_requires_preregistered_replacement_evaluator_and_new_unseen_tasks": true,
+    "private_or_non_synthetic_evaluation_authorized": false,
+    "provider_registration_authorized": false,
+    "model_quality_generalization_or_production_sla_claim_allowed": false
+  }
+}
