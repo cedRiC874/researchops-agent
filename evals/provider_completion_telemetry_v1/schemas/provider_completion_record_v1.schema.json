@@ -1,0 +1,1337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cedRiC874/researchops-agent/schemas/provider_completion_record_v1.schema.json",
+  "title": "Provider completion telemetry persisted record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "telemetry_schema_version",
+    "telemetry_schema_sha256",
+    "record_provenance",
+    "adapter_version",
+    "mapping_schema_version",
+    "mapping_version",
+    "mapping_sha256",
+    "provider_id",
+    "api_surface",
+    "transport_id",
+    "response_index",
+    "request_index",
+    "native_status",
+    "native_finish_reason",
+    "native_stop_reason",
+    "native_stop_sequence",
+    "native_incomplete_details",
+    "normalized_completion_state",
+    "truncation_signal_source",
+    "matched_rule_id",
+    "provider_request_id_sha256",
+    "http_status",
+    "usage",
+    "output_token_cap",
+    "output_counter_comparability",
+    "output_counter_path"
+  ],
+  "properties": {
+    "telemetry_schema_version": {
+      "const": "provider-completion-record/1.0"
+    },
+    "telemetry_schema_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "record_provenance": {
+      "enum": [
+        "live_adapter_write",
+        "offline_validation",
+        "historical_projection"
+      ]
+    },
+    "adapter_version": {
+      "$ref": "#/$defs/safeIdentifier"
+    },
+    "mapping_schema_version": {
+      "$ref": "#/$defs/safeIdentifier"
+    },
+    "mapping_version": {
+      "$ref": "#/$defs/safeIdentifier"
+    },
+    "mapping_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "provider_id": {
+      "$ref": "#/$defs/safeIdentifier"
+    },
+    "api_surface": {
+      "$ref": "#/$defs/safeIdentifier"
+    },
+    "transport_id": {
+      "$ref": "#/$defs/safeIdentifier"
+    },
+    "response_index": {
+      "description": "Zero-based index among provider model responses actually observed in this run. It is derived after transport finalization and is not a preregistered exact response count.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "request_index": {
+      "description": "Transport attempt_index that produced this provider response. This is not the nested SDK request_usage_index, which is scoped within one SDK raw response.",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "native_status": {
+      "$ref": "#/$defs/nonMutatingNativeScalarCapture"
+    },
+    "native_finish_reason": {
+      "$ref": "#/$defs/nonMutatingNativeScalarCapture"
+    },
+    "native_stop_reason": {
+      "$ref": "#/$defs/nonMutatingNativeScalarCapture"
+    },
+    "native_stop_sequence": {
+      "$ref": "#/$defs/nativeScalarCapture"
+    },
+    "native_incomplete_details": {
+      "$ref": "#/$defs/nativeIncompleteDetailsCapture"
+    },
+    "normalized_completion_state": {
+      "enum": [
+        "completed",
+        "incomplete_length",
+        "incomplete_content_filter",
+        "incomplete_other",
+        "error",
+        "unmapped",
+        "not_provided",
+        "not_persisted"
+      ]
+    },
+    "truncation_signal_source": {
+      "enum": [
+        "native_status",
+        "token_cap_fallback",
+        "none"
+      ]
+    },
+    "matched_rule_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+    },
+    "provider_request_id_sha256": {
+      "$ref": "#/$defs/hashCapture"
+    },
+    "http_status": {
+      "$ref": "#/$defs/httpStatusCapture"
+    },
+    "usage": {
+      "$ref": "#/$defs/usageCapture"
+    },
+    "output_token_cap": {
+      "$ref": "#/$defs/nonnegativeIntegerCapture"
+    },
+    "output_counter_comparability": {
+      "enum": [
+        "comparable",
+        "not_comparable",
+        "not_provided",
+        "not_persisted"
+      ]
+    },
+    "output_counter_path": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/counterPath"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "record_provenance": {
+            "const": "historical_projection"
+          }
+        },
+        "required": [
+          "record_provenance"
+        ]
+      },
+      "then": {
+        "properties": {
+          "normalized_completion_state": {
+            "const": "not_persisted"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "normalized_completion_state": {
+            "not": {
+              "const": "not_persisted"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "normalized_completion_state": {
+            "const": "not_persisted"
+          }
+        },
+        "required": [
+          "normalized_completion_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "truncation_signal_source": {
+            "const": "none"
+          },
+          "native_status": {
+            "$ref": "#/$defs/notPersistedScalarCapture"
+          },
+          "native_finish_reason": {
+            "$ref": "#/$defs/notPersistedScalarCapture"
+          },
+          "native_stop_reason": {
+            "$ref": "#/$defs/notPersistedScalarCapture"
+          },
+          "native_stop_sequence": {
+            "$ref": "#/$defs/notPersistedScalarCapture"
+          },
+          "native_incomplete_details": {
+            "$ref": "#/$defs/notPersistedDetailsCapture"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "normalized_completion_state": {
+            "const": "not_provided"
+          }
+        },
+        "required": [
+          "normalized_completion_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "truncation_signal_source": {
+            "const": "none"
+          },
+          "native_status": {
+            "$ref": "#/$defs/currentNullScalarCapture"
+          },
+          "native_finish_reason": {
+            "$ref": "#/$defs/currentNullScalarCapture"
+          },
+          "native_stop_reason": {
+            "$ref": "#/$defs/currentNullScalarCapture"
+          },
+          "native_stop_sequence": {
+            "$ref": "#/$defs/currentNullScalarCapture"
+          },
+          "native_incomplete_details": {
+            "$ref": "#/$defs/currentNullDetailsCapture"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "normalized_completion_state": {
+            "const": "unmapped"
+          }
+        },
+        "required": [
+          "normalized_completion_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "truncation_signal_source": {
+            "const": "native_status"
+          }
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "native_status": {
+                "$ref": "#/$defs/providedScalarCapture"
+              }
+            }
+          },
+          {
+            "properties": {
+              "native_finish_reason": {
+                "$ref": "#/$defs/providedScalarCapture"
+              }
+            }
+          },
+          {
+            "properties": {
+              "native_stop_reason": {
+                "$ref": "#/$defs/providedScalarCapture"
+              }
+            }
+          },
+          {
+            "properties": {
+              "native_stop_sequence": {
+                "$ref": "#/$defs/providedScalarCapture"
+              }
+            }
+          },
+          {
+            "properties": {
+              "native_incomplete_details": {
+                "$ref": "#/$defs/providedDetailsCapture"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "truncation_signal_source": {
+            "const": "native_status"
+          }
+        },
+        "required": [
+          "truncation_signal_source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "normalized_completion_state": {
+            "enum": [
+              "completed",
+              "incomplete_length",
+              "incomplete_content_filter",
+              "incomplete_other",
+              "error",
+              "unmapped"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "truncation_signal_source": {
+            "const": "native_status"
+          },
+          "normalized_completion_state": {
+            "enum": [
+              "completed",
+              "incomplete_length",
+              "incomplete_content_filter",
+              "incomplete_other",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "truncation_signal_source",
+          "normalized_completion_state"
+        ]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "properties": {
+              "native_status": {
+                "$ref": "#/$defs/providedNonNullScalarCapture"
+              }
+            }
+          },
+          {
+            "properties": {
+              "native_finish_reason": {
+                "$ref": "#/$defs/providedNonNullScalarCapture"
+              }
+            }
+          },
+          {
+            "properties": {
+              "native_stop_reason": {
+                "$ref": "#/$defs/providedNonNullScalarCapture"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "truncation_signal_source": {
+            "const": "none"
+          }
+        },
+        "required": [
+          "truncation_signal_source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "normalized_completion_state": {
+            "enum": [
+              "not_provided",
+              "not_persisted"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "truncation_signal_source": {
+            "const": "token_cap_fallback"
+          }
+        },
+        "required": [
+          "truncation_signal_source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "normalized_completion_state": {
+            "const": "incomplete_length"
+          },
+          "output_counter_comparability": {
+            "const": "comparable"
+          },
+          "output_counter_path": {
+            "$ref": "#/$defs/counterPath"
+          },
+          "output_token_cap": {
+            "$ref": "#/$defs/providedNonnegativeIntegerCapture"
+          },
+          "native_status": {
+            "$ref": "#/$defs/notProvidedScalarCapture"
+          },
+          "native_finish_reason": {
+            "$ref": "#/$defs/notProvidedScalarCapture"
+          },
+          "native_stop_reason": {
+            "$ref": "#/$defs/notProvidedScalarCapture"
+          },
+          "native_stop_sequence": {
+            "$ref": "#/$defs/notProvidedScalarCapture"
+          },
+          "native_incomplete_details": {
+            "$ref": "#/$defs/notProvidedDetailsCapture"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "output_counter_comparability": {
+            "const": "comparable"
+          }
+        },
+        "required": [
+          "output_counter_comparability"
+        ]
+      },
+      "then": {
+        "properties": {
+          "output_counter_path": {
+            "$ref": "#/$defs/counterPath"
+          },
+          "output_token_cap": {
+            "$ref": "#/$defs/providedNonnegativeIntegerCapture"
+          },
+          "usage": {
+            "$ref": "#/$defs/providedUsageCapture"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "output_counter_path": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "availability": {
+      "enum": [
+        "provided",
+        "not_provided",
+        "not_persisted"
+      ]
+    },
+    "safeIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nativeScalarCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "value",
+        "redaction_applied",
+        "truncated"
+      ],
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/availability"
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "string",
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "redaction_applied": {
+          "type": "boolean"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "enum": [
+                  "not_provided",
+                  "not_persisted"
+                ]
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "null"
+              },
+              "redaction_applied": {
+                "const": false
+              },
+              "truncated": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "truncated": {
+                "const": true
+              }
+            },
+            "required": [
+              "truncated"
+            ]
+          },
+          "then": {
+            "properties": {
+              "availability": {
+                "const": "provided"
+              },
+              "value": {
+                "type": "string",
+                "pattern": "\\[TRUNCATED\\]$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nonMutatingNativeScalarCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeScalarCapture"
+        },
+        {
+          "properties": {
+            "redaction_applied": {
+              "const": false
+            },
+            "truncated": {
+              "const": false
+            }
+          }
+        }
+      ]
+    },
+    "providedScalarCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeScalarCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "const": "provided"
+            }
+          }
+        }
+      ]
+    },
+    "providedNonNullScalarCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/providedScalarCapture"
+        },
+        {
+          "properties": {
+            "value": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "notProvidedScalarCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeScalarCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "const": "not_provided"
+            }
+          }
+        }
+      ]
+    },
+    "notPersistedScalarCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeScalarCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "const": "not_persisted"
+            }
+          }
+        }
+      ]
+    },
+    "currentNullScalarCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeScalarCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "enum": [
+                "provided",
+                "not_provided"
+              ]
+            },
+            "value": {
+              "type": "null"
+            },
+            "redaction_applied": {
+              "const": false
+            },
+            "truncated": {
+              "const": false
+            }
+          }
+        }
+      ]
+    },
+    "incompleteDetailsValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "_telemetry_truncated": {
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nativeIncompleteDetailsCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "value",
+        "redaction_applied",
+        "truncated",
+        "omitted_child_field_count"
+      ],
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/availability"
+        },
+        "value": {
+          "$ref": "#/$defs/incompleteDetailsValue"
+        },
+        "redaction_applied": {
+          "type": "boolean"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "omitted_child_field_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "enum": [
+                  "not_provided",
+                  "not_persisted"
+                ]
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "null"
+              },
+              "redaction_applied": {
+                "const": false
+              },
+              "truncated": {
+                "const": false
+              },
+              "omitted_child_field_count": {
+                "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "truncated": {
+                "const": true
+              }
+            },
+            "required": [
+              "truncated"
+            ]
+          },
+          "then": {
+            "properties": {
+              "availability": {
+                "const": "provided"
+              },
+              "value": {
+                "type": "object",
+                "required": [
+                  "_telemetry_truncated"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "providedDetailsCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeIncompleteDetailsCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "const": "provided"
+            }
+          }
+        }
+      ]
+    },
+    "notProvidedDetailsCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeIncompleteDetailsCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "const": "not_provided"
+            }
+          }
+        }
+      ]
+    },
+    "notPersistedDetailsCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeIncompleteDetailsCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "const": "not_persisted"
+            }
+          }
+        }
+      ]
+    },
+    "currentNullDetailsCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nativeIncompleteDetailsCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "enum": [
+                "provided",
+                "not_provided"
+              ]
+            },
+            "value": {
+              "type": "null"
+            },
+            "redaction_applied": {
+              "const": false
+            },
+            "truncated": {
+              "const": false
+            },
+            "omitted_child_field_count": {
+              "const": 0
+            }
+          }
+        }
+      ]
+    },
+    "hashCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "value"
+      ],
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/availability"
+        },
+        "value": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "provided"
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/sha256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "httpStatusCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "value"
+      ],
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/availability"
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "provided"
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 599
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nonnegativeIntegerCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "value"
+      ],
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/availability"
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "provided"
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "providedNonnegativeIntegerCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/nonnegativeIntegerCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "const": "provided"
+            }
+          }
+        }
+      ]
+    },
+    "normalizedUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requests",
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "cached_input_tokens",
+        "cache_write_tokens",
+        "reasoning_tokens"
+      ],
+      "properties": {
+        "requests": {
+          "$ref": "#/$defs/nullableNonnegativeInteger"
+        },
+        "input_tokens": {
+          "$ref": "#/$defs/nullableNonnegativeInteger"
+        },
+        "output_tokens": {
+          "$ref": "#/$defs/nullableNonnegativeInteger"
+        },
+        "total_tokens": {
+          "$ref": "#/$defs/nullableNonnegativeInteger"
+        },
+        "cached_input_tokens": {
+          "$ref": "#/$defs/nullableNonnegativeInteger"
+        },
+        "cache_write_tokens": {
+          "$ref": "#/$defs/nullableNonnegativeInteger"
+        },
+        "reasoning_tokens": {
+          "$ref": "#/$defs/nullableNonnegativeInteger"
+        }
+      }
+    },
+    "nullableNonnegativeInteger": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "counterPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*){0,3}$"
+    },
+    "nativeNumericCounter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "value"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/counterPath"
+        },
+        "value": {
+          "$ref": "#/$defs/nullableNonnegativeInteger"
+        }
+      }
+    },
+    "usageCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "native_value_state",
+        "complete",
+        "normalized",
+        "native_numeric_counters",
+        "omitted_non_numeric_field_count",
+        "truncated"
+      ],
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/availability"
+        },
+        "native_value_state": {
+          "enum": [
+            "object",
+            "null",
+            "not_provided",
+            "not_persisted"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "normalized": {
+          "$ref": "#/$defs/normalizedUsage"
+        },
+        "native_numeric_counters": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nativeNumericCounter"
+          }
+        },
+        "omitted_non_numeric_field_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "enum": [
+                  "not_provided",
+                  "not_persisted"
+                ]
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "complete": {
+                "const": false
+              },
+              "native_value_state": {
+                "enum": [
+                  "not_provided",
+                  "not_persisted"
+                ]
+              },
+              "normalized": {
+                "$ref": "#/$defs/nullNormalizedUsage"
+              },
+              "native_numeric_counters": {
+                "maxItems": 0
+              },
+              "omitted_non_numeric_field_count": {
+                "const": 0
+              },
+              "truncated": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "not_provided"
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "native_value_state": {
+                "const": "not_provided"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "not_persisted"
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "native_value_state": {
+                "const": "not_persisted"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "provided"
+              }
+            },
+            "required": [
+              "availability"
+            ]
+          },
+          "then": {
+            "properties": {
+              "native_value_state": {
+                "enum": [
+                  "object",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "providedUsageCapture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/usageCapture"
+        },
+        {
+          "properties": {
+            "availability": {
+              "const": "provided"
+            }
+          }
+        }
+      ]
+    },
+    "nullNormalizedUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requests",
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "cached_input_tokens",
+        "cache_write_tokens",
+        "reasoning_tokens"
+      ],
+      "properties": {
+        "requests": {
+          "type": "null"
+        },
+        "input_tokens": {
+          "type": "null"
+        },
+        "output_tokens": {
+          "type": "null"
+        },
+        "total_tokens": {
+          "type": "null"
+        },
+        "cached_input_tokens": {
+          "type": "null"
+        },
+        "cache_write_tokens": {
+          "type": "null"
+        },
+        "reasoning_tokens": {
+          "type": "null"
+        }
+      }
+    }
+  }
+}

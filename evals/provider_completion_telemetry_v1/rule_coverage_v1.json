@@ -1,0 +1,206 @@
+{
+  "schema_version": "provider-completion-rule-coverage/1.1",
+  "status": "computed_from_fixture_execution",
+  "generated_on": "2026-09-02",
+  "mapping_file": "provider_completion_mapping_v1.json",
+  "mapping_bytes": 48071,
+  "mapping_sha256": "2a3e4c6a81fd76d9e20542091fbffdd4c6137d2e730b626117446109658b946d",
+  "fixture_count": 29,
+  "materialized_rule_count": 55,
+  "fixture_covered_rule_count": 29,
+  "uncovered_rule_count": 26,
+  "coverage_ratio": "29/55",
+  "coverage_percent": "52.73",
+  "by_provider": {
+    "deepseek": {
+      "materialized_rule_count": 5,
+      "fixture_covered_rule_count": 4,
+      "uncovered_rule_count": 1,
+      "coverage_ratio": "4/5"
+    },
+    "openai": {
+      "materialized_rule_count": 23,
+      "fixture_covered_rule_count": 10,
+      "uncovered_rule_count": 13,
+      "coverage_ratio": "10/23"
+    },
+    "anthropic": {
+      "materialized_rule_count": 21,
+      "fixture_covered_rule_count": 11,
+      "uncovered_rule_count": 10,
+      "coverage_ratio": "11/21"
+    },
+    "moonshot_kimi": {
+      "materialized_rule_count": 6,
+      "fixture_covered_rule_count": 4,
+      "uncovered_rule_count": 2,
+      "coverage_ratio": "4/6"
+    }
+  },
+  "by_precedence_stage": {
+    "contradictory_native_metadata": {
+      "materialized_rule_count": 17,
+      "fixture_covered_rule_count": 9,
+      "uncovered_rule_count": 8
+    },
+    "recognized_non_null_native_value": {
+      "materialized_rule_count": 23,
+      "fixture_covered_rule_count": 9,
+      "uncovered_rule_count": 14
+    },
+    "unknown_non_null_native_value": {
+      "materialized_rule_count": 5,
+      "fixture_covered_rule_count": 4,
+      "uncovered_rule_count": 1
+    },
+    "token_cap_fallback_when_native_metadata_absent": {
+      "materialized_rule_count": 0,
+      "fixture_covered_rule_count": 0,
+      "uncovered_rule_count": 0
+    },
+    "not_provided_when_native_metadata_absent_and_fallback_not_applicable": {
+      "materialized_rule_count": 10,
+      "fixture_covered_rule_count": 7,
+      "uncovered_rule_count": 3
+    }
+  },
+  "fixture_to_matched_rule_id": {
+    "anthropic_completed_20260902": "anthropic-msg-recognized-001",
+    "anthropic_conflict_end_turn_with_stop_sequence_20260902": "anthropic-msg-conflict-001",
+    "anthropic_conflict_missing_reason_with_stop_sequence_20260902": "anthropic-msg-conflict-007",
+    "anthropic_conflict_non_string_stop_sequence_20260902": "anthropic-msg-conflict-011",
+    "anthropic_conflict_null_reason_with_stop_sequence_20260902": "anthropic-msg-conflict-008",
+    "anthropic_conflict_stop_sequence_missing_value_20260902": "anthropic-msg-conflict-009",
+    "anthropic_conflict_stop_sequence_without_value_20260902": "anthropic-msg-conflict-010",
+    "anthropic_length_capped_20260902": "anthropic-msg-recognized-004",
+    "anthropic_missing_fields_20260902": "anthropic-msg-absent-001",
+    "anthropic_stop_sequence_with_value_20260902": "anthropic-msg-recognized-002",
+    "anthropic_unknown_value_20260902": "anthropic-msg-unknown-001",
+    "deepseek_completed_20260902": "deepseek-cc-recognized-001",
+    "deepseek_length_capped_20260902": "deepseek-cc-recognized-002",
+    "deepseek_missing_fields_20260902": "deepseek-cc-absent-001",
+    "deepseek_unknown_value_20260902": "deepseek-cc-unknown-001",
+    "kimi_completed_20260902": "kimi-cc-recognized-001",
+    "kimi_length_capped_20260902": "kimi-cc-recognized-002",
+    "kimi_missing_fields_20260902": "kimi-cc-absent-001",
+    "kimi_unknown_value_20260902": "kimi-cc-unknown-001",
+    "openai_completed_20260902": "openai-resp-recognized-001",
+    "openai_conflict_missing_status_non_null_details_20260902": "openai-resp-conflict-004",
+    "openai_conflict_non_object_incomplete_details_20260902": "openai-resp-conflict-006",
+    "openai_conflict_null_status_non_null_details_20260902": "openai-resp-conflict-005",
+    "openai_length_capped_20260902": "openai-resp-recognized-004",
+    "openai_missing_fields_20260902": "openai-resp-absent-001",
+    "openai_missing_status_null_details_20260902": "openai-resp-absent-004",
+    "openai_null_status_missing_details_20260902": "openai-resp-absent-002",
+    "openai_null_status_null_details_20260902": "openai-resp-absent-003",
+    "openai_unknown_value_20260902": "openai-resp-unknown-001"
+  },
+  "covered_rule_ids": [
+    "anthropic-msg-absent-001",
+    "anthropic-msg-conflict-001",
+    "anthropic-msg-conflict-007",
+    "anthropic-msg-conflict-008",
+    "anthropic-msg-conflict-009",
+    "anthropic-msg-conflict-010",
+    "anthropic-msg-conflict-011",
+    "anthropic-msg-recognized-001",
+    "anthropic-msg-recognized-002",
+    "anthropic-msg-recognized-004",
+    "anthropic-msg-unknown-001",
+    "deepseek-cc-absent-001",
+    "deepseek-cc-recognized-001",
+    "deepseek-cc-recognized-002",
+    "deepseek-cc-unknown-001",
+    "kimi-cc-absent-001",
+    "kimi-cc-recognized-001",
+    "kimi-cc-recognized-002",
+    "kimi-cc-unknown-001",
+    "openai-resp-absent-001",
+    "openai-resp-absent-002",
+    "openai-resp-absent-003",
+    "openai-resp-absent-004",
+    "openai-resp-conflict-004",
+    "openai-resp-conflict-005",
+    "openai-resp-conflict-006",
+    "openai-resp-recognized-001",
+    "openai-resp-recognized-004",
+    "openai-resp-unknown-001"
+  ],
+  "uncovered_rule_ids": [
+    "anthropic-msg-absent-002",
+    "anthropic-msg-conflict-002",
+    "anthropic-msg-conflict-003",
+    "anthropic-msg-conflict-004",
+    "anthropic-msg-conflict-005",
+    "anthropic-msg-conflict-006",
+    "anthropic-msg-recognized-003",
+    "anthropic-msg-recognized-005",
+    "anthropic-msg-recognized-006",
+    "anthropic-msg-recognized-007",
+    "deepseek-cc-absent-002",
+    "kimi-cc-absent-002",
+    "kimi-cc-recognized-003",
+    "openai-resp-conflict-001",
+    "openai-resp-conflict-002",
+    "openai-resp-conflict-003",
+    "openai-resp-recognized-002",
+    "openai-resp-recognized-003",
+    "openai-resp-recognized-005",
+    "openai-resp-recognized-006",
+    "openai-resp-recognized-007",
+    "openai-resp-recognized-008",
+    "openai-resp-recognized-009",
+    "openai-resp-recognized-010",
+    "openai-resp-recognized-011",
+    "openai-resp-unknown-002"
+  ],
+  "attribution_boundary": {
+    "live_attribution_fixture_count": 2,
+    "live_attribution_rule_count": 2,
+    "fixture_branch_coverage_is_attribution_evidence": false
+  },
+  "claim_boundary": {
+    "adapter_changes": 0,
+    "provider_calls_performed_for_mapper_or_tests": 0,
+    "coverage_is_model_quality_evidence": false,
+    "coverage_is_provider_shape_attribution": false
+  },
+  "selection_coverage": {
+    "selection_definition": "final_matched_rule_id",
+    "fixture_selected_rule_count": 29,
+    "targeted_inline_only_rule_count": 2,
+    "targeted_inline_only_rule_ids": [
+      "deepseek-cc-absent-002",
+      "openai-resp-unknown-002"
+    ],
+    "combined_selected_rule_count": 31,
+    "never_selected_rule_count": 24,
+    "never_selected_rule_ids": [
+      "anthropic-msg-absent-002",
+      "anthropic-msg-conflict-002",
+      "anthropic-msg-conflict-003",
+      "anthropic-msg-conflict-004",
+      "anthropic-msg-conflict-005",
+      "anthropic-msg-conflict-006",
+      "anthropic-msg-recognized-003",
+      "anthropic-msg-recognized-005",
+      "anthropic-msg-recognized-006",
+      "anthropic-msg-recognized-007",
+      "kimi-cc-absent-002",
+      "kimi-cc-recognized-003",
+      "openai-resp-conflict-001",
+      "openai-resp-conflict-002",
+      "openai-resp-conflict-003",
+      "openai-resp-recognized-002",
+      "openai-resp-recognized-003",
+      "openai-resp-recognized-005",
+      "openai-resp-recognized-006",
+      "openai-resp-recognized-007",
+      "openai-resp-recognized-008",
+      "openai-resp-recognized-009",
+      "openai-resp-recognized-010",
+      "openai-resp-recognized-011"
+    ],
+    "condition_evaluation_coverage_claimed": false
+  }
+}
