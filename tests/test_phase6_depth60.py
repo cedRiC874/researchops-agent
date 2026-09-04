@@ -197,7 +197,11 @@ class Phase6Depth60PlanTests(unittest.TestCase):
             workflow,
         )
         self.assertIn(
-            "ae47eebb9f60c73031d2bfc23d00ccc114821a11bc113c0302ce0fb6d9c6926b",
+            "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7",
+            workflow,
+        )
+        self.assertIn(
+            "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10",
             workflow,
         )
         self.assertIn(
@@ -213,6 +217,15 @@ class Phase6Depth60PlanTests(unittest.TestCase):
         self.assertIn("$depth60.online_execution_authorized -ne $false", workflow)
         self.assertIn("$depth60.network_calls -ne 0", workflow)
         self.assertIn("$depth60.model_calls -ne 0", workflow)
+        self.assertIn(
+            '$firstLive.authorization_binding_schema_version -ne '
+            '"deepseek-first-live-authorization-binding/2.0"',
+            workflow,
+        )
+        self.assertIn(
+            "$firstLive.external_authorization_binding_required -ne $true",
+            workflow,
+        )
 
 
 class Phase6Depth60ExecutionGateTests(unittest.IsolatedAsyncioTestCase):

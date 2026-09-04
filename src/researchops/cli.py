@@ -13,6 +13,7 @@ from .contracts import ResearchDesign
 from .data_quality import CsvValidationError, profile_csv
 from .deepseek_completion_first_live_validation import (
     DeepSeekFirstLiveValidationError,
+    calculate_deepseek_first_live_authorization_binding,
     deepseek_first_live_validation_status,
     run_deepseek_first_live_validation,
     verify_deepseek_first_live_artifacts,
@@ -167,6 +168,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     first_live_verify_parser.add_argument(
         "--authorization-id-sha256", required=True
+    )
+    first_live_verify_parser.add_argument(
+        "--expected-authorization-binding-sha256", required=True
     )
 
     eval_validate_parser = subparsers.add_parser(
@@ -380,6 +384,31 @@ def build_parser() -> argparse.ArgumentParser:
         "deepseek-completion-first-live-validate",
         help="离线验证 DeepSeek Adapter completion first-live 合同",
     )
+    first_live_binding_parser = subparsers.add_parser(
+        "deepseek-completion-first-live-bind-authorization",
+        help="离线计算 DeepSeek first-live 一次性授权外部绑定",
+    )
+    first_live_binding_parser.add_argument("--authorization-id", required=True)
+    first_live_binding_parser.add_argument(
+        "--authorization-expires-at-utc", required=True
+    )
+    first_live_binding_parser.add_argument(
+        "--expected-contract-commitment", required=True
+    )
+    first_live_binding_parser.add_argument(
+        "--expected-source-integrity-commitment", required=True
+    )
+    first_live_binding_parser.add_argument(
+        "--expected-execution-commit", required=True
+    )
+    first_live_binding_parser.add_argument("--pricing-snapshot-date", required=True)
+    first_live_binding_parser.add_argument("--pricing-source-url", required=True)
+    first_live_binding_parser.add_argument(
+        "--input-price-per-million-cny", required=True
+    )
+    first_live_binding_parser.add_argument(
+        "--output-price-per-million-cny", required=True
+    )
     first_live_parser = subparsers.add_parser(
         "deepseek-completion-first-live-run",
         help="使用固定两场景和单次授权运行 DeepSeek Adapter first-live validation",
@@ -396,6 +425,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--expected-source-integrity-commitment", required=True
     )
     first_live_parser.add_argument("--expected-execution-commit", required=True)
+    first_live_parser.add_argument(
+        "--expected-authorization-binding-sha256", required=True
+    )
     first_live_parser.add_argument("--pricing-snapshot-date", required=True)
     first_live_parser.add_argument("--pricing-source-url", required=True)
     first_live_parser.add_argument(
@@ -978,11 +1010,38 @@ def main() -> int:
             result = deepseek_first_live_validation_status(project_root)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
+        elif args.command == "deepseek-completion-first-live-bind-authorization":
+            project_root = Path(__file__).resolve().parents[2]
+            result = calculate_deepseek_first_live_authorization_binding(
+                project_root=project_root,
+                authorization_id=args.authorization_id,
+                authorization_expires_at_utc=args.authorization_expires_at_utc,
+                expected_contract_commitment_sha256=(
+                    args.expected_contract_commitment
+                ),
+                expected_source_integrity_commitment_sha256=(
+                    args.expected_source_integrity_commitment
+                ),
+                expected_execution_commit=args.expected_execution_commit,
+                pricing_snapshot_date=args.pricing_snapshot_date,
+                pricing_source_url=args.pricing_source_url,
+                input_price_per_million_cny=(
+                    args.input_price_per_million_cny
+                ),
+                output_price_per_million_cny=(
+                    args.output_price_per_million_cny
+                ),
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         elif args.command == "deepseek-completion-first-live-verify":
             project_root = Path(__file__).resolve().parents[2]
             result = verify_deepseek_first_live_artifacts(
                 project_root,
                 args.authorization_id_sha256,
+                expected_authorization_binding_sha256=(
+                    args.expected_authorization_binding_sha256
+                ),
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
@@ -1002,6 +1061,9 @@ def main() -> int:
                         args.expected_source_integrity_commitment
                     ),
                     expected_execution_commit=args.expected_execution_commit,
+                    expected_authorization_binding_sha256=(
+                        args.expected_authorization_binding_sha256
+                    ),
                     pricing_snapshot_date=args.pricing_snapshot_date,
                     pricing_source_url=args.pricing_source_url,
                     input_price_per_million_cny=(

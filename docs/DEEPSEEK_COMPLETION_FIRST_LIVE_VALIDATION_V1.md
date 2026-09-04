@@ -13,9 +13,9 @@ equivalence.
 The confirmed design contract remains immutable at commitment
 `ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc`.
 The implementation successor is separately committed as
-`d28a76b6a2268e71f78cd95e0ee99c7295b0636fe56495319575ef10b7ca4a5e`.
+`187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10`.
 Neither value authorizes a request. The current source-integrity successor is Depth-60 v5,
-commitment `ae47eebb9f60c73031d2bfc23d00ccc114821a11bc113c0302ce0fb6d9c6926b`,
+commitment `8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7`,
 with `online_execution_authorized=false`, `network_calls=0` and `model_calls=0`.
 
 ## Why this is a separate run
@@ -70,10 +70,40 @@ cannot satisfy the gate. It must exclusively create a consumption receipt before
 `DEEPSEEK_API_KEY`; success, failure, timeout, cancellation or
 `outcome_unknown` consumes the authorization and forbids retry.
 
+The authorization also carries an external
+`expected_authorization_binding_sha256`. Binding v2 uses the hashed authorization ID plus the exact
+expiry, design/implementation/source commitments, execution commit, pricing snapshot and locked
+limits. Calculate it offline before issuing the authorization:
+
+```powershell
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m researchops.cli `
+  deepseek-completion-first-live-bind-authorization `
+  --authorization-id <new-id> `
+  --authorization-expires-at-utc <UTC-expiry> `
+  --expected-contract-commitment <design-commitment> `
+  --expected-source-integrity-commitment <v5-commitment> `
+  --expected-execution-commit <merged-main-commit> `
+  --pricing-snapshot-date <YYYY-MM-DD> `
+  --pricing-source-url https://api-docs.deepseek.com/zh-cn/quick_start/pricing/ `
+  --input-price-per-million-cny <price> `
+  --output-price-per-million-cny <price>
+```
+
+An independently retained expected copy of the returned binding must remain outside the artifact
+and be supplied to both run and verify with `--expected-authorization-binding-sha256`. The same
+computed hash is also persisted for reconciliation, but neither command may read its expected value
+back from the receipt. The calculator is offline, does not consume the grant, does not load a Key
+and does not authorize execution. The calculator, run gate and artifact verifier all apply the same
+locked worst-case CNY 1 reservation; a zero-request failure receipt cannot bypass that reservation.
+
 Only canonical, sanitized consumption and terminal receipts may be written. Raw response bodies,
 message text, repeated input text, system prompts, tool arguments, credentials, exception text,
 absolute paths and raw Provider request IDs are forbidden. The artifact root and exact filenames are
 fixed by the machine contract; the authorization-hash directory must not already exist.
+Verification materializes the authorized Git commit with lazy fetch and replacement objects
+disabled, rejects unsafe archive members, and runs the complete v5 plan/component validator against
+that committed tree. It does not infer execution identity from the plan JSON alone.
 
 ## Success is not closure
 
@@ -81,6 +111,11 @@ Success requires exactly two accepted response records, complete SDK response/us
 a valid audit chain, `live_adapter_write` provenance, native-status truncation signals and the locked
 state order `completed`, `incomplete_length`. Any `unmapped`, `not_provided`, rejected response,
 cleanup failure, missing attempt or count mismatch fails the validation.
+`usage_complete=true` additionally requires an exact bijection between every started attempt,
+observed HTTP send and persisted complete-usage record. If any sent attempt lacks usage—for example,
+the first request succeeds and the second times out—or any observed usage breaches a locked cap—the
+top-level input/output token counts and cost remain `null`; retained accepted records are partial
+forensic evidence, not a complete bill.
 
 Even a successful validation must publish `closure_claim_allowed=false` and
 `automatic_registry_promotion_allowed=false`. Promotion requires a later evidence PR, mapping review
@@ -110,9 +145,19 @@ cover both locked completion shapes, pre-consumption gates, per-response token/c
 cancellation, raw-response cleanup failure, single-use behavior, partial evidence, privacy scans,
 manifest tampering and self-consistent event-hash rewrites. The offline verifier requires an exact
 top-level file set, exact JSON field sets, an exact ledger run lifecycle/event vocabulary/order,
-cross-artifact projections, and independently recomputed token/cost caps. A manifestless failure
-hashes each partial artifact in the terminal receipt and never rewrites an observed network count as
-zero. No Provider call or Key load occurred during implementation.
+cross-artifact projections, and independently recomputed token/cost caps. Full and manifestless
+paths share the same exact event parser, including terminal payload, binding, error and
+`outcome_unknown` semantics. Terminal Key-loaded and raw-cleanup flags are derived from the ledger
+stage rather than accepted as free booleans. Known outer runtime errors must satisfy a code-specific
+trace predicate; unknown downstream codes are normalized to an observed stage instead of being
+persisted verbatim. Phase/whole-run timeouts and external cancellation intentionally stop at the
+ledger-status boundary: asynchronous cleanup can mask any already-terminal body path, so those
+outer signals do not authorize a narrower causal claim. A complete, strictly parsed event stream
+also requires `write_failed=false`. A
+manifestless failure hashes each partial artifact in the terminal receipt, permits only an exact
+prefix of the fixed writer order, validates every present partial JSON schema and cross-projection,
+and never rewrites an observed network count as zero. No Provider call or Key load occurred during
+implementation.
 
 Machine contract:
 [`deepseek_responses_adapter_validation_contract_v1.json`](../evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_contract_v1.json)

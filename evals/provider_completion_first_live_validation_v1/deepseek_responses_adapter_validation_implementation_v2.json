@@ -7,7 +7,7 @@
     "algorithm": "sha256-domain-separated-canonical-json-v1",
     "domain": "researchops-provider-completion-first-live-implementation-v2",
     "payload": "whole_contract_with_implementation_commitment.sha256_omitted",
-    "sha256": "d28a76b6a2268e71f78cd95e0ee99c7295b0636fe56495319575ef10b7ca4a5e"
+    "sha256": "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10"
   },
   "predecessor_design": {
     "relative_path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_contract_v1.json",
@@ -19,10 +19,12 @@
   "implemented_symbols": {
     "contract_validator": "researchops.deepseek_completion_first_live_validation.validate_deepseek_first_live_contract",
     "offline_status": "researchops.deepseek_completion_first_live_validation.deepseek_first_live_validation_status",
+    "authorization_binding_calculator": "researchops.deepseek_completion_first_live_validation.calculate_deepseek_first_live_authorization_binding",
     "run_gate": "researchops.deepseek_completion_first_live_validation.run_deepseek_first_live_validation",
     "artifact_verifier": "researchops.deepseek_completion_first_live_validation.verify_deepseek_first_live_artifacts",
     "validation_session": "researchops.deepseek_completion_first_live_validation._DeepSeekFirstLiveValidationLedgerSession",
     "cli_validate": "researchops.cli:deepseek-completion-first-live-validate",
+    "cli_bind_authorization": "researchops.cli:deepseek-completion-first-live-bind-authorization",
     "cli_run": "researchops.cli:deepseek-completion-first-live-run",
     "cli_verify": "researchops.cli:deepseek-completion-first-live-verify"
   },
@@ -42,6 +44,10 @@
     "authorization_id_persisted": false,
     "authorization_id_sha256_persisted": true,
     "authorization_binding_sha256_persisted": true,
+    "authorization_binding_schema_version": "deepseek-first-live-authorization-binding/2.0",
+    "external_expected_authorization_binding_required_for_run_and_verify": true,
+    "artifact_value_cannot_supply_expected_authorization_binding": true,
+    "binding_calculator_and_verifier_enforce_locked_cost_reservation": true,
     "implementation_commitment_sha256_persisted": true,
     "consumption_before_key_load": true,
     "exclusive_authorization_directory": true,
@@ -61,6 +67,8 @@
     "network_attempts_max": 2,
     "model_requests_max": 2,
     "network_calls_observed_by_validation_only_http_request_hook": true,
+    "outcome_unknown_requires_observed_transport_send": true,
+    "pre_send_transport_observer_failure_maps_to_no_response": true,
     "output_token_caps": [
       256,
       16
@@ -82,8 +90,8 @@
   "persistence_boundary": {
     "ledger_event_schema_version": "provider-completion-ledger-event/1.1",
     "runtime_denominator_schema_version": "provider-completion-runtime-denominator-artifact/1.0",
-    "consumption_schema_version": "deepseek-first-live-consumption/1.0",
-    "terminal_schema_version": "deepseek-first-live-terminal/1.0",
+    "consumption_schema_version": "deepseek-first-live-consumption/1.1",
+    "terminal_schema_version": "deepseek-first-live-terminal/1.1",
     "evidence_schema_version": "deepseek-first-live-evidence/1.0",
     "manifest_schema_version": "deepseek-first-live-manifest/1.0",
     "record_and_usage_share_atomic_terminal": true,
@@ -95,8 +103,20 @@
     "self_consistent_semantic_tamper_rejected": true,
     "exact_artifact_field_sets_and_top_level_file_set_verified": true,
     "exact_ledger_run_lifecycle_event_vocabulary_and_order_verified": true,
+    "full_and_manifestless_paths_share_exact_ledger_event_parser": true,
+    "exact_single_run_database_scope_and_append_only_triggers_verified": true,
+    "ledger_trace_counts_outcome_and_usage_are_reconciled_to_terminal": true,
+    "terminal_key_cleanup_and_error_stage_are_reconciled_to_ledger_trace": true,
+    "known_outer_error_codes_are_bound_to_trace_causality": true,
+    "unknown_provider_error_codes_are_normalized_to_observed_stage": true,
+    "outer_phase_timeout_and_cancel_cause_narrowing_allowed": false,
     "manifestless_failure_partial_artifacts_hashed_in_terminal": true,
-    "token_and_cost_caps_recomputed_by_offline_verifier": true
+    "manifestless_file_set_is_a_valid_writer_prefix": true,
+    "manifestless_partial_json_schema_and_cross_projection_verified": true,
+    "verifiable_complete_event_stream_requires_write_failed_false": true,
+    "token_and_cost_caps_recomputed_by_offline_verifier": true,
+    "usage_complete_requires_started_sent_record_bijection": true,
+    "incomplete_usage_top_level_tokens_and_cost_are_null": true
   },
   "activation_gate": {
     "source_integrity_plan_id": "phase6-deepseek-depth60-v5",
@@ -106,6 +126,10 @@
     "head_and_refs_remotes_origin_main_must_equal_authorized_commit": true,
     "artifact_verifier_requires_execution_commit_to_be_origin_main_ancestor": true,
     "artifact_verifier_reads_v5_and_bound_contract_bytes_from_execution_commit": true,
+    "artifact_verifier_recomputes_all_v5_components_from_execution_commit_tree": true,
+    "execution_commit_tree_is_safely_materialized_without_symlinks_or_path_escape": true,
+    "git_replace_objects_disabled": true,
+    "git_lazy_fetch_disabled": true,
     "clean_execution_tree_required": true,
     "fresh_same_day_official_pricing_attestation_required": true,
     "pricing_source_url_is_exact_allowlisted_path": true,
@@ -118,6 +142,7 @@
     "mock_transport": "httpx.MockTransport_through_real_OpenAI_SDK_and_Agent_Adapter",
     "completed_and_length_capped_shapes": true,
     "timeout_cleanup_failure_cancellation_single_use_privacy_and_tamper_tests": true,
+    "external_binding_commit_tree_partial_ledger_and_usage_gap_tests": true,
     "provider_calls_performed_during_implementation": 0,
     "model_calls_performed_during_implementation": 0,
     "provider_key_loaded_during_implementation": false

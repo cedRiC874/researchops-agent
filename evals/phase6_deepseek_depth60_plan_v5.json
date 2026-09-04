@@ -17,7 +17,7 @@
     "source_bundle_sha256": "v2"
   },
   "component_hashes": {
-    "completion_telemetry_contract_bundle_sha256": "240dc449973b7e9df354eb856c62bd8dce09369600269a7613835ef952884c45",
+    "completion_telemetry_contract_bundle_sha256": "7c2bcfba1d7f6d2195ec389c7f98e1ef6e2ef400c6d7101292f6bbc77942bc15",
     "completion_telemetry_runtime_bundle_sha256": "606913e5570769e8b5aa430c621c5761d557e747c8b3f82eca67e20540b97acf",
     "phase3_analysis_bundle_sha256": "f2e1dc8b6fff3589cdf82f54766cb5371ff02a25c3239077298d70a38725b2f8",
     "phase3_effect_estimates_png_sha256": "d4e061cde8f080dd4d053d746b13448b6d1e07d786441aa51585c5cd95ee523c",
@@ -25,13 +25,13 @@
     "phase6_tasks_sha256": "af945e5bd780b39e7639102dab75c446350a81e9e9464fe156e41d2a45cebc2c",
     "pyproject_sha256": "d87693e733f460e3f5034d434a0e2e519fc1c3250e84b17314014f7f34516d33",
     "requirements_lock_sha256": "15a40bd036716b0145823f42ea3004be70769ce3ca41f8a0fd9696fc19afd86b",
-    "source_bundle_sha256": "d83e3df3e1cbc5ec859c00207cfb3039902e956da5fa34e639c9cde4b0ea6638",
+    "source_bundle_sha256": "42ad232ad73792453ff6025d836cd3449d27974a633a1a59a019023d676c64a5",
     "synthetic_trial_csv_sha256": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00",
     "synthetic_trial_design_sha256": "e8ab569e2f877028431d58c3a676d68917d67237303cc194705b5850d400938b"
   },
   "evaluation_scope": "source_integrity_commitment_only",
-  "locked_at_utc": "2026-09-04T09:47:29.834Z",
-  "plan_commitment_sha256": "ae47eebb9f60c73031d2bfc23d00ccc114821a11bc113c0302ce0fb6d9c6926b",
+  "locked_at_utc": "2026-09-04T13:49:17.444Z",
+  "plan_commitment_sha256": "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7",
   "plan_id": "phase6-deepseek-depth60-v5",
   "schema_version": "5.0",
   "source_bundle_algorithm": "v2",

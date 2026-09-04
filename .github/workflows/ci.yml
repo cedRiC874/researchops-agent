@@ -126,7 +126,7 @@ jobs:
           $depth60V5Sha = (Get-FileHash `
             -Algorithm SHA256 $depth60V5Path).Hash.ToLowerInvariant()
           if ($depth60V5Bytes -ne 3120 -or
-              $depth60V5Sha -ne "39d81ba6bc85f9fc7b3b48f9dfd642df65d2105b37884de169cf21bb97b9f7a9") {
+              $depth60V5Sha -ne "ff39dd5a1aa09b7bc92b27f9d800b5d51fbd2fd69c2a599b5bf0f25aed490aae") {
             Write-Output "::error title=depth60_v5_plan_drift::Depth-60 v5 plan bytes must remain unchanged."
             exit 1
           }
@@ -136,7 +136,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $depth60 = $depth60Raw | ConvertFrom-Json
           if ($depth60.status -ne "valid" -or
-              $depth60.plan_commitment_sha256 -ne "ae47eebb9f60c73031d2bfc23d00ccc114821a11bc113c0302ce0fb6d9c6926b" -or
+              $depth60.plan_commitment_sha256 -ne "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7" -or
               $depth60.source_bundle_algorithm -ne "v2" -or
               $depth60.supersedes_plan_id -ne "phase6-deepseek-depth60-v4" -or
               $depth60.online_execution_authorized -ne $false -or
@@ -148,9 +148,9 @@ jobs:
           $depth60ComponentsRaw = (& python -c "import json; from researchops.phase6_depth60 import validate_phase6_depth60_plan; r=validate_phase6_depth60_plan('.', 'evals/phase6_deepseek_depth60_plan_v5.json'); print(json.dumps(r['plan']['component_hashes']))" | Out-String)
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $depth60Components = $depth60ComponentsRaw | ConvertFrom-Json
-          if ($depth60Components.source_bundle_sha256 -ne "d83e3df3e1cbc5ec859c00207cfb3039902e956da5fa34e639c9cde4b0ea6638" -or
+          if ($depth60Components.source_bundle_sha256 -ne "42ad232ad73792453ff6025d836cd3449d27974a633a1a59a019023d676c64a5" -or
               $depth60Components.completion_telemetry_runtime_bundle_sha256 -ne "606913e5570769e8b5aa430c621c5761d557e747c8b3f82eca67e20540b97acf" -or
-              $depth60Components.completion_telemetry_contract_bundle_sha256 -ne "240dc449973b7e9df354eb856c62bd8dce09369600269a7613835ef952884c45") {
+              $depth60Components.completion_telemetry_contract_bundle_sha256 -ne "7c2bcfba1d7f6d2195ec389c7f98e1ef6e2ef400c6d7101292f6bbc77942bc15") {
             Write-Output "::error title=depth60_v5_component_drift::Depth-60 v5 source or telemetry component drifted."
             exit 1
           }
@@ -160,8 +160,10 @@ jobs:
           $firstLive = $firstLiveRaw | ConvertFrom-Json
           if ($firstLive.status -ne "offline_implemented_requires_fresh_authorization" -or
               $firstLive.contract_commitment_sha256 -ne "ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc" -or
-              $firstLive.implementation_commitment_sha256 -ne "d28a76b6a2268e71f78cd95e0ee99c7295b0636fe56495319575ef10b7ca4a5e" -or
-              $firstLive.source_integrity_commitment_sha256 -ne "ae47eebb9f60c73031d2bfc23d00ccc114821a11bc113c0302ce0fb6d9c6926b" -or
+              $firstLive.implementation_commitment_sha256 -ne "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10" -or
+              $firstLive.source_integrity_commitment_sha256 -ne "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7" -or
+              $firstLive.authorization_binding_schema_version -ne "deepseek-first-live-authorization-binding/2.0" -or
+              $firstLive.external_authorization_binding_required -ne $true -or
               $firstLive.online_execution_authorized -ne $false -or
               $firstLive.network_calls -ne 0 -or
               $firstLive.model_calls -ne 0 -or

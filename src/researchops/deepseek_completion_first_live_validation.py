@@ -2,18 +2,24 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
+import io
 import importlib.metadata
 import json
 import logging
 import math
 import os
 import re
+import sqlite3
 import subprocess
+import tarfile
+import tempfile
 import time
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path, PurePosixPath
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Iterator, Mapping
 from urllib.parse import urlsplit
 
 from .audit import (
@@ -33,6 +39,7 @@ from researchops_completion_telemetry.capture import (
 )
 from researchops_completion_telemetry.sanitization import (
     build_completion_record,
+    validate_completion_record,
     validate_runtime_denominator_artifact,
 )
 import researchops_completion_telemetry.surface_mapping as surface_mapping
@@ -58,12 +65,12 @@ IMPLEMENTATION_RELATIVE_PATH = Path(
     "evals/provider_completion_first_live_validation_v1/"
     "deepseek_responses_adapter_validation_implementation_v2.json"
 )
-IMPLEMENTATION_BYTES = 7_374
+IMPLEMENTATION_BYTES = 9_273
 IMPLEMENTATION_FILE_SHA256 = (
-    "46dfe459f8c5d610c504af68f44b0369392c8c61c8479b82239a30d4f5a776eb"
+    "97667a65a8b88da9ce3ea21136c4060529408a83c8c862bbb98eb3e0c4d8bc9c"
 )
 IMPLEMENTATION_COMMITMENT_SHA256 = (
-    "d28a76b6a2268e71f78cd95e0ee99c7295b0636fe56495319575ef10b7ca4a5e"
+    "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10"
 )
 SOURCE_INTEGRITY_PLAN_RELATIVE_PATH = Path(
     "evals/phase6_deepseek_depth60_plan_v5.json"
@@ -71,20 +78,25 @@ SOURCE_INTEGRITY_PLAN_RELATIVE_PATH = Path(
 SOURCE_INTEGRITY_PLAN_ID = "phase6-deepseek-depth60-v5"
 VALIDATION_ID = "deepseek-responses-adapter-first-live-validation-v1"
 VALIDATION_CASE_ID = "DEEPSEEK-FIRST-LIVE-VALIDATION-001"
-CONSUMPTION_SCHEMA_VERSION = "deepseek-first-live-consumption/1.0"
-TERMINAL_SCHEMA_VERSION = "deepseek-first-live-terminal/1.0"
+CONSUMPTION_SCHEMA_VERSION = "deepseek-first-live-consumption/1.1"
+TERMINAL_SCHEMA_VERSION = "deepseek-first-live-terminal/1.1"
 EVIDENCE_SCHEMA_VERSION = "deepseek-first-live-evidence/1.0"
 MANIFEST_SCHEMA_VERSION = "deepseek-first-live-manifest/1.0"
 _REQUEST_TIMEOUT_SECONDS = 120.0
 _REQUEST_PHASE_TIMEOUT_SECONDS = 300.0
 _WHOLE_PROCESS_TIMEOUT_SECONDS = 330.0
 _TERMINALIZATION_RESERVE_SECONDS = 30.0
+_GIT_ARCHIVE_MAX_BYTES = 100_000_000
+_GIT_ARCHIVE_MEMBER_MAX_BYTES = 25_000_000
 
 _AUTHORIZATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 _SAFE_ERROR = re.compile(r"^[a-z][a-z0-9_]{0,95}$")
 _PRICING_SOURCE_URL = "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+_AUTHORIZATION_BINDING_DOMAIN = (
+    b"researchops-deepseek-first-live-authorization-binding-v2"
+)
 _AUTHORITY_TOKEN = object()
 _NETWORK_LOGGERS = ("openai", "httpx", "httpcore", "agents")
 _FORBIDDEN_OPENAI_ENVIRONMENT = (
@@ -114,6 +126,7 @@ _CONSUMPTION_FIELDS = frozenset(
         "source_integrity_commitment_sha256",
         "execution_commit",
         "authorization_id_sha256",
+        "authorization_binding_schema_version",
         "authorization_binding_sha256",
         "authorization_expires_at_utc",
         "consumed_at_utc",
@@ -144,6 +157,7 @@ _TERMINAL_FIELDS = frozenset(
         "source_integrity_commitment_sha256",
         "execution_commit",
         "authorization_id_sha256",
+        "authorization_binding_schema_version",
         "authorization_binding_sha256",
         "authorization_expires_at_utc",
         "consumption_receipt_sha256",
@@ -261,6 +275,99 @@ _ARTIFACT_FILENAMES = frozenset(
         "completion_telemetry.json",
         "manifest.json",
     }
+)
+_TERMINAL_ERROR_CODES = {
+    "response_accepted": frozenset({None}),
+    "response_rejected": frozenset(
+        {
+            "provider_completion_capture_failed",
+            "provider_completion_raw_cleanup_failed",
+        }
+    ),
+    "http_error": frozenset({"provider_completion_http_error"}),
+    "no_response": frozenset({"provider_completion_no_response"}),
+    "cancelled": frozenset({None}),
+    "outcome_unknown": frozenset({"provider_completion_outcome_unknown"}),
+}
+_NO_LEDGER_FAILURE_STATES = frozenset(
+    {
+        ("deepseek_first_live_post_consumption_revalidation_failed", False),
+        ("deepseek_first_live_pre_key_initialization_failed", False),
+        ("deepseek_first_live_key_loader_missing", False),
+        ("deepseek_first_live_key_load_failed", False),
+        ("deepseek_first_live_key_missing", False),
+        ("deepseek_first_live_runtime_initialization_failed", True),
+        ("deepseek_first_live_audit_initialization_failed", True),
+    }
+)
+_TRACE_EXACT_LAST_KIND_BY_ERROR = {
+    "provider_completion_capture_failed": "response_rejected",
+    "provider_completion_raw_cleanup_failed": "response_rejected",
+    "provider_completion_http_error": "http_error",
+    "provider_completion_no_response": "no_response",
+    "provider_completion_outcome_unknown": "outcome_unknown",
+}
+_TRACE_ACCEPTED_RESPONSE_ERRORS = frozenset(
+    {
+        "deepseek_first_live_scenario_shape_mismatch",
+        "deepseek_first_live_usage_incomplete",
+        "deepseek_first_live_token_cap_exceeded",
+        "deepseek_first_live_post_response_validation_failed",
+    }
+)
+_TRACE_TWO_ACCEPTED_COMPLETED_ERRORS = frozenset(
+    {
+        "deepseek_first_live_evidence_persistence_failed",
+        "deepseek_first_live_post_ledger_validation_failed",
+    }
+)
+_TRACE_ACCEPTED_PREFIX_PRE_REQUEST_ERRORS = frozenset(
+    {
+        "deepseek_first_live_authorization_expired_during_run",
+        "deepseek_first_live_runtime_revalidation_failed",
+    }
+)
+_TRACE_NO_ATTEMPT_ERRORS = frozenset(
+    {
+        "deepseek_first_live_provider_initialization_failed",
+        "provider_api_key_missing",
+        "provider_completion_session_binding_mismatch",
+        "provider_completion_transport_observer_invalid",
+        "provider_model_invalid",
+        "provider_model_not_allowed",
+        "provider_timeout_invalid",
+    }
+)
+_TRACE_TIMEOUT_ERRORS = frozenset(
+    {
+        "deepseek_first_live_request_timeout",
+        "deepseek_first_live_request_phase_timeout",
+        "deepseek_first_live_total_timeout",
+    }
+)
+_TRACE_STAGE_AGNOSTIC_ERRORS = frozenset(
+    {
+        "provider_completion_post_request_cleanup_failed",
+    }
+)
+_LEDGER_FAILURE_ERROR_CODES = frozenset(
+    set(_TRACE_EXACT_LAST_KIND_BY_ERROR)
+    | set(_TRACE_ACCEPTED_RESPONSE_ERRORS)
+    | set(_TRACE_TWO_ACCEPTED_COMPLETED_ERRORS)
+    | set(_TRACE_ACCEPTED_PREFIX_PRE_REQUEST_ERRORS)
+    | set(_TRACE_NO_ATTEMPT_ERRORS)
+    | set(_TRACE_TIMEOUT_ERRORS)
+    | set(_TRACE_STAGE_AGNOSTIC_ERRORS)
+    | {
+        "deepseek_first_live_authority_invalid",
+        "deepseek_first_live_cancelled",
+        "deepseek_first_live_request_execution_failed",
+    }
+)
+_PARTIAL_EVIDENCE_WRITE_ORDER = (
+    "audit_index.json",
+    "runtime_denominator.json",
+    "completion_telemetry.json",
 )
 
 
@@ -582,6 +689,10 @@ def deepseek_first_live_validation_status(
         "cli_implemented": True,
         "validation_only_authority_implemented": True,
         "single_use_receipts_implemented": True,
+        "authorization_binding_schema_version": (
+            "deepseek-first-live-authorization-binding/2.0"
+        ),
+        "external_authorization_binding_required": True,
         "source_integrity_successor_present": source_successor_present,
         "source_integrity_plan_id": (
             SOURCE_INTEGRITY_PLAN_ID if source_successor_present else None
@@ -746,21 +857,30 @@ class _DeepSeekFirstLiveValidationLedgerSession(LedgerCompletionTelemetrySession
         self._validation_authority.assert_authority()
         return self._transport_send_count, self._transport_observation_armed
 
+    def started_attempt_indices_snapshot(self) -> tuple[int, ...]:
+        self._validation_authority.assert_authority()
+        return tuple(sorted(self._handles))
+
+    def sent_attempt_indices_snapshot(self) -> tuple[int, ...]:
+        self._validation_authority.assert_authority()
+        return tuple(sorted(self._sent_attempt_indices))
+
+    def transport_send_observed_for_attempt(self, handle: object) -> bool:
+        self._validation_authority.assert_authority()
+        attempt_index = getattr(handle, "attempt_index", None)
+        return type(attempt_index) is int and attempt_index in self._sent_attempt_indices
+
     def terminal_kinds_snapshot(self) -> tuple[str, ...]:
         self._validation_authority.assert_authority()
         return tuple(self._terminal_kinds[index] for index in sorted(self._terminal_kinds))
 
     def observed_request_outcome_unknown(self) -> bool:
         self._validation_authority.assert_authority()
-        if not self._transport_observation_armed or self._transport_send_count == 0:
+        if not self._transport_observation_armed:
             return False
-        terminal_kinds = self.terminal_kinds_snapshot()
-        return (
-            self._transport_send_count > len(terminal_kinds)
-            or any(
-                kind in {"cancelled", "outcome_unknown"}
-                for kind in terminal_kinds
-            )
+        return _derive_outcome_unknown(
+            self.sent_attempt_indices_snapshot(),
+            self.terminal_kinds_snapshot(),
         )
 
     def _finalize(
@@ -953,6 +1073,23 @@ def _money(value: Decimal) -> str:
     return format(value.quantize(Decimal("0.000001")), "f")
 
 
+def _validate_locked_cost_reservation(
+    input_price: Decimal,
+    output_price: Decimal,
+    *,
+    not_run: bool,
+) -> Decimal:
+    worst = (
+        Decimal(1024) * input_price + Decimal(272) * output_price
+    ) / Decimal(1_000_000)
+    if worst > Decimal("1.000000"):
+        raise _error(
+            "deepseek_first_live_cost_reservation_exceeded",
+            not_run=not_run,
+        )
+    return worst
+
+
 def _pricing(
     *,
     now: datetime,
@@ -974,11 +1111,7 @@ def _pricing(
         raise _error("deepseek_first_live_pricing_source_invalid", not_run=True)
     input_value = _price(input_price)
     output_value = _price(output_price)
-    worst = (
-        Decimal(1024) * input_value + Decimal(272) * output_value
-    ) / Decimal(1_000_000)
-    if worst > Decimal("1.000000"):
-        raise _error("deepseek_first_live_cost_reservation_exceeded", not_run=True)
+    _validate_locked_cost_reservation(input_value, output_value, not_run=True)
     return resolved_date, normalized_source_url, input_value, output_value
 
 
@@ -987,6 +1120,14 @@ def _network_logging_disabled() -> bool:
         logging.getLogger(name).isEnabledFor(logging.DEBUG)
         for name in _NETWORK_LOGGERS
     )
+
+
+def _git_offline_environment() -> dict[str, str]:
+    environment = dict(os.environ)
+    environment["GIT_NO_LAZY_FETCH"] = "1"
+    environment["GIT_TERMINAL_PROMPT"] = "0"
+    environment["GIT_OPTIONAL_LOCKS"] = "0"
+    return environment
 
 
 def _environment_isolated(environment: Mapping[str, str]) -> bool:
@@ -1012,51 +1153,128 @@ def _validate_dependencies() -> None:
 def _git_state(root: Path) -> tuple[str, bool, str]:
     try:
         head = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+            ["git", "--no-replace-objects", "rev-parse", "HEAD"],
             cwd=root,
             check=True,
             capture_output=True,
             text=True,
             timeout=10,
+            env=_git_offline_environment(),
         ).stdout.strip()
         status = subprocess.run(
-            ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+            [
+                "git",
+                "--no-replace-objects",
+                "status",
+                "--porcelain=v1",
+                "--untracked-files=all",
+            ],
             cwd=root,
             check=True,
             capture_output=True,
             text=True,
             timeout=10,
+            env=_git_offline_environment(),
         ).stdout
         origin_main = subprocess.run(
-            ["git", "rev-parse", "refs/remotes/origin/main"],
+            [
+                "git",
+                "--no-replace-objects",
+                "rev-parse",
+                "refs/remotes/origin/main",
+            ],
             cwd=root,
             check=True,
             capture_output=True,
             text=True,
             timeout=10,
+            env=_git_offline_environment(),
         ).stdout.strip()
     except (OSError, subprocess.SubprocessError):
         raise _error("deepseek_first_live_git_state_unavailable", not_run=True) from None
     return head, status == "", origin_main
 
 
-def _git_file_at_commit(root: Path, commit: str, relative_path: Path) -> bytes:
+@contextmanager
+def _materialized_git_tree(root: Path, commit: str) -> Iterator[Path]:
     try:
-        return subprocess.run(
-            ["git", "show", f"{commit}:{relative_path.as_posix()}"],
-            cwd=root,
-            check=True,
-            capture_output=True,
-            timeout=10,
-        ).stdout
+        with tempfile.TemporaryFile() as archive_stream:
+            subprocess.run(
+                ["git", "--no-replace-objects", "archive", "--format=tar", commit],
+                cwd=root,
+                check=True,
+                stdout=archive_stream,
+                stderr=subprocess.DEVNULL,
+                timeout=30,
+                env=_git_offline_environment(),
+            )
+            archive_size = archive_stream.tell()
+            if archive_size <= 0 or archive_size > _GIT_ARCHIVE_MAX_BYTES:
+                raise _error("deepseek_first_live_execution_identity_invalid")
+            archive_stream.seek(0)
+            archive_payload = archive_stream.read()
     except (OSError, subprocess.SubprocessError):
         raise _error("deepseek_first_live_execution_identity_invalid") from None
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="researchops-first-live-git-tree-"
+        ) as directory:
+            extracted_root = (Path(directory) / "tree").resolve()
+            extracted_root.mkdir()
+            seen: set[Path] = set()
+            total_file_bytes = 0
+            with tarfile.open(fileobj=io.BytesIO(archive_payload), mode="r:") as archive:
+                members = archive.getmembers()
+                for member in members:
+                    raw_name = member.name
+                    pure = PurePosixPath(raw_name)
+                    if (
+                        not raw_name
+                        or "\\" in raw_name
+                        or pure.is_absolute()
+                        or any(
+                            part in {"", ".", ".."} or ":" in part
+                            for part in pure.parts
+                        )
+                        or not (member.isdir() or member.isfile())
+                        or member.size < 0
+                        or member.size > _GIT_ARCHIVE_MEMBER_MAX_BYTES
+                    ):
+                        raise _error("deepseek_first_live_execution_archive_invalid")
+                    target = extracted_root.joinpath(*pure.parts)
+                    resolved_target = target.resolve(strict=False)
+                    if (
+                        not resolved_target.is_relative_to(extracted_root)
+                        or resolved_target in seen
+                    ):
+                        raise _error("deepseek_first_live_execution_archive_invalid")
+                    seen.add(resolved_target)
+                    if member.isdir():
+                        resolved_target.mkdir(parents=True, exist_ok=True)
+                        continue
+                    total_file_bytes += member.size
+                    if total_file_bytes > _GIT_ARCHIVE_MAX_BYTES:
+                        raise _error("deepseek_first_live_execution_archive_invalid")
+                    resolved_target.parent.mkdir(parents=True, exist_ok=True)
+                    source = archive.extractfile(member)
+                    if source is None:
+                        raise _error("deepseek_first_live_execution_archive_invalid")
+                    payload = source.read(_GIT_ARCHIVE_MEMBER_MAX_BYTES + 1)
+                    if len(payload) != member.size:
+                        raise _error("deepseek_first_live_execution_archive_invalid")
+                    with resolved_target.open("xb") as destination:
+                        destination.write(payload)
+            yield extracted_root
+    except DeepSeekFirstLiveValidationError:
+        raise
+    except (OSError, tarfile.TarError, EOFError):
+        raise _error("deepseek_first_live_execution_archive_invalid") from None
 
 
 def _validate_persisted_execution_identity(
     root: Path,
     consumption: Mapping[str, Any],
-) -> None:
+) -> VerifiedRuntimeCompletionBinding:
     commit = consumption.get("execution_commit")
     source_commitment = consumption.get("source_integrity_commitment_sha256")
     if (
@@ -1078,6 +1296,7 @@ def _validate_persisted_execution_identity(
         ancestor = subprocess.run(
             [
                 "git",
+                "--no-replace-objects",
                 "merge-base",
                 "--is-ancestor",
                 commit,
@@ -1087,19 +1306,41 @@ def _validate_persisted_execution_identity(
             check=False,
             capture_output=True,
             timeout=10,
+            env=_git_offline_environment(),
         )
     except (OSError, subprocess.SubprocessError):
         raise _error("deepseek_first_live_execution_identity_invalid") from None
     if ancestor.returncode != 0:
         raise _error("deepseek_first_live_execution_identity_invalid")
-    plan_payload = _git_file_at_commit(root, commit, SOURCE_INTEGRITY_PLAN_RELATIVE_PATH)
-    implementation_payload = _git_file_at_commit(root, commit, IMPLEMENTATION_RELATIVE_PATH)
-    contract_payload = _git_file_at_commit(root, commit, CONTRACT_RELATIVE_PATH)
     try:
-        plan = _decode_json_object(plan_payload)
-        from .phase6_depth60 import depth60_successor_v5_plan_commitment_sha256
+        from .phase6_depth60 import (
+            build_depth60_component_hashes_v5,
+            depth60_successor_v5_plan_commitment_sha256,
+            validate_phase6_depth60_plan,
+        )
 
-        recomputed = depth60_successor_v5_plan_commitment_sha256(plan)
+        with _materialized_git_tree(root, commit) as committed_root:
+            plan_payload = _safe_fixed_file(
+                committed_root, SOURCE_INTEGRITY_PLAN_RELATIVE_PATH
+            ).read_bytes()
+            implementation_payload = _safe_fixed_file(
+                committed_root, IMPLEMENTATION_RELATIVE_PATH
+            ).read_bytes()
+            contract_payload = _safe_fixed_file(
+                committed_root, CONTRACT_RELATIVE_PATH
+            ).read_bytes()
+            plan = _decode_json_object(plan_payload)
+            recomputed = depth60_successor_v5_plan_commitment_sha256(plan)
+            recomputed_components = build_depth60_component_hashes_v5(
+                committed_root
+            )
+            committed_validation = validate_phase6_depth60_plan(
+                committed_root,
+                SOURCE_INTEGRITY_PLAN_RELATIVE_PATH,
+            )
+            committed_runtime_binding = _validation_runtime_binding(
+                committed_root
+            )
     except Exception:
         raise _error("deepseek_first_live_execution_identity_invalid") from None
     authorization_boundary = plan.get("authorization_boundary")
@@ -1108,6 +1349,13 @@ def _validate_persisted_execution_identity(
         or plan.get("status") != "locked_offline_not_run"
         or plan.get("plan_commitment_sha256") != source_commitment
         or recomputed != source_commitment
+        or plan.get("component_hashes") != recomputed_components
+        or committed_validation.get("status") != "valid"
+        or committed_validation.get("plan_commitment_sha256")
+        != source_commitment
+        or committed_validation.get("online_execution_authorized") is not False
+        or committed_validation.get("network_calls") != 0
+        or committed_validation.get("model_calls") != 0
         or not isinstance(authorization_boundary, Mapping)
         or authorization_boundary.get("online_execution_authorized")
         is not False
@@ -1117,6 +1365,7 @@ def _validate_persisted_execution_identity(
         or len(contract_payload) != CONTRACT_BYTES
     ):
         raise _error("deepseek_first_live_execution_identity_invalid")
+    return committed_runtime_binding
 
 
 def _validate_source_integrity(
@@ -1149,7 +1398,7 @@ def _validate_source_integrity(
 
 def _authorization_binding(
     *,
-    authorization_id: str,
+    authorization_id_sha256: str,
     expires_at_utc: str,
     execution_commit: str,
     source_integrity_commitment: str,
@@ -1158,10 +1407,17 @@ def _authorization_binding(
     input_price: Decimal,
     output_price: Decimal,
 ) -> str:
+    if not isinstance(authorization_id_sha256, str) or not _SHA256.fullmatch(
+        authorization_id_sha256
+    ):
+        raise _error("deepseek_first_live_authorization_hash_invalid", not_run=True)
     return _sha256(
-        _canonical_bytes(
+        _AUTHORIZATION_BINDING_DOMAIN
+        + b"\0"
+        + _canonical_bytes(
             {
-                "authorization_id": authorization_id,
+                "schema_version": "deepseek-first-live-authorization-binding/2.0",
+                "authorization_id_sha256": authorization_id_sha256,
                 "authorization_expires_at_utc": expires_at_utc,
                 "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
                 "implementation_commitment_sha256": (
@@ -1186,6 +1442,85 @@ def _authorization_binding(
             }
         )
     )
+
+
+def calculate_deepseek_first_live_authorization_binding(
+    *,
+    project_root: str | Path,
+    authorization_id: str,
+    authorization_expires_at_utc: str,
+    expected_contract_commitment_sha256: str,
+    expected_source_integrity_commitment_sha256: str,
+    expected_execution_commit: str,
+    pricing_snapshot_date: str,
+    pricing_source_url: str,
+    input_price_per_million_cny: str | Decimal,
+    output_price_per_million_cny: str | Decimal,
+) -> dict[str, Any]:
+    """Calculate an external one-shot authorization anchor without Key or network."""
+
+    root = Path(project_root).resolve()
+    validate_deepseek_first_live_contract(root)
+    validate_deepseek_first_live_implementation(root)
+    if expected_contract_commitment_sha256 != CONTRACT_COMMITMENT_SHA256:
+        raise _error("deepseek_first_live_contract_not_authorized", not_run=True)
+    if (
+        not isinstance(authorization_id, str)
+        or not _AUTHORIZATION_ID.fullmatch(authorization_id)
+    ):
+        raise _error("deepseek_first_live_authorization_invalid", not_run=True)
+    if (
+        not isinstance(expected_source_integrity_commitment_sha256, str)
+        or not _SHA256.fullmatch(expected_source_integrity_commitment_sha256)
+    ):
+        raise _error("deepseek_first_live_source_commitment_invalid", not_run=True)
+    if (
+        not isinstance(expected_execution_commit, str)
+        or not _GIT_SHA.fullmatch(expected_execution_commit)
+    ):
+        raise _error("deepseek_first_live_execution_commit_invalid", not_run=True)
+    expiry = _timestamp(_parse_utc(authorization_expires_at_utc))
+    try:
+        if not isinstance(pricing_snapshot_date, str):
+            raise ValueError
+        date.fromisoformat(pricing_snapshot_date)
+    except ValueError:
+        raise _error("deepseek_first_live_pricing_invalid", not_run=True) from None
+    if pricing_source_url != _PRICING_SOURCE_URL:
+        raise _error("deepseek_first_live_pricing_source_invalid", not_run=True)
+    input_price = _price(input_price_per_million_cny)
+    output_price = _price(output_price_per_million_cny)
+    _validate_locked_cost_reservation(input_price, output_price, not_run=True)
+    authorization_id_sha256 = _sha256(authorization_id.encode("utf-8"))
+    binding = _authorization_binding(
+        authorization_id_sha256=authorization_id_sha256,
+        expires_at_utc=expiry,
+        execution_commit=expected_execution_commit,
+        source_integrity_commitment=(
+            expected_source_integrity_commitment_sha256
+        ),
+        pricing_snapshot_date=pricing_snapshot_date,
+        pricing_source_url=pricing_source_url,
+        input_price=input_price,
+        output_price=output_price,
+    )
+    return {
+        "schema_version": "deepseek-first-live-authorization-binding/2.0",
+        "status": "offline_binding_calculated_not_authorized",
+        "authorization_id_sha256": authorization_id_sha256,
+        "authorization_binding_sha256": binding,
+        "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
+        "implementation_commitment_sha256": IMPLEMENTATION_COMMITMENT_SHA256,
+        "source_integrity_commitment_sha256": (
+            expected_source_integrity_commitment_sha256
+        ),
+        "execution_commit": expected_execution_commit,
+        "authorization_expires_at_utc": expiry,
+        "provider_key_loaded": False,
+        "network_calls": 0,
+        "model_calls": 0,
+        "authorizes_online_execution": False,
+    }
 
 
 def _revalidate_execution_state(
@@ -1234,6 +1569,894 @@ def _read_canonical_json(path: Path) -> tuple[dict[str, Any], bytes]:
     return value, payload
 
 
+def _validation_request_summary(authorization_id_sha256: str) -> dict[str, Any]:
+    return {
+        "validation_id": VALIDATION_ID,
+        "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
+        "implementation_commitment_sha256": IMPLEMENTATION_COMMITMENT_SHA256,
+        "authorization_id_sha256": authorization_id_sha256,
+        "scenario_count": 2,
+        "provider": "deepseek",
+        "model": "deepseek-v4-flash",
+    }
+
+
+def _verify_exact_ledger_database_scope(database: Path, mismatch_code: str) -> None:
+    def schema_snapshot(path: Path) -> tuple[tuple[str, str, str, str], ...]:
+        connection = sqlite3.connect(
+            f"file:{path.as_posix()}?mode=ro",
+            uri=True,
+        )
+        try:
+            rows = connection.execute(
+                "SELECT type, name, tbl_name, sql FROM sqlite_master "
+                "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            ).fetchall()
+        finally:
+            connection.close()
+        return tuple(
+            (
+                str(object_type),
+                str(name),
+                str(table_name),
+                " ".join(str(sql).split()),
+            )
+            for object_type, name, table_name, sql in rows
+        )
+
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="researchops-first-live-ledger-schema-"
+        ) as directory:
+            expected_database = Path(directory) / "expected.sqlite3"
+            AuditLedger(expected_database)
+            expected_schema = schema_snapshot(expected_database)
+        actual_schema = schema_snapshot(database)
+        connection = sqlite3.connect(
+            f"file:{database.as_posix()}?mode=ro",
+            uri=True,
+        )
+        with connection:
+            run_ids = {
+                str(row[0]) for row in connection.execute("SELECT run_id FROM runs")
+            }
+            event_run_ids = {
+                str(row[0])
+                for row in connection.execute("SELECT DISTINCT run_id FROM audit_events")
+            }
+            empty_counts = {
+                table: int(
+                    connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                )
+                for table in (
+                    "tool_calls",
+                    "tool_attempts",
+                    "approval_decisions",
+                    "model_calls",
+                )
+            }
+    except (OSError, sqlite3.Error, TypeError, ValueError):
+        raise _error(mismatch_code) from None
+    finally:
+        try:
+            connection.close()
+        except (NameError, sqlite3.Error):
+            pass
+    if (
+        run_ids != {"RUN-DEEPSEEK-FIRST-LIVE-VALIDATION-001"}
+        or event_run_ids != run_ids
+        or any(empty_counts.values())
+        or actual_schema != expected_schema
+    ):
+        raise _error(mismatch_code)
+
+
+def _derive_outcome_unknown(
+    sent_attempt_indices: tuple[int, ...],
+    terminal_kinds: tuple[str, ...],
+) -> bool:
+    sent = set(sent_attempt_indices)
+    return any(index >= len(terminal_kinds) for index in sent) or any(
+        index in sent and kind in {"cancelled", "outcome_unknown"}
+        for index, kind in enumerate(terminal_kinds)
+    )
+
+
+def _verify_validation_ledger_events(
+    exported: Mapping[str, Any],
+    *,
+    authorization_id_sha256: str,
+    expected_run_status: str,
+    expected_terminal_error_code: str | None,
+    runtime_binding: VerifiedRuntimeCompletionBinding,
+    consumed_at: datetime,
+    authorization_expires_at: datetime,
+    mismatch_code: str,
+) -> dict[str, Any]:
+    if set(exported) != {
+        "schema_version",
+        "run",
+        "tool_calls",
+        "tool_attempts",
+        "approval_decisions",
+        "model_calls",
+        "events",
+        "chain_verification",
+    }:
+        raise _error(mismatch_code)
+    run = exported.get("run")
+    events = exported.get("events")
+    request_summary = _validation_request_summary(authorization_id_sha256)
+    request_sha256 = sha256_json(request_summary)
+    if (
+        not isinstance(run, Mapping)
+        or set(run)
+        != {
+            "run_id",
+            "mode",
+            "status",
+            "request_sha256",
+            "dataset_sha256",
+            "created_at_utc",
+            "updated_at_utc",
+            "terminal_error_code",
+        }
+        or run.get("run_id") != "RUN-DEEPSEEK-FIRST-LIVE-VALIDATION-001"
+        or run.get("mode") != "deepseek_completion_first_live_validation"
+        or run.get("status") != expected_run_status
+        or run.get("terminal_error_code") != expected_terminal_error_code
+        or run.get("request_sha256") != request_sha256
+        or run.get("dataset_sha256") is not None
+        or exported.get("tool_calls") != []
+        or exported.get("tool_attempts") != []
+        or exported.get("approval_decisions") != []
+        or exported.get("model_calls") != []
+        or not isinstance(events, list)
+        or len(events) < 2
+    ):
+        raise _error(mismatch_code)
+    event_fields = {
+        "event_id",
+        "run_id",
+        "sequence",
+        "event_type",
+        "occurred_at_utc",
+        "actor_kind",
+        "prev_hash",
+        "event_hash",
+        "safe_payload",
+    }
+    for sequence, event in enumerate(events, start=1):
+        if (
+            not isinstance(event, Mapping)
+            or set(event) != event_fields
+            or event.get("run_id") != run.get("run_id")
+            or event.get("sequence") != sequence
+            or not isinstance(event.get("event_hash"), str)
+            or not _SHA256.fullmatch(event["event_hash"])
+        ):
+            raise _error(mismatch_code)
+    if (
+        events[0].get("event_type") != "run_started"
+        or events[0].get("actor_kind") != "system"
+        or events[0].get("safe_payload")
+        != {
+            "mode": "deepseek_completion_first_live_validation",
+            "request_sha256": request_sha256,
+            "dataset_sha256": None,
+        }
+        or events[-1].get("event_type") != "run_status_changed"
+        or events[-1].get("actor_kind") != "system"
+        or events[-1].get("safe_payload")
+        != {
+            "from": "running",
+            "to": expected_run_status,
+            "error_code": expected_terminal_error_code,
+        }
+    ):
+        raise _error(mismatch_code)
+    binding = runtime_binding.runtime_snapshot()
+    event_type_to_kind = {
+        "model_response_telemetry_recorded": "response_accepted",
+        COMPLETION_TELEMETRY_UNMAPPED_EVENT: "response_accepted",
+        "model_response_telemetry_rejected": "response_rejected",
+        "model_request_http_error": "http_error",
+        "model_request_no_response": "no_response",
+        "model_request_cancelled": "cancelled",
+        "model_request_outcome_unknown": "outcome_unknown",
+    }
+    cursor = 1
+    attempt_index = 0
+    observed_response_index = 0
+    send_index = 0
+    attempts: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
+    sent_attempt_indices: list[int] = []
+    start_hashes: dict[int, str] = {}
+    terminal_hashes: dict[int, str] = {}
+    terminal_kinds: list[str] = []
+    while cursor < len(events) - 1:
+        start = events[cursor]
+        expected_start = {
+            "schema_version": COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION,
+            "case_id": VALIDATION_CASE_ID,
+            "attempt_index": attempt_index,
+            "case_attempt_index": attempt_index,
+            "binding": binding,
+        }
+        if (
+            start.get("event_type") != "model_request_started"
+            or start.get("actor_kind") != "provider_adapter"
+            or start.get("safe_payload") != expected_start
+        ):
+            raise _error(mismatch_code)
+        start_hashes[attempt_index] = str(start["event_hash"])
+        cursor += 1
+        sent = False
+        if (
+            cursor < len(events) - 1
+            and events[cursor].get("event_type")
+            == "provider_transport_request_sent"
+        ):
+            send = events[cursor]
+            expected_send = {
+                "schema_version": "deepseek-first-live-transport-send/1.0",
+                "case_id": VALIDATION_CASE_ID,
+                "attempt_index": attempt_index,
+                "case_attempt_index": attempt_index,
+                "network_call_index": send_index,
+                "method": "POST",
+                "origin": "https://api.deepseek.com",
+                "path": "/responses",
+            }
+            try:
+                sent_at = _parse_audit_utc(send.get("occurred_at_utc"))
+            except DeepSeekFirstLiveValidationError:
+                raise _error(mismatch_code) from None
+            if (
+                send.get("actor_kind") != "provider_adapter"
+                or send.get("safe_payload") != expected_send
+                or not consumed_at <= sent_at <= authorization_expires_at
+            ):
+                raise _error(mismatch_code)
+            sent_attempt_indices.append(attempt_index)
+            send_index += 1
+            sent = True
+            cursor += 1
+        if cursor >= len(events) - 1:
+            raise _error(mismatch_code)
+        terminal_event = events[cursor]
+        terminal_payload = terminal_event.get("safe_payload")
+        terminal_kind = event_type_to_kind.get(str(terminal_event.get("event_type")))
+        if (
+            terminal_event.get("actor_kind") != "provider_adapter"
+            or terminal_kind is None
+            or not isinstance(terminal_payload, Mapping)
+        ):
+            raise _error(mismatch_code)
+        observed = terminal_kind in {"response_accepted", "response_rejected"}
+        response_index = observed_response_index if observed else None
+        error_code = terminal_payload.get("error_code")
+        valid_error = error_code in _TERMINAL_ERROR_CODES[terminal_kind]
+        expected_terminal: dict[str, Any] = {
+            "schema_version": COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION,
+            "case_id": VALIDATION_CASE_ID,
+            "attempt_index": attempt_index,
+            "case_attempt_index": attempt_index,
+            "terminal_kind": terminal_kind,
+            "response_index": response_index,
+            "error_code": error_code,
+            "binding": binding,
+        }
+        if terminal_kind == "response_accepted":
+            record = terminal_payload.get("completion_record")
+            if not isinstance(record, Mapping):
+                raise _error(mismatch_code)
+            try:
+                validate_completion_record(record, binding=runtime_binding)
+            except Exception:
+                raise _error(mismatch_code) from None
+            if (
+                record.get("request_index") != attempt_index
+                or record.get("response_index") != response_index
+                or (
+                    terminal_event.get("event_type")
+                    == COMPLETION_TELEMETRY_UNMAPPED_EVENT
+                )
+                != (record.get("normalized_completion_state") == "unmapped")
+            ):
+                raise _error(mismatch_code)
+            expected_terminal["completion_record"] = dict(record)
+            records.append(dict(record))
+        if (
+            not valid_error
+            or dict(terminal_payload) != expected_terminal
+            or terminal_kind
+            in {
+                "response_accepted",
+                "response_rejected",
+                "http_error",
+                "outcome_unknown",
+            }
+            and not sent
+            or terminal_kind == "no_response"
+            and sent
+        ):
+            raise _error(mismatch_code)
+        attempts.append(
+            {
+                "case_id": VALIDATION_CASE_ID,
+                "attempt_index": attempt_index,
+                "case_attempt_index": attempt_index,
+                "terminal_kind": terminal_kind,
+                "response_index": response_index,
+                "error_code": error_code,
+            }
+        )
+        if observed:
+            observed_response_index += 1
+        terminal_kinds.append(terminal_kind)
+        terminal_hashes[attempt_index] = str(terminal_event["event_hash"])
+        attempt_index += 1
+        cursor += 1
+    if cursor != len(events) - 1 or attempt_index > 2 or send_index > 2:
+        raise _error(mismatch_code)
+    sent_indices = tuple(sent_attempt_indices)
+    kinds = tuple(terminal_kinds)
+    event_counts: dict[str, int] = {}
+    for event in events:
+        event_type = str(event["event_type"])
+        event_counts[event_type] = event_counts.get(event_type, 0) + 1
+    return {
+        "attempts": attempts,
+        "records": records,
+        "started_attempt_indices": tuple(range(attempt_index)),
+        "sent_attempt_indices": sent_indices,
+        "start_hashes": start_hashes,
+        "terminal_hashes": terminal_hashes,
+        "terminal_kinds": kinds,
+        "outcome_unknown": _derive_outcome_unknown(sent_indices, kinds),
+        "event_counts": dict(sorted(event_counts.items())),
+    }
+
+
+def _verify_ledger_trace_projection(
+    terminal: Mapping[str, Any],
+    trace: Mapping[str, Any],
+    *,
+    mismatch_code: str,
+) -> None:
+    started_indices = tuple(trace.get("started_attempt_indices", ()))
+    sent_indices = tuple(trace.get("sent_attempt_indices", ()))
+    if (
+        len(started_indices) != terminal.get("model_requests")
+        or len(sent_indices) != terminal.get("network_attempts")
+        or trace.get("outcome_unknown") != terminal.get("outcome_unknown")
+        or (
+            terminal.get("network_call_observation_complete") is True
+            and len(sent_indices) != terminal.get("network_calls")
+        )
+        or (
+            terminal.get("network_call_observation_complete") is False
+            and (sent_indices or terminal.get("network_calls") is not None)
+        )
+        or (
+            terminal.get("ledger_run_status") == "completed"
+            and (
+                started_indices != (0, 1)
+                or sent_indices != (0, 1)
+                or trace.get("terminal_kinds")
+                != ("response_accepted", "response_accepted")
+            )
+        )
+    ):
+        raise _error(mismatch_code)
+
+
+def _verify_no_ledger_terminal_projection(
+    terminal: Mapping[str, Any],
+    *,
+    mismatch_code: str,
+) -> None:
+    partial_artifacts = terminal.get("partial_artifacts")
+    state = (terminal.get("error_code"), terminal.get("provider_key_loaded"))
+    if (
+        terminal.get("status") != "failed"
+        or state not in _NO_LEDGER_FAILURE_STATES
+        or terminal.get("raw_response_cleanup_complete") is not False
+        or terminal.get("ledger_run_status") is not None
+        or terminal.get("model_requests") != 0
+        or terminal.get("network_attempts") != 0
+        or terminal.get("network_calls") is not None
+        or terminal.get("network_call_observation_complete") is not False
+        or terminal.get("outcome_unknown") is not False
+        or terminal.get("usage_complete") is not False
+        or terminal.get("input_tokens") is not None
+        or terminal.get("output_tokens") is not None
+        or terminal.get("local_observed_usage_cost_cny") is not None
+        or not isinstance(partial_artifacts, Mapping)
+        or set(partial_artifacts) != {"consumption.json"}
+    ):
+        raise _error(mismatch_code)
+
+
+def _record_matches_locked_scenario(
+    record: Mapping[str, Any],
+    scenario_index: int,
+) -> bool:
+    if scenario_index not in (0, 1):
+        return False
+    try:
+        projection = _completion_shape_projection(record)
+    except DeepSeekFirstLiveValidationError:
+        return False
+    return (
+        record.get("normalized_completion_state")
+        == ("completed" if scenario_index == 0 else "incomplete_length")
+        and record.get("truncation_signal_source") == "native_status"
+        and projection == _EXPECTED_COMPLETION_SHAPES[scenario_index]
+    )
+
+
+def _record_has_locked_request_metadata(record: Mapping[str, Any]) -> bool:
+    request_index = record.get("request_index")
+    if type(request_index) is not int or request_index not in (0, 1):
+        return False
+    return (
+        record.get("record_provenance") == "live_adapter_write"
+        and record.get("output_token_cap")
+        == {
+            "availability": "provided",
+            "value": 256 if request_index == 0 else 16,
+        }
+    )
+
+
+def _record_usage_pair(record: Mapping[str, Any]) -> tuple[int, int] | None:
+    usage = record.get("usage")
+    normalized = usage.get("normalized") if isinstance(usage, Mapping) else None
+    if not isinstance(usage, Mapping) or usage.get("complete") is not True:
+        return None
+    if not isinstance(normalized, Mapping):
+        return None
+    input_tokens = normalized.get("input_tokens")
+    output_tokens = normalized.get("output_tokens")
+    if (
+        type(input_tokens) is not int
+        or input_tokens < 0
+        or type(output_tokens) is not int
+        or output_tokens < 0
+    ):
+        return None
+    return input_tokens, output_tokens
+
+
+def _accepted_prefix_passes_locked_gates(
+    records: list[dict[str, Any]],
+    count: int,
+    *,
+    input_price: Decimal,
+    output_price: Decimal,
+) -> bool:
+    if count < 0 or count > 2 or len(records) < count:
+        return False
+    input_total = 0
+    output_total = 0
+    for index, record in enumerate(records[:count]):
+        if (
+            not isinstance(record, Mapping)
+            or not _record_has_locked_request_metadata(record)
+            or not _record_matches_locked_scenario(record, index)
+        ):
+            return False
+        usage = _record_usage_pair(record)
+        if usage is None:
+            return False
+        input_tokens, output_tokens = usage
+        input_total += input_tokens
+        output_total += output_tokens
+        if (
+            input_tokens > 512
+            or output_tokens > (256 if index == 0 else 16)
+            or input_total > 1024
+            or output_total > 272
+            or (
+                Decimal(input_total) * input_price
+                + Decimal(output_total) * output_price
+            )
+            / Decimal(1_000_000)
+            > Decimal("1.000000")
+        ):
+            return False
+    return True
+
+
+def _ledger_error_matches_trace(
+    error_code: object,
+    ledger_status: object,
+    trace: Mapping[str, Any],
+    *,
+    input_price: Decimal,
+    output_price: Decimal,
+    manifest_complete: bool,
+) -> bool:
+    kinds = tuple(trace.get("terminal_kinds", ()))
+    records = trace.get("records")
+    if not isinstance(records, list):
+        return False
+    if any(
+        not isinstance(record, Mapping)
+        or not _record_has_locked_request_metadata(record)
+        for record in records
+    ):
+        return False
+    all_accepted = bool(kinds) and all(
+        kind == "response_accepted" for kind in kinds
+    )
+    accepted_before_last = all(
+        kind == "response_accepted" for kind in kinds[:-1]
+    )
+    last_kind = kinds[-1] if kinds else None
+    if len(kinds) == 2 and (
+        kinds[0] != "response_accepted"
+        or not _accepted_prefix_passes_locked_gates(
+            records,
+            1,
+            input_price=input_price,
+            output_price=output_price,
+        )
+    ):
+        return False
+    exact_kind = _TRACE_EXACT_LAST_KIND_BY_ERROR.get(error_code)
+    if exact_kind is not None:
+        return (
+            ledger_status == "failed"
+            and last_kind == exact_kind
+            and accepted_before_last
+        )
+    if error_code in _TRACE_NO_ATTEMPT_ERRORS:
+        return ledger_status == "failed" and not kinds
+    if error_code in _TRACE_ACCEPTED_PREFIX_PRE_REQUEST_ERRORS:
+        return (
+            ledger_status == "failed"
+            and len(kinds) <= 1
+            and (not kinds or all_accepted)
+            and (
+                not kinds
+                or _accepted_prefix_passes_locked_gates(
+                    records,
+                    1,
+                    input_price=input_price,
+                    output_price=output_price,
+                )
+            )
+        )
+    if error_code in _TRACE_TWO_ACCEPTED_COMPLETED_ERRORS:
+        if (
+            ledger_status != "completed"
+            or kinds != ("response_accepted", "response_accepted")
+            or not _accepted_prefix_passes_locked_gates(
+                records,
+                2,
+                input_price=input_price,
+                output_price=output_price,
+            )
+        ):
+            return False
+        if error_code == "deepseek_first_live_evidence_persistence_failed":
+            return manifest_complete is False and _accepted_prefix_passes_locked_gates(
+                records,
+                2,
+                input_price=input_price,
+                output_price=output_price,
+            )
+        return True
+    if error_code in _TRACE_ACCEPTED_RESPONSE_ERRORS:
+        if ledger_status != "failed" or not all_accepted:
+            return False
+        record = records[-1] if records else None
+        if not isinstance(record, Mapping):
+            return False
+        if error_code == "deepseek_first_live_scenario_shape_mismatch":
+            index = len(kinds) - 1
+            return not _record_matches_locked_scenario(record, index)
+        if error_code == "deepseek_first_live_usage_incomplete":
+            return _record_matches_locked_scenario(
+                record,
+                len(kinds) - 1,
+            ) and _record_usage_pair(record) is None
+        totals = _usage_totals(records)
+        if error_code == "deepseek_first_live_token_cap_exceeded":
+            if totals is None:
+                return False
+            return _record_matches_locked_scenario(
+                record,
+                len(kinds) - 1,
+            ) and (
+                any(
+                    item.get("usage", {}).get("normalized", {}).get(
+                        "input_tokens", 513
+                    )
+                    > 512
+                    or item.get("usage", {}).get("normalized", {}).get(
+                        "output_tokens", cap + 1
+                    )
+                    > cap
+                    for item, cap in zip(records, (256, 16))
+                )
+                or totals[0] > 1024
+                or totals[1] > 272
+            )
+        return True
+    if error_code == "deepseek_first_live_request_timeout":
+        return (
+            ledger_status == "failed"
+            and last_kind in {"cancelled", "response_rejected"}
+            and accepted_before_last
+        )
+    if error_code in {
+        "deepseek_first_live_request_phase_timeout",
+        "deepseek_first_live_total_timeout",
+    }:
+        # These outer deadlines can fire during async provider cleanup and mask
+        # any already-terminal body path; the strict trace remains authoritative.
+        return ledger_status == "failed"
+    if error_code == "deepseek_first_live_authority_invalid":
+        return ledger_status == "failed" and (not kinds or all_accepted)
+    if error_code == "deepseek_first_live_cancelled":
+        # External cancellation has the same cleanup-overlay ambiguity.
+        return ledger_status == "cancelled"
+    if error_code == "deepseek_first_live_request_execution_failed":
+        return ledger_status == "failed" and bool(kinds) and not all_accepted
+    if error_code in _TRACE_STAGE_AGNOSTIC_ERRORS:
+        return ledger_status == "failed"
+    return False
+
+
+def _verify_terminal_stage_projection(
+    terminal: Mapping[str, Any],
+    trace: Mapping[str, Any],
+    *,
+    input_price: Decimal,
+    output_price: Decimal,
+    mismatch_code: str,
+) -> None:
+    started = tuple(trace.get("started_attempt_indices", ()))
+    kinds = tuple(trace.get("terminal_kinds", ()))
+    expected_cleanup = bool(started) and len(kinds) == len(started) and all(
+        kind == "response_accepted" for kind in kinds
+    )
+    terminal_status = terminal.get("status")
+    ledger_status = terminal.get("ledger_run_status")
+    error_code = terminal.get("error_code")
+    if (
+        terminal.get("provider_key_loaded") is not True
+        or terminal.get("raw_response_cleanup_complete") is not expected_cleanup
+        or (
+            terminal_status == "success"
+            and (error_code is not None or ledger_status != "completed")
+        )
+        or (
+            terminal_status == "failed"
+            and (
+                error_code not in _LEDGER_FAILURE_ERROR_CODES
+                or not _ledger_error_matches_trace(
+                    error_code,
+                    ledger_status,
+                    trace,
+                    input_price=input_price,
+                    output_price=output_price,
+                    manifest_complete=(
+                        terminal.get("manifest_complete") is True
+                    ),
+                )
+            )
+        )
+        or terminal_status not in {"success", "failed"}
+        or (ledger_status == "cancelled")
+        != (error_code == "deepseek_first_live_cancelled")
+    ):
+        raise _error(mismatch_code)
+
+
+def _event_commitment_from_trace(
+    trace: Mapping[str, Any],
+    runtime_binding: VerifiedRuntimeCompletionBinding,
+    *,
+    write_failed: bool,
+) -> dict[str, Any]:
+    start_hashes = trace.get("start_hashes")
+    terminal_hashes = trace.get("terminal_hashes")
+    if not isinstance(start_hashes, Mapping) or not isinstance(
+        terminal_hashes, Mapping
+    ):
+        raise _error("deepseek_first_live_partial_ledger_mismatch")
+    body = {
+        "schema_version": "provider-completion-ledger-bridge-commitment/1.0",
+        "case_id": VALIDATION_CASE_ID,
+        "binding_sha256": sha256_json(runtime_binding.runtime_snapshot()),
+        "started": [
+            {"attempt_index": index, "event_hash": start_hashes[index]}
+            for index in sorted(start_hashes)
+        ],
+        "terminals": [
+            {"attempt_index": index, "event_hash": terminal_hashes[index]}
+            for index in sorted(terminal_hashes)
+        ],
+        "all_started_attempts_terminal": set(start_hashes)
+        == set(terminal_hashes),
+        "write_failed": write_failed,
+    }
+    return {**body, "commitment_sha256": sha256_json(body)}
+
+
+def _verify_partial_audit_index_projection(
+    audit_index: Mapping[str, Any],
+    *,
+    ledger: AuditLedger,
+    trace: Mapping[str, Any],
+    runtime_binding: VerifiedRuntimeCompletionBinding,
+    mismatch_code: str,
+) -> bool:
+    _require_exact_fields(audit_index, _AUDIT_INDEX_FIELDS, mismatch_code)
+    runs = audit_index.get("runs")
+    if (
+        not isinstance(runs, list)
+        or len(runs) != 1
+        or not isinstance(runs[0], Mapping)
+    ):
+        raise _error(mismatch_code)
+    entry = runs[0]
+    _require_exact_fields(entry, _AUDIT_RUN_ENTRY_FIELDS, mismatch_code)
+    verification = ledger.verify_chain("RUN-DEEPSEEK-FIRST-LIVE-VALIDATION-001")
+    commitment = entry.get("completion_telemetry_event_commitment")
+    write_failed = (
+        commitment.get("write_failed")
+        if isinstance(commitment, Mapping)
+        else None
+    )
+    if (
+        entry.get("case_id") != VALIDATION_CASE_ID
+        or entry.get("run_id") != "RUN-DEEPSEEK-FIRST-LIVE-VALIDATION-001"
+        or entry.get("chain_verification") != verification.to_dict()
+        or verification.valid is not True
+        or write_failed is not False
+        or dict(commitment)
+        != _event_commitment_from_trace(
+            trace,
+            runtime_binding,
+            write_failed=write_failed,
+        )
+    ):
+        raise _error(mismatch_code)
+    return write_failed
+
+
+def _verify_partial_denominator_projection(
+    denominator: Mapping[str, Any],
+    *,
+    plan_binding: VerifiedRuntimeDenominatorPlanBinding,
+    trace: Mapping[str, Any],
+    mismatch_code: str,
+) -> None:
+    try:
+        validate_runtime_denominator_artifact(
+            denominator,
+            plan_binding=plan_binding,
+        )
+    except Exception:
+        raise _error(mismatch_code) from None
+    if (
+        denominator.get("attempts") != trace.get("attempts")
+        or denominator.get("records") != trace.get("records")
+    ):
+        raise _error(mismatch_code)
+
+
+def _verify_evidence_projection(
+    evidence: Mapping[str, Any],
+    denominator: Mapping[str, Any],
+    *,
+    terminal: Mapping[str, Any],
+    plan_binding: VerifiedRuntimeDenominatorPlanBinding,
+    trace: Mapping[str, Any],
+    input_price: Decimal,
+    output_price: Decimal,
+    allow_interrupted_success_write: bool,
+    mismatch_code: str,
+) -> None:
+    evidence_status = evidence.get("status")
+    expected_fields = (
+        _SUCCESS_EVIDENCE_FIELDS
+        if evidence_status == "validated"
+        else _FAILURE_EVIDENCE_FIELDS
+    )
+    _require_exact_fields(evidence, expected_fields, mismatch_code)
+    reconciliation = evidence.get("ledger_reconciliation")
+    if not isinstance(reconciliation, Mapping):
+        raise _error(mismatch_code)
+    write_failed = reconciliation.get("ledger_failure_observed")
+    if write_failed is not False:
+        raise _error(mismatch_code)
+    expected_reconciliation = {
+        "all_chains_valid": True,
+        "ledger_export_failed": False,
+        "ledger_failure_observed": False,
+        "event_counts": trace.get("event_counts"),
+        "reasons": [],
+    }
+    if (
+        evidence.get("schema_version") != EVIDENCE_SCHEMA_VERSION
+        or evidence.get("contract_id") != VALIDATION_ID
+        or evidence.get("contract_commitment_sha256")
+        != CONTRACT_COMMITMENT_SHA256
+        or evidence.get("implementation_commitment_sha256")
+        != IMPLEMENTATION_COMMITMENT_SHA256
+        or evidence.get("runtime_plan") != plan_binding_to_snapshot(plan_binding)
+        or evidence.get("runtime_denominator") != denominator
+        or dict(reconciliation) != expected_reconciliation
+        or evidence.get("status_defect_closure_allowed") is not False
+        or evidence.get("closure_claim_allowed") is not False
+        or evidence.get("automatic_registry_promotion_allowed") is not False
+        or evidence.get("raw_response_body_persisted") is not False
+        or evidence.get("message_content_persisted") is not False
+        or evidence.get("provider_key_persisted") is not False
+    ):
+        raise _error(mismatch_code)
+    records = denominator.get("records")
+    if evidence_status == "validated":
+        try:
+            input_tokens, output_tokens, cost = _validated_success_usage(
+                records,
+                input_price=input_price,
+                output_price=output_price,
+                error_code=mismatch_code,
+            )
+        except DeepSeekFirstLiveValidationError:
+            raise _error(mismatch_code) from None
+        states = [item.get("normalized_completion_state") for item in records]
+        sources = [item.get("truncation_signal_source") for item in records]
+        shapes = [_completion_shape_projection(item) for item in records]
+        normal_success = (
+            terminal.get("status") == "success"
+            and terminal.get("error_code") is None
+        )
+        interrupted_success = (
+            allow_interrupted_success_write
+            and terminal.get("status") == "failed"
+            and terminal.get("error_code")
+            == "deepseek_first_live_evidence_persistence_failed"
+        )
+        if (
+            not (normal_success or interrupted_success)
+            or terminal.get("ledger_run_status") != "completed"
+            or evidence.get("validation_integrity_gate_passed") is not True
+            or not _accepted_prefix_passes_locked_gates(
+                records,
+                2,
+                input_price=input_price,
+                output_price=output_price,
+            )
+            or states != ["completed", "incomplete_length"]
+            or sources != ["native_status", "native_status"]
+            or shapes != _EXPECTED_COMPLETION_SHAPES
+            or evidence.get("observed_states_in_order") != states
+            or evidence.get("observed_signal_sources_in_order") != sources
+            or evidence.get("observed_completion_shapes_in_order") != shapes
+            or evidence.get("observed_input_tokens") != input_tokens
+            or evidence.get("observed_output_tokens") != output_tokens
+            or evidence.get("local_observed_cost_cny") != _money(cost)
+        ):
+            raise _error(mismatch_code)
+    elif (
+        evidence_status != "failed"
+        or evidence.get("error_code") != terminal.get("error_code")
+        or evidence.get("outcome_unknown") != terminal.get("outcome_unknown")
+        or evidence.get("validation_integrity_gate_passed") is not False
+    ):
+        raise _error(mismatch_code)
+
+
 def _verify_persisted_ledger(
     ledger: AuditLedger,
     run_entry: Mapping[str, Any],
@@ -1247,11 +2470,23 @@ def _verify_persisted_ledger(
     expected_network_calls: int | None,
     authorization_expires_at: datetime,
     consumed_at: datetime,
-) -> None:
+) -> dict[str, Any]:
+    if expected_write_failed is not False:
+        raise _error("deepseek_first_live_ledger_event_mismatch")
     run_id = run_entry.get("run_id")
     if not isinstance(run_id, str):
         raise _error("deepseek_first_live_audit_index_invalid")
     exported = ledger.export_run(run_id)
+    trace = _verify_validation_ledger_events(
+        exported,
+        authorization_id_sha256=authorization_id_sha256,
+        expected_run_status=expected_run_status,
+        expected_terminal_error_code=expected_terminal_error_code,
+        runtime_binding=plan_binding.runtime_binding(),
+        consumed_at=consumed_at,
+        authorization_expires_at=authorization_expires_at,
+        mismatch_code="deepseek_first_live_ledger_event_mismatch",
+    )
     if set(exported) != {
         "schema_version",
         "run",
@@ -1346,6 +2581,8 @@ def _verify_persisted_ledger(
     attempts = denominator.get("attempts")
     records = denominator.get("records")
     if not isinstance(attempts, list) or not isinstance(records, list):
+        raise _error("deepseek_first_live_ledger_event_mismatch")
+    if trace["attempts"] != attempts or trace["records"] != records:
         raise _error("deepseek_first_live_ledger_event_mismatch")
     binding = plan_binding.runtime_binding().runtime_snapshot()
     records_by_response = {
@@ -1508,187 +2745,80 @@ def _verify_persisted_ledger(
     }
     if dict(commitment) != expected_commitment:
         raise _error("deepseek_first_live_event_commitment_invalid")
+    return trace
 
 
-def _verify_partial_ledger_counts(
+def _verify_partial_ledger(
     directory: Path,
     terminal: Mapping[str, Any],
     *,
     authorization_id_sha256: str,
     authorization_expires_at: datetime,
     consumed_at: datetime,
-) -> None:
+    runtime_binding: VerifiedRuntimeCompletionBinding,
+    input_price: Decimal,
+    output_price: Decimal,
+) -> dict[str, Any]:
     database = directory / "audit.sqlite3"
     if not database.is_file():
-        if (
-            terminal.get("ledger_run_status") is not None
-            or terminal.get("model_requests") != 0
-            or terminal.get("network_attempts") != 0
-            or terminal.get("network_calls") not in {None, 0}
-        ):
+        if {entry.name for entry in directory.iterdir()} != {
+            "consumption.json",
+            "terminal.json",
+        }:
             raise _error("deepseek_first_live_partial_ledger_mismatch")
-        return
+        _verify_no_ledger_terminal_projection(
+            terminal,
+            mismatch_code="deepseek_first_live_partial_ledger_mismatch",
+        )
+        return {
+            "attempts": [],
+            "records": [],
+            "started_attempt_indices": (),
+            "sent_attempt_indices": (),
+            "start_hashes": {},
+            "terminal_hashes": {},
+            "terminal_kinds": (),
+            "outcome_unknown": False,
+        }
+    _verify_exact_ledger_database_scope(
+        database,
+        "deepseek_first_live_partial_ledger_mismatch",
+    )
     ledger = AuditLedger(database)
     run_id = "RUN-DEEPSEEK-FIRST-LIVE-VALIDATION-001"
     verification = ledger.verify_chain(run_id)
     if not verification.valid:
         raise _error("deepseek_first_live_partial_ledger_mismatch")
     exported = ledger.export_run(run_id)
-    run = exported.get("run")
-    events = exported.get("events")
-    request_summary = {
-        "validation_id": VALIDATION_ID,
-        "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
-        "implementation_commitment_sha256": IMPLEMENTATION_COMMITMENT_SHA256,
-        "authorization_id_sha256": authorization_id_sha256,
-        "scenario_count": 2,
-        "provider": "deepseek",
-        "model": "deepseek-v4-flash",
-    }
-    if (
-        not isinstance(run, Mapping)
-        or not isinstance(events, list)
-        or run.get("run_id") != run_id
-        or run.get("mode") != "deepseek_completion_first_live_validation"
-        or run.get("request_sha256") != sha256_json(request_summary)
-        or run.get("dataset_sha256") is not None
-        or exported.get("tool_calls") != []
-        or exported.get("tool_attempts") != []
-        or exported.get("approval_decisions") != []
-        or exported.get("model_calls") != []
-    ):
+    expected_run_status = terminal.get("ledger_run_status")
+    expected_run_error = (
+        None if expected_run_status == "completed" else terminal.get("error_code")
+    )
+    if not isinstance(expected_run_status, str):
         raise _error("deepseek_first_live_partial_ledger_mismatch")
-    terminal_types = {
-        "model_response_telemetry_recorded",
-        COMPLETION_TELEMETRY_UNMAPPED_EVENT,
-        "model_response_telemetry_rejected",
-        "model_request_http_error",
-        "model_request_no_response",
-        "model_request_cancelled",
-        "model_request_outcome_unknown",
-    }
-    expected_started_payload = {
-        "mode": "deepseek_completion_first_live_validation",
-        "request_sha256": sha256_json(request_summary),
-        "dataset_sha256": None,
-    }
-    if (
-        len(events) < 2
-        or events[0].get("event_type") != "run_started"
-        or events[0].get("actor_kind") != "system"
-        or events[0].get("safe_payload") != expected_started_payload
-        or events[-1].get("event_type") != "run_status_changed"
-        or events[-1].get("actor_kind") != "system"
-        or events[-1].get("safe_payload")
-        != {
-            "from": "running",
-            "to": terminal.get("ledger_run_status"),
-            "error_code": (
-                None
-                if terminal.get("ledger_run_status") == "completed"
-                else terminal.get("error_code")
-            ),
-        }
-    ):
-        raise _error("deepseek_first_live_partial_ledger_mismatch")
-    cursor = 1
-    attempt_count = 0
-    send_count = 0
-    observed_terminal_types: list[str] = []
-    while cursor < len(events) - 1:
-        start = events[cursor]
-        start_payload = start.get("safe_payload")
-        if (
-            start.get("event_type") != "model_request_started"
-            or start.get("actor_kind") != "provider_adapter"
-            or not isinstance(start_payload, Mapping)
-            or start_payload.get("case_id") != VALIDATION_CASE_ID
-            or start_payload.get("attempt_index") != attempt_count
-            or start_payload.get("case_attempt_index") != attempt_count
-        ):
-            raise _error("deepseek_first_live_partial_ledger_mismatch")
-        cursor += 1
-        if (
-            cursor < len(events) - 1
-            and events[cursor].get("event_type")
-            == "provider_transport_request_sent"
-        ):
-            sent = events[cursor]
-            sent_payload = sent.get("safe_payload")
-            if (
-                sent.get("actor_kind") != "provider_adapter"
-                or not isinstance(sent_payload, Mapping)
-                or sent_payload
-                != {
-                    "schema_version": "deepseek-first-live-transport-send/1.0",
-                    "case_id": VALIDATION_CASE_ID,
-                    "attempt_index": attempt_count,
-                    "case_attempt_index": attempt_count,
-                    "network_call_index": send_count,
-                    "method": "POST",
-                    "origin": "https://api.deepseek.com",
-                    "path": "/responses",
-                }
-            ):
-                raise _error("deepseek_first_live_partial_ledger_mismatch")
-            try:
-                sent_at = _parse_audit_utc(sent.get("occurred_at_utc"))
-            except DeepSeekFirstLiveValidationError:
-                raise _error("deepseek_first_live_partial_ledger_mismatch") from None
-            if not consumed_at <= sent_at <= authorization_expires_at:
-                raise _error("deepseek_first_live_partial_ledger_mismatch")
-            send_count += 1
-            cursor += 1
-        if cursor >= len(events) - 1:
-            raise _error("deepseek_first_live_partial_ledger_mismatch")
-        terminal_event = events[cursor]
-        terminal_payload = terminal_event.get("safe_payload")
-        terminal_type = terminal_event.get("event_type")
-        if (
-            terminal_type not in terminal_types
-            or terminal_event.get("actor_kind") != "provider_adapter"
-            or not isinstance(terminal_payload, Mapping)
-            or terminal_payload.get("case_id") != VALIDATION_CASE_ID
-            or terminal_payload.get("attempt_index") != attempt_count
-            or terminal_payload.get("case_attempt_index") != attempt_count
-        ):
-            raise _error("deepseek_first_live_partial_ledger_mismatch")
-        observed_terminal_types.append(str(terminal_type))
-        attempt_count += 1
-        cursor += 1
-    if (
-        cursor != len(events) - 1
-        or run.get("status") != terminal.get("ledger_run_status")
-        or run.get("terminal_error_code")
-        != (
-            None
-            if terminal.get("ledger_run_status") == "completed"
-            else terminal.get("error_code")
-        )
-        or attempt_count != terminal.get("model_requests")
-        or send_count != terminal.get("network_attempts")
-        or (
-            terminal.get("network_call_observation_complete") is True
-            and send_count != terminal.get("network_calls")
-        )
-        or (
-            terminal.get("network_call_observation_complete") is False
-            and (send_count != 0 or terminal.get("network_calls") is not None)
-        )
-        or (
-            terminal.get("ledger_run_status") == "completed"
-            and (
-                attempt_count != 2
-                or send_count != 2
-                or observed_terminal_types
-                != [
-                    "model_response_telemetry_recorded",
-                    "model_response_telemetry_recorded",
-                ]
-            )
-        )
-    ):
-        raise _error("deepseek_first_live_partial_ledger_mismatch")
+    trace = _verify_validation_ledger_events(
+        exported,
+        authorization_id_sha256=authorization_id_sha256,
+        expected_run_status=expected_run_status,
+        expected_terminal_error_code=expected_run_error,
+        runtime_binding=runtime_binding,
+        consumed_at=consumed_at,
+        authorization_expires_at=authorization_expires_at,
+        mismatch_code="deepseek_first_live_partial_ledger_mismatch",
+    )
+    _verify_ledger_trace_projection(
+        terminal,
+        trace,
+        mismatch_code="deepseek_first_live_partial_ledger_mismatch",
+    )
+    _verify_terminal_stage_projection(
+        terminal,
+        trace,
+        input_price=input_price,
+        output_price=output_price,
+        mismatch_code="deepseek_first_live_partial_ledger_mismatch",
+    )
+    return trace
 
 
 def _artifact_parent(root: Path, override: Path | None) -> Path:
@@ -1777,6 +2907,7 @@ def _verify_deepseek_first_live_artifacts_impl(
     project_root: str | Path,
     authorization_id_sha256: str,
     *,
+    expected_authorization_binding_sha256: str,
     sensitive_canaries: tuple[str, ...] = (),
     _artifact_root: Path | None = None,
 ) -> dict[str, Any]:
@@ -1789,6 +2920,11 @@ def _verify_deepseek_first_live_artifacts_impl(
         authorization_id_sha256
     ):
         raise _error("deepseek_first_live_authorization_hash_invalid")
+    if (
+        not isinstance(expected_authorization_binding_sha256, str)
+        or not _SHA256.fullmatch(expected_authorization_binding_sha256)
+    ):
+        raise _error("deepseek_first_live_authorization_binding_invalid")
     parent = _artifact_parent(root, _artifact_root)
     directory = parent / authorization_id_sha256
     if (
@@ -1817,7 +2953,6 @@ def _verify_deepseek_first_live_artifacts_impl(
         _TERMINAL_FIELDS,
         "deepseek_first_live_terminal_schema_invalid",
     )
-    _validate_persisted_execution_identity(root, consumption)
     terminal_status = terminal.get("status")
     terminal_error = terminal.get("error_code")
     if (
@@ -1830,6 +2965,10 @@ def _verify_deepseek_first_live_artifacts_impl(
         or terminal.get("schema_version") != TERMINAL_SCHEMA_VERSION
         or terminal.get("contract_id") != VALIDATION_ID
         or terminal.get("authorization_id_sha256") != authorization_id_sha256
+        or consumption.get("authorization_binding_schema_version")
+        != "deepseek-first-live-authorization-binding/2.0"
+        or terminal.get("authorization_binding_schema_version")
+        != "deepseek-first-live-authorization-binding/2.0"
         or terminal.get("contract_commitment_sha256")
         != CONTRACT_COMMITMENT_SHA256
         or consumption.get("implementation_commitment_sha256")
@@ -1874,11 +3013,12 @@ def _verify_deepseek_first_live_artifacts_impl(
         consumed_at = _parse_utc(consumption.get("consumed_at_utc"))
         started_at = _parse_utc(terminal.get("started_at_utc"))
         completed_at = _parse_utc(terminal.get("completed_at_utc"))
-        _price(consumption.get("input_price_per_million_cny"))
-        _price(consumption.get("output_price_per_million_cny"))
+        input_price = _price(consumption.get("input_price_per_million_cny"))
+        output_price = _price(consumption.get("output_price_per_million_cny"))
         date.fromisoformat(str(consumption.get("pricing_snapshot_date")))
     except (DeepSeekFirstLiveValidationError, ValueError):
         raise _error("deepseek_first_live_receipt_binding_invalid") from None
+    _validate_locked_cost_reservation(input_price, output_price, not_run=False)
     if (
         not consumed_at <= started_at <= completed_at <= authorization_expires_at
         or authorization_expires_at - consumed_at
@@ -1888,6 +3028,35 @@ def _verify_deepseek_first_live_artifacts_impl(
         > timedelta(seconds=_WHOLE_PROCESS_TIMEOUT_SECONDS)
     ):
         raise _error("deepseek_first_live_receipt_time_order_invalid")
+    recomputed_authorization_binding = _authorization_binding(
+        authorization_id_sha256=authorization_id_sha256,
+        expires_at_utc=str(consumption.get("authorization_expires_at_utc")),
+        execution_commit=str(consumption.get("execution_commit")),
+        source_integrity_commitment=str(
+            consumption.get("source_integrity_commitment_sha256")
+        ),
+        pricing_snapshot_date=str(consumption.get("pricing_snapshot_date")),
+        pricing_source_url=str(consumption.get("pricing_source_url")),
+        input_price=input_price,
+        output_price=output_price,
+    )
+    if (
+        not hmac.compare_digest(
+            recomputed_authorization_binding,
+            expected_authorization_binding_sha256,
+        )
+        or not hmac.compare_digest(
+            recomputed_authorization_binding,
+            str(consumption.get("authorization_binding_sha256")),
+        )
+        or not hmac.compare_digest(
+            recomputed_authorization_binding,
+            str(terminal.get("authorization_binding_sha256")),
+        )
+    ):
+        raise _error("deepseek_first_live_authorization_binding_mismatch")
+    binding = _validate_persisted_execution_identity(root, consumption)
+    plan_binding = _validation_plan_binding(binding)
     network_observation_complete = terminal.get("network_call_observation_complete")
     network_calls = terminal.get("network_calls")
     network_attempts = terminal.get("network_attempts")
@@ -1937,6 +3106,14 @@ def _verify_deepseek_first_live_artifacts_impl(
         or type(usage_complete) is not bool
         or usage_complete
         != (type(input_tokens) is int and type(output_tokens) is int)
+        or (
+            usage_complete is False
+            and (
+                input_tokens is not None
+                or output_tokens is not None
+                or observed_cost_value is not None
+            )
+        )
         or observed_cost_value != expected_observed_cost
         or type(terminal.get("provider_key_loaded")) is not bool
         or terminal.get("provider_key_persisted") is not False
@@ -1982,6 +3159,22 @@ def _verify_deepseek_first_live_artifacts_impl(
             or set(names) != {"consumption.json", "terminal.json"} | set(partial_artifacts)
         ):
             raise _error("deepseek_first_live_manifest_invalid")
+        partial_names = set(partial_artifacts)
+        database_present = "audit.sqlite3" in partial_names
+        allowed_partial_sets = (
+            [
+                {"consumption.json", "audit.sqlite3"}
+                | set(_PARTIAL_EVIDENCE_WRITE_ORDER[:prefix_length])
+                for prefix_length in range(
+                    len(_PARTIAL_EVIDENCE_WRITE_ORDER) + 1
+                )
+            ]
+            if database_present
+            else [{"consumption.json"}]
+        )
+        if partial_names not in allowed_partial_sets:
+            raise _error("deepseek_first_live_partial_manifest_invalid")
+        partial_json: dict[str, dict[str, Any]] = {}
         for filename, expected in partial_artifacts.items():
             if (
                 filename in {"terminal.json"}
@@ -1995,13 +3188,65 @@ def _verify_deepseek_first_live_artifacts_impl(
             if expected != {"bytes": len(payload), "sha256": _sha256(payload)}:
                 raise _error("deepseek_first_live_partial_manifest_invalid")
             if path.suffix == ".json":
-                _read_canonical_json(path)
-        _verify_partial_ledger_counts(
+                partial_json[filename] = _read_canonical_json(path)[0]
+        ledger_trace = _verify_partial_ledger(
             directory,
             terminal,
             authorization_id_sha256=authorization_id_sha256,
             authorization_expires_at=authorization_expires_at,
             consumed_at=consumed_at,
+            runtime_binding=binding,
+            input_price=input_price,
+            output_price=output_price,
+        )
+        if database_present:
+            ledger = AuditLedger(directory / "audit.sqlite3")
+            write_failed: bool | None = None
+            audit_index = partial_json.get("audit_index.json")
+            if audit_index is not None:
+                write_failed = _verify_partial_audit_index_projection(
+                    audit_index,
+                    ledger=ledger,
+                    trace=ledger_trace,
+                    runtime_binding=binding,
+                    mismatch_code="deepseek_first_live_partial_ledger_mismatch",
+                )
+            denominator = partial_json.get("runtime_denominator.json")
+            if denominator is not None:
+                _verify_partial_denominator_projection(
+                    denominator,
+                    plan_binding=plan_binding,
+                    trace=ledger_trace,
+                    mismatch_code="deepseek_first_live_partial_ledger_mismatch",
+                )
+            evidence = partial_json.get("completion_telemetry.json")
+            if evidence is not None:
+                if denominator is None or write_failed is None:
+                    raise _error("deepseek_first_live_partial_ledger_mismatch")
+                _verify_evidence_projection(
+                    evidence,
+                    denominator,
+                    terminal=terminal,
+                    plan_binding=plan_binding,
+                    trace=ledger_trace,
+                    input_price=input_price,
+                    output_price=output_price,
+                    allow_interrupted_success_write=True,
+                    mismatch_code="deepseek_first_live_partial_ledger_mismatch",
+                )
+                reconciliation = evidence.get("ledger_reconciliation")
+                if (
+                    not isinstance(reconciliation, Mapping)
+                    or reconciliation.get("ledger_failure_observed")
+                    is not write_failed
+                ):
+                    raise _error("deepseek_first_live_partial_ledger_mismatch")
+        _verify_terminal_usage_projection(
+            terminal,
+            ledger_trace,
+            input_price=input_price,
+            output_price=output_price,
+            mismatch_code="deepseek_first_live_partial_ledger_mismatch",
         )
         return {
             "status": "valid_failure_receipt",
@@ -2079,12 +3324,15 @@ def _verify_deepseek_first_live_artifacts_impl(
     run_id = runs[0].get("run_id")
     if not isinstance(run_id, str):
         raise _error("deepseek_first_live_audit_index_invalid")
-    ledger = AuditLedger(directory / "audit.sqlite3")
+    database = directory / "audit.sqlite3"
+    _verify_exact_ledger_database_scope(
+        database,
+        "deepseek_first_live_audit_chain_invalid",
+    )
+    ledger = AuditLedger(database)
     verification = ledger.verify_chain(run_id)
     if not verification.valid or runs[0].get("chain_verification") != verification.to_dict():
         raise _error("deepseek_first_live_audit_chain_invalid")
-    binding = _validation_runtime_binding(root)
-    plan_binding = _validation_plan_binding(binding)
     validate_runtime_denominator_artifact(denominator, plan_binding=plan_binding)
     ledger_reconciliation = evidence.get("ledger_reconciliation")
     _require_exact_fields(
@@ -2100,7 +3348,7 @@ def _verify_deepseek_first_live_artifacts_impl(
         ledger_reconciliation.get("ledger_failure_observed")
     ) is not bool:
         raise _error("deepseek_first_live_evidence_binding_invalid")
-    _verify_persisted_ledger(
+    ledger_trace = _verify_persisted_ledger(
         ledger,
         runs[0],
         denominator,
@@ -2116,6 +3364,25 @@ def _verify_deepseek_first_live_artifacts_impl(
         expected_network_calls=network_calls,
         authorization_expires_at=authorization_expires_at,
         consumed_at=consumed_at,
+    )
+    _verify_ledger_trace_projection(
+        terminal,
+        ledger_trace,
+        mismatch_code="deepseek_first_live_ledger_event_mismatch",
+    )
+    _verify_terminal_stage_projection(
+        terminal,
+        ledger_trace,
+        input_price=input_price,
+        output_price=output_price,
+        mismatch_code="deepseek_first_live_ledger_event_mismatch",
+    )
+    _verify_terminal_usage_projection(
+        terminal,
+        ledger_trace,
+        input_price=input_price,
+        output_price=output_price,
+        mismatch_code="deepseek_first_live_ledger_event_mismatch",
     )
     if (
         evidence.get("runtime_denominator") != denominator
@@ -2200,6 +3467,17 @@ def _verify_deepseek_first_live_artifacts_impl(
         or evidence.get("validation_integrity_gate_passed") is not False
     ):
         raise _error("deepseek_first_live_failure_evidence_invalid")
+    _verify_evidence_projection(
+        evidence,
+        denominator,
+        terminal=terminal,
+        plan_binding=plan_binding,
+        trace=ledger_trace,
+        input_price=input_price,
+        output_price=output_price,
+        allow_interrupted_success_write=False,
+        mismatch_code="deepseek_first_live_evidence_binding_invalid",
+    )
     return {
         "status": "valid",
         "terminal_status": terminal.get("status"),
@@ -2221,6 +3499,7 @@ def verify_deepseek_first_live_artifacts(
     project_root: str | Path,
     authorization_id_sha256: str,
     *,
+    expected_authorization_binding_sha256: str,
     sensitive_canaries: tuple[str, ...] = (),
     _artifact_root: Path | None = None,
 ) -> dict[str, Any]:
@@ -2228,6 +3507,9 @@ def verify_deepseek_first_live_artifacts(
         return _verify_deepseek_first_live_artifacts_impl(
             project_root,
             authorization_id_sha256,
+            expected_authorization_binding_sha256=(
+                expected_authorization_binding_sha256
+            ),
             sensitive_canaries=sensitive_canaries,
             _artifact_root=_artifact_root,
         )
@@ -2349,6 +3631,38 @@ def _failed_evidence(
     }
 
 
+def _normalized_execution_error_code(
+    code: object,
+    *,
+    ledger: AuditLedger | None,
+    ledger_run_status: str | None,
+    session: _DeepSeekFirstLiveValidationLedgerSession | None,
+    key_loaded: bool,
+) -> str:
+    if ledger is None:
+        candidate = str(code) if isinstance(code, str) else ""
+        if (candidate, key_loaded) in _NO_LEDGER_FAILURE_STATES:
+            return candidate
+        return (
+            "deepseek_first_live_runtime_initialization_failed"
+            if key_loaded
+            else "deepseek_first_live_pre_key_initialization_failed"
+        )
+    if isinstance(code, str) and code in _LEDGER_FAILURE_ERROR_CODES:
+        return code
+    if ledger_run_status == "completed":
+        return "deepseek_first_live_post_ledger_validation_failed"
+    try:
+        kinds = session.terminal_kinds_snapshot() if session is not None else ()
+    except Exception:
+        kinds = ()
+    if not kinds:
+        return "deepseek_first_live_provider_initialization_failed"
+    if all(kind == "response_accepted" for kind in kinds):
+        return "deepseek_first_live_post_response_validation_failed"
+    return "deepseek_first_live_request_execution_failed"
+
+
 def _usage_totals(records: object) -> tuple[int, int] | None:
     if not isinstance(records, list) or not records:
         return None
@@ -2375,6 +3689,85 @@ def _usage_totals(records: object) -> tuple[int, int] | None:
         input_total += input_tokens
         output_total += output_tokens
     return input_total, output_total
+
+
+def _reconciled_usage_totals(
+    records: object,
+    *,
+    started_attempt_indices: tuple[int, ...],
+    sent_attempt_indices: tuple[int, ...],
+    network_observation_complete: bool,
+) -> tuple[int, int] | None:
+    if (
+        network_observation_complete is not True
+        or not started_attempt_indices
+        or started_attempt_indices != sent_attempt_indices
+        or not isinstance(records, list)
+        or len(records) != len(started_attempt_indices)
+    ):
+        return None
+    request_indices = tuple(
+        record.get("request_index") if isinstance(record, Mapping) else None
+        for record in records
+    )
+    if request_indices != started_attempt_indices:
+        return None
+    totals = _usage_totals(records)
+    if totals is None:
+        return None
+    for record, output_cap in zip(records, (256, 16)):
+        normalized = record.get("usage", {}).get("normalized")
+        if (
+            not isinstance(normalized, Mapping)
+            or normalized.get("input_tokens", 513) > 512
+            or normalized.get("output_tokens", output_cap + 1) > output_cap
+        ):
+            return None
+    if totals[0] > 1024 or totals[1] > 272:
+        return None
+    return totals
+
+
+def _verify_terminal_usage_projection(
+    terminal: Mapping[str, Any],
+    ledger_trace: Mapping[str, Any],
+    *,
+    input_price: Decimal,
+    output_price: Decimal,
+    mismatch_code: str,
+) -> None:
+    totals = _reconciled_usage_totals(
+        ledger_trace.get("records"),
+        started_attempt_indices=tuple(
+            ledger_trace.get("started_attempt_indices", ())
+        ),
+        sent_attempt_indices=tuple(ledger_trace.get("sent_attempt_indices", ())),
+        network_observation_complete=bool(
+            terminal.get("network_call_observation_complete")
+        ),
+    )
+    if totals is None:
+        expected_complete = False
+        expected_input = None
+        expected_output = None
+        expected_cost = None
+    else:
+        expected_complete = True
+        expected_input, expected_output = totals
+        expected_cost = _money(
+            (
+                Decimal(expected_input) * input_price
+                + Decimal(expected_output) * output_price
+            )
+            / Decimal(1_000_000)
+        )
+    if (
+        terminal.get("usage_complete") is not expected_complete
+        or terminal.get("input_tokens") != expected_input
+        or terminal.get("output_tokens") != expected_output
+        or terminal.get("local_observed_usage_cost_cny") != expected_cost
+    ):
+        raise _error(mismatch_code)
 
 
 def _validated_success_usage(
@@ -2450,6 +3843,7 @@ async def _run_deepseek_first_live_validation_impl(
     expected_contract_commitment_sha256: str | None,
     expected_source_integrity_commitment_sha256: str | None,
     expected_execution_commit: str | None,
+    expected_authorization_binding_sha256: str | None,
     pricing_snapshot_date: str | None,
     pricing_source_url: str | None,
     input_price_per_million_cny: str | Decimal | None,
@@ -2487,6 +3881,13 @@ async def _run_deepseek_first_live_validation_impl(
         or not _GIT_SHA.fullmatch(expected_execution_commit)
     ):
         return _not_run("deepseek_first_live_execution_commit_invalid")
+    if expected_authorization_binding_sha256 is None:
+        return _not_run("deepseek_first_live_authorization_binding_required")
+    if (
+        not isinstance(expected_authorization_binding_sha256, str)
+        or not _SHA256.fullmatch(expected_authorization_binding_sha256)
+    ):
+        return _not_run("deepseek_first_live_authorization_binding_invalid")
     if (
         not isinstance(authorization_id, str)
         or not _AUTHORIZATION_ID.fullmatch(authorization_id)
@@ -2544,7 +3945,7 @@ async def _run_deepseek_first_live_validation_impl(
     canonical_expiry = _timestamp(expiry)
     authorization_id_sha256 = _sha256(authorization_id.encode("utf-8"))
     authorization_binding_sha256 = _authorization_binding(
-        authorization_id=authorization_id,
+        authorization_id_sha256=authorization_id_sha256,
         expires_at_utc=canonical_expiry,
         execution_commit=expected_execution_commit,
         source_integrity_commitment=expected_source_integrity_commitment_sha256,
@@ -2553,6 +3954,11 @@ async def _run_deepseek_first_live_validation_impl(
         input_price=input_price,
         output_price=output_price,
     )
+    if not hmac.compare_digest(
+        authorization_binding_sha256,
+        expected_authorization_binding_sha256,
+    ):
+        return _not_run("deepseek_first_live_authorization_binding_mismatch")
     directory: Path | None = None
     try:
         directory = _artifact_directory(root, authorization_id_sha256, _artifact_root)
@@ -2570,6 +3976,9 @@ async def _run_deepseek_first_live_validation_impl(
             ),
             "execution_commit": expected_execution_commit,
             "authorization_id_sha256": authorization_id_sha256,
+            "authorization_binding_schema_version": (
+                "deepseek-first-live-authorization-binding/2.0"
+            ),
             "authorization_binding_sha256": authorization_binding_sha256,
             "authorization_expires_at_utc": canonical_expiry,
             "consumed_at_utc": _timestamp(now),
@@ -2661,14 +4070,19 @@ async def _run_deepseek_first_live_validation_impl(
             min(wall_remaining, remaining) - _TERMINALIZATION_RESERVE_SECONDS,
         )
         async with asyncio.timeout(execution_window):
-            _revalidate_execution_state(
-                root,
-                expected_source_integrity_commitment=(
-                    expected_source_integrity_commitment_sha256
-                ),
-                expected_execution_commit=expected_execution_commit,
-                git_state_loader=_git_state_loader,
-            )
+            try:
+                _revalidate_execution_state(
+                    root,
+                    expected_source_integrity_commitment=(
+                        expected_source_integrity_commitment_sha256
+                    ),
+                    expected_execution_commit=expected_execution_commit,
+                    git_state_loader=_git_state_loader,
+                )
+            except Exception:
+                raise _error(
+                    "deepseek_first_live_post_consumption_revalidation_failed"
+                ) from None
             if _key_loader is None:
                 raise _error("deepseek_first_live_key_loader_missing")
             try:
@@ -2679,25 +4093,44 @@ async def _run_deepseek_first_live_validation_impl(
                 raise _error("deepseek_first_live_key_missing")
             key_loaded = True
 
-            tracker, runtime_plan_binding = _mint_validation_tracker(
-                root, authorization
-            )
-            ledger = AuditLedger(directory / "audit.sqlite3")
-            run_id = ledger.start_run(
-                mode="deepseek_completion_first_live_validation",
-                run_id="RUN-DEEPSEEK-FIRST-LIVE-VALIDATION-001",
-                request_summary={
-                    "validation_id": VALIDATION_ID,
-                    "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
-                    "implementation_commitment_sha256": (
-                        IMPLEMENTATION_COMMITMENT_SHA256
-                    ),
-                    "authorization_id_sha256": authorization_id_sha256,
-                    "scenario_count": 2,
-                    "provider": "deepseek",
-                    "model": "deepseek-v4-flash",
-                },
-            )
+            try:
+                tracker, runtime_plan_binding = _mint_validation_tracker(
+                    root, authorization
+                )
+            except Exception:
+                raise _error(
+                    "deepseek_first_live_runtime_initialization_failed"
+                ) from None
+            try:
+                ledger = AuditLedger(directory / "audit.sqlite3")
+                run_id = ledger.start_run(
+                    mode="deepseek_completion_first_live_validation",
+                    run_id="RUN-DEEPSEEK-FIRST-LIVE-VALIDATION-001",
+                    request_summary={
+                        "validation_id": VALIDATION_ID,
+                        "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
+                        "implementation_commitment_sha256": (
+                            IMPLEMENTATION_COMMITMENT_SHA256
+                        ),
+                        "authorization_id_sha256": authorization_id_sha256,
+                        "scenario_count": 2,
+                        "provider": "deepseek",
+                        "model": "deepseek-v4-flash",
+                    },
+                )
+            except Exception:
+                ledger = None
+                run_id = None
+                for suffix in ("", "-wal", "-shm", "-journal"):
+                    try:
+                        (directory / f"audit.sqlite3{suffix}").unlink(
+                            missing_ok=True
+                        )
+                    except OSError:
+                        pass
+                raise _error(
+                    "deepseek_first_live_audit_initialization_failed"
+                ) from None
             session = _DeepSeekFirstLiveValidationLedgerSession(
                 tracker.bind_case(VALIDATION_CASE_ID),
                 ledger=ledger,
@@ -2724,14 +4157,21 @@ async def _run_deepseek_first_live_validation_impl(
                                 raise _error(
                                     "deepseek_first_live_authorization_expired_during_run"
                                 )
-                            _revalidate_execution_state(
-                                root,
-                                expected_source_integrity_commitment=(
-                                    expected_source_integrity_commitment_sha256
-                                ),
-                                expected_execution_commit=expected_execution_commit,
-                                git_state_loader=_git_state_loader,
-                            )
+                            try:
+                                _revalidate_execution_state(
+                                    root,
+                                    expected_source_integrity_commitment=(
+                                        expected_source_integrity_commitment_sha256
+                                    ),
+                                    expected_execution_commit=(
+                                        expected_execution_commit
+                                    ),
+                                    git_state_loader=_git_state_loader,
+                                )
+                            except Exception:
+                                raise _error(
+                                    "deepseek_first_live_runtime_revalidation_failed"
+                                ) from None
                             model_requests += 1
                             try:
                                 try:
@@ -2917,31 +4357,56 @@ async def _run_deepseek_first_live_validation_impl(
                 "provider_key_persisted": False,
             }
             completion = evidence
-            manifest, manifest_sha256 = _write_evidence_artifacts(
-                directory,
-                consumption_sha256=consumption_sha256,
-                ledger=ledger,
-                audit_index=audit_index,
-                completion=evidence,
-                runtime_plan_binding=runtime_plan_binding,
-            )
+            try:
+                manifest, manifest_sha256 = _write_evidence_artifacts(
+                    directory,
+                    consumption_sha256=consumption_sha256,
+                    ledger=ledger,
+                    audit_index=audit_index,
+                    completion=evidence,
+                    runtime_plan_binding=runtime_plan_binding,
+                )
+            except Exception:
+                raise _error(
+                    "deepseek_first_live_evidence_persistence_failed"
+                ) from None
             status = "success"
     except asyncio.CancelledError as exc:
         cancelled = exc
-        error_code = "deepseek_first_live_cancelled"
+        error_code = _normalized_execution_error_code(
+            "deepseek_first_live_cancelled",
+            ledger=ledger,
+            ledger_run_status=ledger_run_status,
+            session=session,
+            key_loaded=key_loaded,
+        )
         outcome_unknown = network_attempts > 0
     except TimeoutError:
-        error_code = "deepseek_first_live_total_timeout"
+        error_code = _normalized_execution_error_code(
+            "deepseek_first_live_total_timeout",
+            ledger=ledger,
+            ledger_run_status=ledger_run_status,
+            session=session,
+            key_loaded=key_loaded,
+        )
         outcome_unknown = network_attempts > 0
     except DeepSeekFirstLiveValidationError as exc:
-        error_code = exc.code
+        error_code = _normalized_execution_error_code(
+            exc.code,
+            ledger=ledger,
+            ledger_run_status=ledger_run_status,
+            session=session,
+            key_loaded=key_loaded,
+        )
         outcome_unknown = exc.outcome_unknown
     except Exception as exc:
         code = getattr(exc, "code", None)
-        error_code = (
-            code
-            if isinstance(code, str) and _SAFE_ERROR.fullmatch(code)
-            else "deepseek_first_live_execution_failed"
+        error_code = _normalized_execution_error_code(
+            code if isinstance(code, str) and _SAFE_ERROR.fullmatch(code) else None,
+            ledger=ledger,
+            ledger_run_status=ledger_run_status,
+            session=session,
+            key_loaded=key_loaded,
         )
         outcome_unknown = network_attempts > 0
     finally:
@@ -3065,10 +4530,24 @@ async def _run_deepseek_first_live_validation_impl(
             manifest = None
             manifest_sha256 = None
 
-    if completion is not None and observed_input_tokens is None:
+    observed_input_tokens = None
+    observed_output_tokens = None
+    observed_cost = None
+    if completion is not None and session is not None:
         denominator = completion.get("runtime_denominator")
         records = denominator.get("records") if isinstance(denominator, Mapping) else None
-        totals = _usage_totals(records)
+        try:
+            started_attempt_indices = session.started_attempt_indices_snapshot()
+            sent_attempt_indices = session.sent_attempt_indices_snapshot()
+        except Exception:
+            started_attempt_indices = ()
+            sent_attempt_indices = ()
+        totals = _reconciled_usage_totals(
+            records,
+            started_attempt_indices=started_attempt_indices,
+            sent_attempt_indices=sent_attempt_indices,
+            network_observation_complete=network_call_observation_complete,
+        )
         if totals is not None:
             observed_input_tokens, observed_output_tokens = totals
             observed_cost = (
@@ -3094,6 +4573,9 @@ async def _run_deepseek_first_live_validation_impl(
         ),
         "execution_commit": expected_execution_commit,
         "authorization_id_sha256": authorization_id_sha256,
+        "authorization_binding_schema_version": (
+            "deepseek-first-live-authorization-binding/2.0"
+        ),
         "authorization_binding_sha256": authorization_binding_sha256,
         "authorization_expires_at_utc": canonical_expiry,
         "consumption_receipt_sha256": consumption_sha256,
@@ -3163,6 +4645,7 @@ async def run_deepseek_first_live_validation(
     expected_contract_commitment_sha256: str | None,
     expected_source_integrity_commitment_sha256: str | None,
     expected_execution_commit: str | None,
+    expected_authorization_binding_sha256: str | None,
     pricing_snapshot_date: str | None,
     pricing_source_url: str | None,
     input_price_per_million_cny: str | Decimal | None,
@@ -3184,6 +4667,9 @@ async def run_deepseek_first_live_validation(
             expected_source_integrity_commitment_sha256
         ),
         expected_execution_commit=expected_execution_commit,
+        expected_authorization_binding_sha256=(
+            expected_authorization_binding_sha256
+        ),
         pricing_snapshot_date=pricing_snapshot_date,
         pricing_source_url=pricing_source_url,
         input_price_per_million_cny=input_price_per_million_cny,
@@ -3205,6 +4691,7 @@ __all__ = [
     "IMPLEMENTATION_COMMITMENT_SHA256",
     "IMPLEMENTATION_RELATIVE_PATH",
     "DeepSeekFirstLiveValidationError",
+    "calculate_deepseek_first_live_authorization_binding",
     "deepseek_first_live_validation_status",
     "run_deepseek_first_live_validation",
     "validate_deepseek_first_live_contract",

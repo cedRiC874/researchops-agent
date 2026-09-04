@@ -76,11 +76,11 @@ Preserved v4 offline-hardening identity:
 
 Current v5 first-live-control identity:
 
-- plan bytes / file SHA-256: `3,120` / `39d81ba6bc85f9fc7b3b48f9dfd642df65d2105b37884de169cf21bb97b9f7a9`;
-- plan commitment: `ae47eebb9f60c73031d2bfc23d00ccc114821a11bc113c0302ce0fb6d9c6926b`;
-- `source_bundle_sha256`: `d83e3df3e1cbc5ec859c00207cfb3039902e956da5fa34e639c9cde4b0ea6638`;
+- plan bytes / file SHA-256: `3,120` / `ff39dd5a1aa09b7bc92b27f9d800b5d51fbd2fd69c2a599b5bf0f25aed490aae`;
+- plan commitment: `8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7`;
+- `source_bundle_sha256`: `42ad232ad73792453ff6025d836cd3449d27974a633a1a59a019023d676c64a5`;
 - `completion_telemetry_runtime_bundle_sha256`: `606913e5570769e8b5aa430c621c5761d557e747c8b3f82eca67e20540b97acf`;
-- `completion_telemetry_contract_bundle_sha256`: `240dc449973b7e9df354eb856c62bd8dce09369600269a7613835ef952884c45`.
+- `completion_telemetry_contract_bundle_sha256`: `7c2bcfba1d7f6d2195ec389c7f98e1ef6e2ef400c6d7101292f6bbc77942bc15`.
 
 ## Frozen local stops and request bounds
 

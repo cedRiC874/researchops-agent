@@ -1241,6 +1241,19 @@ def _responses_model(
                 raw_wrapper = None
 
             if cancelled is not None or primary_error is not None or cleanup_failed:
+                transport_send_observed: bool | None = None
+                send_check = getattr(
+                    session,
+                    "transport_send_observed_for_attempt",
+                    None,
+                )
+                if callable(send_check):
+                    try:
+                        observed = send_check(handle)
+                        if type(observed) is bool:
+                            transport_send_observed = observed
+                    except Exception:
+                        transport_send_observed = None
                 code = (
                     "provider_completion_raw_cleanup_failed"
                     if cleanup_failed
@@ -1262,7 +1275,7 @@ def _responses_model(
                     terminal_method = "finalize_http_error"
                     terminal_args = ("provider_completion_http_error",)
                     code = "provider_completion_http_error"
-                elif network_started:
+                elif network_started and transport_send_observed is not False:
                     terminal_method = "finalize_outcome_unknown"
                     code = "provider_completion_outcome_unknown"
                     terminal_args = (code,)
