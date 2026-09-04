@@ -1740,6 +1740,15 @@ def evaluate_runtime_denominator_closure(
         add_reason("no_model_attempts_observed")
     if artifact.observed_response_count < 1:
         add_reason("no_provider_responses_observed")
+    accepted_case_ids = {
+        attempt.case_id
+        for attempt in artifact.attempts
+        if attempt.terminal_kind == "response_accepted"
+    }
+    if any(
+        case_id not in accepted_case_ids for case_id in artifact.planned_case_ids
+    ):
+        add_reason("planned_case_without_accepted_response")
     terminal_reasons = {
         "response_rejected": "response_telemetry_rejected",
         "http_error": "http_error_response_observed",

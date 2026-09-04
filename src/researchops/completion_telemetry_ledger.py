@@ -14,6 +14,7 @@ from researchops_completion_telemetry.sanitization import (
 )
 from .audit import (
     COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION,
+    COMPLETION_TELEMETRY_UNMAPPED_EVENT,
     AuditError,
     AuditLedger,
     sha256_json,
@@ -310,8 +311,15 @@ class LedgerCompletionTelemetrySession:
             except Exception:
                 self._failed = True
                 raise
+        event_type = _TERMINAL_EVENT_TYPES[terminal_kind]
+        if (
+            terminal_kind == "response_accepted"
+            and payload["completion_record"]["normalized_completion_state"]
+            == "unmapped"
+        ):
+            event_type = COMPLETION_TELEMETRY_UNMAPPED_EVENT
         event_hash = self._write(
-            _TERMINAL_EVENT_TYPES[terminal_kind],
+            event_type,
             payload,
             handle=handle,
             terminal=terminal,

@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 from .artifact_security import ArtifactPermissionError, enable_parent_acl_inheritance
 from .audit import (
     COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION,
+    COMPLETION_TELEMETRY_UNMAPPED_EVENT,
     AuditLedger,
     safe_audit_value,
     sha256_json,
@@ -2436,6 +2437,7 @@ def _finalize_runtime_completion_telemetry(
                             )
                         elif event_type in {
                             "model_response_telemetry_recorded",
+                            COMPLETION_TELEMETRY_UNMAPPED_EVENT,
                             "model_response_telemetry_rejected",
                             "model_request_http_error",
                             "model_request_no_response",
@@ -2456,6 +2458,7 @@ def _finalize_runtime_completion_telemetry(
         event_counts[event_type]
         for event_type in (
             "model_response_telemetry_recorded",
+            COMPLETION_TELEMETRY_UNMAPPED_EVENT,
             "model_response_telemetry_rejected",
             "model_request_http_error",
             "model_request_no_response",
@@ -2474,6 +2477,7 @@ def _finalize_runtime_completion_telemetry(
         ledger_reasons.append("model_request_terminal_count_mismatch")
     if (
         event_counts["model_response_telemetry_recorded"]
+        + event_counts[COMPLETION_TELEMETRY_UNMAPPED_EVENT]
         != artifact.accepted_response_count
     ):
         ledger_reasons.append("accepted_response_event_count_mismatch")
@@ -2578,6 +2582,15 @@ def _finalize_runtime_completion_telemetry(
             )
         actual_terminal = terminal_events.get(attempt.attempt_index, [])
         expected_event_type = terminal_event_types.get(attempt.terminal_kind)
+        if (
+            attempt.terminal_kind == "response_accepted"
+            and isinstance(expected_terminal.get("completion_record"), Mapping)
+            and expected_terminal["completion_record"].get(
+                "normalized_completion_state"
+            )
+            == "unmapped"
+        ):
+            expected_event_type = COMPLETION_TELEMETRY_UNMAPPED_EVENT
         if (
             len(actual_terminal) != 1
             or actual_terminal[0][0] != expected_event_type

@@ -301,6 +301,8 @@ _COMPLETION_TELEMETRY_FIXED_CONTRACT_FILES = (
     _COMPLETION_TELEMETRY_V1_ROOT
     / "provider_completion_record_contract_v1.json",
     _COMPLETION_TELEMETRY_V1_ROOT
+    / "provider_completion_runtime_hardening_contract_v2.json",
+    _COMPLETION_TELEMETRY_V1_ROOT
     / "schemas/provider_completion_record_v1.schema.json",
     _COMPLETION_TELEMETRY_V1_ROOT / "provider_completion_mapping_v1.json",
     _COMPLETION_TELEMETRY_V2_MANIFEST,

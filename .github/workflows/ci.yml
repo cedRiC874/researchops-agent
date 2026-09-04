@@ -98,28 +98,44 @@ jobs:
             Write-Output "::error title=depth60_v3_plan_drift::Depth-60 v3 plan bytes must remain unchanged."
             exit 1
           }
+          $depth60V3 = Get-Content -Raw $depth60V3Path | ConvertFrom-Json
+          if ($depth60V3.plan_id -ne "phase6-deepseek-depth60-v3" -or
+              $depth60V3.plan_commitment_sha256 -ne "979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af" -or
+              $depth60V3.authorization_boundary.online_execution_authorized -ne $false) {
+            Write-Output "::error title=depth60_v3_history_invalid::Depth-60 v3 historical identity or boundary drifted."
+            exit 1
+          }
+          $depth60V4Path = "evals/phase6_deepseek_depth60_plan_v4.json"
+          $depth60V4Bytes = (Get-Item $depth60V4Path).Length
+          $depth60V4Sha = (Get-FileHash `
+            -Algorithm SHA256 $depth60V4Path).Hash.ToLowerInvariant()
+          if ($depth60V4Bytes -ne 3087 -or
+              $depth60V4Sha -ne "ae961e069afa9c842c294f7fb6951e0cf3a4ad86dfcdd16cb96a2c264c232956") {
+            Write-Output "::error title=depth60_v4_plan_drift::Depth-60 v4 plan bytes must remain unchanged."
+            exit 1
+          }
           $depth60Raw = (& python -m researchops.cli `
             phase6-validate-deepseek-depth60 `
-            --plan $depth60V3Path | Out-String)
+            --plan $depth60V4Path | Out-String)
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $depth60 = $depth60Raw | ConvertFrom-Json
           if ($depth60.status -ne "valid" -or
-              $depth60.plan_commitment_sha256 -ne "979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af" -or
+              $depth60.plan_commitment_sha256 -ne "c36dc0dd0487aa350dc2bd636b45bb494381e0c732c80be7b410be4b9beda612" -or
               $depth60.source_bundle_algorithm -ne "v2" -or
-              $depth60.supersedes_plan_id -ne "phase6-deepseek-depth60-v2" -or
+              $depth60.supersedes_plan_id -ne "phase6-deepseek-depth60-v3" -or
               $depth60.online_execution_authorized -ne $false -or
               $depth60.network_calls -ne 0 -or
               $depth60.model_calls -ne 0) {
-            Write-Output "::error title=depth60_v3_contract_invalid::Depth-60 v3 must remain valid, offline and non-executable."
+            Write-Output "::error title=depth60_v4_contract_invalid::Depth-60 v4 must remain valid, offline and non-executable."
             exit 1
           }
-          $depth60ComponentsRaw = (& python -c "import json; from researchops.phase6_depth60 import validate_phase6_depth60_plan; r=validate_phase6_depth60_plan('.', 'evals/phase6_deepseek_depth60_plan_v3.json'); print(json.dumps(r['plan']['component_hashes']))" | Out-String)
+          $depth60ComponentsRaw = (& python -c "import json; from researchops.phase6_depth60 import validate_phase6_depth60_plan; r=validate_phase6_depth60_plan('.', 'evals/phase6_deepseek_depth60_plan_v4.json'); print(json.dumps(r['plan']['component_hashes']))" | Out-String)
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $depth60Components = $depth60ComponentsRaw | ConvertFrom-Json
-          if ($depth60Components.source_bundle_sha256 -ne "f5af13c7475f7c152a3cbe2053c7b0f81f6d4b15034e8a58786ab9e7124a19bf" -or
-              $depth60Components.completion_telemetry_runtime_bundle_sha256 -ne "694c948a1d79fd38532304846577a94a4c75ca1410dd97c363df71a4ba944a63" -or
-              $depth60Components.completion_telemetry_contract_bundle_sha256 -ne "c9c54c425932770254b9f460d7ab5120401ba02f6802626fb7399d3333700011") {
-            Write-Output "::error title=depth60_v3_component_drift::Depth-60 v3 source or telemetry component drifted."
+          if ($depth60Components.source_bundle_sha256 -ne "4bd5a48be256b124a7c297f5f98ef4bbadd09df07a038067d7aca211e1fc772c" -or
+              $depth60Components.completion_telemetry_runtime_bundle_sha256 -ne "b0e6f0feb3af416ca73f04df9e8c1cc7f10b5c700e2a20c2a3a7c688273f42c2" -or
+              $depth60Components.completion_telemetry_contract_bundle_sha256 -ne "1e4028e3bc9c128391a4a73c6753bb5da5e9d19079cbf1068d9acb64980fa56f") {
+            Write-Output "::error title=depth60_v4_component_drift::Depth-60 v4 source or telemetry component drifted."
             exit 1
           }
           python -m researchops.cli eval-v2-validate
