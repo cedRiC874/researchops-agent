@@ -567,6 +567,7 @@ class VerifiedRuntimeCompletionBinding:
         "_transport_id",
         "_output_counter_comparability",
         "_output_counter_path",
+        "_authority_scope",
         "_mapping",
         "_authority_token",
         "_locked",
@@ -594,7 +595,7 @@ class VerifiedRuntimeCompletionBinding:
         if (
             type(selection) is not VerifiedSurfaceSelection
             or getattr(selection, "_authority_token", None) is not _SELECTION_TOKEN
-            or selection.purpose != "runtime_binding"
+            or selection.purpose not in {"runtime_binding", "first_live_validation"}
             or selection.runtime_binding_allowed is not True
         ):
             raise _error(
@@ -616,6 +617,15 @@ class VerifiedRuntimeCompletionBinding:
         ):
             object.__setattr__(instance, f"_{name}", getattr(selection, name))
         object.__setattr__(instance, "_mapping", selection._mapping)
+        object.__setattr__(
+            instance,
+            "_authority_scope",
+            (
+                "campaign_runtime"
+                if selection.purpose == "runtime_binding"
+                else "first_live_validation"
+            ),
+        )
         object.__setattr__(instance, "_authority_token", _RUNTIME_BINDING_TOKEN)
         object.__setattr__(instance, "_locked", True)
         return instance
@@ -660,6 +670,10 @@ class VerifiedRuntimeCompletionBinding:
     def output_counter_path(self) -> str:
         return self._output_counter_path
 
+    @property
+    def authority_scope(self) -> str:
+        return self._authority_scope
+
     def resolve_mapping(self, projection: Mapping[str, Any]) -> CompletionMappingResult:
         self.assert_runtime_authority()
         return map_completion(
@@ -668,10 +682,16 @@ class VerifiedRuntimeCompletionBinding:
             _thaw_json(self._mapping),
         )
 
-    def assert_runtime_authority(self) -> None:
+    def assert_runtime_authority(self, *, expected_scope: str | None = None) -> None:
         if (
             type(self) is not VerifiedRuntimeCompletionBinding
             or getattr(self, "_authority_token", None) is not _RUNTIME_BINDING_TOKEN
+            or getattr(self, "_authority_scope", None)
+            not in {"campaign_runtime", "first_live_validation"}
+            or (
+                expected_scope is not None
+                and self._authority_scope != expected_scope
+            )
         ):
             raise _error(
                 "surface_runtime_authority_missing",
@@ -3032,10 +3052,29 @@ def load_and_select_surface_mapping(
 def create_runtime_completion_binding(
     selection: VerifiedSurfaceSelection,
 ) -> VerifiedRuntimeCompletionBinding:
-    if type(selection) is not VerifiedSurfaceSelection:
+    if (
+        type(selection) is not VerifiedSurfaceSelection
+        or selection.purpose != "runtime_binding"
+    ):
         raise _error(
             "surface_runtime_authority_missing",
             "runtime binding requires a verified runtime selection",
+        )
+    return selection.create_runtime_binding()
+
+
+def _create_first_live_validation_binding(
+    selection: VerifiedSurfaceSelection,
+) -> VerifiedRuntimeCompletionBinding:
+    """Private bootstrap used only after a one-shot validation grant is consumed."""
+
+    if (
+        type(selection) is not VerifiedSurfaceSelection
+        or selection.purpose != "first_live_validation"
+    ):
+        raise _error(
+            "surface_first_live_authority_missing",
+            "first-live binding requires a verified validation-only selection",
         )
     return selection.create_runtime_binding()
 

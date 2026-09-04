@@ -38,6 +38,8 @@ _DEEPSEEK_ADAPTER_VERSION = "deepseek-responses-adapter/1.0"
 _ANTHROPIC_ADAPTER_VERSION = "anthropic-litellm-adapter/1.0"
 _LITELLM_COMPATIBILITY_VERSION = "1.83.0"
 _OPENAI_AGENTS_COMPATIBILITY_VERSION = "0.21.0"
+_RAW_RESPONSE_CLEANUP_TIMEOUT_SECONDS = 5.0
+_DEEPSEEK_POST_REQUEST_CLEANUP_TIMEOUT_SECONDS = 5.0
 SUPPORTED_PROVIDER_IDS = ("openai", "deepseek", "anthropic")
 ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE = (
     "anthropic_generic_online_entrypoint_disabled"
@@ -266,11 +268,37 @@ class DeepSeekProvider:
         AsyncOpenAI, OpenAIResponsesModel, AsyncHTTPClient = (
             _load_responses_transport()
         )
-        http_client = AsyncHTTPClient(
-            timeout=normalized_timeout,
-            follow_redirects=False,
-            trust_env=False,
+        client_options: dict[str, object] = {
+            "timeout": normalized_timeout,
+            "follow_redirects": False,
+            "trust_env": False,
+        }
+        transport_observer = getattr(
+            completion_telemetry_session,
+            "observe_deepseek_transport_send",
+            None,
         )
+        arm_transport_observer = getattr(
+            completion_telemetry_session,
+            "arm_deepseek_transport_observation",
+            None,
+        )
+        if transport_observer is not None or arm_transport_observer is not None:
+            if not callable(transport_observer) or not callable(arm_transport_observer):
+                raise ProviderConfigurationError(
+                    "provider_completion_transport_observer_invalid",
+                    "DeepSeek validation transport observer 无效。",
+                )
+            client_options["event_hooks"] = {"request": [transport_observer]}
+        http_client = AsyncHTTPClient(
+            **client_options,
+        )
+        if callable(arm_transport_observer):
+            try:
+                arm_transport_observer()
+            except BaseException:
+                await _close_deepseek_transport_resources(None, http_client)
+                raise
         client = None
         try:
             client = AsyncOpenAI(
@@ -303,11 +331,7 @@ class DeepSeekProvider:
                 completion_telemetry_session=completion_telemetry_session,
             )
         finally:
-            try:
-                if client is not None:
-                    await client.close()
-            finally:
-                await http_client.aclose()
+            await _close_deepseek_transport_resources(client, http_client)
 
 
 @dataclass(frozen=True, slots=True)
@@ -711,8 +735,18 @@ def _validate_completion_session(
         # layer or construct a real temporary ledger.
         from .completion_telemetry_ledger import LedgerCompletionTelemetrySession
 
-        if type(session) is not LedgerCompletionTelemetrySession:
-            raise TypeError("live completion session must be the exact ledger bridge")
+        exact_session_type = type(session) is LedgerCompletionTelemetrySession
+        if not exact_session_type:
+            from .deepseek_completion_first_live_validation import (
+                _DeepSeekFirstLiveValidationLedgerSession,
+            )
+
+            exact_session_type = (
+                provider_id == "deepseek"
+                and type(session) is _DeepSeekFirstLiveValidationLedgerSession
+            )
+        if not exact_session_type:
+            raise TypeError("live completion session must be an exact ledger bridge")
         session.assert_provider_telemetry_authority()
         valid = (
             getattr(session, "provider_id", None) == provider_id
@@ -989,9 +1023,72 @@ async def _close_response(value: object) -> None:
             "provider_completion_raw_cleanup_failed",
             "Provider raw response 缺少清理接口。",
         )
-    result = close()
-    if inspect.isawaitable(result):
-        await result
+    try:
+        result = close()
+        if inspect.isawaitable(result):
+            async with asyncio.timeout(_RAW_RESPONSE_CLEANUP_TIMEOUT_SECONDS):
+                await result
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        raise ProviderConfigurationError(
+            "provider_completion_raw_cleanup_failed",
+            "Provider raw response 清理失败或超时。",
+        ) from None
+
+
+async def _close_deepseek_transport_resource(
+    value: object,
+    *,
+    method_name: str,
+) -> None:
+    close = getattr(value, method_name, None)
+    if not callable(close):
+        raise ProviderConfigurationError(
+            "provider_completion_post_request_cleanup_failed",
+            "DeepSeek Provider transport 资源缺少清理接口。",
+        )
+    try:
+        result = close()
+        if inspect.isawaitable(result):
+            async with asyncio.timeout(
+                _DEEPSEEK_POST_REQUEST_CLEANUP_TIMEOUT_SECONDS
+            ):
+                await result
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        raise ProviderConfigurationError(
+            "provider_completion_post_request_cleanup_failed",
+            "DeepSeek Provider transport 资源清理失败或超时。",
+        ) from None
+
+
+async def _close_deepseek_transport_resources(
+    client: object | None,
+    http_client: object,
+) -> None:
+    cleanup_error: ProviderConfigurationError | None = None
+    cancelled: asyncio.CancelledError | None = None
+    resources = (
+        ((client, "close"),) if client is not None else ()
+    ) + ((http_client, "aclose"),)
+    for resource, method_name in resources:
+        try:
+            await _close_deepseek_transport_resource(
+                resource,
+                method_name=method_name,
+            )
+        except asyncio.CancelledError as exc:
+            if cancelled is None:
+                cancelled = exc
+        except ProviderConfigurationError as exc:
+            if cleanup_error is None:
+                cleanup_error = exc
+    if cancelled is not None:
+        raise cancelled
+    if cleanup_error is not None:
+        raise cleanup_error
 
 
 def _response_is_closed(value: object) -> bool:

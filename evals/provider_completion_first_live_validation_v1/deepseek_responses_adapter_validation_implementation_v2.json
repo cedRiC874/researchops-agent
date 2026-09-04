@@ -1,0 +1,142 @@
+{
+  "schema_version": "provider-completion-first-live-implementation/2.0",
+  "implementation_id": "deepseek-responses-adapter-first-live-implementation-v2",
+  "status": "offline_implemented_not_run_requires_fresh_authorization",
+  "documented_on": "2026-09-04",
+  "implementation_commitment": {
+    "algorithm": "sha256-domain-separated-canonical-json-v1",
+    "domain": "researchops-provider-completion-first-live-implementation-v2",
+    "payload": "whole_contract_with_implementation_commitment.sha256_omitted",
+    "sha256": "d28a76b6a2268e71f78cd95e0ee99c7295b0636fe56495319575ef10b7ca4a5e"
+  },
+  "predecessor_design": {
+    "relative_path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_contract_v1.json",
+    "bytes": 9991,
+    "sha256": "477addbc41987d11c6ac7ede3fa6f94d74322efe09c541ea20f3a7937eb96496",
+    "contract_commitment_sha256": "ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc",
+    "immutable": true
+  },
+  "implemented_symbols": {
+    "contract_validator": "researchops.deepseek_completion_first_live_validation.validate_deepseek_first_live_contract",
+    "offline_status": "researchops.deepseek_completion_first_live_validation.deepseek_first_live_validation_status",
+    "run_gate": "researchops.deepseek_completion_first_live_validation.run_deepseek_first_live_validation",
+    "artifact_verifier": "researchops.deepseek_completion_first_live_validation.verify_deepseek_first_live_artifacts",
+    "validation_session": "researchops.deepseek_completion_first_live_validation._DeepSeekFirstLiveValidationLedgerSession",
+    "cli_validate": "researchops.cli:deepseek-completion-first-live-validate",
+    "cli_run": "researchops.cli:deepseek-completion-first-live-run",
+    "cli_verify": "researchops.cli:deepseek-completion-first-live-verify"
+  },
+  "authority_boundary": {
+    "authority_scope": "first_live_validation",
+    "campaign_runtime_scope": "campaign_runtime",
+    "scopes_are_distinct": true,
+    "generic_phase6_accepts_validation_scope": false,
+    "generic_eval_v2_accepts_validation_scope": false,
+    "ordinary_ledger_session_accepts_validation_scope": false,
+    "deepseek_adapter_accepts_exact_validation_session_only": true,
+    "other_provider_accepts_validation_session": false,
+    "session_object_returned_to_caller": false,
+    "registry_runtime_binding_promoted": false
+  },
+  "single_use_boundary": {
+    "authorization_id_persisted": false,
+    "authorization_id_sha256_persisted": true,
+    "authorization_binding_sha256_persisted": true,
+    "implementation_commitment_sha256_persisted": true,
+    "consumption_before_key_load": true,
+    "exclusive_authorization_directory": true,
+    "success_failure_timeout_cancellation_or_outcome_unknown_consumes_grant": true,
+    "retry_resume_fallback": false,
+    "terminal_receipt_required_after_consumption": true
+  },
+  "execution_boundary": {
+    "provider_id": "deepseek",
+    "model_id": "deepseek-v4-flash",
+    "origin": "https://api.deepseek.com",
+    "api_surface": "responses",
+    "transport_id": "openai_compatible_responses",
+    "adapter_version": "deepseek-responses-adapter/1.0",
+    "adapter_path": "DeepSeekProvider.open_model -> OpenAIResponsesModel._fetch_response",
+    "scenario_count": 2,
+    "network_attempts_max": 2,
+    "model_requests_max": 2,
+    "network_calls_observed_by_validation_only_http_request_hook": true,
+    "output_token_caps": [
+      256,
+      16
+    ],
+    "request_timeout_seconds": 120,
+    "request_phase_total_timeout_seconds": 300,
+    "raw_response_cleanup_timeout_seconds_per_response": 5,
+    "raw_response_cleanup_resources_max": 2,
+    "post_request_cleanup_timeout_seconds_per_resource": 5,
+    "post_request_cleanup_resources_max": 2,
+    "whole_process_wall_timeout_seconds": 330,
+    "terminalization_reserve_seconds_within_whole_process": 30,
+    "concurrency": 1,
+    "client_retries": 0,
+    "tools": 0,
+    "raw_response_cleanup_required": true,
+    "per_response_usage_and_cost_checked_before_next_request": true
+  },
+  "persistence_boundary": {
+    "ledger_event_schema_version": "provider-completion-ledger-event/1.1",
+    "runtime_denominator_schema_version": "provider-completion-runtime-denominator-artifact/1.0",
+    "consumption_schema_version": "deepseek-first-live-consumption/1.0",
+    "terminal_schema_version": "deepseek-first-live-terminal/1.0",
+    "evidence_schema_version": "deepseek-first-live-evidence/1.0",
+    "manifest_schema_version": "deepseek-first-live-manifest/1.0",
+    "record_and_usage_share_atomic_terminal": true,
+    "transport_send_event_type": "provider_transport_request_sent",
+    "raw_body_message_input_tool_arguments_key_exception_or_absolute_path_persisted": false,
+    "provider_request_id_raw_persisted": false,
+    "provider_request_id_sha256_allowed": true,
+    "manifest_and_audit_chain_verified_offline": true,
+    "self_consistent_semantic_tamper_rejected": true,
+    "exact_artifact_field_sets_and_top_level_file_set_verified": true,
+    "exact_ledger_run_lifecycle_event_vocabulary_and_order_verified": true,
+    "manifestless_failure_partial_artifacts_hashed_in_terminal": true,
+    "token_and_cost_caps_recomputed_by_offline_verifier": true
+  },
+  "activation_gate": {
+    "source_integrity_plan_id": "phase6-deepseek-depth60-v5",
+    "source_integrity_plan_relative_path": "evals/phase6_deepseek_depth60_plan_v5.json",
+    "source_integrity_plan_must_be_valid_and_offline_only": true,
+    "exact_merged_execution_commit_from_user_authorization_required": true,
+    "head_and_refs_remotes_origin_main_must_equal_authorized_commit": true,
+    "artifact_verifier_requires_execution_commit_to_be_origin_main_ancestor": true,
+    "artifact_verifier_reads_v5_and_bound_contract_bytes_from_execution_commit": true,
+    "clean_execution_tree_required": true,
+    "fresh_same_day_official_pricing_attestation_required": true,
+    "pricing_source_url_is_exact_allowlisted_path": true,
+    "confirmed_design_commitment_required": true,
+    "fresh_one_time_authorization_required": true,
+    "all_local_gates_precede_consumption_and_key_load": true,
+    "source_and_git_revalidated_after_consumption_and_before_each_request": true
+  },
+  "verification_evidence": {
+    "mock_transport": "httpx.MockTransport_through_real_OpenAI_SDK_and_Agent_Adapter",
+    "completed_and_length_capped_shapes": true,
+    "timeout_cleanup_failure_cancellation_single_use_privacy_and_tamper_tests": true,
+    "provider_calls_performed_during_implementation": 0,
+    "model_calls_performed_during_implementation": 0,
+    "provider_key_loaded_during_implementation": false
+  },
+  "residual_boundary": {
+    "in_process_timeout_requires_responsive_local_filesystem": true,
+    "uninterruptible_terminal_fsync_is_not_preemptible_by_asyncio": true,
+    "external_process_supervisor_required_for_kernel_stall_hard_deadline": true,
+    "this_boundary_authorizes_online_execution": false
+  },
+  "claim_boundary": {
+    "implementation_is_live_result": false,
+    "online_execution_authorized": false,
+    "status_defect_closure_allowed": false,
+    "automatic_registry_promotion_allowed": false,
+    "provider_registration_authorized": false,
+    "model_quality_claim_allowed": false,
+    "historical_attribution_recovered": false,
+    "private_or_non_synthetic_evaluation_authorized": false,
+    "production_sla_claim_allowed": false
+  }
+}

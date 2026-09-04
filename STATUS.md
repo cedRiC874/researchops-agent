@@ -1,8 +1,8 @@
 # ResearchOps Agent — Current Status
 
 > Snapshot: 2026-09-04 (Asia/Shanghai)
-> Implementation base Git anchor: `main@f17495a062bfba288872a12237dadf444e9de2aa`
-> Base tree: `07b0d5984da30ae531ea8f50240f55ee9eae394d`
+> Implementation base Git anchor: `main@20ad1da04aac9874f87d48ebe1ef2df1daa6245c`
+> Base tree: `c4bd9afbed0906d3dfc23f42d3590f1af9643a42`
 
 本页是给深度评审者看的状态账本，不是首页营销材料。机器合同、版本化 evidence 和冻结 artifacts 是最终事实来源；本页只做可读投影。`not_run`、`failed`、`unknown` 和 `0` 不可互换。
 
@@ -29,17 +29,21 @@ ResearchOps Agent 已完成 evidence-first 科研数据分析原型、确定性�
 
 T1–T4 已完成本地离线接线与审阅，尚未完成 live validation：T1 固定 record/missing/version/closure 合同；T2 实现写入前脱敏、UTF-8/结构限界、surface-aware mapping、opaque runtime authority 与动态分母；T3 在 Provider Adapter、Agent、append-only ledger bridge 和受控 runner 之间传递 case-scoped session，并把 accepted response 与 usage 写在同一个 reserved event；T4 使用 MockTransport、隐私 canary、终态状态机、双索引/SDK reconciliation 和 hash-chain tamper 测试覆盖这些路径。后续 T6-A 离线审计又修复了两个关闭门缺陷：任一预注册 case 没有 accepted response 时不再允许整批空过，动态 denominator 子产物也可从磁盘重新验证；`unmapped` 现在使用唯一的原子 terminal event，并与 normalized state 双向绑定。规范性 hardening successor 明确这些改动仍是 offline-only：外部预注册绑定、完整的 outer closure/ledger verifier、Adapter-path first-live validation 与 registry promotion 仍未完成。它们没有执行新的 Provider 请求或评测，也没有恢复 Kimi/Depth-60 的历史归因，不能据此关闭本缺陷、注册第二 Provider 或产生新的准确率数字。真实关闭仍要求预注册的全新未见任务、实际 live telemetry 完整分母、有效事件链及全部 `truncation_signal_source=native_status`。
 
+T6-B 已在独立工作树完成 DeepSeek Adapter-path first-live validation 的离线控制面与 MockTransport 验证，但尚未提交、合并或在线执行。已确认的 design commitment 为 `ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc`，implementation successor commitment 为 `d28a76b6a2268e71f78cd95e0ee99c7295b0636fe56495319575ef10b7ca4a5e`。受支持的公开 run API 不暴露 Key、clock、Git、artifact-root 或 transport 测试 seam；validation-only authority 不能进入普通 Ledger、generic Phase 6 或 Eval v2。330 秒 in-process 上限在同一预算内预留末 30 秒用于清理与终态，但无法抢占 kernel-blocked 同步 `fsync`；若威胁模型包含主机文件系统永久卡死，仍需外部进程 supervisor。固定运行仍需要未来合并 commit、v5 source-integrity commitment、同日官方定价确认和新的单次用户授权。成功也只允许两个 completion projection shape 的 Adapter-path 归因，`closure_claim_allowed=false` 且不得自动提升 registry；当前四个 Provider triple 仍全部 `runtime_binding_allowed=false`。
+
 ### Depth-60 source-bundle successor（offline source integrity only）
 
 历史 v1 plan 保持 5,398 bytes、文件 SHA-256 `f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20`、plan commitment `8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e` 与 source-bundle commitment `914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84`，未被覆盖。当前树与其冻结源码不同，因此历史 plan 在当前树上应以 `phase6_depth60_component_drift` fail-closed；这不是历史 commitment 失效。
 
-v2 算法使用独立 domain，纳入直接子模块导入会执行的每一级 package `__init__.py` 及其依赖，并覆盖 namespace-package fromlist 子模块，保留 whole-package conservative closure，在相对导入逃逸 `researchops` 时拒绝。validator 只接受 v1/v2/v3/v4 四个固定 plan 路径，并重新计算 predecessor 的完整 commitment。冻结 v2 source-bundle SHA-256 为 `cd46dc03771fc0ebca7ea50798fe2b32fa76248882881f7249c777cd3270ab25`。
+v2 算法使用独立 domain，纳入直接子模块导入会执行的每一级 package `__init__.py` 及其依赖，并覆盖 namespace-package fromlist 子模块，保留 whole-package conservative closure，在相对导入逃逸 `researchops` 时拒绝。validator 只接受 v1/v2/v3/v4/v5 五个固定 plan 路径，并重新计算 predecessor 的完整 commitment。冻结 v2 source-bundle SHA-256 为 `cd46dc03771fc0ebca7ea50798fe2b32fa76248882881f7249c777cd3270ab25`。
 
 冻结的 `phase6-deepseek-depth60-v2` plan 保持 2,170 bytes、文件 SHA-256 `fc4ca5cc2131efb36d82f1d739f65ad2a026e1c7534f0da9c873942a40c1002f`、plan commitment `3077a55e09f3f2137155a68d96a5bda60d8553cc9b5dd36ca83d33bbbc3dcf7e`；它对当前新增 telemetry/Adapter 树报告 component drift 是预期历史状态，不应被误判为 plan 损坏。
 
 `phase6-deepseek-depth60-v3` 已在 PR-A/PR-B 字节稳定后重新生成并通过离线验证：plan 2,850 bytes，文件 SHA-256 `5602f940a8627b9c785a1b785d757119a616050ebbc2e31e9dd26aacf448c05e`，plan commitment `979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af`；source/runtime/contract 三组件分别为 `f5af13c7475f7c152a3cbe2053c7b0f81f6d4b15034e8a58786ab9e7124a19bf`、`694c948a1d79fd38532304846577a94a4c75ca1410dd97c363df71a4ba944a63`、`c9c54c425932770254b9f460d7ab5120401ba02f6802626fb7399d3333700011`。它仍只允许作为离线源码/合同完整性承诺，不重验历史结果、不能作为在线授权；runner 必须以 `phase6_depth60_successor_plan_not_executable` 拒绝。因此当前仍没有可执行的 Depth-60 plan，也没有发生新的 Provider 调用。
 
 T6-A hardening 改变了 v3 绑定的源码、runtime 与 contract，因此 v3 在当前树上报告 component drift 是预期历史状态。`phase6-deepseek-depth60-v4` 是只增不改的 offline hardening 后继：plan 3,087 bytes，文件 SHA-256 `ae961e069afa9c842c294f7fb6951e0cf3a4ad86dfcdd16cb96a2c264c232956`，plan commitment `c36dc0dd0487aa350dc2bd636b45bb494381e0c732c80be7b410be4b9beda612`；source/runtime/contract 三组件分别为 `4bd5a48be256b124a7c297f5f98ef4bbadd09df07a038067d7aca211e1fc772c`、`b0e6f0feb3af416ca73f04df9e8c1cc7f10b5c700e2a20c2a3a7c688273f42c2`、`1e4028e3bc9c128391a4a73c6753bb5da5e9d19079cbf1068d9acb64980fa56f`。v4 仍只允许作为离线源码/合同完整性承诺，不重验历史结果、不能作为在线授权；runner 必须以 `phase6_depth60_successor_plan_not_executable` 拒绝。因此当前仍没有可执行的 Depth-60 plan，也没有发生新的 Provider 调用。
+
+T6-B 控制面使 v4 对当前树报告 component drift；v4 的 3,087 bytes 与文件 SHA-256 `ae961e069afa9c842c294f7fb6951e0cf3a4ad86dfcdd16cb96a2c264c232956` 保持不变。`phase6-deepseek-depth60-v5` 是新的 offline source-integrity 后继：plan 3,120 bytes，文件 SHA-256 `39d81ba6bc85f9fc7b3b48f9dfd642df65d2105b37884de169cf21bb97b9f7a9`，plan commitment `ae47eebb9f60c73031d2bfc23d00ccc114821a11bc113c0302ce0fb6d9c6926b`；source/runtime/contract 三组件分别为 `d83e3df3e1cbc5ec859c00207cfb3039902e956da5fa34e639c9cde4b0ea6638`、`606913e5570769e8b5aa430c621c5761d557e747c8b3f82eca67e20540b97acf`、`240dc449973b7e9df354eb856c62bd8dce09369600269a7613835ef952884c45`。其 scope 精确限定为枚举的 source dependency closure 加显式 telemetry runtime/contract bundles，而不是 whole-repository commitment。v5 同样 `online_execution_authorized=false`、`network_calls=0`、`model_calls=0`，不能替代 first-live 的单次用户授权。
 
 历史 rejection-audit artifact 仍绑定旧的 3,301-byte `phase6_source_bundle.py` 与 v1 bundle hash；历史 evidence 文件未修改。其默认 verifier 在当前 successor 树上应以 `source commitment mismatch` 拒绝，而不是把当前 source 冒充历史 source。测试同时锁住这条 current-tree 拒绝，并在显式 test-only historical binding 下继续复核历史 artifact 的 1,390/1,541 项派生比较；该测试注入只使用 artifact 已记录的旧 commitment，不声称当前文件具有历史字节。要做默认有效重放，仍需历史绑定 checkout 或独立保留的历史 source bytes。
 
