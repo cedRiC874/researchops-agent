@@ -91,6 +91,10 @@ def _copy_v4_root(directory: str) -> Path:
         ROOT / "evals/provider_completion_telemetry_v2",
         root / "evals/provider_completion_telemetry_v2",
     )
+    shutil.copytree(
+        ROOT / "evals/provider_completion_first_live_validation_v1",
+        root / "evals/provider_completion_first_live_validation_v1",
+    )
     for relative in (
         DEPTH60_PLAN_PATH,
         DEPTH60_SUCCESSOR_PLAN_PATH,
@@ -139,7 +143,7 @@ class Phase6Depth60V4IntegrityTests(unittest.TestCase):
 
     def test_hardening_contract_is_fixed_and_moves_only_contract_component(self) -> None:
         names = completion_telemetry_contract_files(ROOT)
-        self.assertEqual(len(names), 11)
+        self.assertEqual(len(names), 13)
         self.assertIn(HARDENING_CONTRACT, names)
         with tempfile.TemporaryDirectory() as directory:
             root = _copy_v4_root(directory)
@@ -272,14 +276,14 @@ class Phase6Depth60V4IntegrityTests(unittest.TestCase):
             )
 
     @unittest.skipUnless(V4_PLAN.is_file(), "generated v4 plan not present yet")
-    def test_generated_v4_plan_has_locked_identity_and_validates(self) -> None:
+    def test_generated_v4_plan_is_preserved_and_now_reports_component_drift(self) -> None:
         payload = V4_PLAN.read_bytes()
         self.assertEqual(len(payload), V4_PLAN_BYTES)
         self.assertEqual(hashlib.sha256(payload).hexdigest(), V4_PLAN_FILE_SHA256)
-        result = validate_phase6_depth60_plan(ROOT, V4_PLAN)
-        self.assertEqual(result["status"], "valid")
-        self.assertEqual(result["plan_commitment_sha256"], V4_PLAN_COMMITMENT)
-        components = result["plan"]["component_hashes"]
+        plan = json.loads(payload.decode("utf-8"))
+        self.assertEqual(plan["plan_id"], "phase6-deepseek-depth60-v4")
+        self.assertEqual(plan["plan_commitment_sha256"], V4_PLAN_COMMITMENT)
+        components = plan["component_hashes"]
         self.assertEqual(components["source_bundle_sha256"], V4_SOURCE_BUNDLE)
         self.assertEqual(
             components["completion_telemetry_runtime_bundle_sha256"],
@@ -289,9 +293,9 @@ class Phase6Depth60V4IntegrityTests(unittest.TestCase):
             components["completion_telemetry_contract_bundle_sha256"],
             V4_CONTRACT_BUNDLE,
         )
-        self.assertFalse(result["online_execution_authorized"])
-        self.assertEqual(result["network_calls"], 0)
-        self.assertEqual(result["model_calls"], 0)
+        with self.assertRaises(Phase6RunError) as caught:
+            validate_phase6_depth60_plan(ROOT, V4_PLAN)
+        self.assertEqual(caught.exception.code, "phase6_depth60_v4_component_drift")
 
     @unittest.skipUnless(V4_PLAN.is_file(), "generated v4 plan not present yet")
     def test_v4_generator_refuses_overwrite_and_preserves_v1_v2_v3(self) -> None:

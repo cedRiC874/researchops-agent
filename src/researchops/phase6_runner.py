@@ -1362,7 +1362,7 @@ def _validate_runtime_denominator_tracker(
         plan_binding = tracker.plan_binding()
         plan_binding.assert_plan_authority()
         runtime_binding = tracker.runtime_binding()
-        runtime_binding.assert_runtime_authority()
+        runtime_binding.assert_runtime_authority(expected_scope="campaign_runtime")
         binding = runtime_binding.runtime_snapshot()
     except Exception:
         raise Phase6RunError(

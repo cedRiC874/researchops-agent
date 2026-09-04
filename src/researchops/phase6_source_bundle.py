@@ -297,6 +297,9 @@ _COMPLETION_TELEMETRY_V2_ROOT = PurePosixPath(
 _COMPLETION_TELEMETRY_V2_MANIFEST = (
     _COMPLETION_TELEMETRY_V2_ROOT / "fixture_manifest_v2.json"
 )
+_COMPLETION_FIRST_LIVE_ROOT = PurePosixPath(
+    "evals/provider_completion_first_live_validation_v1"
+)
 _COMPLETION_TELEMETRY_FIXED_CONTRACT_FILES = (
     _COMPLETION_TELEMETRY_V1_ROOT
     / "provider_completion_record_contract_v1.json",
@@ -306,6 +309,10 @@ _COMPLETION_TELEMETRY_FIXED_CONTRACT_FILES = (
     / "schemas/provider_completion_record_v1.schema.json",
     _COMPLETION_TELEMETRY_V1_ROOT / "provider_completion_mapping_v1.json",
     _COMPLETION_TELEMETRY_V2_MANIFEST,
+    _COMPLETION_FIRST_LIVE_ROOT
+    / "deepseek_responses_adapter_validation_contract_v1.json",
+    _COMPLETION_FIRST_LIVE_ROOT
+    / "deepseek_responses_adapter_validation_implementation_v2.json",
 )
 
 

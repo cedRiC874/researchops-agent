@@ -83,6 +83,10 @@ def _copy_v3_root(directory: str) -> Path:
         ROOT / "evals/provider_completion_telemetry_v2",
         root / "evals/provider_completion_telemetry_v2",
     )
+    shutil.copytree(
+        ROOT / "evals/provider_completion_first_live_validation_v1",
+        root / "evals/provider_completion_first_live_validation_v1",
+    )
     for relative in (
         DEPTH60_PLAN_PATH,
         DEPTH60_SUCCESSOR_PLAN_PATH,
@@ -154,7 +158,7 @@ class Phase6Depth60TelemetryBundleTests(unittest.TestCase):
     def test_contract_bundle_is_manifest_driven_and_exact(self) -> None:
         names = completion_telemetry_contract_files(ROOT)
         self.assertEqual(names, tuple(sorted(names)))
-        self.assertEqual(len(names), 11)
+        self.assertEqual(len(names), 13)
         self.assertIn(
             "evals/provider_completion_telemetry_v1/"
             "provider_completion_record_contract_v1.json",

@@ -187,12 +187,21 @@ class Phase6Depth60PlanTests(unittest.TestCase):
         self.assertIn("evals/phase6_deepseek_depth60_plan_v2.json", workflow)
         self.assertIn("evals/phase6_deepseek_depth60_plan_v3.json", workflow)
         self.assertIn("evals/phase6_deepseek_depth60_plan_v4.json", workflow)
+        self.assertIn("evals/phase6_deepseek_depth60_plan_v5.json", workflow)
         self.assertIn(
             "979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af",
             workflow,
         )
         self.assertIn(
             "c36dc0dd0487aa350dc2bd636b45bb494381e0c732c80be7b410be4b9beda612",
+            workflow,
+        )
+        self.assertIn(
+            "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7",
+            workflow,
+        )
+        self.assertIn(
+            "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10",
             workflow,
         )
         self.assertIn(
@@ -203,10 +212,20 @@ class Phase6Depth60PlanTests(unittest.TestCase):
         self.assertIn("$historicalDepth60V2Bytes -ne 2170", workflow)
         self.assertIn("$depth60V3Bytes -ne 2850", workflow)
         self.assertIn("$depth60V4Bytes -ne 3087", workflow)
+        self.assertIn("$depth60V5Bytes -ne 3120", workflow)
         self.assertIn("$depth60.source_bundle_algorithm -ne \"v2\"", workflow)
         self.assertIn("$depth60.online_execution_authorized -ne $false", workflow)
         self.assertIn("$depth60.network_calls -ne 0", workflow)
         self.assertIn("$depth60.model_calls -ne 0", workflow)
+        self.assertIn(
+            '$firstLive.authorization_binding_schema_version -ne '
+            '"deepseek-first-live-authorization-binding/2.0"',
+            workflow,
+        )
+        self.assertIn(
+            "$firstLive.external_authorization_binding_required -ne $true",
+            workflow,
+        )
 
 
 class Phase6Depth60ExecutionGateTests(unittest.IsolatedAsyncioTestCase):

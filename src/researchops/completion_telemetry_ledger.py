@@ -47,6 +47,12 @@ class LedgerCompletionTelemetrySession:
         "_terminal_event_hashes",
     )
 
+    def _required_runtime_authority_scope(self) -> str:
+        return "campaign_runtime"
+
+    def _is_exact_supported_session_type(self) -> bool:
+        return type(self) is LedgerCompletionTelemetrySession
+
     def __init__(
         self,
         session: RuntimeCaseTelemetrySession,
@@ -73,7 +79,9 @@ class LedgerCompletionTelemetrySession:
         try:
             runtime_plan_binding.assert_plan_authority()
             runtime_binding = runtime_plan_binding.runtime_binding()
-            runtime_binding.assert_runtime_authority()
+            runtime_binding.assert_runtime_authority(
+                expected_scope=self._required_runtime_authority_scope()
+            )
             binding = runtime_binding.runtime_snapshot()
         except Exception:
             raise AuditError(
@@ -158,12 +166,14 @@ class LedgerCompletionTelemetrySession:
     def assert_provider_telemetry_authority(self) -> None:
         """Revalidate the exact bridge, runtime plan and write capability."""
 
-        if type(self) is not LedgerCompletionTelemetrySession or self._failed:
+        if not self._is_exact_supported_session_type() or self._failed:
             raise AuditError(
                 "audit_completion_session_failed",
                 "Completion telemetry ledger bridge 无效或已失败。",
             )
-        self._binding.assert_runtime_authority()
+        self._binding.assert_runtime_authority(
+            expected_scope=self._required_runtime_authority_scope()
+        )
         self._capability._assert_authority(
             self._ledger._completion_capability_token
         )
