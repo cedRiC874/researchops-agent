@@ -14,6 +14,7 @@ from unittest.mock import patch
 import researchops_completion_telemetry.surface_mapping as surface_mapping
 from researchops.audit import (
     COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES,
+    COMPLETION_TELEMETRY_UNMAPPED_EVENT,
     AuditError,
     AuditLedger,
 )
@@ -389,7 +390,13 @@ class CompletionTelemetryLedgerTests(unittest.TestCase):
             )
         )
         for event_type in COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES:
-            expected_count = 6 if event_type == "model_request_started" else 1
+            expected_count = (
+                6
+                if event_type == "model_request_started"
+                else 0
+                if event_type == COMPLETION_TELEMETRY_UNMAPPED_EVENT
+                else 1
+            )
             self.assertEqual(event_types.count(event_type), expected_count)
         accepted = next(
             event
@@ -468,7 +475,7 @@ class CompletionTelemetryLedgerTests(unittest.TestCase):
         )
 
         forged_payload = {
-            "schema_version": "provider-completion-ledger-event/1.0",
+            "schema_version": "provider-completion-ledger-event/1.1",
             "case_id": "FORGED-CASE",
             "attempt_index": 77,
             "case_attempt_index": 42,

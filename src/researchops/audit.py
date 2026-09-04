@@ -38,12 +38,14 @@ _PARTICIPANT_ID = re.compile(r"\bP\d{3,}\b", re.IGNORECASE)
 _API_KEY_VALUE = re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b")
 _WINDOWS_PATH = re.compile(r"(?i)(?:[A-Z]:\\|\\\\)[^\r\n\t\"']+")
 COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION = (
-    "provider-completion-ledger-event/1.0"
+    "provider-completion-ledger-event/1.1"
 )
 COMPLETION_TELEMETRY_STARTED_EVENT = "model_request_started"
+COMPLETION_TELEMETRY_UNMAPPED_EVENT = "provider_completion_mapping_unmapped"
 COMPLETION_TELEMETRY_TERMINAL_EVENT_TYPES = frozenset(
     {
         "model_response_telemetry_recorded",
+        COMPLETION_TELEMETRY_UNMAPPED_EVENT,
         "model_response_telemetry_rejected",
         "model_request_http_error",
         "model_request_no_response",
@@ -56,6 +58,7 @@ COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES = frozenset(
 )
 _COMPLETION_TERMINAL_KIND_BY_EVENT = {
     "model_response_telemetry_recorded": "response_accepted",
+    COMPLETION_TELEMETRY_UNMAPPED_EVENT: "response_accepted",
     "model_response_telemetry_rejected": "response_rejected",
     "model_request_http_error": "http_error",
     "model_request_no_response": "no_response",
@@ -1337,7 +1340,11 @@ def _validated_completion_event_payload(
         if event_type == COMPLETION_TELEMETRY_STARTED_EVENT
         else (
             _COMPLETION_ACCEPTED_FIELDS
-            if event_type == "model_response_telemetry_recorded"
+            if event_type
+            in {
+                "model_response_telemetry_recorded",
+                COMPLETION_TELEMETRY_UNMAPPED_EVENT,
+            }
             else _COMPLETION_TERMINAL_FIELDS
         )
     )
@@ -1440,6 +1447,16 @@ def _validated_completion_event_payload(
                 raise AuditError(
                     "audit_completion_record_invalid",
                     "Accepted completion record identity/usage 不匹配。",
+                )
+            state_is_unmapped = (
+                record.get("normalized_completion_state") == "unmapped"
+            )
+            if state_is_unmapped != (
+                event_type == COMPLETION_TELEMETRY_UNMAPPED_EVENT
+            ):
+                raise AuditError(
+                    "audit_completion_event_type_state_mismatch",
+                    "Accepted completion event type 与 normalized state 不匹配。",
                 )
     try:
         canonical_json(value)

@@ -21,6 +21,9 @@ MappingResolver = Callable[
 
 TELEMETRY_SCHEMA_VERSION = "provider-completion-record/1.0"
 ARTIFACT_SCHEMA_VERSION = "provider-completion-telemetry-artifact/1.0"
+RUNTIME_DENOMINATOR_ARTIFACT_SCHEMA_VERSION = (
+    "provider-completion-runtime-denominator-artifact/1.0"
+)
 TRUNCATION_MARKER = "[TRUNCATED]"
 TOKEN_CAP_FALLBACK_RULE_ID = "runtime-token-cap-fallback-v1"
 
@@ -185,6 +188,7 @@ _EMAIL = re.compile(
     r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
     r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+"
 )
+_SAFE_TERMINAL_ERROR_CODE = re.compile(r"^[a-z][a-z0-9_]{0,95}$")
 
 _MAX_NATIVE_SCALAR_BYTES = 64
 _MAX_STOP_SEQUENCE_BYTES = 64
@@ -1928,43 +1932,492 @@ def _validate_completion_artifact(
         raise _error("completion_telemetry_artifact_request_index_gap")
 
 
+_RUNTIME_ARTIFACT_FIELDS = frozenset(
+    {
+        "schema_version",
+        "denominator_algorithm",
+        "exact_response_count_preregistered",
+        "derived_after_run",
+        "preregistration_commitment",
+        "planned_case_ids",
+        "max_turns_per_case",
+        "total_model_request_cap",
+        "attempts_started",
+        "attempts_terminal",
+        "observed_response_count",
+        "accepted_response_count",
+        "rejected_response_count",
+        "terminal_kind_counts",
+        "attempts",
+        "cases",
+        "not_finalized_case_ids",
+        "records",
+    }
+)
+_RUNTIME_ATTEMPT_FIELDS = frozenset(
+    {
+        "case_id",
+        "attempt_index",
+        "case_attempt_index",
+        "terminal_kind",
+        "response_index",
+        "error_code",
+    }
+)
+_RUNTIME_CASE_FIELDS = frozenset(
+    {
+        "case_id",
+        "attempts_started",
+        "attempts_terminal",
+        "observed_response_count",
+        "accepted_response_count",
+        "rejected_response_count",
+        "sdk_raw_response_count",
+        "sdk_raw_response_reconciliation",
+        "sdk_usage_request_count",
+        "sdk_usage_request_reconciliation",
+        "sdk_request_usage_indices_by_response",
+        "closure_eligible",
+    }
+)
+_RUNTIME_SDK_USAGE_INDEX_FIELDS = frozenset(
+    {
+        "response_index",
+        "sdk_raw_response_index",
+        "sdk_request_usage_indices",
+    }
+)
+_RUNTIME_TERMINAL_KINDS = (
+    "response_accepted",
+    "response_rejected",
+    "http_error",
+    "no_response",
+    "cancelled",
+    "outcome_unknown",
+)
+_RUNTIME_OBSERVED_TERMINALS = frozenset(
+    {"response_accepted", "response_rejected"}
+)
+_RUNTIME_ERROR_TERMINALS = frozenset(
+    {
+        "response_rejected",
+        "http_error",
+        "no_response",
+        "outcome_unknown",
+    }
+)
+
+
+def _runtime_artifact_count(value: object, code: str) -> int:
+    result = _nonnegative_integer(value, code)
+    if result > _MAX_RESPONSE_INDEX:
+        raise _error(code)
+    return result
+
+
+def _runtime_optional_count(value: object, code: str) -> int | None:
+    if value is None:
+        return None
+    return _runtime_artifact_count(value, code)
+
+
+def _validate_runtime_attempts(
+    attempts_value: object,
+    *,
+    planned_case_ids: tuple[str, ...],
+    max_turns_per_case: int,
+    total_model_request_cap: int,
+) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, Any]]]]:
+    if not isinstance(attempts_value, list):
+        raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+    if len(attempts_value) > total_model_request_cap:
+        raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+    attempts: list[dict[str, Any]] = []
+    by_case = {case_id: [] for case_id in planned_case_ids}
+    observed_response_indices: list[int] = []
+    for expected_attempt_index, raw_attempt in enumerate(attempts_value):
+        attempt = _validate_exact_fields(
+            raw_attempt,
+            _RUNTIME_ATTEMPT_FIELDS,
+            "completion_telemetry_runtime_artifact_attempt_invalid",
+        )
+        case_id = _safe_identifier(attempt["case_id"])
+        if case_id not in by_case:
+            raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+        attempt_index = _runtime_artifact_count(
+            attempt["attempt_index"],
+            "completion_telemetry_runtime_artifact_attempt_invalid",
+        )
+        case_attempt_index = _runtime_artifact_count(
+            attempt["case_attempt_index"],
+            "completion_telemetry_runtime_artifact_attempt_invalid",
+        )
+        if (
+            attempt_index != expected_attempt_index
+            or case_attempt_index != len(by_case[case_id])
+            or case_attempt_index >= max_turns_per_case
+        ):
+            raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+        terminal_kind = attempt["terminal_kind"]
+        if terminal_kind not in _RUNTIME_TERMINAL_KINDS:
+            raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+        response_index = attempt["response_index"]
+        if terminal_kind in _RUNTIME_OBSERVED_TERMINALS:
+            response_index = _runtime_artifact_count(
+                response_index,
+                "completion_telemetry_runtime_artifact_attempt_invalid",
+            )
+            if response_index != len(observed_response_indices):
+                raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+            observed_response_indices.append(response_index)
+        elif response_index is not None:
+            raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+        error_code = attempt["error_code"]
+        if terminal_kind in _RUNTIME_ERROR_TERMINALS:
+            if (
+                not isinstance(error_code, str)
+                or not _SAFE_TERMINAL_ERROR_CODE.fullmatch(error_code)
+            ):
+                raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+        elif error_code is not None:
+            raise _error("completion_telemetry_runtime_artifact_attempt_invalid")
+        normalized = dict(attempt)
+        attempts.append(normalized)
+        by_case[case_id].append(normalized)
+    return attempts, by_case
+
+
+def _expected_reconciliation(
+    count: int | None,
+    observed: int,
+) -> str:
+    if count is None:
+        return "unavailable"
+    if count == observed:
+        return "matched"
+    return "mismatched"
+
+
+def _validate_runtime_case_usage_indices(
+    value: object,
+    *,
+    observed_attempts: list[dict[str, Any]],
+    sdk_raw_response_count: int | None,
+    sdk_usage_request_count: int | None,
+) -> None:
+    if not isinstance(value, list):
+        raise _error("completion_telemetry_runtime_artifact_case_invalid")
+    require_complete_rows = (
+        sdk_raw_response_count is not None
+        and sdk_raw_response_count == len(observed_attempts)
+    )
+    if require_complete_rows and len(value) != len(observed_attempts):
+        raise _error("completion_telemetry_runtime_artifact_case_invalid")
+    previous_sdk_response_index = -1
+    sdk_response_indices: list[int] = []
+    for raw_item in value:
+        item = _validate_exact_fields(
+            raw_item,
+            _RUNTIME_SDK_USAGE_INDEX_FIELDS,
+            "completion_telemetry_runtime_artifact_case_invalid",
+        )
+        sdk_response_index = _runtime_artifact_count(
+            item["sdk_raw_response_index"],
+            "completion_telemetry_runtime_artifact_case_invalid",
+        )
+        response_index = _runtime_artifact_count(
+            item["response_index"],
+            "completion_telemetry_runtime_artifact_case_invalid",
+        )
+        if (
+            sdk_response_index <= previous_sdk_response_index
+            or sdk_response_index >= len(observed_attempts)
+            or response_index
+            != observed_attempts[sdk_response_index]["response_index"]
+        ):
+            raise _error("completion_telemetry_runtime_artifact_case_invalid")
+        raw_usage_indices = item["sdk_request_usage_indices"]
+        if not isinstance(raw_usage_indices, list):
+            raise _error("completion_telemetry_runtime_artifact_case_invalid")
+        usage_indices = [
+            _runtime_artifact_count(
+                index,
+                "completion_telemetry_runtime_artifact_case_invalid",
+            )
+            for index in raw_usage_indices
+        ]
+        if usage_indices != list(range(len(usage_indices))) or (
+            sdk_usage_request_count is not None
+            and any(index >= sdk_usage_request_count for index in usage_indices)
+        ):
+            raise _error("completion_telemetry_runtime_artifact_case_invalid")
+        previous_sdk_response_index = sdk_response_index
+        sdk_response_indices.append(sdk_response_index)
+    if require_complete_rows and sdk_response_indices != list(
+        range(len(observed_attempts))
+    ):
+        raise _error("completion_telemetry_runtime_artifact_case_invalid")
+
+
+def _validate_runtime_cases(
+    cases_value: object,
+    not_finalized_value: object,
+    *,
+    planned_case_ids: tuple[str, ...],
+    attempts_by_case: Mapping[str, list[dict[str, Any]]],
+) -> None:
+    if not isinstance(cases_value, list) or not isinstance(
+        not_finalized_value, list
+    ):
+        raise _error("completion_telemetry_runtime_artifact_case_invalid")
+    not_finalized = tuple(
+        _safe_identifier(case_id) for case_id in not_finalized_value
+    )
+    if len(not_finalized) != len(set(not_finalized)) or any(
+        case_id not in planned_case_ids for case_id in not_finalized
+    ):
+        raise _error("completion_telemetry_runtime_artifact_case_invalid")
+    expected_case_ids = tuple(
+        case_id for case_id in planned_case_ids if case_id not in not_finalized
+    )
+    expected_not_finalized = tuple(
+        case_id for case_id in planned_case_ids if case_id not in expected_case_ids
+    )
+    if not_finalized != expected_not_finalized or len(cases_value) != len(
+        expected_case_ids
+    ):
+        raise _error("completion_telemetry_runtime_artifact_case_invalid")
+
+    for expected_case_id, raw_case in zip(expected_case_ids, cases_value):
+        case = _validate_exact_fields(
+            raw_case,
+            _RUNTIME_CASE_FIELDS,
+            "completion_telemetry_runtime_artifact_case_invalid",
+        )
+        case_id = _safe_identifier(case["case_id"])
+        if case_id != expected_case_id:
+            raise _error("completion_telemetry_runtime_artifact_case_invalid")
+        case_attempts = attempts_by_case[case_id]
+        observed = [
+            attempt
+            for attempt in case_attempts
+            if attempt["terminal_kind"] in _RUNTIME_OBSERVED_TERMINALS
+        ]
+        accepted = [
+            attempt
+            for attempt in observed
+            if attempt["terminal_kind"] == "response_accepted"
+        ]
+        rejected = [
+            attempt
+            for attempt in observed
+            if attempt["terminal_kind"] == "response_rejected"
+        ]
+        counts = {
+            "attempts_started": len(case_attempts),
+            "attempts_terminal": len(case_attempts),
+            "observed_response_count": len(observed),
+            "accepted_response_count": len(accepted),
+            "rejected_response_count": len(rejected),
+        }
+        for field, expected in counts.items():
+            if _runtime_artifact_count(
+                case[field], "completion_telemetry_runtime_artifact_case_invalid"
+            ) != expected:
+                raise _error("completion_telemetry_runtime_artifact_case_invalid")
+        sdk_raw_response_count = _runtime_optional_count(
+            case["sdk_raw_response_count"],
+            "completion_telemetry_runtime_artifact_case_invalid",
+        )
+        sdk_usage_request_count = _runtime_optional_count(
+            case["sdk_usage_request_count"],
+            "completion_telemetry_runtime_artifact_case_invalid",
+        )
+        raw_reconciliation = _expected_reconciliation(
+            sdk_raw_response_count, len(observed)
+        )
+        usage_reconciliation = _expected_reconciliation(
+            sdk_usage_request_count, len(case_attempts)
+        )
+        if (
+            case["sdk_raw_response_reconciliation"] != raw_reconciliation
+            or case["sdk_usage_request_reconciliation"] != usage_reconciliation
+        ):
+            raise _error("completion_telemetry_runtime_artifact_case_invalid")
+        _validate_runtime_case_usage_indices(
+            case["sdk_request_usage_indices_by_response"],
+            observed_attempts=observed,
+            sdk_raw_response_count=sdk_raw_response_count,
+            sdk_usage_request_count=sdk_usage_request_count,
+        )
+        expected_closure = (
+            bool(observed)
+            and raw_reconciliation == "matched"
+            and usage_reconciliation == "matched"
+            and not rejected
+            and all(
+                attempt["terminal_kind"] == "response_accepted"
+                for attempt in case_attempts
+            )
+        )
+        if type(case["closure_eligible"]) is not bool or (
+            case["closure_eligible"] is not expected_closure
+        ):
+            raise _error("completion_telemetry_runtime_artifact_case_invalid")
+
+
+def validate_runtime_denominator_artifact(
+    artifact: Mapping[str, Any],
+    *,
+    plan_binding: object,
+    sensitive_canaries: Iterable[str] = (),
+) -> None:
+    """Strictly revalidate a JSON-read runtime denominator subartifact.
+
+    All counts and reconciliations are derived again from attempts, cases and
+    records.  No field is repaired and only an opaque verified dynamic plan can
+    authorize live-record validation.  This function does not validate the
+    outer Phase 6 closure report, audit database, or append-only event chain.
+    """
+
+    # Local import avoids a module cycle: capture uses the live record builder.
+    from .capture import VerifiedRuntimeDenominatorPlanBinding
+
+    if type(plan_binding) is not VerifiedRuntimeDenominatorPlanBinding:
+        raise _error("completion_telemetry_capture_plan_binding_required")
+    try:
+        plan_binding.assert_plan_authority()
+        binding = plan_binding.runtime_binding()
+        planned_case_ids = tuple(plan_binding.case_ids)
+        max_turns_per_case = plan_binding.max_turns_per_case
+        total_model_request_cap = plan_binding.total_model_request_cap
+        preregistration_commitment = plan_binding.preregistration_commitment
+        denominator_algorithm = plan_binding.denominator_algorithm
+    except Exception:
+        raise _error("completion_telemetry_capture_plan_binding_required") from None
+    _validate_runtime_binding(binding)
+    artifact = _validate_exact_fields(
+        artifact,
+        _RUNTIME_ARTIFACT_FIELDS,
+        "completion_telemetry_runtime_artifact_shape_invalid",
+    )
+    canaries = _normalized_canaries(sensitive_canaries)
+    _scan_json_value(artifact, canaries)
+    if (
+        artifact["schema_version"]
+        != RUNTIME_DENOMINATOR_ARTIFACT_SCHEMA_VERSION
+        or artifact["denominator_algorithm"] != denominator_algorithm
+        or artifact["exact_response_count_preregistered"] is not False
+        or artifact["derived_after_run"] is not True
+    ):
+        raise _error("completion_telemetry_runtime_artifact_schema_invalid")
+    artifact_max_turns = _runtime_artifact_count(
+        artifact["max_turns_per_case"],
+        "completion_telemetry_runtime_artifact_plan_binding_mismatch",
+    )
+    artifact_request_cap = _runtime_artifact_count(
+        artifact["total_model_request_cap"],
+        "completion_telemetry_runtime_artifact_plan_binding_mismatch",
+    )
+    if (
+        artifact["planned_case_ids"] != list(planned_case_ids)
+        or artifact_max_turns != max_turns_per_case
+        or artifact_request_cap != total_model_request_cap
+        or artifact["preregistration_commitment"] != preregistration_commitment
+    ):
+        raise _error("completion_telemetry_runtime_artifact_plan_binding_mismatch")
+
+    attempts, attempts_by_case = _validate_runtime_attempts(
+        artifact["attempts"],
+        planned_case_ids=planned_case_ids,
+        max_turns_per_case=max_turns_per_case,
+        total_model_request_cap=total_model_request_cap,
+    )
+    observed = [
+        attempt
+        for attempt in attempts
+        if attempt["terminal_kind"] in _RUNTIME_OBSERVED_TERMINALS
+    ]
+    accepted = [
+        attempt
+        for attempt in observed
+        if attempt["terminal_kind"] == "response_accepted"
+    ]
+    rejected = [
+        attempt
+        for attempt in observed
+        if attempt["terminal_kind"] == "response_rejected"
+    ]
+    expected_counts = {
+        "attempts_started": len(attempts),
+        "attempts_terminal": len(attempts),
+        "observed_response_count": len(observed),
+        "accepted_response_count": len(accepted),
+        "rejected_response_count": len(rejected),
+    }
+    for field, expected in expected_counts.items():
+        if _runtime_artifact_count(
+            artifact[field], "completion_telemetry_runtime_artifact_count_mismatch"
+        ) != expected:
+            raise _error("completion_telemetry_runtime_artifact_count_mismatch")
+
+    terminal_counts = _validate_exact_fields(
+        artifact["terminal_kind_counts"],
+        frozenset(_RUNTIME_TERMINAL_KINDS),
+        "completion_telemetry_runtime_artifact_terminal_counts_invalid",
+    )
+    for terminal_kind in _RUNTIME_TERMINAL_KINDS:
+        expected = sum(
+            attempt["terminal_kind"] == terminal_kind for attempt in attempts
+        )
+        if _runtime_artifact_count(
+            terminal_counts[terminal_kind],
+            "completion_telemetry_runtime_artifact_terminal_counts_invalid",
+        ) != expected:
+            raise _error(
+                "completion_telemetry_runtime_artifact_terminal_counts_invalid"
+            )
+
+    _validate_runtime_cases(
+        artifact["cases"],
+        artifact["not_finalized_case_ids"],
+        planned_case_ids=planned_case_ids,
+        attempts_by_case=attempts_by_case,
+    )
+    records = artifact["records"]
+    if not isinstance(records, list) or len(records) != len(accepted):
+        raise _error("completion_telemetry_runtime_artifact_record_set_invalid")
+    actual_record_indices: list[tuple[int, int]] = []
+    for raw_record in records:
+        if not isinstance(raw_record, Mapping):
+            raise _error("completion_telemetry_runtime_artifact_record_set_invalid")
+        validate_completion_record(
+            raw_record,
+            binding=binding,
+            sensitive_canaries=canaries,
+        )
+        actual_record_indices.append(
+            (raw_record["response_index"], raw_record["request_index"])
+        )
+    expected_record_indices = [
+        (attempt["response_index"], attempt["attempt_index"])
+        for attempt in accepted
+    ]
+    if actual_record_indices != expected_record_indices:
+        raise _error("completion_telemetry_runtime_artifact_record_set_invalid")
+
+
 def validate_completion_artifact(
     artifact: Mapping[str, Any],
     *,
     plan_binding: object,
     sensitive_canaries: Iterable[str] = (),
 ) -> None:
-    """Validate a live artifact against one verified run denominator."""
+    """Compatibility entrypoint for a dynamic denominator subartifact."""
 
-    # Local import avoids a module-import cycle: capture depends on this
-    # sanitizer, while the live artifact gate depends on capture-plan authority.
-    from .capture import VerifiedCapturePlanBinding
-
-    if type(plan_binding) is not VerifiedCapturePlanBinding:
-        raise _error("completion_telemetry_capture_plan_binding_required")
-    try:
-        plan_binding.assert_plan_authority()
-        binding = plan_binding.runtime_binding()
-    except Exception:
-        raise _error("completion_telemetry_capture_plan_binding_required") from None
-    _validate_runtime_binding(binding)
-    if not isinstance(artifact, Mapping) or (
-        artifact.get("expected_response_count") != plan_binding.expected_response_count
-        or artifact.get("preregistration_commitment")
-        != plan_binding.preregistration_commitment
-    ):
-        raise _error("completion_telemetry_artifact_plan_binding_mismatch")
-
-    def validate_record(record: Mapping[str, Any], canaries: tuple[str, ...]) -> None:
-        validate_completion_record(
-            record,
-            binding=binding,
-            sensitive_canaries=canaries,
-        )
-
-    _validate_completion_artifact(
+    validate_runtime_denominator_artifact(
         artifact,
-        record_validator=validate_record,
+        plan_binding=plan_binding,
         sensitive_canaries=sensitive_canaries,
     )
 
@@ -2006,6 +2459,7 @@ __all__ = [
     "MISSING",
     "MappingResolver",
     "OfflineCompletionRecordBinding",
+    "RUNTIME_DENOMINATOR_ARTIFACT_SCHEMA_VERSION",
     "SanitizedCompletionCapture",
     "TELEMETRY_SCHEMA_VERSION",
     "TOKEN_CAP_FALLBACK_RULE_ID",
@@ -2017,4 +2471,5 @@ __all__ = [
     "validate_completion_record",
     "validate_offline_completion_artifact",
     "validate_offline_completion_record",
+    "validate_runtime_denominator_artifact",
 ]

@@ -1975,7 +1975,7 @@ class Phase6RunnerCompletionTelemetryTests(unittest.IsolatedAsyncioTestCase):
         )
         binding_snapshot = binding.runtime_snapshot()
         started = {
-            "schema_version": "provider-completion-ledger-event/1.0",
+            "schema_version": "provider-completion-ledger-event/1.1",
             "case_id": "FORGED-CASE",
             "attempt_index": 0,
             "case_attempt_index": 0,

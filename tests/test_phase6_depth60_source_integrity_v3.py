@@ -154,7 +154,7 @@ class Phase6Depth60TelemetryBundleTests(unittest.TestCase):
     def test_contract_bundle_is_manifest_driven_and_exact(self) -> None:
         names = completion_telemetry_contract_files(ROOT)
         self.assertEqual(names, tuple(sorted(names)))
-        self.assertEqual(len(names), 10)
+        self.assertEqual(len(names), 11)
         self.assertIn(
             "evals/provider_completion_telemetry_v1/"
             "provider_completion_record_contract_v1.json",
@@ -163,6 +163,11 @@ class Phase6Depth60TelemetryBundleTests(unittest.TestCase):
         self.assertIn(
             "evals/provider_completion_telemetry_v1/"
             "schemas/provider_completion_record_v1.schema.json",
+            names,
+        )
+        self.assertIn(
+            "evals/provider_completion_telemetry_v1/"
+            "provider_completion_runtime_hardening_contract_v2.json",
             names,
         )
         self.assertIn(
@@ -373,20 +378,14 @@ class Phase6Depth60TelemetryBundleTests(unittest.TestCase):
 
 
 class Phase6Depth60V3PlanTests(unittest.TestCase):
-    def test_frozen_v3_plan_validates_with_exact_components_and_zero_calls(self) -> None:
+    def test_frozen_v3_plan_is_preserved_and_now_reports_component_drift(self) -> None:
         payload = V3_PLAN.read_bytes()
         self.assertEqual(len(payload), V3_PLAN_BYTES)
         self.assertEqual(hashlib.sha256(payload).hexdigest(), V3_PLAN_FILE_SHA256)
-        result = validate_phase6_depth60_plan(ROOT, V3_PLAN)
-        self.assertEqual(result["status"], "valid")
-        self.assertEqual(result["plan_id"], DEPTH60_SUCCESSOR_V3_PLAN_ID)
-        self.assertEqual(result["plan_commitment_sha256"], V3_PLAN_COMMITMENT)
-        self.assertEqual(result["source_bundle_algorithm"], "v2")
-        self.assertEqual(result["supersedes_plan_id"], "phase6-deepseek-depth60-v2")
-        self.assertFalse(result["online_execution_authorized"])
-        self.assertEqual(result["network_calls"], 0)
-        self.assertEqual(result["model_calls"], 0)
-        components = result["plan"]["component_hashes"]
+        plan = json.loads(payload.decode("utf-8"))
+        self.assertEqual(plan["plan_id"], DEPTH60_SUCCESSOR_V3_PLAN_ID)
+        self.assertEqual(plan["plan_commitment_sha256"], V3_PLAN_COMMITMENT)
+        components = plan["component_hashes"]
         self.assertEqual(components["source_bundle_sha256"], V3_SOURCE_BUNDLE)
         self.assertEqual(
             components["completion_telemetry_runtime_bundle_sha256"],
@@ -395,6 +394,12 @@ class Phase6Depth60V3PlanTests(unittest.TestCase):
         self.assertEqual(
             components["completion_telemetry_contract_bundle_sha256"],
             V3_CONTRACT_BUNDLE,
+        )
+        with self.assertRaises(Phase6RunError) as caught:
+            validate_phase6_depth60_plan(ROOT, V3_PLAN)
+        self.assertEqual(
+            caught.exception.code,
+            "phase6_depth60_v3_component_drift",
         )
 
     def test_generator_help_does_not_change_any_frozen_plan(self) -> None:

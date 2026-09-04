@@ -335,6 +335,52 @@ class ProviderCompletionDynamicDenominatorTests(unittest.TestCase):
         self.assertFalse(closure["claim_allowed"])
         self.assertIn("planned_cases_not_finalized", closure["reasons"])
 
+    def test_finalized_zero_attempt_case_forbids_campaign_closure(self) -> None:
+        tracker = RuntimeDenominatorTracker(
+            _plan_binding(case_ids=("CASE-001", "CASE-002"), request_cap=2)
+        )
+        handle = tracker.begin_attempt("CASE-001")
+        tracker.finalize_response_accepted(handle, _capture())
+        tracker.seal_case(
+            "CASE-001", sdk_raw_response_count=1, sdk_usage_request_count=1
+        )
+        empty_case = tracker.seal_case(
+            "CASE-002", sdk_raw_response_count=0, sdk_usage_request_count=0
+        )
+        self.assertFalse(empty_case.closure_eligible)
+
+        artifact = tracker.seal_runtime()
+        self.assertEqual(artifact.not_finalized_case_ids, ())
+        closure = evaluate_runtime_denominator_closure(artifact)
+        self.assertFalse(closure["claim_allowed"])
+        self.assertEqual(
+            closure["reasons"], ["planned_case_without_accepted_response"]
+        )
+
+    def test_each_case_may_close_below_its_turn_cap_after_one_accepted_response(
+        self,
+    ) -> None:
+        tracker = RuntimeDenominatorTracker(
+            _plan_binding(
+                case_ids=("CASE-001", "CASE-002"),
+                max_turns=3,
+                request_cap=6,
+            )
+        )
+        for case_id in ("CASE-001", "CASE-002"):
+            handle = tracker.begin_attempt(case_id)
+            tracker.finalize_response_accepted(handle, _capture())
+            case = tracker.seal_case(
+                case_id, sdk_raw_response_count=1, sdk_usage_request_count=1
+            )
+            self.assertEqual(case.attempts_started, 1)
+            self.assertTrue(case.closure_eligible)
+
+        closure = evaluate_runtime_denominator_closure(tracker.seal_runtime())
+        self.assertTrue(closure["claim_allowed"])
+        self.assertEqual(closure["reasons"], [])
+        self.assertEqual(closure["observed_response_count"], 2)
+
     def test_sdk_response_and_nested_usage_indices_do_not_reuse_global_attempt_index(self) -> None:
         tracker = RuntimeDenominatorTracker(_plan_binding())
         first = tracker.begin_attempt("CASE-001")
