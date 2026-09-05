@@ -19,6 +19,13 @@ SPEC.loader.exec_module(DEMO)
 
 
 class PortfolioDemoTests(unittest.TestCase):
+    def test_locked_dependencies_require_python_312_or_newer(self) -> None:
+        with patch.object(DEMO.sys, "version_info", (3, 11, 9)):
+            with self.assertRaisesRegex(DEMO.DemoError, "Python 3.12 or newer"):
+                DEMO._require_files(PROJECT_ROOT)
+        with patch.object(DEMO.sys, "version_info", (3, 12, 13)):
+            DEMO._require_files(PROJECT_ROOT)
+
     @unittest.skipUnless(os.name == "nt", "Windows PowerShell wrapper test")
     def test_powershell_wrapper_streams_output_and_propagates_failure(self) -> None:
         wrapper = PROJECT_ROOT / "scripts/portfolio_demo.ps1"

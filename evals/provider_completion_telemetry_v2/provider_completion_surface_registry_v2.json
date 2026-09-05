@@ -1,0 +1,568 @@
+{
+  "schema_version": "provider-completion-surface-registry/2.0",
+  "status": "executable_offline_surface_registry_zero_adapter_changes",
+  "documented_on": "2026-09-03",
+  "adapter_changes_included": false,
+  "online_calls_performed": false,
+  "registry_key_fields": [
+    "provider_id",
+    "api_surface",
+    "transport_id"
+  ],
+  "surface_mismatch_behavior": "fail_closed",
+  "nearest_surface_fallback_allowed": false,
+  "predecessor_mapping": {
+    "relative_path": "evals/provider_completion_telemetry_v1/provider_completion_mapping_v1.json",
+    "bytes": 48071,
+    "sha256": "2a3e4c6a81fd76d9e20542091fbffdd4c6137d2e730b626117446109658b946d",
+    "canonical_json_sha256": "36da5aba0b4aff55f2f52bc88bb04e04fbf2b2a86d5156242c5d861a4d072e3d",
+    "schema_version": "provider-completion-mapping/1.0",
+    "immutable": true
+  },
+  "entries": [
+    {
+      "provider_id": "deepseek",
+      "api_surface": "responses",
+      "transport_id": "openai_compatible_responses",
+      "adapter_version": "deepseek-responses-adapter/1.0",
+      "output_counter_comparability": "comparable",
+      "output_counter_path": "output_tokens",
+      "mapping_source": "inline_successor",
+      "mapping_version": "deepseek-responses-probe-v3-successor-v1",
+      "provenance_tier": "live_capture",
+      "unverified_shape": true,
+      "first_live_validation_required": true,
+      "provenance_promotion_allowed": false,
+      "offline_selection_allowed": true,
+      "runtime_binding_allowed": false,
+      "runtime_binding_blocker": "the live probe used minimal direct kwargs rather than the runtime Adapter request path; first-Adapter-call validation is still required",
+      "source": {
+        "kind": "sanitized_live_probe_receipt",
+        "relative_path": "probe_out_v3.json",
+        "bytes": 9215,
+        "sha256": "cb3417b0f3c56eca7fd6d05dda68c4717315004ba0d6e5d6da408d52d990131d",
+        "probe_id": "deepseek_responses_completion_shape_v3",
+        "api_origin": "https://api.deepseek.com",
+        "path": "/responses",
+        "model": "deepseek-v4-flash",
+        "adapter_kwargs_equivalence_claimed": false,
+        "observed_distinct_shape_count": 2,
+        "observed_native_values": [
+          {
+            "status": "completed",
+            "incomplete_details": null
+          },
+          {
+            "status": "incomplete",
+            "incomplete_details": {
+              "reason": "max_output_tokens"
+            }
+          }
+        ],
+        "known_but_unobserved_values_remain_unmapped": true,
+        "provenance_limitations": {
+          "capture_time": "not_persisted",
+          "authorization_linkage": "external_not_machine_bound",
+          "probe_script_linkage": "external_not_machine_bound",
+          "predecessor_receipt_bytes": "v1_v2_excluded_unavailable",
+          "message_output_item_observed_scope": "responses_message_stage_cap_attempt_only",
+          "normal_probe_message_completed_observed": true
+        }
+      },
+      "fixture_expectations": {
+        "deepseek_responses_completed_20260903": {
+          "normalized_completion_state": "completed",
+          "truncation_signal_source": "native_status",
+          "preserved_native_value": null,
+          "matched_rule_id": "deepseek-resp-recognized-001"
+        },
+        "deepseek_responses_length_capped_20260903": {
+          "normalized_completion_state": "incomplete_length",
+          "truncation_signal_source": "native_status",
+          "preserved_native_value": null,
+          "matched_rule_id": "deepseek-resp-recognized-002"
+        },
+        "deepseek_responses_missing_fields_20260903": {
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "preserved_native_value": null,
+          "matched_rule_id": "deepseek-resp-absent-001"
+        },
+        "deepseek_responses_unknown_value_20260903": {
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "preserved_native_value": "__fixture_unknown_native_value_v2__",
+          "matched_rule_id": "deepseek-resp-unknown-001"
+        }
+      },
+      "provider_mapping": {
+        "api_surface": "responses",
+        "active_mapping_version": "deepseek-responses-probe-v3-successor-v1",
+        "provenance_tier": "live_capture",
+        "unverified_shape": true,
+        "first_live_validation_required": true,
+        "live_capture_scope": "minimal_direct_probe_not_sdk_built",
+        "observed_native_shapes": [
+          {
+            "status": "completed",
+            "incomplete_details": null
+          },
+          {
+            "status": "incomplete",
+            "incomplete_details": {
+              "reason": "max_output_tokens"
+            }
+          }
+        ],
+        "known_but_unobserved_values": [
+          "failed",
+          "cancelled",
+          "queued",
+          "in_progress",
+          "content_filter",
+          "unknown_incomplete_reason"
+        ],
+        "conflict_rules": [
+          {
+            "rule_id": "deepseek-resp-conflict-001",
+            "precedence_stage": "contradictory_native_metadata",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "completed"
+                },
+                {
+                  "op": "is_present_non_null",
+                  "field": "incomplete_details"
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          },
+          {
+            "rule_id": "deepseek-resp-conflict-002",
+            "precedence_stage": "contradictory_native_metadata",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "incomplete"
+                },
+                {
+                  "op": "is_present_non_null",
+                  "field": "incomplete_details"
+                },
+                {
+                  "op": "not",
+                  "condition": {
+                    "op": "json_type_is",
+                    "field": "incomplete_details",
+                    "value": "object"
+                  }
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          },
+          {
+            "rule_id": "deepseek-resp-conflict-003",
+            "precedence_stage": "contradictory_native_metadata",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "all_missing",
+                  "fields": [
+                    "status"
+                  ]
+                },
+                {
+                  "op": "is_present_non_null",
+                  "field": "incomplete_details"
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          },
+          {
+            "rule_id": "deepseek-resp-conflict-004",
+            "precedence_stage": "contradictory_native_metadata",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "is_null",
+                  "field": "status"
+                },
+                {
+                  "op": "is_present_non_null",
+                  "field": "incomplete_details"
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          }
+        ],
+        "active_rules": [
+          {
+            "rule_id": "deepseek-resp-recognized-001",
+            "precedence_stage": "recognized_non_null_native_value",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "completed"
+                },
+                {
+                  "op": "is_null",
+                  "field": "incomplete_details"
+                }
+              ]
+            },
+            "normalized_completion_state": "completed",
+            "truncation_signal_source": "native_status",
+            "evidence_fixture_id": "deepseek_responses_completed_20260903"
+          },
+          {
+            "rule_id": "deepseek-resp-recognized-002",
+            "precedence_stage": "recognized_non_null_native_value",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "incomplete"
+                },
+                {
+                  "op": "equals",
+                  "field": "incomplete_details.reason",
+                  "value": "max_output_tokens"
+                }
+              ]
+            },
+            "normalized_completion_state": "incomplete_length",
+            "truncation_signal_source": "native_status",
+            "evidence_fixture_id": "deepseek_responses_length_capped_20260903"
+          }
+        ],
+        "unknown_rules": [
+          {
+            "rule_id": "deepseek-resp-unknown-001",
+            "precedence_stage": "unknown_non_null_native_value",
+            "condition": {
+              "op": "default_unknown",
+              "field": "status",
+              "known_values": [
+                "completed",
+                "incomplete"
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status",
+            "preserve_native_value": true,
+            "preserved_native_value_field": "status",
+            "preserved_native_value_utf8_bytes_max": 64,
+            "evidence_fixture_id": "deepseek_responses_unknown_value_20260903"
+          },
+          {
+            "rule_id": "deepseek-resp-unknown-002",
+            "precedence_stage": "unknown_non_null_native_value",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "incomplete"
+                },
+                {
+                  "op": "default_unknown",
+                  "field": "incomplete_details.reason",
+                  "known_values": [
+                    "max_output_tokens"
+                  ]
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status",
+            "preserve_native_value": true,
+            "preserved_native_value_field": "incomplete_details.reason",
+            "preserved_native_value_utf8_bytes_max": 64
+          },
+          {
+            "rule_id": "deepseek-resp-unknown-003",
+            "precedence_stage": "unknown_non_null_native_value",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "incomplete"
+                },
+                {
+                  "op": "all_missing",
+                  "fields": [
+                    "incomplete_details"
+                  ]
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          },
+          {
+            "rule_id": "deepseek-resp-unknown-004",
+            "precedence_stage": "unknown_non_null_native_value",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "incomplete"
+                },
+                {
+                  "op": "is_null",
+                  "field": "incomplete_details"
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          },
+          {
+            "rule_id": "deepseek-resp-unknown-005",
+            "precedence_stage": "unknown_non_null_native_value",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "incomplete"
+                },
+                {
+                  "op": "json_type_is",
+                  "field": "incomplete_details",
+                  "value": "object"
+                },
+                {
+                  "op": "all_missing",
+                  "fields": [
+                    "incomplete_details.reason"
+                  ]
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          },
+          {
+            "rule_id": "deepseek-resp-unknown-006",
+            "precedence_stage": "unknown_non_null_native_value",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "incomplete"
+                },
+                {
+                  "op": "json_type_is",
+                  "field": "incomplete_details",
+                  "value": "object"
+                },
+                {
+                  "op": "is_null",
+                  "field": "incomplete_details.reason"
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          },
+          {
+            "rule_id": "deepseek-resp-unknown-007",
+            "precedence_stage": "unknown_non_null_native_value",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "equals",
+                  "field": "status",
+                  "value": "completed"
+                },
+                {
+                  "op": "all_missing",
+                  "fields": [
+                    "incomplete_details"
+                  ]
+                }
+              ]
+            },
+            "normalized_completion_state": "unmapped",
+            "truncation_signal_source": "native_status"
+          }
+        ],
+        "absent_rules": [
+          {
+            "rule_id": "deepseek-resp-absent-001",
+            "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable",
+            "condition": {
+              "op": "all_missing",
+              "fields": [
+                "status",
+                "incomplete_details"
+              ]
+            },
+            "normalized_completion_state": "not_provided",
+            "truncation_signal_source": "none",
+            "evidence_fixture_id": "deepseek_responses_missing_fields_20260903"
+          },
+          {
+            "rule_id": "deepseek-resp-absent-002",
+            "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "is_null",
+                  "field": "status"
+                },
+                {
+                  "op": "all_missing",
+                  "fields": [
+                    "incomplete_details"
+                  ]
+                }
+              ]
+            },
+            "normalized_completion_state": "not_provided",
+            "truncation_signal_source": "none"
+          },
+          {
+            "rule_id": "deepseek-resp-absent-003",
+            "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "is_null",
+                  "field": "status"
+                },
+                {
+                  "op": "is_null",
+                  "field": "incomplete_details"
+                }
+              ]
+            },
+            "normalized_completion_state": "not_provided",
+            "truncation_signal_source": "none"
+          },
+          {
+            "rule_id": "deepseek-resp-absent-004",
+            "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable",
+            "condition": {
+              "op": "all",
+              "conditions": [
+                {
+                  "op": "all_missing",
+                  "fields": [
+                    "status"
+                  ]
+                },
+                {
+                  "op": "is_null",
+                  "field": "incomplete_details"
+                }
+              ]
+            },
+            "normalized_completion_state": "not_provided",
+            "truncation_signal_source": "none"
+          }
+        ]
+      }
+    },
+    {
+      "provider_id": "openai",
+      "api_surface": "responses",
+      "transport_id": "openai_responses",
+      "adapter_version": "openai-responses-adapter/1.0",
+      "output_counter_comparability": "comparable",
+      "output_counter_path": "output_tokens",
+      "mapping_source": "v1_provider_alias",
+      "mapping_version": "openai-official-schema-v1",
+      "provenance_tier": "official_schema",
+      "unverified_shape": true,
+      "first_live_validation_required": true,
+      "provenance_promotion_allowed": false,
+      "offline_selection_allowed": true,
+      "runtime_binding_allowed": false,
+      "runtime_binding_blocker": "the official-schema seed has not been validated by a successful response through the runtime Adapter path",
+      "source": {
+        "kind": "immutable_v1_provider_mapping_alias",
+        "attribution_scope": "initial_mapping_only_pending_first_live_validation"
+      },
+      "predecessor_provider_id": "openai"
+    },
+    {
+      "provider_id": "anthropic",
+      "api_surface": "messages",
+      "transport_id": "litellm_anthropic_chat_completions",
+      "adapter_version": "anthropic-litellm-adapter/1.0",
+      "output_counter_comparability": "comparable",
+      "output_counter_path": "output_tokens",
+      "mapping_source": "v1_provider_alias",
+      "mapping_version": "anthropic-official-schema-v1",
+      "provenance_tier": "official_schema",
+      "unverified_shape": true,
+      "first_live_validation_required": true,
+      "provenance_promotion_allowed": false,
+      "offline_selection_allowed": true,
+      "runtime_binding_allowed": false,
+      "runtime_binding_blocker": "the current LiteLLM transport maps native Anthropic stop_reason to finish_reason and does not preserve stop_sequence, so the official-schema messages mapping cannot be bound to runtime observations",
+      "source": {
+        "kind": "immutable_v1_provider_mapping_alias",
+        "attribution_scope": "initial_mapping_only_pending_first_live_validation"
+      },
+      "predecessor_provider_id": "anthropic"
+    },
+    {
+      "provider_id": "moonshot_kimi",
+      "api_surface": "openai_compatible_chat_completions",
+      "transport_id": "moonshot_direct_chat_completions_sse_v3",
+      "adapter_version": "moonshot-kimi-sse-v3-adapter/1.0",
+      "output_counter_comparability": "comparable",
+      "output_counter_path": "completion_tokens",
+      "mapping_source": "v1_provider_alias",
+      "mapping_version": "kimi-doc-prose-v1",
+      "provenance_tier": "doc_prose",
+      "unverified_shape": true,
+      "first_live_validation_required": true,
+      "provenance_promotion_allowed": false,
+      "offline_selection_allowed": true,
+      "runtime_binding_allowed": false,
+      "runtime_binding_blocker": "no successful Kimi handshake validated the doc-prose seed on this exact SSE v3 transport",
+      "source": {
+        "kind": "immutable_v1_provider_mapping_alias",
+        "attribution_scope": "weakest_no_successful_handshake"
+      },
+      "predecessor_provider_id": "moonshot_kimi"
+    }
+  ]
+}

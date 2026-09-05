@@ -1,0 +1,62 @@
+{
+  "fixture_schema_version": "provider-completion-fixture/1.0",
+  "fixture_id": "openai_length_capped_20260902",
+  "provider_id": "openai",
+  "api_surface": "responses",
+  "scenario": "length_capped",
+  "provenance": {
+    "tier": "official_schema",
+    "as_of_date": "2026-09-02",
+    "unverified_shape": true,
+    "live_validation": "pending_first_call",
+    "source": {
+      "kind": "sdk_type_definition",
+      "artifact": "openai-python",
+      "version": "3.1.0",
+      "symbols": [
+        "ResponseStatus",
+        "Response.IncompleteDetails"
+      ],
+      "files": [
+        {
+          "path": "openai/types/responses/response_status.py",
+          "bytes": 277,
+          "sha256": "3f450d799631c182331ede5280d44e4ac536771aba265812136ebbadfa4b831f"
+        },
+        {
+          "path": "openai/types/responses/response.py",
+          "bytes": 18160,
+          "sha256": "96aea83293bd7131e28ae863d8201c783f0f1fc4294b40d5ce138883e6aab9c6"
+        }
+      ],
+      "official_reference": "https://developers.openai.com/api/reference/resources/responses/methods/create"
+    }
+  },
+  "derivation": null,
+  "response_projection": {
+    "status": "incomplete",
+    "incomplete_details": {
+      "reason": "max_output_tokens"
+    },
+    "usage": {
+      "input_tokens": 1,
+      "output_tokens": 1,
+      "total_tokens": 2
+    },
+    "http_status": 200
+  },
+  "capture_boundary": {
+    "telemetry_contract_development_only": true,
+    "evaluation_task": false,
+    "run_ledger_written": false,
+    "task_pass_computed": false,
+    "model_quality_claim_allowed": false,
+    "content_omitted": true,
+    "reasoning_content_omitted": true,
+    "tool_call_arguments_omitted": true,
+    "system_prompt_omitted": true,
+    "raw_response_persisted": false,
+    "api_key_persisted": false,
+    "private_or_non_synthetic_evaluation_data": false
+  }
+}

@@ -11,6 +11,7 @@
 *.jsonl text eol=lf
 *.csv text eol=lf
 *.lock text eol=lf
+*.svg text eol=lf
 
 *.png binary
 *.sqlite3 binary
@@ -20,3 +21,4 @@
 artifacts/portfolio_baseline_provider/* -text -diff
 docs/evidence/phase6-deepseek-v1/development/* -text -diff
 docs/evidence/phase6-deepseek-v1/holdout/* -text -diff
+/probe_out_v3.json -text -diff

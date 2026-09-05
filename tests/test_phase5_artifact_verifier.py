@@ -236,12 +236,14 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("Python 3.11+", readme)
+        self.assertIn("Python 3.12", readme)
+        self.assertNotIn("Python 3.11+", readme)
         self.assertIn("Windows x86-64", readme)
         self.assertIn("Linux x86-64", readme)
         self.assertIn("macOS 与 ARM", readme)
         self.assertIn("requirements.linux.lock", readme)
-        self.assertIn("Python 3.11+", english_readme)
+        self.assertIn("Python 3.12", english_readme)
+        self.assertNotIn("Python 3.11+", english_readme)
         self.assertIn("Windows x86-64", english_readme)
         self.assertIn("Linux x86-64", english_readme)
         self.assertIn("macOS and ARM", english_readme)

@@ -11,6 +11,13 @@ from .anthropic_preflight import run_anthropic_models_preflight
 from .audit import AuditError, AuditLedger
 from .contracts import ResearchDesign
 from .data_quality import CsvValidationError, profile_csv
+from .deepseek_completion_first_live_validation import (
+    DeepSeekFirstLiveValidationError,
+    calculate_deepseek_first_live_authorization_binding,
+    deepseek_first_live_validation_status,
+    run_deepseek_first_live_validation,
+    verify_deepseek_first_live_artifacts,
+)
 from .eval_contracts import EvalContractError
 from .eval_runner import (
     EvaluationRunError,
@@ -154,6 +161,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser(
         "agent-sdk-status", help="检查官方 Agents SDK 和 API Key 是否就绪（不发起网络调用）"
+    )
+    first_live_verify_parser = subparsers.add_parser(
+        "deepseek-completion-first-live-verify",
+        help="离线复核一次 DeepSeek Adapter first-live 脱敏产物",
+    )
+    first_live_verify_parser.add_argument(
+        "--authorization-id-sha256", required=True
+    )
+    first_live_verify_parser.add_argument(
+        "--expected-authorization-binding-sha256", required=True
     )
 
     eval_validate_parser = subparsers.add_parser(
@@ -362,6 +379,68 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("evals/phase6_deepseek_depth60_plan.json"),
     )
+
+    subparsers.add_parser(
+        "deepseek-completion-first-live-validate",
+        help="离线验证 DeepSeek Adapter completion first-live 合同",
+    )
+    first_live_binding_parser = subparsers.add_parser(
+        "deepseek-completion-first-live-bind-authorization",
+        help="离线计算 DeepSeek first-live 一次性授权外部绑定",
+    )
+    first_live_binding_parser.add_argument("--authorization-id", required=True)
+    first_live_binding_parser.add_argument(
+        "--authorization-expires-at-utc", required=True
+    )
+    first_live_binding_parser.add_argument(
+        "--expected-contract-commitment", required=True
+    )
+    first_live_binding_parser.add_argument(
+        "--expected-source-integrity-commitment", required=True
+    )
+    first_live_binding_parser.add_argument(
+        "--expected-execution-commit", required=True
+    )
+    first_live_binding_parser.add_argument("--pricing-snapshot-date", required=True)
+    first_live_binding_parser.add_argument("--pricing-source-url", required=True)
+    first_live_binding_parser.add_argument(
+        "--input-price-per-million-cny", required=True
+    )
+    first_live_binding_parser.add_argument(
+        "--output-price-per-million-cny", required=True
+    )
+    first_live_parser = subparsers.add_parser(
+        "deepseek-completion-first-live-run",
+        help="使用固定两场景和单次授权运行 DeepSeek Adapter first-live validation",
+    )
+    first_live_parser.add_argument("--authorization-id", required=True)
+    first_live_parser.add_argument(
+        "--authorization-expires-at-utc", required=True
+    )
+    first_live_parser.add_argument(
+        "--expected-contract-commitment",
+        required=True,
+    )
+    first_live_parser.add_argument(
+        "--expected-source-integrity-commitment", required=True
+    )
+    first_live_parser.add_argument("--expected-execution-commit", required=True)
+    first_live_parser.add_argument(
+        "--expected-authorization-binding-sha256", required=True
+    )
+    first_live_parser.add_argument("--pricing-snapshot-date", required=True)
+    first_live_parser.add_argument("--pricing-source-url", required=True)
+    first_live_parser.add_argument(
+        "--input-price-per-million-cny", required=True
+    )
+    first_live_parser.add_argument(
+        "--output-price-per-million-cny", required=True
+    )
+    first_live_parser.add_argument("--accept-locked-caps", action="store_true")
+    first_live_parser.add_argument(
+        "--attest-pricing-current", action="store_true"
+    )
+    first_live_parser.add_argument("--confirm-online", action="store_true")
 
     eval_v2_validate_parser = subparsers.add_parser(
         "eval-v2-validate",
@@ -926,6 +1005,82 @@ def main() -> int:
             result.pop("plan", None)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
+        elif args.command == "deepseek-completion-first-live-validate":
+            project_root = Path(__file__).resolve().parents[2]
+            result = deepseek_first_live_validation_status(project_root)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "deepseek-completion-first-live-bind-authorization":
+            project_root = Path(__file__).resolve().parents[2]
+            result = calculate_deepseek_first_live_authorization_binding(
+                project_root=project_root,
+                authorization_id=args.authorization_id,
+                authorization_expires_at_utc=args.authorization_expires_at_utc,
+                expected_contract_commitment_sha256=(
+                    args.expected_contract_commitment
+                ),
+                expected_source_integrity_commitment_sha256=(
+                    args.expected_source_integrity_commitment
+                ),
+                expected_execution_commit=args.expected_execution_commit,
+                pricing_snapshot_date=args.pricing_snapshot_date,
+                pricing_source_url=args.pricing_source_url,
+                input_price_per_million_cny=(
+                    args.input_price_per_million_cny
+                ),
+                output_price_per_million_cny=(
+                    args.output_price_per_million_cny
+                ),
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "deepseek-completion-first-live-verify":
+            project_root = Path(__file__).resolve().parents[2]
+            result = verify_deepseek_first_live_artifacts(
+                project_root,
+                args.authorization_id_sha256,
+                expected_authorization_binding_sha256=(
+                    args.expected_authorization_binding_sha256
+                ),
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.command == "deepseek-completion-first-live-run":
+            project_root = Path(__file__).resolve().parents[2]
+            result = asyncio.run(
+                run_deepseek_first_live_validation(
+                    project_root=project_root,
+                    authorization_id=args.authorization_id,
+                    authorization_expires_at_utc=(
+                        args.authorization_expires_at_utc
+                    ),
+                    expected_contract_commitment_sha256=(
+                        args.expected_contract_commitment
+                    ),
+                    expected_source_integrity_commitment_sha256=(
+                        args.expected_source_integrity_commitment
+                    ),
+                    expected_execution_commit=args.expected_execution_commit,
+                    expected_authorization_binding_sha256=(
+                        args.expected_authorization_binding_sha256
+                    ),
+                    pricing_snapshot_date=args.pricing_snapshot_date,
+                    pricing_source_url=args.pricing_source_url,
+                    input_price_per_million_cny=(
+                        args.input_price_per_million_cny
+                    ),
+                    output_price_per_million_cny=(
+                        args.output_price_per_million_cny
+                    ),
+                    confirm_online=args.confirm_online,
+                    accept_locked_caps=args.accept_locked_caps,
+                    attest_pricing_current=args.attest_pricing_current,
+                )
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["status"] == "success" else (
+                4 if result["status"] == "not_run" else 5
+            )
         elif args.command == "eval-v2-validate":
             result = validate_eval_v2_suite(
                 campaign_path=args.campaign,
@@ -1117,6 +1272,9 @@ def main() -> int:
             return 0
         else:
             return 2
+    except DeepSeekFirstLiveValidationError as exc:
+        print(json.dumps(exc.to_dict(), ensure_ascii=False, indent=2))
+        return 4 if exc.not_run else 5
     except (
         ToolRuntimeError,
         OpenAIAgentIntegrationError,

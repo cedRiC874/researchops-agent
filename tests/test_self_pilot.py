@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import researchops.cli as cli_module
+import researchops.eval_v2_provider_executor as provider_executor_module
 from researchops.eval_v2_contracts import EvalV2ContractError
 from researchops.model_providers import ProviderModel
 from researchops.self_pilot import (
@@ -32,6 +33,21 @@ DATASET_IDS = (
     "uci_parkinsons_telemonitoring_189",
     "uci_heart_disease_cleveland_45",
 )
+
+
+class _TestOfflineEvalV2Runner:
+    def __init__(self, runner):
+        self.runner = runner
+
+
+def _offline_runner(runner):
+    return _TestOfflineEvalV2Runner(runner)
+
+
+def _resolve_test_sdk_runner(runner):
+    if type(runner) is _TestOfflineEvalV2Runner:
+        return runner.runner, True
+    return runner, False
 
 
 class FakeProvider:
@@ -104,6 +120,12 @@ class SelfPilotTests(unittest.TestCase):
         )
 
     def setUp(self) -> None:
+        resolver = patch(
+            "researchops.eval_v2_provider_executor._resolve_eval_v2_sdk_runner",
+            side_effect=_resolve_test_sdk_runner,
+        )
+        resolver.start()
+        self.addCleanup(resolver.stop)
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
         self.root = Path(self.temporary_directory.name)
@@ -288,7 +310,7 @@ class SelfPilotTests(unittest.TestCase):
             api_key="test-key",
             task_id=task_id,
             confirm_online=True,
-            sdk_runner=runner,
+            sdk_runner=_offline_runner(runner),
         )
 
         self.assertEqual(run_result["status"], "ran")
@@ -338,7 +360,7 @@ class SelfPilotTests(unittest.TestCase):
                 api_key="test-key",
                 task_id=task_id,
                 confirm_online=True,
-                sdk_runner=FakeRunner(),
+                sdk_runner=_offline_runner(FakeRunner()),
             )
         self.assertEqual(rerun.exception.code, "self_pilot_task_already_run")
 
@@ -359,7 +381,9 @@ class SelfPilotTests(unittest.TestCase):
             api_key="test-key",
             task_id=task_id,
             confirm_online=True,
-            sdk_runner=FakeRunner(r"unsafe C:\secret\data.csv sk-secret"),
+            sdk_runner=_offline_runner(
+                FakeRunner(r"unsafe C:\secret\data.csv sk-secret")
+            ),
         )
 
         self.assertTrue(result["output_redacted"])

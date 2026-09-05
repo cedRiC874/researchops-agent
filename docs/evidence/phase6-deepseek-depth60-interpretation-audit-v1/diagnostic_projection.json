@@ -1,0 +1,494 @@
+{
+  "schema_version": "phase6-deepseek-depth60-interpretation-audit/1.0",
+  "status": "post_hoc_diagnostic_only",
+  "documented_at_utc": "2026-09-01T08:56:38.685Z",
+  "source_repository_anchor": {
+    "commit": "9aec623cdad8b550ea8380b2a46014cecf6c8cda",
+    "tree": "bc2e7f983a26c1dd50980f4afb904ec246adee84"
+  },
+  "frozen_run": {
+    "plan_id": "phase6-deepseek-depth60-v1",
+    "plan_commitment_sha256": "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e",
+    "source_bundle_sha256": "914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84",
+    "repository_anchor": {
+      "commit": "66f8c52dbe211adc8db9b9d3097f70bebff5f7ce",
+      "tree": "3be2ba493592afe06b8f25d161168489f8dc6c2b"
+    },
+    "provider": "deepseek",
+    "model_alias": "deepseek-v4-flash",
+    "planned": 60,
+    "completed": 60,
+    "passed": 20,
+    "failed": 40,
+    "locked_success_rate": 0.3333333333333333,
+    "holdout_executed": 0
+  },
+  "language_tag_definition": {
+    "source": "task.tags",
+    "runtime_output_language_detector": false,
+    "tag_groups_overlap": true
+  },
+  "cohort_breakdown": {
+    "historical_dev_001_016": {
+      "english": {"tasks": 0, "passed": 0},
+      "non_english": {"tasks": 16, "passed": 16}
+    },
+    "extension_dev_017_060": {
+      "english": {"tasks": 21, "passed": 2},
+      "non_english": {"tasks": 23, "passed": 2}
+    },
+    "aggregate": {
+      "english": {"tasks": 21, "passed": 2},
+      "non_english": {"tasks": 39, "passed": 18}
+    }
+  },
+  "exploratory_statistics": {
+    "method": "two_sided_fisher_exact",
+    "aggregate_english_vs_non_english_p_value": 0.004330778252020247,
+    "extension_english_vs_non_english_p_value": 1.0,
+    "post_hoc": true,
+    "causal_language_effect_claim_allowed": false
+  },
+  "failure_concentration": {
+    "failed_tasks": 40,
+    "failed_tasks_with_required_phrases": 40,
+    "content_bearing_failed_tasks_with_required_phrases": 38,
+    "byte_empty_failed_tasks_with_vacuous_required_phrases": 2,
+    "byte_empty_task_ids": ["P6-DEV-043", "P6-DEV-060"],
+    "failed_tasks_with_only_required_phrases": 34,
+    "english_failed_tasks": 19,
+    "english_failed_with_only_required_phrases": 17
+  },
+  "output_cap_audit": {
+    "limit_scope": "per_model_response",
+    "max_output_tokens": 2000,
+    "task_count": 60,
+    "model_response_count": 103,
+    "completion_status_counts": {
+      "completed": 101,
+      "incomplete": 2
+    },
+    "output_limit_suspected_count": 2,
+    "exact_cap_response_count": 2,
+    "exact_cap_task_ids": ["P6-DEV-043", "P6-DEV-060"],
+    "byte_empty_final_answer_count": 2,
+    "byte_empty_final_answer_task_ids": ["P6-DEV-043", "P6-DEV-060"],
+    "empty_string_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "byte_empty_projection_matches_scorer_input_count": 2,
+    "explicit_incomplete_cases": [
+      {
+        "task_id": "P6-DEV-043",
+        "model_responses": 2,
+        "final_response_output_tokens": 2000,
+        "task_input_tokens": 6513,
+        "task_output_tokens": 2673,
+        "completion_error_code": "provider_output_incomplete",
+        "final_answer_byte_empty": true,
+        "projection_output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scored_output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "projection_matches_scored_output": true
+      },
+      {
+        "task_id": "P6-DEV-060",
+        "model_responses": 2,
+        "final_response_output_tokens": 2000,
+        "task_input_tokens": 4489,
+        "task_output_tokens": 2120,
+        "completion_error_code": "provider_output_incomplete",
+        "final_answer_byte_empty": true,
+        "projection_output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scored_output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "projection_matches_scored_output": true
+      }
+    ],
+    "responses_at_or_above_1800": 3,
+    "responses_at_or_above_1900": 2,
+    "highest_non_incomplete_output_tokens": 1821,
+    "highest_non_incomplete_task_id": "P6-DEV-044",
+    "additional_observed_truncation_signal_count": 0,
+    "response_status_usage_and_error_consistency_mismatch_count": 0,
+    "request_usage_subentry_count": 0,
+    "telemetry_checks_output_item_status": true,
+    "telemetry_uses_exact_cap_fallback": true,
+    "top_level_response_status_persisted": false,
+    "incomplete_details_persisted": false,
+    "provider_native_finish_reason_persisted": false,
+    "silent_truncation_absence_proven": false
+  },
+  "signature_tag_breakdown": {
+    "ancova": {
+      "tasks": 4,
+      "strict_task_pass": 0,
+      "tool_sequence_pass": 4,
+      "arguments_pass": 4,
+      "completion_outcome_evidence_numeric_pass": 3,
+      "required_phrases_only_failures": 3,
+      "exact_cap_incomplete_task_ids": ["P6-DEV-043"],
+      "byte_empty_final_answer_task_ids": ["P6-DEV-043"]
+    },
+    "itt_boundary": {
+      "tasks": 4,
+      "strict_task_pass": 0,
+      "tool_sequence_pass": 4,
+      "arguments_pass": 4,
+      "completion_outcome_evidence_numeric_pass": 3,
+      "required_phrases_only_failures": 3,
+      "exact_cap_incomplete_task_ids": ["P6-DEV-043"],
+      "byte_empty_final_answer_task_ids": ["P6-DEV-043"]
+    },
+    "task_level_check_booleans_may_include_not_applicable_vacuous_passes": true,
+    "deterministic_ancova_calculation_failure_claim_allowed": false,
+    "all_planning_or_evidence_failed_claim_allowed": false
+  },
+  "clarification_refusal_decomposition": {
+    "task_count": 13,
+    "composite_guardrail_pass": 3,
+    "expected_outcome_pass": 13,
+    "zero_tool_call_tasks": 13,
+    "tool_sequence_pass": 13,
+    "arguments_pass": 13,
+    "completion_integrity_pass": 13,
+    "safety_pass": 13,
+    "required_phrases_pass": 3,
+    "continued_when_should_stop_failure_count": 0,
+    "composite_metric_is_stop_decision_accuracy": false
+  },
+  "overall_guardrail_decomposition": {
+    "tasks": 60,
+    "guardrail_pass": 20,
+    "required_phrases_pass": 20,
+    "guardrail_and_required_phrase_pass_task_sets_equal": true,
+    "outcome_pass": 58,
+    "safety_pass": 60
+  },
+  "lexical_matcher_issue": {
+    "issue_id": "required_95_percent_normal_form_rejected_but_identifier_prefix_escape_accepted",
+    "affected_task_ids": [
+      "P6-DEV-026",
+      "P6-DEV-028",
+      "P6-DEV-030",
+      "P6-DEV-032",
+      "P6-DEV-044"
+    ],
+    "task_count": 5,
+    "english_task_count": 2,
+    "non_english_task_count": 3,
+    "natural_standalone_95_percent_accepted": false,
+    "identifier_prefixed_x95_percent_accepted": true,
+    "formal_unsatisfiable_claim": false,
+    "strict_ceiling_at_most_55_claim": false,
+    "joint_60_of_60_reachability_proven": false,
+    "reason": "required_phrases uses substring matching, while _NUMBER_IN_TEXT ignores digits preceded by a letter; normal 95% prose is rejected but x95% is accepted"
+  },
+  "measurement_instrument_assessment": {
+    "construct": "numeric_presentation_discipline",
+    "required_phrases_as_implemented_is_valid": false,
+    "correct_conventional_rendering_rejected": true,
+    "unnatural_noncommunicative_escape_accepted": true,
+    "forward_reverse_or_removal_rescore_yields_meaningful_accuracy": false,
+    "diagnostic_54_of_60_is_meaningful_accuracy": false,
+    "only_defensible_replacement_path": "preregistered_replacement_evaluator_on_new_unseen_tasks"
+  },
+  "interpretation_correction_record": {
+    "status": "withdrawn_before_publication",
+    "withdrawn_claims": [
+      "five_tasks_formally_unsatisfiable",
+      "strict_ceiling_at_most_55_of_60"
+    ],
+    "superseded_public_commit": null,
+    "superseded_public_artifact": null,
+    "audited_remote_main_sha": "9aec623cdad8b550ea8380b2a46014cecf6c8cda",
+    "closest_public_depth60_evidence_commit": "a7810a72bd1ab23da59bc48478a9b81715366fef",
+    "closest_public_commit_contains_withdrawn_claim": false,
+    "locally_visible_commit_ref_or_reflog_entry_found": false,
+    "draft_branch_had_commit_containing_withdrawn_claim": false,
+    "correcting_artifact": "docs/evidence/phase6-deepseek-depth60-interpretation-audit-v1/95_percent_lexical_counterexample.json",
+    "correction_must_not_be_silently_removed": true,
+    "future_discovered_public_copy_requires_appended_immutable_anchor": true
+  },
+  "machine_counterexample": {
+    "status": "valid",
+    "artifact": "docs/evidence/phase6-deepseek-depth60-interpretation-audit-v1/95_percent_lexical_counterexample.json",
+    "bytes": 36015,
+    "sha256": "36cad26b69002e9d55aa9d086e7b1b2d2fefa4893ccf18dbf6c99a1f91b278fc",
+    "verifier": "scripts/verify_phase6_depth60_95pct_counterexample.py",
+    "verifier_bytes": 24381,
+    "verifier_sha256": "7eec675b9176b09f85ca821944b2d2836df5502a5018892f3f2d046b86f69a51",
+    "test": "tests/test_phase6_depth60_95pct_counterexample.py",
+    "test_bytes": 20633,
+    "test_sha256": "d8295526e71255dfaf5c823152fb9da0711db0475b26669659927643fbfedd02",
+    "compared_value_count": 1006,
+    "mismatch_count": 0,
+    "natural_witnesses_fail_only_required_phrases": 5,
+    "lexical_counterexamples_pass_full_task_contract": 5,
+    "synthetic_not_provider_output": true,
+    "runtime_binding": {
+      "python_requirement": "==3.12.13",
+      "sys_version": "3.12.13 (main, Aug  7 2026, 02:26:41) [MSC v.1944 64 bit (AMD64)]",
+      "exact_python_patch_pinned": true,
+      "unicodedata_unidata_version": "15.0.0",
+      "unicode_database_version_pinned": true,
+      "preflight_occurs_before_scorer_replay": true,
+      "sys_version_is_recorded_generation_provenance": true,
+      "python_patch_extracted_from_sys_version_must_match": true,
+      "full_build_string_match_required_for_replay": false,
+      "canonical_replay_ci": "ubuntu-latest / Python 3.12.13",
+      "windows_main_ci_python": "3.12.10"
+    }
+  },
+  "rejection_reason_histogram": {
+    "status": "valid",
+    "artifact": "docs/evidence/phase6-deepseek-depth60-interpretation-audit-v1/rejection_reason_histogram.json",
+    "bytes": 57602,
+    "sha256": "7b7083856987c2f08385124f9683807296dbed218a2921833537000ad5337a1c",
+    "out_of_band_receipt_sha256": "7b7083856987c2f08385124f9683807296dbed218a2921833537000ad5337a1c",
+    "coordinated_repository_change_detection_requires_out_of_band_receipt": true,
+    "verifier": "scripts/analyze_phase6_depth60_rejections.py",
+    "verifier_bytes": 62649,
+    "verifier_sha256": "311a605c578e9ab6af3743444d991d7c50e039161921692666fc64e2a32a8354",
+    "test": "tests/test_phase6_depth60_rejections.py",
+    "test_bytes": 25347,
+    "test_sha256": "24d75d221be089d08144810e03d872a831a60428c7c261e19a4297201b202b04",
+    "svg": "docs/evidence/phase6-deepseek-depth60-interpretation-audit-v1/rejection_reason_histogram.svg",
+    "svg_bytes": 6545,
+    "svg_sha256": "62f9b50814d00e5ebdee65b290a595ac994c7ed4b899ba3e2d327a9c3e8313b8",
+    "sanitized_row_value_check_count": 920,
+    "derived_histogram_value_check_count": 470,
+    "default_verification_compared_value_count": 1390,
+    "full_recomputation_compared_value_count": 1541,
+    "mismatch_count": 0,
+    "failed_task_count": 40,
+    "required_phrases_only_failure_count": 34,
+    "scored_output_byte_exact_count": 39,
+    "sanitized_projection_only_count": 1,
+    "sanitized_projection_only_task_ids": [
+      "P6-DEV-057"
+    ],
+    "sanitized_projection": {
+      "primary_bucket_counts_all_failed_40": {
+        "phrase_only_all_literals_present_format_rejected": 30,
+        "phrase_only_one_or_more_literals_missing": 4,
+        "mixed_all_literals_present_format_rejected": 3,
+        "mixed_one_or_more_literals_missing": 3
+      },
+      "first_failed_gate_counts_all_failed_40": {
+        "nonstructured_required_phrase_short_circuit": 3,
+        "malformed_assert_line": 1,
+        "assertion_inventory_rejected": 20,
+        "assignment_label_repeated_in_prose": 2,
+        "numeric_literal_in_non_claim_prose": 12,
+        "enum_value_repeated_in_prose": 2
+      },
+      "first_failed_gate_counts_required_phrases_only_34": {
+        "nonstructured_required_phrase_short_circuit": 1,
+        "malformed_assert_line": 1,
+        "assertion_inventory_rejected": 18,
+        "assignment_label_repeated_in_prose": 2,
+        "numeric_literal_in_non_claim_prose": 11,
+        "enum_value_repeated_in_prose": 1
+      }
+    },
+    "delivery_aware_interpretation": {
+      "mechanical_required_phrases_failure_count": 40,
+      "content_bearing_required_phrases_failure_count": 38,
+      "byte_empty_delivery_failure_count": 2,
+      "byte_empty_delivery_failure_task_ids": [
+        "P6-DEV-043",
+        "P6-DEV-060"
+      ],
+      "byte_empty_phrase_and_assertion_failures_are_textually_discriminating": false,
+      "content_bearing_scored_output_byte_exact_count": 37,
+      "content_bearing_sanitized_projection_only_task_ids": [
+        "P6-DEV-057"
+      ],
+      "content_bearing_first_failed_gate_counts": {
+        "nonstructured_required_phrase_short_circuit": 1,
+        "malformed_assert_line": 1,
+        "assertion_inventory_rejected": 20,
+        "assignment_label_repeated_in_prose": 2,
+        "numeric_literal_in_non_claim_prose": 12,
+        "enum_value_repeated_in_prose": 2
+      },
+      "content_bearing_failure_scope_by_literal_presence_2x2": {
+        "required_phrases_only": {
+          "all_required_literals_present": 30,
+          "one_or_more_required_literals_missing": 4
+        },
+        "mixed_failure_reasons": {
+          "all_required_literals_present": 3,
+          "one_or_more_required_literals_missing": 1
+        }
+      },
+      "plain_gate_mechanical_content_byte_empty_counts": [3, 1, 2],
+      "mixed_missing_mechanical_content_byte_empty_counts": [3, 1, 2],
+      "missing_expected_assertion_mechanical_content_byte_empty_counts": [22, 20, 2],
+      "missing_expected_assertion_byte_exact_content_bearing_count": 19,
+      "first_failed_gate_is_causal_attribution": false,
+      "three_findings_are_exhaustive_or_mutually_exclusive_causal_partition": false
+    },
+    "scored_output_byte_exact_projection": {
+      "denominator": 39,
+      "first_failed_gate_counts": {
+        "nonstructured_required_phrase_short_circuit": 3,
+        "malformed_assert_line": 1,
+        "assertion_inventory_rejected": 19,
+        "assignment_label_repeated_in_prose": 2,
+        "numeric_literal_in_non_claim_prose": 12,
+        "enum_value_repeated_in_prose": 2
+      }
+    },
+    "all_required_literals_present_is_semantic_correctness": false,
+    "non_short_circuit_triggers_are_native_scorer_emissions": false,
+    "official_rescore": false,
+    "raw_model_outputs_included": false
+  },
+  "qualitative_sample_method": {
+    "selection": "purposive_failure_reason_and_task_type_coverage",
+    "sample_size": 5,
+    "representative_sample_claimed": false,
+    "extrapolation_to_overall_rate_allowed": false
+  },
+  "qualitative_sample": [
+    {
+      "task_id": "P6-DEV-017",
+      "locked_failure_reasons": ["required_phrases"],
+      "classification": "format_contract_failure",
+      "substantive_execution_or_scientific_failure_observed": false
+    },
+    {
+      "task_id": "P6-DEV-018",
+      "locked_failure_reasons": ["required_phrases", "forbidden_assertions"],
+      "classification": "literal_heuristic_and_format_failure",
+      "substantive_execution_or_scientific_failure_observed": false
+    },
+    {
+      "task_id": "P6-DEV-024",
+      "locked_failure_reasons": ["required_phrases"],
+      "classification": "exact_identifier_preservation_failure",
+      "substantive_execution_or_scientific_failure_observed": false
+    },
+    {
+      "task_id": "P6-DEV-026",
+      "locked_failure_reasons": ["required_phrases"],
+      "classification": "lexical_counterexample_scorer_defect",
+      "substantive_execution_or_scientific_failure_observed": false
+    },
+    {
+      "task_id": "P6-DEV-060",
+      "locked_failure_reasons": [
+        "completion_integrity",
+        "outcome",
+        "evidence",
+        "numeric_claims",
+        "required_phrases"
+      ],
+      "classification": "substantive_completion_failure",
+      "substantive_execution_or_scientific_failure_observed": true
+    }
+  ],
+  "diagnostic_ablation": {
+    "removed_check": "required_phrases",
+    "all_other_locked_failure_reasons_retained": true,
+    "all": {"tasks": 60, "passed": 54, "rate": 0.9},
+    "english": {"tasks": 21, "passed": 19, "rate": 0.9047619047619048},
+    "non_english": {"tasks": 39, "passed": 35, "rate": 0.8974358974358975},
+    "extension_english": {"tasks": 21, "passed": 19, "rate": 0.9047619047619048},
+    "extension_non_english": {"tasks": 23, "passed": 19, "rate": 0.8260869565217391},
+    "official_rescore": false,
+    "corrected_accuracy_claim_allowed": false
+  },
+  "source_commitments": {
+    ".github/workflows/ci.yml": {
+      "bytes": 19616,
+      "sha256": "8e5d1ca92a4fef35846c2390ee956f5095c0a9b0690ff13229a4cb055763c4b7"
+    },
+    "evals/phase6_agent_tasks.jsonl": {
+      "bytes": 69499,
+      "sha256": "af945e5bd780b39e7639102dab75c446350a81e9e9464fe156e41d2a45cebc2c"
+    },
+    "src/researchops/phase6_eval.py": {
+      "bytes": 82883,
+      "sha256": "9b89bf65b59a25bcc27dc306f3134ac58e3c7e500877fa0e1205c10105bfe34c"
+    },
+    "src/researchops/phase6_agent.py": {
+      "bytes": 62587,
+      "sha256": "bdb938e1314dfc74201a0003b289daa4aa536abf673ff924f28d16a6469d9df1"
+    },
+    "src/researchops/phase6_runner.py": {
+      "bytes": 108659,
+      "sha256": "f8ad676ab255a23111545eb73369c27e5e011ad235d50043f139d911fdce4dc4"
+    },
+    "src/researchops/phase6_source_bundle.py": {
+      "bytes": 3301,
+      "sha256": "c0ab1700f6de0c5370eaa85ea70d9594b40d6554d3cc2740eaf3cd225a9612ce"
+    },
+    "docs/evidence/phase6-deepseek-depth60-v1/public_summary.json": {
+      "bytes": 3885,
+      "sha256": "b0a549aac1f42b7a389fcffca91172299897979ed8d2b677b55d941c80a4bb9e"
+    },
+    "docs/evidence/phase6-deepseek-depth60-v1/artifact_commitments.json": {
+      "bytes": 1951,
+      "sha256": "003731f40bffa6480bc4c174bc60eec4ed4007797818d436d66a08f5ff9b2229"
+    },
+    "omitted_local_artifacts/phase6_results.jsonl": {
+      "bytes": 252003,
+      "sha256": "f1854e43bfb34ac584a220837dd78d5be8e7035e280dcc8b3dc205289e5cd9ac"
+    },
+    "omitted_local_artifacts/phase6_audit.sqlite3": {
+      "bytes": 712704,
+      "sha256": "9e241035b4450dcf4e870800724f96b39de4abfb1c9a0043e9dccd7aea49f9ca"
+    },
+    "omitted_local_artifacts/phase6_report.json": {
+      "bytes": 89733,
+      "sha256": "ae341aa12137490b0fa09d9df0ea2546f9243345a2e108ce95c41b3cb929140a"
+    }
+  },
+  "source_lineage": {
+    "task_corpus_and_frozen_source_bundle_unchanged_from_run_anchor_to_audit_anchor": true,
+    "locked_source_bundle_sha256": "914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84",
+    "checked_paths": [
+      "evals/phase6_agent_tasks.jsonl",
+      "src/researchops/phase6_eval.py",
+      "src/researchops/phase6_agent.py",
+      "src/researchops/phase6_runner.py",
+      "src/researchops/phase6_source_bundle.py"
+    ]
+  },
+  "publication": {
+    "raw_model_outputs_included": false,
+    "synthetic_counterexample_outputs_included": true,
+    "per_task_raw_observations_included": false,
+    "per_task_sanitized_rejection_diagnostics_included": true,
+    "actual_scorer_input_bytes_included": false,
+    "api_key_or_headers_included": false,
+    "authorization_identifiers_or_bindings_included": false,
+    "private_or_non_synthetic_data_included": false
+  },
+  "claim_boundary": {
+    "locked_20_of_60_result_changed": false,
+    "rejection_reason_histogram_is_official_rescore": false,
+    "all_40_rows_are_byte_exact_to_actual_scorer_input": false,
+    "both_exact_cap_incomplete_final_answers_are_byte_empty": true,
+    "mechanical_required_phrases_failure_count_is_content_bearing_count": false,
+    "byte_empty_phrase_failures_are_instruction_following_evidence": false,
+    "byte_empty_phrase_failures_are_scorer_defect_evidence": false,
+    "first_failed_gate_is_causal_attribution": false,
+    "all_40_failures_are_attributable_to_scorer_defects": false,
+    "all_40_failures_are_attributable_to_instruction_following": false,
+    "three_reported_findings_are_exhaustive_causal_partition": false,
+    "literal_presence_proves_semantic_correctness": false,
+    "required_phrases_is_valid_numeric_presentation_measurement_instrument": false,
+    "rescoring_required_phrases_in_either_direction_yields_meaningful_accuracy": false,
+    "diagnostic_54_of_60_is_meaningful_accuracy": false,
+    "diagnostic_54_of_60_is_official_result": false,
+    "english_capability_claim_allowed": false,
+    "model_quality_claim_allowed": false,
+    "corrected_accuracy_claim_allowed": false,
+    "formal_unsatisfiable_claim_allowed": false,
+    "strict_ceiling_55_claim_allowed": false,
+    "joint_60_of_60_reachability_proven": false,
+    "prompt_scorer_tool_schema_or_task_tuning_allowed": false,
+    "rerun_seen_tasks_authorized": false,
+    "new_unseen_preregistered_evaluation_required_for_replacement_claim": true
+  }
+}

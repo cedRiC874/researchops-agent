@@ -1,0 +1,52 @@
+{
+  "fixture_schema_version": "provider-completion-fixture/2.0",
+  "fixture_id": "deepseek_responses_missing_fields_20260903",
+  "provider_id": "deepseek",
+  "api_surface": "responses",
+  "scenario": "missing_fields",
+  "provenance": {
+    "source_tier": "live_capture",
+    "fixture_kind": "synthetic_mutation",
+    "unverified_shape": true,
+    "live_validation": "synthetic_mutation_from_validated_base",
+    "source_receipt_sha256": "cb3417b0f3c56eca7fd6d05dda68c4717315004ba0d6e5d6da408d52d990131d",
+    "base_fixture_id": "deepseek_responses_completed_20260903"
+  },
+  "derivation": {
+    "kind": "synthetic_mutation",
+    "base_fixture_id": "deepseek_responses_completed_20260903",
+    "operations": [
+      {
+        "op": "remove",
+        "path": "/response_projection/status"
+      },
+      {
+        "op": "remove",
+        "path": "/response_projection/incomplete_details"
+      }
+    ]
+  },
+  "response_projection": {
+    "usage": {
+      "input_tokens": 90,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 9,
+      "output_tokens_details": {
+        "reasoning_tokens": 7
+      },
+      "total_tokens": 99
+    },
+    "provider_request_id_sha256": null,
+    "http_status": 200
+  },
+  "capture_boundary": {
+    "evaluation_task": false,
+    "run_ledger_written": false,
+    "raw_response_persisted": false,
+    "content_omitted": true,
+    "api_key_persisted": false,
+    "model_quality_claim_allowed": false
+  }
+}

@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.12.13"
           cache: pip
           cache-dependency-path: requirements.linux.lock
 
@@ -60,7 +60,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.12.10"
           cache: pip
           cache-dependency-path: requirements.lock
 
@@ -101,6 +101,106 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m researchops.cli phase6-status
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $historicalDepth60Path = "evals/phase6_deepseek_depth60_plan.json"
+          $historicalDepth60Bytes = (Get-Item $historicalDepth60Path).Length
+          $historicalDepth60Sha = (Get-FileHash `
+            -Algorithm SHA256 $historicalDepth60Path).Hash.ToLowerInvariant()
+          if ($historicalDepth60Bytes -ne 5398 -or
+              $historicalDepth60Sha -ne "f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20") {
+            Write-Output "::error title=historical_depth60_plan_drift::Historical Depth-60 plan bytes must remain unchanged."
+            exit 1
+          }
+          $historicalDepth60V2Path = "evals/phase6_deepseek_depth60_plan_v2.json"
+          $historicalDepth60V2Bytes = (Get-Item $historicalDepth60V2Path).Length
+          $historicalDepth60V2Sha = (Get-FileHash `
+            -Algorithm SHA256 $historicalDepth60V2Path).Hash.ToLowerInvariant()
+          if ($historicalDepth60V2Bytes -ne 2170 -or
+              $historicalDepth60V2Sha -ne "fc4ca5cc2131efb36d82f1d739f65ad2a026e1c7534f0da9c873942a40c1002f") {
+            Write-Output "::error title=historical_depth60_v2_plan_drift::Historical Depth-60 v2 plan bytes must remain unchanged."
+            exit 1
+          }
+          $depth60V3Path = "evals/phase6_deepseek_depth60_plan_v3.json"
+          $depth60V3Bytes = (Get-Item $depth60V3Path).Length
+          $depth60V3Sha = (Get-FileHash `
+            -Algorithm SHA256 $depth60V3Path).Hash.ToLowerInvariant()
+          if ($depth60V3Bytes -ne 2850 -or
+              $depth60V3Sha -ne "5602f940a8627b9c785a1b785d757119a616050ebbc2e31e9dd26aacf448c05e") {
+            Write-Output "::error title=depth60_v3_plan_drift::Depth-60 v3 plan bytes must remain unchanged."
+            exit 1
+          }
+          $depth60V3 = Get-Content -Raw $depth60V3Path | ConvertFrom-Json
+          if ($depth60V3.plan_id -ne "phase6-deepseek-depth60-v3" -or
+              $depth60V3.plan_commitment_sha256 -ne "979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af" -or
+              $depth60V3.authorization_boundary.online_execution_authorized -ne $false) {
+            Write-Output "::error title=depth60_v3_history_invalid::Depth-60 v3 historical identity or boundary drifted."
+            exit 1
+          }
+          $depth60V4Path = "evals/phase6_deepseek_depth60_plan_v4.json"
+          $depth60V4Bytes = (Get-Item $depth60V4Path).Length
+          $depth60V4Sha = (Get-FileHash `
+            -Algorithm SHA256 $depth60V4Path).Hash.ToLowerInvariant()
+          if ($depth60V4Bytes -ne 3087 -or
+              $depth60V4Sha -ne "ae961e069afa9c842c294f7fb6951e0cf3a4ad86dfcdd16cb96a2c264c232956") {
+            Write-Output "::error title=depth60_v4_plan_drift::Depth-60 v4 plan bytes must remain unchanged."
+            exit 1
+          }
+          $depth60V4 = Get-Content -Raw $depth60V4Path | ConvertFrom-Json
+          if ($depth60V4.plan_id -ne "phase6-deepseek-depth60-v4" -or
+              $depth60V4.plan_commitment_sha256 -ne "c36dc0dd0487aa350dc2bd636b45bb494381e0c732c80be7b410be4b9beda612" -or
+              $depth60V4.authorization_boundary.online_execution_authorized -ne $false) {
+            Write-Output "::error title=depth60_v4_history_invalid::Depth-60 v4 historical identity or boundary drifted."
+            exit 1
+          }
+          $depth60V5Path = "evals/phase6_deepseek_depth60_plan_v5.json"
+          $depth60V5Bytes = (Get-Item $depth60V5Path).Length
+          $depth60V5Sha = (Get-FileHash `
+            -Algorithm SHA256 $depth60V5Path).Hash.ToLowerInvariant()
+          if ($depth60V5Bytes -ne 3120 -or
+              $depth60V5Sha -ne "ff39dd5a1aa09b7bc92b27f9d800b5d51fbd2fd69c2a599b5bf0f25aed490aae") {
+            Write-Output "::error title=depth60_v5_plan_drift::Depth-60 v5 plan bytes must remain unchanged."
+            exit 1
+          }
+          $depth60Raw = (& python -m researchops.cli `
+            phase6-validate-deepseek-depth60 `
+            --plan $depth60V5Path | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $depth60 = $depth60Raw | ConvertFrom-Json
+          if ($depth60.status -ne "valid" -or
+              $depth60.plan_commitment_sha256 -ne "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7" -or
+              $depth60.source_bundle_algorithm -ne "v2" -or
+              $depth60.supersedes_plan_id -ne "phase6-deepseek-depth60-v4" -or
+              $depth60.online_execution_authorized -ne $false -or
+              $depth60.network_calls -ne 0 -or
+              $depth60.model_calls -ne 0) {
+            Write-Output "::error title=depth60_v5_contract_invalid::Depth-60 v5 must remain valid, offline and non-executable."
+            exit 1
+          }
+          $depth60ComponentsRaw = (& python -c "import json; from researchops.phase6_depth60 import validate_phase6_depth60_plan; r=validate_phase6_depth60_plan('.', 'evals/phase6_deepseek_depth60_plan_v5.json'); print(json.dumps(r['plan']['component_hashes']))" | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $depth60Components = $depth60ComponentsRaw | ConvertFrom-Json
+          if ($depth60Components.source_bundle_sha256 -ne "42ad232ad73792453ff6025d836cd3449d27974a633a1a59a019023d676c64a5" -or
+              $depth60Components.completion_telemetry_runtime_bundle_sha256 -ne "606913e5570769e8b5aa430c621c5761d557e747c8b3f82eca67e20540b97acf" -or
+              $depth60Components.completion_telemetry_contract_bundle_sha256 -ne "7c2bcfba1d7f6d2195ec389c7f98e1ef6e2ef400c6d7101292f6bbc77942bc15") {
+            Write-Output "::error title=depth60_v5_component_drift::Depth-60 v5 source or telemetry component drifted."
+            exit 1
+          }
+          $firstLiveRaw = (& python -m researchops.cli `
+            deepseek-completion-first-live-validate | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $firstLive = $firstLiveRaw | ConvertFrom-Json
+          if ($firstLive.status -ne "offline_implemented_requires_fresh_authorization" -or
+              $firstLive.contract_commitment_sha256 -ne "ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc" -or
+              $firstLive.implementation_commitment_sha256 -ne "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10" -or
+              $firstLive.source_integrity_commitment_sha256 -ne "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7" -or
+              $firstLive.authorization_binding_schema_version -ne "deepseek-first-live-authorization-binding/2.0" -or
+              $firstLive.external_authorization_binding_required -ne $true -or
+              $firstLive.online_execution_authorized -ne $false -or
+              $firstLive.network_calls -ne 0 -or
+              $firstLive.model_calls -ne 0 -or
+              $firstLive.provider_key_loaded -ne $false) {
+            Write-Output "::error title=deepseek_first_live_offline_contract_invalid::First-live control plane must remain offline and non-authorizing."
+            exit 1
+          }
           python -m researchops.cli eval-v2-validate
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $historicalV7Raw = (& python -m researchops.cli `
@@ -184,6 +284,20 @@ jobs:
               $kimiPreflight.authorizes_model_run -or
               $kimiPreflight.authorizes_provider_registration) {
             Write-Output "::error title=kimi_preflight_contract_invalid::Unconfirmed Kimi preflight must remain offline and non-authorizing."
+            exit 1
+          }
+          $kimiHandshakeRaw = (& python -m researchops.kimi_k3_handshake_cli `
+            validate | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $kimiHandshake = $kimiHandshakeRaw | ConvertFrom-Json
+          if ($kimiHandshake.status -ne "valid" -or
+              $kimiHandshake.plan_commitment_sha256 -ne "8979dfa8b8826afc6e9e44fadc64ed515b767a421ea122d5ffee5ac40c15e7cd" -or
+              $kimiHandshake.network_attempts -ne 0 -or
+              $kimiHandshake.network_calls -ne 0 -or
+              $kimiHandshake.model_calls -ne 0 -or
+              $kimiHandshake.key_loaded -ne $false -or
+              $kimiHandshake.online_authorized -ne $false) {
+            Write-Output "::error title=kimi_k3_handshake_contract_invalid::Kimi K3 handshake must remain valid, offline and non-authorizing."
             exit 1
           }
           try {
@@ -372,3 +486,31 @@ jobs:
             artifacts/ci_phase5/eval_report.json
             artifacts/ci_phase5/eval_summary.md
             artifacts/ci_phase5/eval_audit_index.json
+
+  depth60-counterexample-runtime-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up canonical counterexample Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+
+      - name: Install platform-compatible locked dependencies
+        run: |
+          grep -v '^pywin32==' requirements.lock > /tmp/researchops-linux.lock
+          python -m pip install -r /tmp/researchops-linux.lock
+          python -m pip check
+
+      - name: Verify current-tree rejection and replay the pinned counterexample
+        env:
+          PYTHONPATH: src
+        run: |
+          # The published artifact binds historical source bytes. The test first
+          # requires the default current-tree verifier to reject source drift,
+          # then replays the frozen derivation under an explicit test-only binding.
+          python -m unittest tests.test_phase6_depth60_95pct_counterexample -v

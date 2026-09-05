@@ -138,8 +138,8 @@ def _require_files(repo_root: Path) -> None:
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         raise DemoError("required demo files are missing: " + ", ".join(missing))
-    if sys.version_info < (3, 11):
-        raise DemoError("Python 3.11 or newer is required")
+    if sys.version_info < (3, 12):
+        raise DemoError("Python 3.12 or newer is required by the locked dependencies")
 
 
 def _offline_environment(repo_root: Path) -> dict[str, str]:
@@ -262,7 +262,7 @@ def run_demo(output_directory: str | None) -> Path:
         arguments=(
             "-c",
             "import sys; print('Python ' + sys.version.split()[0]); "
-            "raise SystemExit(0 if sys.version_info >= (3, 11) else 2)",
+            "raise SystemExit(0 if sys.version_info >= (3, 12) else 2)",
         ),
         repo_root=repo_root,
         environment=environment,

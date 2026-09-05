@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-closure-bundle-manifest-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "campaign_id",
+    "preregistration_envelope_sha256",
+    "preregistration_freeze_entry_sha256",
+    "authorization_grant_sha256",
+    "consumption_receipt_sha256",
+    "closure_evidence_contract_commitment_sha256",
+    "denominator_plan_commitment_sha256",
+    "external_plan_binding_sha256",
+    "audit_database_schema_commitment_sha256",
+    "files",
+    "manifest_self_hash_included",
+    "raw_provider_content_persisted",
+    "task_content_persisted",
+    "api_key_persisted"
+  ],
+  "properties": {
+    "schema_version": {"const": "provider-completion-closure-bundle-manifest/1.0"},
+    "status": {"const": "complete"},
+    "campaign_id": {"type": "string", "pattern": "^PCECAMP-[A-F0-9]{32}$"},
+    "preregistration_envelope_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "preregistration_freeze_entry_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "authorization_grant_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "consumption_receipt_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "closure_evidence_contract_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "denominator_plan_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "external_plan_binding_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "audit_database_schema_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase6_audit.sqlite3",
+        "phase6_audit_index.json",
+        "phase6_completion_telemetry.json"
+      ],
+      "properties": {
+        "phase6_audit.sqlite3": {"$ref": "#/$defs/file_commitment"},
+        "phase6_audit_index.json": {"$ref": "#/$defs/file_commitment"},
+        "phase6_completion_telemetry.json": {"$ref": "#/$defs/file_commitment"}
+      }
+    },
+    "manifest_self_hash_included": {"const": false},
+    "raw_provider_content_persisted": {"const": false},
+    "task_content_persisted": {"const": false},
+    "api_key_persisted": {"const": false}
+  },
+  "$defs": {
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "file_commitment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bytes", "sha256"],
+      "properties": {
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 100000000},
+        "sha256": {"$ref": "#/$defs/nonzero_sha256"}
+      }
+    }
+  }
+}

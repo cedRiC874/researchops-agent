@@ -1,15 +1,16 @@
 # DeepSeek Phase 6 depth-60 runbook
 
-Status: `locked_offline_not_run / requires_fresh_single_use_authorization`.
+Status: `historical_v1_v2_v3_v4_preserved / v5_first_live_control_offline_not_run`.
 
-This run deepens the existing Phase 6 DeepSeek line instead of adding another Provider. It executes
-exactly 60 repository-visible development tasks once, sequentially. The four historical repo-local
-holdout tasks remain byte-for-byte unchanged and are not selected or rerun.
+This historical run deepened the existing Phase 6 DeepSeek line instead of adding another Provider.
+It executed exactly 60 repository-visible development tasks once, sequentially.
+The four historical repo-local holdout tasks remain byte-for-byte unchanged and are not selected or
+rerun.
 
 ## Frozen identity
 
 - Plan: `phase6-deepseek-depth60-v1`
-- Commitment: `012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3`
+- Commitment: `8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e`
 - Provider/model alias: `deepseek / deepseek-v4-flash`
 - Official version observed at lock: `DeepSeek-V4-Flash-0731`
 - Transport: `openai_compatible_responses`
@@ -26,15 +27,60 @@ does not redistribute the third-party response bodies. Those source hashes are m
 capture metadata, not independently recomputable repository evidence; a reviewer must refetch the
 current official pages or verify an externally retained capture before authorizing the run.
 
-Validate locally without reading a Key or making a network request:
+The historical plan and result remain immutable. The current source tree intentionally differs from
+the historical v1 source bundle, so validating that plan against current code now fails closed with
+`phase6_depth60_component_drift`. The committed v2 successor is also preserved byte-for-byte. It now
+correctly reports `phase6_depth60_successor_component_drift` because later telemetry and Adapter
+work changed its bound `researchops` closure.
+
+The v3 successor added two independently domain-separated conservative components:
+
+- every `src/researchops_completion_telemetry/**/*.py` file; and
+- the v1 record contract/schema/mapping plus the verified v2 registry, manifest-driven fixtures,
+  and bound DeepSeek probe receipt.
+
+The frozen v3 plan is preserved byte-for-byte. Later T6-A runtime and contract hardening correctly
+makes it report component drift against the current tree; it must not be regenerated or overwritten.
+The frozen v4 plan is also preserved byte-for-byte. T6-B adds the first-live validation control
+plane and two contract successors, so v4 now correctly reports component drift. The v5 successor
+binds that current tree. Validate v5 without a Key or network request:
 
 ```powershell
 $env:PYTHONPATH = "src"
-.\.venv\Scripts\python.exe -m researchops.cli phase6-validate-deepseek-depth60
+.\.venv\Scripts\python.exe -m researchops.cli phase6-validate-deepseek-depth60 `
+  --plan evals/phase6_deepseek_depth60_plan_v5.json
 ```
 
-Expected terminal fields are `status=valid`, `selected_task_count=60`, `holdout_executed=false`,
-`network_calls=0` and `model_calls=0`.
+The v5 plan validates with `source_bundle_algorithm=v2`,
+`supersedes_plan_id=phase6-deepseek-depth60-v4`, `online_execution_authorized=false`,
+`network_calls=0` and `model_calls=0`. It is a current-tree integrity commitment only; it does not
+revalidate the historical result and cannot be used as a runtime binding. Current-tree integrity is
+limited to the enumerated source closure and component hashes in the successor plan; it is not a
+commitment to every file in the repository.
+
+Preserved v3 identity:
+
+- plan bytes / file SHA-256: `2,850` / `5602f940a8627b9c785a1b785d757119a616050ebbc2e31e9dd26aacf448c05e`;
+- plan commitment: `979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af`;
+- `source_bundle_sha256`: `f5af13c7475f7c152a3cbe2053c7b0f81f6d4b15034e8a58786ab9e7124a19bf`;
+- `completion_telemetry_runtime_bundle_sha256`: `694c948a1d79fd38532304846577a94a4c75ca1410dd97c363df71a4ba944a63`;
+- `completion_telemetry_contract_bundle_sha256`: `c9c54c425932770254b9f460d7ab5120401ba02f6802626fb7399d3333700011`.
+
+Preserved v4 offline-hardening identity:
+
+- plan bytes / file SHA-256: `3,087` / `ae961e069afa9c842c294f7fb6951e0cf3a4ad86dfcdd16cb96a2c264c232956`;
+- plan commitment: `c36dc0dd0487aa350dc2bd636b45bb494381e0c732c80be7b410be4b9beda612`;
+- `source_bundle_sha256`: `4bd5a48be256b124a7c297f5f98ef4bbadd09df07a038067d7aca211e1fc772c`;
+- `completion_telemetry_runtime_bundle_sha256`: `b0e6f0feb3af416ca73f04df9e8c1cc7f10b5c700e2a20c2a3a7c688273f42c2`;
+- `completion_telemetry_contract_bundle_sha256`: `1e4028e3bc9c128391a4a73c6753bb5da5e9d19079cbf1068d9acb64980fa56f`.
+
+Current v5 first-live-control identity:
+
+- plan bytes / file SHA-256: `3,120` / `ff39dd5a1aa09b7bc92b27f9d800b5d51fbd2fd69c2a599b5bf0f25aed490aae`;
+- plan commitment: `8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7`;
+- `source_bundle_sha256`: `42ad232ad73792453ff6025d836cd3449d27974a633a1a59a019023d676c64a5`;
+- `completion_telemetry_runtime_bundle_sha256`: `606913e5570769e8b5aa430c621c5761d557e747c8b3f82eca67e20540b97acf`;
+- `completion_telemetry_contract_bundle_sha256`: `7c2bcfba1d7f6d2195ec389c7f98e1ef6e2ef400c6d7101292f6bbc77942bc15`.
 
 ## Frozen local stops and request bounds
 
@@ -58,11 +104,16 @@ CNY 3/M input and CNY 9/M output. Enforcement is a pre-case reserve plus a post-
 one in-flight Agent case can overshoot the local totals before usage is returned. It is not a strict
 Provider billing hard cap, and the actual Provider bill remains unknown unless separately reconciled.
 
-## Required authorization
+## Historical authorization procedure — not currently executable
 
-The plan does not authorize itself. A fresh user authorization must state:
+The procedure below records how the consumed historical v1 run was authorized. It is not a current
+run instruction: the current tree rejects v1, v2, v3 and v4 for their respective component drift. V5 is
+offline-only and non-executable even when valid, and is explicitly rejected as
+`phase6_depth60_successor_plan_not_executable`. There is currently no executable Depth-60 plan.
 
-- the exact plan commitment above;
+The plan did not authorize itself. At the time, the consumed authorization had to state:
+
+- the historical v1 plan commitment listed under **Frozen identity**;
 - one authorization ID and a UTC expiry at least 90 minutes in the future;
 - permission to use the locally configured `DEEPSEEK_API_KEY` without displaying, persisting or
   logging its value;
@@ -71,13 +122,13 @@ The plan does not authorize itself. A fresh user authorization must state:
 - results cannot tune the same prompt, scorer, tools or task selection;
 - no private, non-synthetic or repo-local holdout execution.
 
-After authorization, the controlled command is:
+At the time of the historical run, the controlled command was:
 
 ```powershell
 $env:PYTHONPATH = "src"
 .\.venv\Scripts\python.exe -m researchops.cli phase6-run-deepseek-depth60-online `
   --output-dir artifacts/phase6_deepseek_depth60/run-01 `
-  --expected-plan-commitment 012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3 `
+  --expected-plan-commitment 8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e `
   --authorization-id <AUTHORIZATION_ID> `
   --authorization-expires-at-utc <YYYY-MM-DDTHH:MM:SSZ> `
   --confirm-online
@@ -87,6 +138,16 @@ The CLI has no Key argument. Plan, exact commitment, authorization, path, compon
 checks precede a Key-presence readiness check; only after the exclusive receipt is created is the
 Key handed to the Provider transport. A second component check occurs inside the runner after
 receipt consumption. Success, failure, timeout or setup error does not authorize a second attempt.
+
+The historical v1 bound Python source is the deterministic transitive local-import closure of the
+Depth-60 CLI, runner, scorer, tool runtime and freeze gates. The v2 successor retains that closure
+model while adding domain separation, package-initializer coverage and fail-closed relative-import
+escape handling. V3 keeps v1/v2 behavior unchanged and adds conservative sibling-package and
+telemetry-contract components, so later edits there cannot escape merely because the v2 AST closure
+only recognizes `researchops.*`. V4 preserves that structure and adds the runtime-hardening
+successor contract to the contract bundle. V5 adds the first-live design and implementation
+contracts and binds the validation-only Adapter control plane. The historical artifact manifest
+reports both its bound v1 bundle hash and the observational full source-tree hash.
 
 The consume receipt is immutable and a separate terminal receipt binds the outcome and final
 report/manifest hashes. This is a local single-worktree control, not a globally immutable external

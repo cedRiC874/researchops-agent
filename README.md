@@ -34,7 +34,7 @@ _30 秒演示结果：输入脱敏 CSV、研究问题和显式研究设计，输
 
 ## Quickstart
 
-严格 frozen-evidence 演示当前支持 Python 3.11+ 的 Windows x86-64 和 Linux x86-64（NumPy/OpenBLAS）。macOS 与 ARM 尚未建立可比较的数值基线，因此不在这一严格演示的支持范围内。
+严格 frozen-evidence 演示当前支持 Python 3.12 的 Windows x86-64 和 Linux x86-64（NumPy/OpenBLAS）；CI 分别固定 Python 3.12.10 与 3.12.13。锁定依赖要求 Python ≥3.12，不能使用 3.11。macOS 与 ARM 尚未建立可比较的数值基线，因此不在这一严格演示的支持范围内。
 
 为避免把跨操作系统的浮点位差异误当成同一证据，canonical ANCOVA identity 分别固定为 Windows x86-64 `E-36034128278C` 与 Linux x86-64 `E-14EBFFCA843E`。
 

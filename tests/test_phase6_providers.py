@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import subprocess
+import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from researchops.model_providers import (
@@ -15,6 +19,13 @@ from researchops.model_providers import (
     provider_transport_status,
 )
 from researchops import model_providers as provider_module
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _anthropic_test_authorization():
+    return object()
 
 
 class _FakeAsyncOpenAI:
@@ -101,6 +112,12 @@ class Phase6ProviderTests(unittest.TestCase):
         _FakeAsyncOpenAI.instances.clear()
         _FakeLitellmModel.instances.clear()
         _FakeAsyncHTTPHandler.instances.clear()
+        authorization = patch(
+            "researchops.model_providers._anthropic_online_transport_authorized",
+            return_value=True,
+        )
+        authorization.start()
+        self.addCleanup(authorization.stop)
 
     def test_get_provider_resolves_only_the_three_supported_providers(self) -> None:
         self.assertEqual(SUPPORTED_PROVIDER_IDS, ("openai", "deepseek", "anthropic"))
@@ -110,6 +127,35 @@ class Phase6ProviderTests(unittest.TestCase):
         with self.assertRaises(ProviderConfigurationError) as caught:
             get_provider("untrusted-provider")
         self.assertEqual(caught.exception.code, "provider_invalid")
+
+    def test_litellm_first_import_uses_local_cost_map_without_pre_attempt_network(self) -> None:
+        probe = (
+            "import os, sys\n"
+            "events = []\n"
+            "def audit(event, args):\n"
+            "    if event == 'socket.connect':\n"
+            "        events.append(event)\n"
+            "        raise RuntimeError('network forbidden')\n"
+            "sys.addaudithook(audit)\n"
+            "os.environ['LITELLM_LOCAL_MODEL_COST_MAP'] = 'caller-sentinel'\n"
+            "from researchops import model_providers as providers\n"
+            "providers._load_litellm_transport()\n"
+            "assert events == [], events\n"
+            "assert os.environ['LITELLM_LOCAL_MODEL_COST_MAP'] == 'caller-sentinel'\n"
+            "print('local-cost-map-import-ok')\n"
+        )
+        environment = dict(os.environ)
+        environment["PYTHONPATH"] = str(ROOT / "src")
+        completed = subprocess.run(
+            [sys.executable, "-c", probe],
+            cwd=str(ROOT),
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("local-cost-map-import-ok", completed.stdout)
 
     def test_openai_model_id_uses_safe_format(self) -> None:
         provider = OpenAIProvider()
@@ -150,55 +196,41 @@ class Phase6ProviderTests(unittest.TestCase):
                     provider.validate_model(value)
                 self.assertEqual(caught.exception.code, "provider_model_not_allowed")
 
-    def test_anthropic_public_transport_requires_single_use_private_capability(self) -> None:
+    def test_anthropic_public_transport_is_hard_disabled_without_test_patch(self) -> None:
         provider = AnthropicProvider()
+        self.assertFalse(
+            hasattr(provider_module, "_anthropic_offline_test_authorization")
+        )
+        self.assertFalse(hasattr(provider_module, "_AnthropicRunAuthorization"))
+        self.assertFalse(
+            hasattr(provider_module, "_ANTHROPIC_OFFLINE_TEST_AUTHORIZATION_TOKEN")
+        )
 
-        async def denied_without_capability() -> None:
+        async def denied(authorization: object | None) -> None:
             async with provider.open_model(
                 model_id="claude-sonnet-5",
                 api_key="must-not-be-used",
+                _authorization=authorization,
             ):
                 self.fail("context body must not run")
 
         with patch(
+            "researchops.model_providers._anthropic_online_transport_authorized",
+            return_value=False,
+        ), patch(
             "researchops.model_providers._load_litellm_transport"
         ) as load_transport:
-            with self.assertRaises(ProviderConfigurationError) as denied:
-                asyncio.run(denied_without_capability())
-        self.assertEqual(
-            denied.exception.code, "anthropic_generic_online_entrypoint_disabled"
-        )
+            for authorization in (None, object()):
+                with self.subTest(authorization=authorization):
+                    with self.assertRaises(ProviderConfigurationError) as caught:
+                        asyncio.run(denied(authorization))
+                    self.assertEqual(
+                        caught.exception.code,
+                        "anthropic_generic_online_entrypoint_disabled",
+                    )
         load_transport.assert_not_called()
 
-        authorization = provider_module._anthropic_offline_test_authorization()
-
-        async def consume_with_missing_key() -> None:
-            async with provider.open_model(
-                model_id="claude-sonnet-5",
-                api_key="  ",
-                _authorization=authorization,
-            ):
-                self.fail("context body must not run")
-
-        with self.assertRaises(ProviderConfigurationError) as missing:
-            asyncio.run(consume_with_missing_key())
-        self.assertEqual(missing.exception.code, "provider_api_key_missing")
-
-        async def denied_on_reuse() -> None:
-            async with provider.open_model(
-                model_id="claude-sonnet-5",
-                api_key="must-not-be-used",
-                _authorization=authorization,
-            ):
-                self.fail("context body must not run")
-
-        with self.assertRaises(ProviderConfigurationError) as reused:
-            asyncio.run(denied_on_reuse())
-        self.assertEqual(
-            reused.exception.code, "anthropic_generic_online_entrypoint_disabled"
-        )
-
-    def test_openai_builds_concrete_model_without_base_url_and_closes(self) -> None:
+    def test_openai_pins_official_base_url_and_closes(self) -> None:
         provider = OpenAIProvider()
 
         async def exercise() -> ProviderModel:
@@ -208,7 +240,10 @@ class Phase6ProviderTests(unittest.TestCase):
                 self.assertFalse(_FakeAsyncOpenAI.instances[-1].closed)
                 return bound
 
-        with patch("openai.AsyncOpenAI", _FakeAsyncOpenAI), patch(
+        with patch.dict(
+            os.environ,
+            {"OPENAI_BASE_URL": "https://example.invalid/custom/v1"},
+        ), patch("openai.AsyncOpenAI", _FakeAsyncOpenAI), patch(
             "agents.OpenAIResponsesModel", _FakeResponsesModel
         ):
             bound = asyncio.run(exercise())
@@ -217,13 +252,40 @@ class Phase6ProviderTests(unittest.TestCase):
         self.assertEqual(client.kwargs["api_key"], "test-openai-key")
         self.assertEqual(client.kwargs["max_retries"], 0)
         self.assertEqual(client.kwargs["timeout"], 120.0)
-        self.assertNotIn("base_url", client.kwargs)
+        self.assertEqual(client.kwargs["base_url"], "https://api.openai.com/v1")
+        self.assertNotIn("organization", client.kwargs)
+        self.assertNotIn("project", client.kwargs)
         self.assertTrue(client.closed)
         self.assertEqual(bound.provider_id, "openai")
         self.assertEqual(bound.model_id, "gpt-5.4-mini")
         self.assertEqual(bound.transport_id, "openai_responses")
+        self.assertEqual(bound.api_surface, "responses")
+        self.assertEqual(bound.adapter_version, "openai-responses-adapter/1.0")
+        self.assertIsNone(bound.completion_telemetry_session)
         self.assertIsInstance(bound.sdk_model, _FakeResponsesModel)
         self.assertNotIn("_FakeResponsesModel", repr(bound))
+
+    def test_openai_real_sdk_ignores_base_url_environment_override(self) -> None:
+        provider = OpenAIProvider()
+        observed: dict[str, object] = {}
+
+        async def exercise() -> object:
+            async with provider.open_model(
+                model_id="gpt-5.4-mini",
+                api_key="SAFE-OPENAI-TEST-KEY",
+            ) as bound:
+                client = bound.sdk_model.openai_client
+                observed["base_url"] = str(client.base_url)
+                return client
+
+        with patch.dict(
+            os.environ,
+            {"OPENAI_BASE_URL": "https://example.invalid/custom/v1"},
+        ), patch("agents.OpenAIResponsesModel", _FakeResponsesModel):
+            client = asyncio.run(exercise())
+
+        self.assertEqual(observed["base_url"], "https://api.openai.com/v1/")
+        self.assertTrue(client.is_closed())
 
     def test_deepseek_uses_fixed_base_url_and_closes_after_exception(self) -> None:
         provider = DeepSeekProvider()
@@ -234,6 +296,11 @@ class Phase6ProviderTests(unittest.TestCase):
             ) as bound:
                 self.assertEqual(bound.provider_id, "deepseek")
                 self.assertEqual(bound.transport_id, "openai_compatible_responses")
+                self.assertEqual(bound.api_surface, "responses")
+                self.assertEqual(
+                    bound.adapter_version, "deepseek-responses-adapter/1.0"
+                )
+                self.assertIsNone(bound.completion_telemetry_session)
                 raise RuntimeError("controlled test failure")
 
         with patch("openai.AsyncOpenAI", _FakeAsyncOpenAI), patch(
@@ -246,7 +313,110 @@ class Phase6ProviderTests(unittest.TestCase):
         self.assertEqual(client.kwargs["base_url"], "https://api.deepseek.com")
         self.assertEqual(client.kwargs["max_retries"], 0)
         self.assertEqual(client.kwargs["timeout"], 120.0)
+        self.assertEqual(client.kwargs["organization"], "")
+        self.assertEqual(client.kwargs["project"], "")
+        self.assertEqual(client.kwargs["admin_api_key"], "")
+        self.assertEqual(client.kwargs["webhook_secret"], "")
+        self.assertEqual(client.kwargs["default_headers"], {})
+        self.assertIsNone(client.organization)
+        self.assertIsNone(client.project)
+        self.assertIsNone(client.admin_api_key)
+        self.assertIsNone(client.webhook_secret)
+        self.assertEqual(client._custom_headers, {})
         self.assertTrue(client.closed)
+
+    def test_deepseek_real_sdk_drops_openai_business_environment_before_send(
+        self,
+    ) -> None:
+        provider = DeepSeekProvider()
+        observed: dict[str, object] = {}
+
+        async def exercise() -> object:
+            async with provider.open_model(
+                model_id="deepseek-v4-flash",
+                api_key="SAFE-DEEPSEEK-TEST-KEY",
+            ) as bound:
+                client = bound.sdk_model.openai_client
+                observed.update(
+                    {
+                        "base_url": str(client.base_url),
+                        "api_key_from_environment": (
+                            client.api_key == "OPENAI-API-ENV-CANARY"
+                        ),
+                        "organization": client.organization,
+                        "project": client.project,
+                        "admin_api_key": client.admin_api_key,
+                        "webhook_secret": client.webhook_secret,
+                        "custom_headers": dict(client._custom_headers),
+                        "environment_header_names": sorted(
+                            name
+                            for name, value in client.default_headers.items()
+                            if isinstance(value, str) and "ENV-CANARY" in value
+                        ),
+                    }
+                )
+                return client
+
+        environment = {
+            "OPENAI_BASE_URL": "https://example.invalid/custom/v1",
+            "OPENAI_API_KEY": "OPENAI-API-ENV-CANARY",
+            "OPENAI_ORG_ID": "ORG-ENV-CANARY",
+            "OPENAI_PROJECT_ID": "PROJECT-ENV-CANARY",
+            "OPENAI_ADMIN_KEY": "ADMIN-ENV-CANARY",
+            "OPENAI_WEBHOOK_SECRET": "WEBHOOK-ENV-CANARY",
+            "OPENAI_CUSTOM_HEADERS": (
+                "X-Environment-Canary: CUSTOM-ENV-CANARY\n"
+                "Authorization: Bearer AUTH-ENV-CANARY"
+            ),
+        }
+        with patch.dict(os.environ, environment), patch(
+            "agents.OpenAIResponsesModel", _FakeResponsesModel
+        ):
+            client = asyncio.run(exercise())
+
+        self.assertEqual(observed["base_url"], "https://api.deepseek.com")
+        self.assertFalse(observed["api_key_from_environment"])
+        self.assertIsNone(observed["organization"])
+        self.assertIsNone(observed["project"])
+        self.assertIsNone(observed["admin_api_key"])
+        self.assertIsNone(observed["webhook_secret"])
+        self.assertEqual(observed["custom_headers"], {})
+        self.assertEqual(observed["environment_header_names"], [])
+        self.assertTrue(client.is_closed())
+
+    def test_deepseek_environment_isolation_failure_stops_before_model(self) -> None:
+        class UnisolatableClient(_FakeAsyncOpenAI):
+            def __setattr__(self, name, value) -> None:
+                if name in {
+                    "organization",
+                    "project",
+                    "admin_api_key",
+                    "webhook_secret",
+                    "_custom_headers",
+                }:
+                    raise AttributeError("simulated SDK drift")
+                super().__setattr__(name, value)
+
+        provider = DeepSeekProvider()
+
+        async def exercise() -> None:
+            async with provider.open_model(
+                model_id="deepseek-v4-flash",
+                api_key="SAFE-DEEPSEEK-TEST-KEY",
+            ):
+                raise AssertionError("model context must not open")
+
+        with patch("openai.AsyncOpenAI", UnisolatableClient), patch(
+            "agents.OpenAIResponsesModel"
+        ) as model_class, self.assertRaises(ProviderConfigurationError) as caught:
+            asyncio.run(exercise())
+
+        self.assertEqual(
+            caught.exception.code,
+            "provider_client_environment_isolation_failed",
+        )
+        model_class.assert_not_called()
+        self.assertTrue(UnisolatableClient.instances[-1].closed)
 
     def test_anthropic_uses_litellm_namespace_and_closes_after_exception(self) -> None:
         provider = AnthropicProvider()
@@ -255,12 +425,17 @@ class Phase6ProviderTests(unittest.TestCase):
             async with provider.open_model(
                 model_id="claude-sonnet-5",
                 api_key="test-anthropic-key",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ) as bound:
                 self.assertEqual(bound.provider_id, "anthropic")
                 self.assertEqual(
                     bound.transport_id, "litellm_anthropic_chat_completions"
                 )
+                self.assertEqual(bound.api_surface, "messages")
+                self.assertEqual(
+                    bound.adapter_version, "anthropic-litellm-adapter/1.0"
+                )
+                self.assertIsNone(bound.completion_telemetry_session)
                 self.assertNotIn("test-anthropic-key", repr(bound))
                 raise RuntimeError("controlled test failure")
 
@@ -305,9 +480,9 @@ class Phase6ProviderTests(unittest.TestCase):
                 model_id="claude-sonnet-5",
                 api_key="test-anthropic-key",
                 timeout_seconds=17.0,
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ) as bound:
-                result = await bound.sdk_model._fetch_response(
+                await bound.sdk_model._fetch_response(
                     system_instructions=None,
                     input="offline",
                     model_settings=original,
@@ -319,7 +494,6 @@ class Phase6ProviderTests(unittest.TestCase):
                     stream=False,
                     prompt=None,
                 )
-                self.assertEqual(result, "controlled-response")
                 return original, bound.sdk_model.fetch_settings
 
         with patch(
@@ -329,19 +503,14 @@ class Phase6ProviderTests(unittest.TestCase):
                 _FakeAsyncHTTPHandler,
                 _FakeLitellmModule,
             ),
-        ):
-            original, controlled = asyncio.run(exercise())
+        ), self.assertRaises(ProviderConfigurationError) as caught:
+            asyncio.run(exercise())
 
-        self.assertEqual(original.extra_args["timeout"], 999)
-        self.assertEqual(controlled.extra_args["timeout"], 17.0)
-        self.assertEqual(controlled.extra_args["num_retries"], 0)
-        self.assertEqual(controlled.extra_args["max_retries"], 0)
-        self.assertEqual(controlled.extra_args["fallbacks"], [])
-        self.assertIsNone(controlled.extra_args["retry_policy"])
-        self.assertEqual(controlled.extra_args["context_window_fallback_dict"], {})
-        self.assertIs(
-            controlled.extra_args["client"], _FakeAsyncHTTPHandler.instances[-1]
+        self.assertEqual(
+            caught.exception.code,
+            "provider_completion_telemetry_session_required",
         )
+        self.assertIsNone(_FakeLitellmModel.instances[-1].fetch_settings)
         self.assertTrue(_FakeAsyncHTTPHandler.instances[-1].closed)
 
     def test_anthropic_discards_and_restores_process_global_debug_records(self) -> None:
@@ -362,7 +531,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="GLOBAL-RETENTION-CANARY",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ) as bound:
                 await bound.sdk_model._fetch_response(
                     system_instructions=None,
@@ -384,9 +553,13 @@ class Phase6ProviderTests(unittest.TestCase):
                 _FakeAsyncHTTPHandler,
                 _FakeLitellmModule,
             ),
-        ):
+        ), self.assertRaises(ProviderConfigurationError) as caught:
             asyncio.run(exercise())
 
+        self.assertEqual(
+            caught.exception.code,
+            "provider_completion_telemetry_session_required",
+        )
         self.assertIs(_FakeLitellmModule.error_logs, original_logs)
         self.assertEqual(original_logs, {})
         self.assertNotIn("GLOBAL-RETENTION-CANARY", repr(original_logs))
@@ -417,7 +590,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with provider.open_model(
                 model_id="claude-sonnet-5",
                 api_key="  ",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -435,7 +608,7 @@ class Phase6ProviderTests(unittest.TestCase):
                 model_id="claude-sonnet-5",
                 api_key="offline-placeholder",
                 timeout_seconds=0,
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -467,7 +640,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="offline-placeholder",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -492,7 +665,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="test-anthropic-key",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -520,7 +693,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="test-anthropic-key",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -548,7 +721,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="test-anthropic-key",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -575,7 +748,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="test-anthropic-key",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -602,7 +775,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="test-anthropic-key",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -632,7 +805,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="offline-placeholder",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ):
                 self.fail("context body must not run")
 
@@ -666,7 +839,7 @@ class Phase6ProviderTests(unittest.TestCase):
             async with AnthropicProvider().open_model(
                 model_id="claude-sonnet-5",
                 api_key="offline-construction-only",
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ) as bound:
                 return (
                     bound.provider_id,
@@ -685,10 +858,13 @@ class Phase6ProviderTests(unittest.TestCase):
         completion.assert_not_called()
 
     def test_real_litellm_failure_retains_no_key_or_input_in_global_logs(self) -> None:
-        import litellm
-        from agents import ModelSettings, ModelTracing
-        from agents.extensions.models.litellm_model import LitellmModel
-        from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+        with patch.dict(
+            os.environ, {"LITELLM_LOCAL_MODEL_COST_MAP": "True"}
+        ):
+            import litellm
+            from agents import ModelSettings, ModelTracing
+            from agents.extensions.models.litellm_model import LitellmModel
+            from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 
         key_canary = "offline-key-material-0123456789"
         input_canary = "offline-sensitive-input"
@@ -706,7 +882,7 @@ class Phase6ProviderTests(unittest.TestCase):
                 model_id="claude-sonnet-5",
                 api_key=key_canary,
                 timeout_seconds=1,
-                _authorization=provider_module._anthropic_offline_test_authorization(),
+                _authorization=_anthropic_test_authorization(),
             ) as bound:
                 await bound.sdk_model._fetch_response(
                     system_instructions=None,
@@ -734,7 +910,12 @@ class Phase6ProviderTests(unittest.TestCase):
             self.assertNotIn(key_canary, repr(litellm.error_logs))
             self.assertNotIn(input_canary, repr(litellm.error_logs))
 
-        self.assertEqual(NoNetworkHandler.post_calls, 1)
+        self.assertEqual(NoNetworkHandler.post_calls, 0)
+        self.assertIsInstance(caught.exception, ProviderConfigurationError)
+        self.assertEqual(
+            caught.exception.code,
+            "provider_completion_telemetry_session_required",
+        )
         self.assertNotIn(key_canary, str(caught.exception))
 
 

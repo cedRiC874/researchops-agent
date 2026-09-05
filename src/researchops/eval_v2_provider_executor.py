@@ -85,6 +85,10 @@ _CLARIFICATION_REQUEST = re.compile(
     r"(?:\bgeneralize\b.{0,160}\bwithout\b)",
     re.IGNORECASE | re.DOTALL,
 )
+def _resolve_eval_v2_sdk_runner(runner: Any | None) -> tuple[Any | None, bool]:
+    """Production resolver never grants deterministic offline authorization."""
+
+    return runner, False
 
 
 @dataclass
@@ -175,6 +179,14 @@ class EvalV2ProviderExecutor:
             raise EvalV2ContractError(
                 ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
                 "Generic Eval v2 Provider executor 不接受 Anthropic；受控 pilot capability 尚未实现。",
+            )
+        sdk_runner, offline_runner_authorized = _resolve_eval_v2_sdk_runner(
+            sdk_runner
+        )
+        if not offline_runner_authorized:
+            raise EvalV2ContractError(
+                "eval_v2_completion_telemetry_session_required",
+                "真实 Eval v2 Provider 路径尚未绑定 verified runtime completion telemetry；运行被拒绝。",
             )
         self._provider = provider
         self._model_id = provider.validate_model(model_id)

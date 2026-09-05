@@ -1,0 +1,1413 @@
+{
+  "schema_version": "provider-completion-mapping/1.0",
+  "status": "executable_offline_mapping_zero_adapter_changes",
+  "documented_on": "2026-09-02",
+  "adapter_changes_included": false,
+  "mapper_input_root": "response_projection",
+  "mapper_forbidden_inputs": [
+    "fixture_id",
+    "scenario",
+    "provenance",
+    "derivation",
+    "capture_boundary",
+    "filename"
+  ],
+  "condition_operators": [
+    "equals",
+    "all",
+    "not",
+    "all_missing",
+    "is_null",
+    "is_present_non_null",
+    "json_type_is",
+    "default_unknown"
+  ],
+  "semantic_guards_outside_condition_ast_forbidden": true,
+  "unknown_native_sentinel": "__fixture_unknown_native_value_v1__",
+  "provenance_tiers": {
+    "live_capture": {
+      "source": "real_response_projection",
+      "applies_to": [
+        "deepseek"
+      ],
+      "confidence": "attribution_allowed_only_for_unmutated_validated_fixture"
+    },
+    "official_schema": {
+      "source": "official_openapi_or_generated_sdk_literal_types",
+      "applies_to": [
+        "openai",
+        "anthropic"
+      ],
+      "confidence": "initial_mapping_only_pending_first_live_validation"
+    },
+    "doc_prose": {
+      "source": "official_narrative_documentation",
+      "applies_to": [
+        "moonshot_kimi"
+      ],
+      "confidence": "weakest_no_successful_handshake"
+    }
+  },
+  "normalized_completion_states": [
+    "completed",
+    "incomplete_length",
+    "incomplete_content_filter",
+    "incomplete_other",
+    "error",
+    "unmapped",
+    "not_provided",
+    "not_persisted"
+  ],
+  "truncation_signal_sources": [
+    "native_status",
+    "token_cap_fallback",
+    "none"
+  ],
+  "native_completion_signal_source": "native_status",
+  "mapping_precedence": [
+    "contradictory_native_metadata",
+    "recognized_non_null_native_value",
+    "unknown_non_null_native_value",
+    "token_cap_fallback_when_native_metadata_absent",
+    "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+  ],
+  "fixture_expectations": {
+    "deepseek_completed_20260902": {
+      "normalized_completion_state": "completed",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "deepseek-cc-recognized-001"
+    },
+    "deepseek_length_capped_20260902": {
+      "normalized_completion_state": "incomplete_length",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "deepseek-cc-recognized-002"
+    },
+    "deepseek_missing_fields_20260902": {
+      "normalized_completion_state": "not_provided",
+      "truncation_signal_source": "none",
+      "preserved_native_value": null,
+      "matched_rule_id": "deepseek-cc-absent-001"
+    },
+    "deepseek_unknown_value_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": "__fixture_unknown_native_value_v1__",
+      "matched_rule_id": "deepseek-cc-unknown-001"
+    },
+    "openai_completed_20260902": {
+      "normalized_completion_state": "completed",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-recognized-001"
+    },
+    "openai_length_capped_20260902": {
+      "normalized_completion_state": "incomplete_length",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-recognized-004"
+    },
+    "openai_missing_fields_20260902": {
+      "normalized_completion_state": "not_provided",
+      "truncation_signal_source": "none",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-absent-001"
+    },
+    "openai_unknown_value_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": "__fixture_unknown_native_value_v1__",
+      "matched_rule_id": "openai-resp-unknown-001"
+    },
+    "openai_conflict_null_status_non_null_details_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-conflict-005"
+    },
+    "openai_conflict_missing_status_non_null_details_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-conflict-004"
+    },
+    "openai_conflict_non_object_incomplete_details_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-conflict-006"
+    },
+    "openai_null_status_null_details_20260902": {
+      "normalized_completion_state": "not_provided",
+      "truncation_signal_source": "none",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-absent-003"
+    },
+    "openai_null_status_missing_details_20260902": {
+      "normalized_completion_state": "not_provided",
+      "truncation_signal_source": "none",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-absent-002"
+    },
+    "openai_missing_status_null_details_20260902": {
+      "normalized_completion_state": "not_provided",
+      "truncation_signal_source": "none",
+      "preserved_native_value": null,
+      "matched_rule_id": "openai-resp-absent-004"
+    },
+    "anthropic_completed_20260902": {
+      "normalized_completion_state": "completed",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-recognized-001"
+    },
+    "anthropic_length_capped_20260902": {
+      "normalized_completion_state": "incomplete_length",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-recognized-004"
+    },
+    "anthropic_missing_fields_20260902": {
+      "normalized_completion_state": "not_provided",
+      "truncation_signal_source": "none",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-absent-001"
+    },
+    "anthropic_unknown_value_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": "__fixture_unknown_native_value_v1__",
+      "matched_rule_id": "anthropic-msg-unknown-001"
+    },
+    "anthropic_conflict_end_turn_with_stop_sequence_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-conflict-001"
+    },
+    "anthropic_conflict_stop_sequence_without_value_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-conflict-010"
+    },
+    "anthropic_conflict_missing_reason_with_stop_sequence_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-conflict-007"
+    },
+    "anthropic_stop_sequence_with_value_20260902": {
+      "normalized_completion_state": "completed",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-recognized-002"
+    },
+    "anthropic_conflict_stop_sequence_missing_value_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-conflict-009"
+    },
+    "anthropic_conflict_null_reason_with_stop_sequence_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-conflict-008"
+    },
+    "anthropic_conflict_non_string_stop_sequence_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "anthropic-msg-conflict-011"
+    },
+    "kimi_completed_20260902": {
+      "normalized_completion_state": "completed",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "kimi-cc-recognized-001"
+    },
+    "kimi_length_capped_20260902": {
+      "normalized_completion_state": "incomplete_length",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": null,
+      "matched_rule_id": "kimi-cc-recognized-002"
+    },
+    "kimi_missing_fields_20260902": {
+      "normalized_completion_state": "not_provided",
+      "truncation_signal_source": "none",
+      "preserved_native_value": null,
+      "matched_rule_id": "kimi-cc-absent-001"
+    },
+    "kimi_unknown_value_20260902": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserved_native_value": "__fixture_unknown_native_value_v1__",
+      "matched_rule_id": "kimi-cc-unknown-001"
+    }
+  },
+  "providers": {
+    "deepseek": {
+      "api_surface": "openai_compatible_chat_completions",
+      "active_mapping_version": "deepseek-live-v1",
+      "active_rules": [
+        {
+          "condition": {
+            "op": "equals",
+            "field": "finish_reason",
+            "value": "stop"
+          },
+          "normalized_completion_state": "completed",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "deepseek_completed_20260902",
+          "rule_id": "deepseek-cc-recognized-001",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "finish_reason",
+            "value": "length"
+          },
+          "normalized_completion_state": "incomplete_length",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "deepseek_length_capped_20260902",
+          "rule_id": "deepseek-cc-recognized-002",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all_missing",
+            "fields": [
+              "finish_reason"
+            ]
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "evidence_fixture_id": "deepseek_missing_fields_20260902",
+          "rule_id": "deepseek-cc-absent-001",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        },
+        {
+          "condition": {
+            "op": "is_null",
+            "field": "finish_reason"
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "rule_id": "deepseek-cc-absent-002",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        }
+      ],
+      "default_unknown_rule": {
+        "condition": {
+          "op": "default_unknown",
+          "field": "finish_reason",
+          "known_values": [
+            "stop",
+            "length"
+          ]
+        },
+        "normalized_completion_state": "unmapped",
+        "truncation_signal_source": "native_status",
+        "preserve_native_value": true,
+        "evidence_fixture_id": "deepseek_unknown_value_20260902",
+        "rule_id": "deepseek-cc-unknown-001",
+        "precedence_stage": "unknown_non_null_native_value",
+        "preserved_native_value_field": "finish_reason",
+        "preserved_native_value_utf8_bytes_max": 64
+      },
+      "official_schema_supplement": {
+        "reference": "https://api-docs.deepseek.com/api/create-chat-completion/",
+        "accessed_on": "2026-09-02",
+        "declared_finish_reason_literals": [
+          "stop",
+          "length",
+          "content_filter",
+          "tool_calls",
+          "insufficient_system_resource"
+        ],
+        "non_live_values_are_active_in_v1": false
+      },
+      "known_but_unobserved_official_values": [
+        {
+          "native_value": "content_filter",
+          "runtime_v1_state": "unmapped",
+          "candidate_after_live_validation": "incomplete_content_filter"
+        },
+        {
+          "native_value": "tool_calls",
+          "runtime_v1_state": "unmapped",
+          "candidate_after_live_validation": "completed"
+        },
+        {
+          "native_value": "insufficient_system_resource",
+          "runtime_v1_state": "unmapped",
+          "candidate_after_live_validation": "error"
+        }
+      ]
+    },
+    "openai": {
+      "api_surface": "responses",
+      "active_mapping_version": "openai-official-schema-v1",
+      "unverified_shape": true,
+      "schema_literals": {
+        "status": [
+          "completed",
+          "failed",
+          "in_progress",
+          "cancelled",
+          "queued",
+          "incomplete"
+        ],
+        "incomplete_details_reason": [
+          "max_output_tokens",
+          "content_filter"
+        ]
+      },
+      "conflict_rules": [
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "completed"
+              },
+              {
+                "op": "is_present_non_null",
+                "field": "incomplete_details"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-conflict-001",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "failed"
+              },
+              {
+                "op": "is_present_non_null",
+                "field": "incomplete_details"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-conflict-002",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "cancelled"
+              },
+              {
+                "op": "is_present_non_null",
+                "field": "incomplete_details"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-conflict-003",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "all_missing",
+                "fields": [
+                  "status"
+                ]
+              },
+              {
+                "op": "is_present_non_null",
+                "field": "incomplete_details"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "openai_conflict_missing_status_non_null_details_20260902",
+          "rule_id": "openai-resp-conflict-004",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "is_null",
+                "field": "status"
+              },
+              {
+                "op": "is_present_non_null",
+                "field": "incomplete_details"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "openai_conflict_null_status_non_null_details_20260902",
+          "rule_id": "openai-resp-conflict-005",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "incomplete"
+              },
+              {
+                "op": "is_present_non_null",
+                "field": "incomplete_details"
+              },
+              {
+                "op": "not",
+                "condition": {
+                  "op": "json_type_is",
+                  "field": "incomplete_details",
+                  "value": "object"
+                }
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "openai_conflict_non_object_incomplete_details_20260902",
+          "rule_id": "openai-resp-conflict-006",
+          "precedence_stage": "contradictory_native_metadata"
+        }
+      ],
+      "active_rules": [
+        {
+          "condition": {
+            "op": "equals",
+            "field": "status",
+            "value": "completed"
+          },
+          "normalized_completion_state": "completed",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-recognized-001",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "status",
+            "value": "failed"
+          },
+          "normalized_completion_state": "error",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-recognized-002",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "status",
+            "value": "cancelled"
+          },
+          "normalized_completion_state": "incomplete_other",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-recognized-003",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "incomplete"
+              },
+              {
+                "op": "equals",
+                "field": "incomplete_details.reason",
+                "value": "max_output_tokens"
+              }
+            ]
+          },
+          "normalized_completion_state": "incomplete_length",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "openai_length_capped_20260902",
+          "rule_id": "openai-resp-recognized-004",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "incomplete"
+              },
+              {
+                "op": "equals",
+                "field": "incomplete_details.reason",
+                "value": "content_filter"
+              }
+            ]
+          },
+          "normalized_completion_state": "incomplete_content_filter",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-recognized-005",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "incomplete"
+              },
+              {
+                "op": "all_missing",
+                "fields": [
+                  "incomplete_details"
+                ]
+              }
+            ]
+          },
+          "normalized_completion_state": "incomplete_other",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-recognized-006",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "incomplete"
+              },
+              {
+                "op": "json_type_is",
+                "field": "incomplete_details",
+                "value": "object"
+              },
+              {
+                "op": "all_missing",
+                "fields": [
+                  "incomplete_details.reason"
+                ]
+              }
+            ]
+          },
+          "normalized_completion_state": "incomplete_other",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-recognized-007",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "incomplete"
+              },
+              {
+                "op": "json_type_is",
+                "field": "incomplete_details",
+                "value": "object"
+              },
+              {
+                "op": "is_null",
+                "field": "incomplete_details.reason"
+              }
+            ]
+          },
+          "normalized_completion_state": "incomplete_other",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-recognized-008",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "incomplete"
+              },
+              {
+                "op": "is_null",
+                "field": "incomplete_details"
+              }
+            ]
+          },
+          "normalized_completion_state": "incomplete_other",
+          "truncation_signal_source": "native_status",
+          "rule_id": "openai-resp-recognized-009",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "status",
+            "value": "queued"
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "terminal_event_write_allowed": false,
+          "rule_id": "openai-resp-recognized-010",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "status",
+            "value": "in_progress"
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "terminal_event_write_allowed": false,
+          "rule_id": "openai-resp-recognized-011",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all_missing",
+            "fields": [
+              "status",
+              "incomplete_details"
+            ]
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "evidence_fixture_id": "openai_missing_fields_20260902",
+          "rule_id": "openai-resp-absent-001",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "is_null",
+                "field": "status"
+              },
+              {
+                "op": "all_missing",
+                "fields": [
+                  "incomplete_details"
+                ]
+              }
+            ]
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "evidence_fixture_id": "openai_null_status_missing_details_20260902",
+          "rule_id": "openai-resp-absent-002",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "is_null",
+                "field": "status"
+              },
+              {
+                "op": "is_null",
+                "field": "incomplete_details"
+              }
+            ]
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "evidence_fixture_id": "openai_null_status_null_details_20260902",
+          "rule_id": "openai-resp-absent-003",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "all_missing",
+                "fields": [
+                  "status"
+                ]
+              },
+              {
+                "op": "is_null",
+                "field": "incomplete_details"
+              }
+            ]
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "evidence_fixture_id": "openai_missing_status_null_details_20260902",
+          "rule_id": "openai-resp-absent-004",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        }
+      ],
+      "default_unknown_rules": [
+        {
+          "condition": {
+            "op": "default_unknown",
+            "field": "status",
+            "known_values": [
+              "completed",
+              "failed",
+              "in_progress",
+              "cancelled",
+              "queued",
+              "incomplete"
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "preserve_native_value": true,
+          "evidence_fixture_id": "openai_unknown_value_20260902",
+          "rule_id": "openai-resp-unknown-001",
+          "precedence_stage": "unknown_non_null_native_value",
+          "preserved_native_value_field": "status",
+          "preserved_native_value_utf8_bytes_max": 64
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "status",
+                "value": "incomplete"
+              },
+              {
+                "op": "default_unknown",
+                "field": "incomplete_details.reason",
+                "known_values": [
+                  "max_output_tokens",
+                  "content_filter"
+                ]
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "preserve_native_value": true,
+          "rule_id": "openai-resp-unknown-002",
+          "precedence_stage": "unknown_non_null_native_value",
+          "preserved_native_value_field": "incomplete_details.reason",
+          "preserved_native_value_utf8_bytes_max": 64
+        }
+      ],
+      "first_live_validation_required": true
+    },
+    "anthropic": {
+      "api_surface": "messages",
+      "active_mapping_version": "anthropic-official-schema-v1",
+      "unverified_shape": true,
+      "schema_literals": {
+        "stop_reason": [
+          "end_turn",
+          "max_tokens",
+          "stop_sequence",
+          "tool_use",
+          "pause_turn",
+          "refusal",
+          "model_context_window_exceeded"
+        ]
+      },
+      "conditional_companion_field": {
+        "role": "documentation_only",
+        "enforced_by": "conflict_rules",
+        "field": "stop_sequence",
+        "non_null_only_when": {
+          "field": "stop_reason",
+          "equals": "stop_sequence"
+        },
+        "required_non_null_when_condition_matches": true
+      },
+      "conflict_rules": [
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "stop_reason",
+                "value": "end_turn"
+              },
+              {
+                "op": "json_type_is",
+                "field": "stop_sequence",
+                "value": "string"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "anthropic_conflict_end_turn_with_stop_sequence_20260902",
+          "rule_id": "anthropic-msg-conflict-001",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "stop_reason",
+                "value": "max_tokens"
+              },
+              {
+                "op": "json_type_is",
+                "field": "stop_sequence",
+                "value": "string"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-conflict-002",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "stop_reason",
+                "value": "tool_use"
+              },
+              {
+                "op": "json_type_is",
+                "field": "stop_sequence",
+                "value": "string"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-conflict-003",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "stop_reason",
+                "value": "pause_turn"
+              },
+              {
+                "op": "json_type_is",
+                "field": "stop_sequence",
+                "value": "string"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-conflict-004",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "stop_reason",
+                "value": "refusal"
+              },
+              {
+                "op": "json_type_is",
+                "field": "stop_sequence",
+                "value": "string"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-conflict-005",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "stop_reason",
+                "value": "model_context_window_exceeded"
+              },
+              {
+                "op": "json_type_is",
+                "field": "stop_sequence",
+                "value": "string"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-conflict-006",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "all_missing",
+                "fields": [
+                  "stop_reason"
+                ]
+              },
+              {
+                "op": "json_type_is",
+                "field": "stop_sequence",
+                "value": "string"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "anthropic_conflict_missing_reason_with_stop_sequence_20260902",
+          "rule_id": "anthropic-msg-conflict-007",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "is_null",
+                "field": "stop_reason"
+              },
+              {
+                "op": "json_type_is",
+                "field": "stop_sequence",
+                "value": "string"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "anthropic_conflict_null_reason_with_stop_sequence_20260902",
+          "rule_id": "anthropic-msg-conflict-008",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "stop_reason",
+                "value": "stop_sequence"
+              },
+              {
+                "op": "all_missing",
+                "fields": [
+                  "stop_sequence"
+                ]
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "anthropic_conflict_stop_sequence_missing_value_20260902",
+          "rule_id": "anthropic-msg-conflict-009",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "equals",
+                "field": "stop_reason",
+                "value": "stop_sequence"
+              },
+              {
+                "op": "is_null",
+                "field": "stop_sequence"
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "anthropic_conflict_stop_sequence_without_value_20260902",
+          "rule_id": "anthropic-msg-conflict-010",
+          "precedence_stage": "contradictory_native_metadata"
+        },
+        {
+          "condition": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "is_present_non_null",
+                "field": "stop_sequence"
+              },
+              {
+                "op": "not",
+                "condition": {
+                  "op": "json_type_is",
+                  "field": "stop_sequence",
+                  "value": "string"
+                }
+              }
+            ]
+          },
+          "normalized_completion_state": "unmapped",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "anthropic_conflict_non_string_stop_sequence_20260902",
+          "rule_id": "anthropic-msg-conflict-011",
+          "precedence_stage": "contradictory_native_metadata"
+        }
+      ],
+      "active_rules": [
+        {
+          "condition": {
+            "op": "equals",
+            "field": "stop_reason",
+            "value": "end_turn"
+          },
+          "normalized_completion_state": "completed",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-recognized-001",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "stop_reason",
+            "value": "stop_sequence"
+          },
+          "normalized_completion_state": "completed",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "anthropic_stop_sequence_with_value_20260902",
+          "rule_id": "anthropic-msg-recognized-002",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "stop_reason",
+            "value": "tool_use"
+          },
+          "normalized_completion_state": "completed",
+          "truncation_signal_source": "native_status",
+          "provider_response_completed_only": true,
+          "rule_id": "anthropic-msg-recognized-003",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "stop_reason",
+            "value": "max_tokens"
+          },
+          "normalized_completion_state": "incomplete_length",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "anthropic_length_capped_20260902",
+          "rule_id": "anthropic-msg-recognized-004",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "stop_reason",
+            "value": "model_context_window_exceeded"
+          },
+          "normalized_completion_state": "incomplete_length",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-recognized-005",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "stop_reason",
+            "value": "pause_turn"
+          },
+          "normalized_completion_state": "incomplete_other",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-recognized-006",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "stop_reason",
+            "value": "refusal"
+          },
+          "normalized_completion_state": "incomplete_content_filter",
+          "truncation_signal_source": "native_status",
+          "rule_id": "anthropic-msg-recognized-007",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all_missing",
+            "fields": [
+              "stop_reason"
+            ]
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "evidence_fixture_id": "anthropic_missing_fields_20260902",
+          "rule_id": "anthropic-msg-absent-001",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        },
+        {
+          "condition": {
+            "op": "is_null",
+            "field": "stop_reason"
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "rule_id": "anthropic-msg-absent-002",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        }
+      ],
+      "default_unknown_rule": {
+        "condition": {
+          "op": "default_unknown",
+          "field": "stop_reason",
+          "known_values": [
+            "end_turn",
+            "max_tokens",
+            "stop_sequence",
+            "tool_use",
+            "pause_turn",
+            "refusal",
+            "model_context_window_exceeded"
+          ]
+        },
+        "normalized_completion_state": "unmapped",
+        "truncation_signal_source": "native_status",
+        "preserve_native_value": true,
+        "evidence_fixture_id": "anthropic_unknown_value_20260902",
+        "rule_id": "anthropic-msg-unknown-001",
+        "precedence_stage": "unknown_non_null_native_value",
+        "preserved_native_value_field": "stop_reason",
+        "preserved_native_value_utf8_bytes_max": 64
+      },
+      "first_live_validation_required": true,
+      "streaming_boundary": "null stop_reason in intermediate stream events must not create terminal telemetry"
+    },
+    "moonshot_kimi": {
+      "api_surface": "openai_compatible_chat_completions",
+      "active_mapping_version": "kimi-doc-prose-v1",
+      "unverified_shape": true,
+      "successful_handshake_observed": false,
+      "documented_literals": {
+        "finish_reason": [
+          "stop",
+          "length",
+          "tool_calls"
+        ]
+      },
+      "active_rules": [
+        {
+          "condition": {
+            "op": "equals",
+            "field": "finish_reason",
+            "value": "stop"
+          },
+          "normalized_completion_state": "completed",
+          "truncation_signal_source": "native_status",
+          "rule_id": "kimi-cc-recognized-001",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "finish_reason",
+            "value": "length"
+          },
+          "normalized_completion_state": "incomplete_length",
+          "truncation_signal_source": "native_status",
+          "evidence_fixture_id": "kimi_length_capped_20260902",
+          "rule_id": "kimi-cc-recognized-002",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "equals",
+            "field": "finish_reason",
+            "value": "tool_calls"
+          },
+          "normalized_completion_state": "completed",
+          "truncation_signal_source": "native_status",
+          "provider_response_completed_only": true,
+          "rule_id": "kimi-cc-recognized-003",
+          "precedence_stage": "recognized_non_null_native_value"
+        },
+        {
+          "condition": {
+            "op": "all_missing",
+            "fields": [
+              "finish_reason"
+            ]
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "evidence_fixture_id": "kimi_missing_fields_20260902",
+          "rule_id": "kimi-cc-absent-001",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        },
+        {
+          "condition": {
+            "op": "is_null",
+            "field": "finish_reason"
+          },
+          "normalized_completion_state": "not_provided",
+          "truncation_signal_source": "none",
+          "rule_id": "kimi-cc-absent-002",
+          "precedence_stage": "not_provided_when_native_metadata_absent_and_fallback_not_applicable"
+        }
+      ],
+      "default_unknown_rule": {
+        "condition": {
+          "op": "default_unknown",
+          "field": "finish_reason",
+          "known_values": [
+            "stop",
+            "length",
+            "tool_calls"
+          ]
+        },
+        "normalized_completion_state": "unmapped",
+        "truncation_signal_source": "native_status",
+        "preserve_native_value": true,
+        "evidence_fixture_id": "kimi_unknown_value_20260902",
+        "rule_id": "kimi-cc-unknown-001",
+        "precedence_stage": "unknown_non_null_native_value",
+        "preserved_native_value_field": "finish_reason",
+        "preserved_native_value_utf8_bytes_max": 64
+      },
+      "first_live_validation_required": true
+    }
+  },
+  "global_rules": {
+    "unknown_native_value_precedes_token_cap_fallback": true,
+    "token_cap_fallback_condition": "native completion metadata absent and output-token counter is semantically comparable to the persisted request cap and exactly equals that cap",
+    "token_cap_fallback_supports_excluded_additional_truncation_claim": false,
+    "additional_truncation_exclusion_claim": {
+      "allowed_only_if_every_response_truncation_signal_source_equals": "native_status",
+      "any_other_source_forbids_claim": true,
+      "allowed_only_if_every_response_normalized_completion_state_in": [
+        "completed",
+        "incomplete_length",
+        "incomplete_content_filter",
+        "incomplete_other",
+        "error"
+      ],
+      "ineligible_normalized_completion_states": [
+        "unmapped",
+        "not_provided",
+        "not_persisted"
+      ],
+      "unmapped_forbids_claim": true,
+      "unmapped_rationale": "an uninterpreted native value cannot exclude truncation; unmapped also carries truncation_signal_source=native_status, so the source test alone would be satisfied vacuously",
+      "minimum_response_count": 1,
+      "empty_response_set_forbids_claim": true,
+      "runtime_binding": "researchops_completion_telemetry.mapping.may_claim_truncation_excluded"
+    },
+    "legacy_uncaptured_state": {
+      "normalized_completion_state": "not_persisted",
+      "truncation_signal_source": "none"
+    },
+    "nearest_enum_coercion_forbidden": true
+  },
+  "first_live_validation_contract": {
+    "providers": [
+      "openai",
+      "anthropic",
+      "moonshot_kimi"
+    ],
+    "compare_observed_value_and_key_presence": true,
+    "table_miss_action": {
+      "normalized_completion_state": "unmapped",
+      "truncation_signal_source": "native_status",
+      "preserve_bounded_native_value": true,
+      "emit_telemetry_event": "provider_completion_mapping_unmapped",
+      "silent_acceptance_forbidden": true
+    },
+    "mapping_promotion_requires": [
+      "sanitized_live_fixture",
+      "mapping_review",
+      "completion_mapping_version_bump"
+    ]
+  },
+  "capture_boundary": {
+    "deepseek_live_requests": 2,
+    "openai_live_requests": 0,
+    "anthropic_live_requests": 0,
+    "kimi_live_requests": 0,
+    "evaluation_tasks_used": 0,
+    "run_ledger_writes": 0,
+    "provider_registration_authorized": false,
+    "model_quality_claim_allowed": false,
+    "prompt_or_scorer_tuning_allowed": false
+  },
+  "same_stage_multiple_match": "error",
+  "no_rule_match": "error",
+  "precedence_stage_contract": {
+    "contradictory_native_metadata": {
+      "executable_in_v1": true,
+      "materialized_rule_count": 17,
+      "selection": "all_rules_whose_precedence_stage_matches"
+    },
+    "recognized_non_null_native_value": {
+      "executable_in_v1": true,
+      "materialized_rule_count": 23,
+      "selection": "all_rules_whose_precedence_stage_matches"
+    },
+    "unknown_non_null_native_value": {
+      "executable_in_v1": true,
+      "materialized_rule_count": 5,
+      "selection": "all_rules_whose_precedence_stage_matches"
+    },
+    "token_cap_fallback_when_native_metadata_absent": {
+      "executable_in_v1": false,
+      "materialized_rule_count": 0,
+      "selection": "all_rules_whose_precedence_stage_matches",
+      "deferred_reason": "response_projection does not contain the persisted request cap or token-counter comparability metadata required to evaluate this stage; prose is not executable"
+    },
+    "not_provided_when_native_metadata_absent_and_fallback_not_applicable": {
+      "executable_in_v1": true,
+      "materialized_rule_count": 10,
+      "selection": "all_rules_whose_precedence_stage_matches"
+    }
+  },
+  "materialized_provider_rule_count": 55
+}

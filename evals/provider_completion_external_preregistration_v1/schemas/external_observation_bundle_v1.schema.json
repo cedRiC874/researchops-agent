@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-external-observation-bundle-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "trust_manifest_observation",
+    "preregistration_envelope_observation",
+    "user_authorization_observation",
+    "candidate_freeze_anchor",
+    "preregistration_freeze_anchor",
+    "authorization_consumed_anchor",
+    "manifest_observation",
+    "closure_receipt_observation",
+    "closure_evidence_anchor",
+    "artifact_values_may_supply_expected_values"
+  ],
+  "properties": {
+    "schema_version": {"const": "provider-completion-external-observation-bundle/1.0"},
+    "mode": {"enum": ["pre_receipt", "final"]},
+    "trust_manifest_observation": {"$ref": "#/$defs/document_observation"},
+    "preregistration_envelope_observation": {"$ref": "#/$defs/document_observation"},
+    "user_authorization_observation": {"$ref": "#/$defs/user_authorization_observation"},
+    "candidate_freeze_anchor": {"allOf": [{"$ref": "#/$defs/ledger_anchor"}, {"properties": {"entry_type": {"const": "candidate_frozen"}}}]},
+    "preregistration_freeze_anchor": {"allOf": [{"$ref": "#/$defs/ledger_anchor"}, {"properties": {"entry_type": {"const": "preregistration_frozen"}}}]},
+    "authorization_consumed_anchor": {"allOf": [{"$ref": "#/$defs/ledger_anchor"}, {"properties": {"entry_type": {"const": "authorization_consumed"}}}]},
+    "manifest_observation": {"$ref": "#/$defs/manifest_observation"},
+    "closure_receipt_observation": {
+      "oneOf": [{"$ref": "#/$defs/document_observation"}, {"type": "null"}]
+    },
+    "closure_evidence_anchor": {
+      "oneOf": [{"$ref": "#/$defs/ledger_anchor"}, {"type": "null"}]
+    },
+    "artifact_values_may_supply_expected_values": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"mode": {"const": "pre_receipt"}}, "required": ["mode"]},
+      "then": {
+        "properties": {
+          "closure_receipt_observation": {"type": "null"},
+          "closure_evidence_anchor": {"type": "null"}
+        }
+      },
+      "else": {
+        "properties": {
+          "closure_receipt_observation": {"$ref": "#/$defs/document_observation"},
+          "closure_evidence_anchor": {"allOf": [{"$ref": "#/$defs/ledger_anchor"}, {"properties": {"entry_type": {"const": "closure_evidence_anchored"}}}]}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "ledger_id": {"type": "string", "pattern": "^PCELEDGER-[A-F0-9]{32}$"},
+    "document_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_sha256", "observed_at_utc", "observation_source_commitment_sha256"],
+      "properties": {
+        "document_sha256": {"$ref": "#/$defs/sha256"},
+        "observed_at_utc": {"$ref": "#/$defs/timestamp"},
+        "observation_source_commitment_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "user_authorization_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id_sha256",
+        "authorization_binding_sha256",
+        "observed_at_utc",
+        "observation_source_commitment_sha256"
+      ],
+      "properties": {
+        "authorization_id_sha256": {"$ref": "#/$defs/sha256"},
+        "authorization_binding_sha256": {"$ref": "#/$defs/sha256"},
+        "observed_at_utc": {"$ref": "#/$defs/timestamp"},
+        "observation_source_commitment_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "ledger_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_sha256",
+        "ledger_id",
+        "entry_type",
+        "sequence",
+        "previous_head_sha256",
+        "resulting_head_sha256",
+        "entry_occurred_at_utc",
+        "observed_at_utc",
+        "observation_source_commitment_sha256"
+      ],
+      "properties": {
+        "entry_sha256": {"$ref": "#/$defs/sha256"},
+        "ledger_id": {"$ref": "#/$defs/ledger_id"},
+        "entry_type": {"enum": ["candidate_frozen", "preregistration_frozen", "authorization_consumed", "closure_evidence_anchored"]},
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+        "previous_head_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "resulting_head_sha256": {"$ref": "#/$defs/sha256"},
+        "entry_occurred_at_utc": {"$ref": "#/$defs/timestamp"},
+        "observed_at_utc": {"$ref": "#/$defs/timestamp"},
+        "observation_source_commitment_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "manifest_observation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "manifest_sha256", "observed_at_utc", "observation_source_commitment_sha256", "last_completed_artifact_write_stage"],
+          "properties": {
+            "state": {"const": "present"},
+            "manifest_sha256": {"$ref": "#/$defs/sha256"},
+            "observed_at_utc": {"$ref": "#/$defs/timestamp"},
+            "observation_source_commitment_sha256": {"$ref": "#/$defs/sha256"},
+            "last_completed_artifact_write_stage": {"const": "manifest_written"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "manifest_sha256", "observed_at_utc", "observation_source_commitment_sha256", "last_completed_artifact_write_stage"],
+          "properties": {
+            "state": {"const": "absent"},
+            "manifest_sha256": {"type": "null"},
+            "observed_at_utc": {"$ref": "#/$defs/timestamp"},
+            "observation_source_commitment_sha256": {"$ref": "#/$defs/sha256"},
+            "last_completed_artifact_write_stage": {"enum": ["not_started", "audit_database_written", "audit_index_written", "completion_telemetry_written"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "manifest_sha256", "observed_at_utc", "observation_source_commitment_sha256", "last_completed_artifact_write_stage", "quarantine_reason"],
+          "properties": {
+            "state": {"const": "withheld_quarantined"},
+            "manifest_sha256": {"type": "null"},
+            "observed_at_utc": {"$ref": "#/$defs/timestamp"},
+            "observation_source_commitment_sha256": {"$ref": "#/$defs/sha256"},
+            "last_completed_artifact_write_stage": {"enum": ["not_started", "audit_database_written", "audit_index_written", "completion_telemetry_written", "manifest_written"]},
+            "quarantine_reason": {"enum": ["sensitive_detected", "privacy_unverified"]}
+          }
+        }
+      ]
+    }
+  }
+}

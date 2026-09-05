@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import ast
 import json
 import hashlib
+import shutil
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -18,16 +20,31 @@ from researchops.phase6_depth60 import (
     validate_phase6_depth60_plan,
 )
 from researchops.phase6_runner import Phase6RunError
+from researchops.phase6_source_bundle import (
+    _local_import_targets,
+    phase6_depth60_source_bundle_sha256,
+    phase6_depth60_source_files,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = ROOT / DEPTH60_PLAN_PATH
-EXPECTED_COMMITMENT = "012aecfa73983e12fb24e839168b715ce86800b96958d7c244263f0ca9eee9a3"
+EXPECTED_COMMITMENT = "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e"
+
+
+def _validate_historical_contract_at_locked_components() -> dict[str, object]:
+    plan = json.loads(PLAN.read_text(encoding="utf-8"))
+    with patch.object(
+        depth60_module,
+        "build_depth60_component_hashes",
+        return_value=plan["component_hashes"],
+    ):
+        return validate_phase6_depth60_plan(ROOT, PLAN)
 
 
 class Phase6Depth60PlanTests(unittest.TestCase):
-    def test_locked_plan_validates_without_network(self) -> None:
-        result = validate_phase6_depth60_plan(ROOT, PLAN)
+    def test_locked_plan_contract_validates_at_historical_components(self) -> None:
+        result = _validate_historical_contract_at_locked_components()
 
         self.assertEqual(result["status"], "valid")
         self.assertEqual(result["selected_task_count"], 60)
@@ -48,6 +65,22 @@ class Phase6Depth60PlanTests(unittest.TestCase):
             ]
         )
 
+    def test_historical_plan_bytes_and_commitment_are_unchanged(self) -> None:
+        payload = PLAN.read_bytes()
+        plan = json.loads(payload.decode("utf-8"))
+        self.assertEqual(len(payload), 5398)
+        self.assertEqual(
+            hashlib.sha256(payload).hexdigest(),
+            "f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20",
+        )
+        self.assertEqual(plan["plan_commitment_sha256"], EXPECTED_COMMITMENT)
+        self.assertEqual(depth60_plan_commitment_sha256(plan), EXPECTED_COMMITMENT)
+
+    def test_current_tree_rejects_the_historical_plan_as_component_drift(self) -> None:
+        with self.assertRaises(Phase6RunError) as caught:
+            validate_phase6_depth60_plan(ROOT, PLAN)
+        self.assertEqual(caught.exception.code, "phase6_depth60_component_drift")
+
     def test_commitment_changes_when_budget_or_scope_changes(self) -> None:
         plan = json.loads(PLAN.read_text(encoding="utf-8"))
         original = depth60_plan_commitment_sha256(plan)
@@ -65,7 +98,7 @@ class Phase6Depth60PlanTests(unittest.TestCase):
     def test_component_drift_fails_closed(self) -> None:
         actual = depth60_module.build_depth60_component_hashes(ROOT)
         drifted = dict(actual)
-        drifted["source_tree_sha256"] = "0" * 64
+        drifted["source_bundle_sha256"] = "0" * 64
         with patch.object(
             depth60_module,
             "build_depth60_component_hashes",
@@ -74,6 +107,38 @@ class Phase6Depth60PlanTests(unittest.TestCase):
             with self.assertRaises(Phase6RunError) as caught:
                 validate_phase6_depth60_plan(ROOT, PLAN)
         self.assertEqual(caught.exception.code, "phase6_depth60_component_drift")
+
+    def test_source_bundle_tracks_dependency_closure_not_unrelated_new_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / "src/researchops", root / "src/researchops")
+            original = phase6_depth60_source_bundle_sha256(root)
+            files = phase6_depth60_source_files(root)
+            self.assertIn("phase6_runner.py", files)
+            self.assertIn("phase6_source_bundle.py", files)
+            self.assertNotIn("kimi_chat_nonstreaming.py", files)
+
+            (root / "src/researchops/unrelated_successor.py").write_text(
+                "VALUE = 1\n", encoding="utf-8"
+            )
+            self.assertEqual(phase6_depth60_source_bundle_sha256(root), original)
+
+            runner = root / "src/researchops/phase6_runner.py"
+            runner.write_text(
+                runner.read_text(encoding="utf-8") + "\n# dependency drift\n",
+                encoding="utf-8",
+            )
+            self.assertNotEqual(phase6_depth60_source_bundle_sha256(root), original)
+
+    def test_source_bundle_parser_captures_absolute_import_from_forms(self) -> None:
+        tree = ast.parse(
+            "from researchops import helper\n"
+            "from researchops.second_helper import VALUE\n"
+        )
+        self.assertEqual(
+            _local_import_targets(tree),
+            {"helper.py", "second_helper.py"},
+        )
 
     def test_holdout_rows_are_unchanged_historical_tasks(self) -> None:
         lines = (ROOT / "evals/phase6_agent_tasks.jsonl").read_text(
@@ -116,6 +181,52 @@ class Phase6Depth60PlanTests(unittest.TestCase):
         self.assertFalse(hasattr(parsed, "api_key"))
         self.assertFalse(parsed.confirm_online)
 
+    def test_offline_ci_binds_history_and_zero_call_successor_validation(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("phase6-validate-deepseek-depth60 `", workflow)
+        self.assertIn("evals/phase6_deepseek_depth60_plan_v2.json", workflow)
+        self.assertIn("evals/phase6_deepseek_depth60_plan_v3.json", workflow)
+        self.assertIn("evals/phase6_deepseek_depth60_plan_v4.json", workflow)
+        self.assertIn("evals/phase6_deepseek_depth60_plan_v5.json", workflow)
+        self.assertIn(
+            "979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af",
+            workflow,
+        )
+        self.assertIn(
+            "c36dc0dd0487aa350dc2bd636b45bb494381e0c732c80be7b410be4b9beda612",
+            workflow,
+        )
+        self.assertIn(
+            "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7",
+            workflow,
+        )
+        self.assertIn(
+            "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10",
+            workflow,
+        )
+        self.assertIn(
+            "f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20",
+            workflow,
+        )
+        self.assertIn("$historicalDepth60Bytes -ne 5398", workflow)
+        self.assertIn("$historicalDepth60V2Bytes -ne 2170", workflow)
+        self.assertIn("$depth60V3Bytes -ne 2850", workflow)
+        self.assertIn("$depth60V4Bytes -ne 3087", workflow)
+        self.assertIn("$depth60V5Bytes -ne 3120", workflow)
+        self.assertIn("$depth60.source_bundle_algorithm -ne \"v2\"", workflow)
+        self.assertIn("$depth60.online_execution_authorized -ne $false", workflow)
+        self.assertIn("$depth60.network_calls -ne 0", workflow)
+        self.assertIn("$depth60.model_calls -ne 0", workflow)
+        self.assertIn(
+            '$firstLive.authorization_binding_schema_version -ne '
+            '"deepseek-first-live-authorization-binding/2.0"',
+            workflow,
+        )
+        self.assertIn(
+            "$firstLive.external_authorization_binding_required -ne $true",
+            workflow,
+        )
+
 
 class Phase6Depth60ExecutionGateTests(unittest.IsolatedAsyncioTestCase):
     async def test_expected_commitment_mismatch_precedes_authorization_and_key(self) -> None:
@@ -124,17 +235,23 @@ class Phase6Depth60ExecutionGateTests(unittest.IsolatedAsyncioTestCase):
                 del key, default
                 raise AssertionError("environment must not be read")
 
-        with self.assertRaises(Phase6RunError) as caught:
-            await run_phase6_depth60_online(
-                project_root=ROOT,
-                plan_path=PLAN,
-                output_directory=ROOT / "artifacts/depth60-wrong-commitment",
-                authorization_id="depth60-auth-001",
-                expected_plan_commitment="0" * 64,
-                authorization_expires_at_utc="2099-01-01T00:00:00Z",
-                confirm_online=True,
-                environment=ForbiddenEnvironment(),
-            )
+        validation = _validate_historical_contract_at_locked_components()
+        with patch.object(
+            depth60_module,
+            "validate_phase6_depth60_plan",
+            return_value=validation,
+        ):
+            with self.assertRaises(Phase6RunError) as caught:
+                await run_phase6_depth60_online(
+                    project_root=ROOT,
+                    plan_path=PLAN,
+                    output_directory=ROOT / "artifacts/depth60-wrong-commitment",
+                    authorization_id="depth60-auth-001",
+                    expected_plan_commitment="0" * 64,
+                    authorization_expires_at_utc="2099-01-01T00:00:00Z",
+                    confirm_online=True,
+                    environment=ForbiddenEnvironment(),
+                )
         self.assertEqual(
             caught.exception.code,
             "phase6_depth60_expected_commitment_mismatch",
@@ -165,7 +282,7 @@ class Phase6Depth60ExecutionGateTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(caught.exception.code, "phase6_online_confirmation_required")
 
     async def test_short_authorization_window_fails_before_runtime_readiness(self) -> None:
-        validation = validate_phase6_depth60_plan(ROOT, PLAN)
+        validation = _validate_historical_contract_at_locked_components()
         expiry = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat().replace(
             "+00:00", "Z"
         )
@@ -198,7 +315,7 @@ class Phase6Depth60ExecutionGateTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_output_cannot_overlap_single_use_receipt_namespace(self) -> None:
-        validation = validate_phase6_depth60_plan(ROOT, PLAN)
+        validation = _validate_historical_contract_at_locked_components()
 
         class ForbiddenEnvironment(dict[str, str]):
             def get(self, key, default=None):
@@ -247,7 +364,7 @@ class Phase6Depth60ExecutionGateTests(unittest.IsolatedAsyncioTestCase):
                     self.assertFalse(receipt_root.exists())
 
     async def test_single_use_receipt_blocks_second_output(self) -> None:
-        validation = validate_phase6_depth60_plan(ROOT, PLAN)
+        validation = _validate_historical_contract_at_locked_components()
         fake_result = {
             "report": {
                 "run_status": "completed",

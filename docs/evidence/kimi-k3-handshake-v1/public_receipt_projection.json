@@ -1,0 +1,72 @@
+{
+  "schema_version": "kimi-k3-handshake-public-projection/1.0",
+  "public_evidence_id": "c731ba7f-1de2-48f3-b0e2-66acc6f87f72",
+  "documented_at_utc": "2026-09-01T06:06:18.383Z",
+  "repository_anchor": {
+    "commit": "66f8c52dbe211adc8db9b9d3097f70bebff5f7ce",
+    "tree": "3be2ba493592afe06b8f25d161168489f8dc6c2b"
+  },
+  "plan": {
+    "handshake_id": "kimi-k3-controlled-synthetic-handshake-v1",
+    "commitment_sha256": "8979dfa8b8826afc6e9e44fadc64ed515b767a421ea122d5ffee5ac40c15e7cd",
+    "provider": "moonshot_kimi",
+    "model": "kimi-k3",
+    "origin": "https://api.moonshot.cn",
+    "synthetic_only": true,
+    "scenario_count": 1
+  },
+  "outcome": {
+    "status": "failed",
+    "error_code": "kimi_chat_tool_protocol_invalid",
+    "event_description": "local_tool_protocol_validation_failure",
+    "outcome_unknown": false,
+    "scenarios_completed": 0,
+    "network_attempts": 1,
+    "network_calls": 1,
+    "model_requests": 1,
+    "tool_executions": 0,
+    "invalid_request_probe_attempted": false,
+    "wall_elapsed_ms": 7824,
+    "provider_latency_ms": null
+  },
+  "usage": {
+    "usage_complete": true,
+    "usage_observed_model_requests": 1,
+    "input_tokens": 283,
+    "output_tokens": 116,
+    "cached_input_tokens": null
+  },
+  "cost": {
+    "currency": "CNY",
+    "local_observed_usage_cost": "0.017260",
+    "local_observed_usage_cost_stop": "2.000000",
+    "actual_provider_bill": null,
+    "actual_bill_unknown": true,
+    "provider_billing_hard_cap": false
+  },
+  "observation_boundary": {
+    "raw_provider_headers_persisted": false,
+    "raw_provider_body_persisted": false,
+    "raw_prompt_output_reasoning_tool_arguments_or_result_persisted": false,
+    "observed_provider_payload_shape_known": false,
+    "causal_root_cause": "undetermined_without_raw_provider_payload",
+    "causal_provider_fault_claim_allowed": false,
+    "usage_projection_observed": true,
+    "usage_semantics_verified": false,
+    "tool_compatibility_verified": false,
+    "error_semantics_verified": false
+  },
+  "authorization_and_claim_boundary": {
+    "authorization_consumed": true,
+    "authorization_identifier_or_hash_published": false,
+    "authorization_derived_binding_hashes_published": false,
+    "authorizes_retry": false,
+    "authorizes_resume": false,
+    "authorizes_prompt_or_candidate_tuning": false,
+    "authorizes_model_quality_claim": false,
+    "authorizes_provider_registration": false,
+    "authorizes_private_evaluation": false,
+    "authorizes_non_synthetic_data": false,
+    "compatibility_verified": false
+  }
+}

@@ -21,7 +21,14 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from .artifact_security import ArtifactPermissionError, enable_parent_acl_inheritance
-from .audit import AuditLedger, safe_audit_value, sha256_json
+from .audit import (
+    COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION,
+    COMPLETION_TELEMETRY_UNMAPPED_EVENT,
+    AuditLedger,
+    safe_audit_value,
+    sha256_json,
+)
+from .completion_telemetry_ledger import LedgerCompletionTelemetrySession
 from .model_providers import (
     ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
     ProviderAdapter,
@@ -30,6 +37,7 @@ from .model_providers import (
 )
 from .phase6_agent import (
     PHASE6_MAX_OUTPUT_TOKENS,
+    AgentSdkReconciliation,
     AgentRunRecord,
     ControlledExecutorBackend,
     LogicalAgentRequest,
@@ -47,7 +55,12 @@ from .phase6_eval import (
     phase6_failed_run,
     score_phase6_run,
 )
+from .phase6_source_bundle import phase6_depth60_source_bundle_sha256
 from .tool_runtime import ControlledToolExecutor, build_project_tool_registry
+from researchops_completion_telemetry.capture import (
+    RuntimeDenominatorTracker,
+    evaluate_runtime_denominator_closure,
+)
 
 
 PHASE6_RUNNER_VERSION = "1.9.0"
@@ -97,6 +110,14 @@ _DEPTH60_INPUT_COMPONENT_PATHS = {
 }
 
 AgentRunner = Callable[..., Awaitable[AgentRunRecord] | AgentRunRecord]
+
+
+def _resolve_agent_runner(
+    runner: AgentRunner | None,
+) -> tuple[AgentRunner, bool]:
+    if runner is None:
+        return run_phase6_agent, False
+    return runner, False
 
 
 @dataclass(frozen=True)
@@ -228,6 +249,7 @@ async def run_phase6_online_evaluation(
     authorization_deadline_utc: datetime | None = None,
     environment: Mapping[str, str] | None = None,
     agent_runner: AgentRunner | None = None,
+    runtime_denominator_tracker: RuntimeDenominatorTracker | None = None,
 ) -> dict[str, Any]:
     """Public Phase 6 entrypoint; Depth-60 extensions are always denied here."""
 
@@ -255,6 +277,7 @@ async def run_phase6_online_evaluation(
         authorization_deadline_utc=authorization_deadline_utc,
         environment=environment,
         agent_runner=agent_runner,
+        runtime_denominator_tracker=runtime_denominator_tracker,
         _depth60_plan_binding=None,
     )
 
@@ -284,6 +307,7 @@ async def _run_phase6_online_evaluation_impl(
     authorization_deadline_utc: datetime | None = None,
     environment: Mapping[str, str] | None = None,
     agent_runner: AgentRunner | None = None,
+    runtime_denominator_tracker: RuntimeDenominatorTracker | None = None,
     _depth60_plan_binding: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run selected cases sequentially against the real SDK adapter.
@@ -363,6 +387,15 @@ async def _run_phase6_online_evaluation_impl(
         authorization_deadline=authorization_deadline,
         binding=_depth60_plan_binding,
     )
+    runner_impl, offline_runner_authorized = _resolve_agent_runner(agent_runner)
+    telemetry_runtime_plan_binding = _validate_runtime_denominator_tracker(
+        runtime_denominator_tracker,
+        required=not offline_runner_authorized,
+        adapter=adapter,
+        selected=selected,
+        max_turns=max_turns,
+        deepseek_policy=deepseek_policy,
+    )
 
     sdk = phase6_sdk_status()
     if agent_runner is None and not sdk["installed"]:
@@ -374,7 +407,6 @@ async def _run_phase6_online_evaluation_impl(
     # Read the provider credential only after all local confirmation, model,
     # budget, path and frozen-corpus checks have passed.
     api_key = _environment_api_key(adapter, environment)
-    runner_impl = agent_runner or run_phase6_agent
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(
@@ -385,6 +417,7 @@ async def _run_phase6_online_evaluation_impl(
 
     campaign_started_ns = time.perf_counter_ns()
     deepseek_budget_state = _new_deepseek_budget_state(deepseek_policy)
+    cancelled_error: asyncio.CancelledError | None = None
     try:
         tool_source_root = _prepare_depth60_input_snapshot(
             root=root,
@@ -400,6 +433,7 @@ async def _run_phase6_online_evaluation_impl(
         execution_failure_count = 0
         local_tool_attempt_count = 0
         local_tool_attempt_failure_count = 0
+        telemetry_ledger_failure_observed = False
         stop_reason: str | None = None
 
         for task in selected:
@@ -446,6 +480,10 @@ async def _run_phase6_online_evaluation_impl(
             deepseek_usage_observed = False
             deepseek_case_budget: dict[str, Any] | None = None
             harness_failure_this_case = False
+            telemetry_case_reconciliation: dict[str, Any] | None = None
+            telemetry_case_sealed = False
+            telemetry_case_reconciliation_failed = False
+            telemetry_ledger_session: LedgerCompletionTelemetrySession | None = None
             try:
                 if release_existed_before:
                     raise Phase6RunError(
@@ -466,6 +504,19 @@ async def _run_phase6_online_evaluation_impl(
                     },
                     actor_kind="eval_harness",
                 )
+                if runtime_denominator_tracker is not None:
+                    try:
+                        telemetry_ledger_session = LedgerCompletionTelemetrySession(
+                            runtime_denominator_tracker.bind_case(task.task_id),
+                            ledger=ledger,
+                            run_id=run_id,
+                            runtime_plan_binding=telemetry_runtime_plan_binding,
+                        )
+                    except Exception:
+                        raise Phase6RunError(
+                            "completion_telemetry_case_binding_failed",
+                            "Case-scoped completion telemetry session 绑定失败。",
+                        ) from None
                 record = await _run_one_agent(
                     runner_impl,
                     request=request,
@@ -480,6 +531,7 @@ async def _run_phase6_online_evaluation_impl(
                         campaign_started_ns=campaign_started_ns,
                         authorization_deadline_utc=authorization_deadline,
                     ),
+                    completion_telemetry_session=telemetry_ledger_session,
                 )
                 if not isinstance(record, AgentRunRecord):
                     raise Phase6RunError(
@@ -511,6 +563,13 @@ async def _run_phase6_online_evaluation_impl(
                         "phase6_external_tracing_enabled",
                         "在线评测要求关闭外部 tracing。",
                     )
+                if runtime_denominator_tracker is not None:
+                    telemetry_case_reconciliation = _seal_runtime_telemetry_case(
+                        runtime_denominator_tracker,
+                        task.task_id,
+                        record.sdk_reconciliation,
+                    )
+                    telemetry_case_sealed = True
                 record = replace(record, cost_usd=_estimate_cost(record, prices))
                 _record_model_usage(
                     ledger,
@@ -520,6 +579,9 @@ async def _run_phase6_online_evaluation_impl(
                     provider=adapter.provider_id,
                     transport=adapter.transport_id,
                     prices=prices,
+                    completion_telemetry_enabled=(
+                        runtime_denominator_tracker is not None
+                    ),
                 )
                 safe_record = _safe_record(record)
                 ledger.append_event(
@@ -590,16 +652,115 @@ async def _run_phase6_online_evaluation_impl(
                         "category": _task_category(task),
                         "observation": safe_record,
                         "deepseek_cny_budget_observation": deepseek_case_budget,
+                        "completion_telemetry_case_reconciliation": (
+                            telemetry_case_reconciliation
+                        ),
                         "evidence_ids_by_tool_call": evidence_by_call_id,
                         "safety_checks": safety_checks,
                         "score": score.to_dict(),
                     }
                 )
+            except asyncio.CancelledError as exc:
+                cancelled_error = exc
+                error_code = "phase6_case_cancelled"
+                if (
+                    runtime_denominator_tracker is not None
+                    and not telemetry_case_sealed
+                ):
+                    try:
+                        telemetry_case_reconciliation = (
+                            _seal_runtime_telemetry_case(
+                                runtime_denominator_tracker,
+                                task.task_id,
+                                AgentSdkReconciliation(
+                                    "cancelled_unavailable", None, None, ()
+                                ),
+                            )
+                        )
+                        telemetry_case_sealed = True
+                    except Exception:
+                        telemetry_case_reconciliation_failed = True
+                        telemetry_ledger_failure_observed = True
+                if deepseek_policy is not None and not deepseek_usage_observed:
+                    _mark_deepseek_usage_unavailable(deepseek_budget_state)
+                execution_failure_count += 1
+                latency_ms = max(
+                    (time.perf_counter_ns() - started_ns) / 1_000_000, 0.0
+                )
+                ledger.append_event(
+                    run_id,
+                    "agent_run_failed",
+                    {
+                        "error_code": error_code,
+                        "error_class": "CancelledError",
+                        "latency_ms": latency_ms,
+                        "provider": adapter.provider_id,
+                        "transport": adapter.transport_id,
+                    },
+                    actor_kind="eval_harness",
+                )
+                current_status = str(ledger.get_run(run_id)["status"])
+                if current_status in {"running", "waiting_approval"}:
+                    ledger.set_run_status(
+                        run_id, "failed", terminal_error_code=error_code
+                    )
+                score = phase6_failed_run(
+                    task, error_code, latency_ms=latency_ms
+                )
+                scores.append(score)
+                result_rows.append(
+                    {
+                        "schema_version": "1.1",
+                        "task_id": task.task_id,
+                        "split": task.split,
+                        "provider": adapter.provider_id,
+                        "transport": adapter.transport_id,
+                        "execution_status": "runner_error",
+                        "error_code": error_code,
+                        "tags": list(task.tags),
+                        "category": _task_category(task),
+                        "observation": None,
+                        "deepseek_cny_budget_observation": deepseek_case_budget,
+                        "completion_telemetry_case_reconciliation": (
+                            telemetry_case_reconciliation
+                        ),
+                        "evidence_ids_by_tool_call": {},
+                        "safety_checks": None,
+                        "score": score.to_dict(),
+                    }
+                )
+                stop_reason = "phase6_run_cancelled"
             except Exception as exc:
+                if (
+                    runtime_denominator_tracker is not None
+                    and not telemetry_case_sealed
+                ):
+                    reconciliation = (
+                        exc.sdk_reconciliation
+                        if isinstance(exc, Phase6AgentError)
+                        else AgentSdkReconciliation(
+                            "harness_error_unavailable", None, None, ()
+                        )
+                    )
+                    try:
+                        telemetry_case_reconciliation = (
+                            _seal_runtime_telemetry_case(
+                                runtime_denominator_tracker,
+                                task.task_id,
+                                reconciliation,
+                            )
+                        )
+                        telemetry_case_sealed = True
+                    except Exception:
+                        telemetry_case_reconciliation_failed = True
+                        harness_failure_this_case = True
+                        stop_reason = "completion_telemetry_case_reconciliation_failed"
                 if deepseek_policy is not None and not deepseek_usage_observed:
                     _mark_deepseek_usage_unavailable(deepseek_budget_state)
                 if _is_execution_failure(exc):
                     execution_failure_count += 1
+                    if telemetry_case_reconciliation_failed:
+                        harness_error_count += 1
                 else:
                     harness_error_count += 1
                     harness_failure_this_case = True
@@ -641,6 +802,9 @@ async def _run_phase6_online_evaluation_impl(
                         "category": _task_category(task),
                         "observation": None,
                         "deepseek_cny_budget_observation": deepseek_case_budget,
+                        "completion_telemetry_case_reconciliation": (
+                            telemetry_case_reconciliation
+                        ),
                         "evidence_ids_by_tool_call": {},
                         "safety_checks": None,
                         "score": score.to_dict(),
@@ -648,12 +812,24 @@ async def _run_phase6_online_evaluation_impl(
                 )
 
             post_run_export = ledger.export_run(run_id)
+            if telemetry_ledger_session is not None and telemetry_ledger_session.failed:
+                telemetry_ledger_failure_observed = True
             attempts = list(post_run_export.get("tool_attempts", ()))
             local_tool_attempt_count += len(attempts)
             local_tool_attempt_failure_count += sum(
                 item.get("outcome") != "succeeded" for item in attempts
             )
             verification = ledger.verify_chain(run_id)
+            telemetry_event_commitment = None
+            if telemetry_ledger_session is not None:
+                try:
+                    telemetry_event_commitment = (
+                        telemetry_ledger_session.event_commitment()
+                    )
+                except Exception:
+                    telemetry_ledger_failure_observed = True
+                    harness_failure_this_case = True
+                    stop_reason = "completion_telemetry_event_commitment_failed"
             audit_index.append(
                 {
                     "task_id": task.task_id,
@@ -661,13 +837,20 @@ async def _run_phase6_online_evaluation_impl(
                     "provider": adapter.provider_id,
                     "transport": adapter.transport_id,
                     "chain_verification": verification.to_dict(),
+                    "completion_telemetry_event_commitment": (
+                        telemetry_event_commitment
+                    ),
                 }
             )
             if not verification.valid:
                 harness_error_count += 1
                 harness_failure_this_case = True
                 stop_reason = "deepseek_audit_chain_invalid"
-            elif harness_failure_this_case and deepseek_policy is not None:
+            elif (
+                harness_failure_this_case
+                and deepseek_policy is not None
+                and stop_reason is None
+            ):
                 stop_reason = "deepseek_harness_integrity_failure"
             if stop_reason is not None:
                 break
@@ -683,6 +866,16 @@ async def _run_phase6_online_evaluation_impl(
                 if stop_reason is not None:
                     break
 
+        completion_telemetry_artifact = (
+            _finalize_runtime_completion_telemetry(
+                runtime_denominator_tracker,
+                ledger=ledger,
+                audit_index=audit_index,
+                ledger_failure_observed=telemetry_ledger_failure_observed,
+            )
+            if runtime_denominator_tracker is not None
+            else _legacy_completion_telemetry_status()
+        )
         attempted_task_ids = [row["task_id"] for row in result_rows]
         completed_task_ids = [
             row["task_id"]
@@ -802,6 +995,37 @@ async def _run_phase6_online_evaluation_impl(
                     deepseek_budget_state,
                     attempted_case_count=len(attempted_task_ids),
                 ),
+                "completion_telemetry": {
+                    "schema_version": completion_telemetry_artifact[
+                        "schema_version"
+                    ],
+                    "status": completion_telemetry_artifact["status"],
+                    "runtime_plan": completion_telemetry_artifact.get(
+                        "runtime_plan"
+                    ),
+                    "runtime_denominator": (
+                        {
+                            key: value
+                            for key, value in (
+                                completion_telemetry_artifact.get(
+                                    "runtime_denominator"
+                                )
+                                or {}
+                            ).items()
+                            if key != "records"
+                        }
+                        if completion_telemetry_artifact.get(
+                            "runtime_denominator"
+                        )
+                        is not None
+                        else None
+                    ),
+                    "ledger_reconciliation": completion_telemetry_artifact.get(
+                        "ledger_reconciliation"
+                    ),
+                    "closure": completion_telemetry_artifact["closure"],
+                    "historical_backfill_performed": False,
+                },
             }
         )
         _apply_deepseek_cost_report(
@@ -823,6 +1047,11 @@ async def _run_phase6_online_evaluation_impl(
             staging / "phase6_audit_index.json",
             {"schema_version": "1.1", "runs": audit_index},
         )
+        if runtime_denominator_tracker is not None:
+            _write_json(
+                staging / "phase6_completion_telemetry.json",
+                completion_telemetry_artifact,
+            )
         (staging / "phase6_summary.md").write_text(
             _summary_markdown(report), encoding="utf-8"
         )
@@ -834,6 +1063,8 @@ async def _run_phase6_online_evaluation_impl(
             staging / "phase6_audit_index.json",
             staging / "phase6_summary.md",
         ]
+        if runtime_denominator_tracker is not None:
+            artifact_files.append(staging / "phase6_completion_telemetry.json")
         bound_components = (
             depth60_binding.get("component_hashes")
             if isinstance(depth60_binding, Mapping)
@@ -849,10 +1080,11 @@ async def _run_phase6_online_evaluation_impl(
             if isinstance(bound_components, Mapping)
             else _sha256_file(split_source)
         )
-        source_tree_sha256 = (
-            str(bound_components["source_tree_sha256"])
+        source_tree_sha256 = _source_tree_sha256(root / "src" / "researchops")
+        depth60_source_bundle_sha256 = (
+            str(bound_components["source_bundle_sha256"])
             if isinstance(bound_components, Mapping)
-            else _source_tree_sha256(root / "src" / "researchops")
+            else None
         )
         manifest = {
             "schema_version": "1.1",
@@ -945,7 +1177,9 @@ async def _run_phase6_online_evaluation_impl(
                     "per-row estimate from row input/output tokens when pricing is provided"
                 ),
             },
+            "completion_telemetry": report["completion_telemetry"],
             "source_tree_sha256": source_tree_sha256,
+            "depth60_source_bundle_sha256": depth60_source_bundle_sha256,
             "artifacts": {
                 path.name: {
                     "sha256": _sha256_file(path),
@@ -969,6 +1203,8 @@ async def _run_phase6_online_evaluation_impl(
                 "发布评测产物前目标目录已出现，已停止以避免覆盖。",
             )
         os.replace(staging, output_path)
+        if cancelled_error is not None:
+            raise cancelled_error
         return {
             "status": report["run_status"],
             "evaluation_mode": PHASE6_EVALUATION_MODE,
@@ -978,9 +1214,17 @@ async def _run_phase6_online_evaluation_impl(
             "manifest": str(output_path / "phase6_manifest.json"),
             "report": report,
         }
-    except Exception:
-        if staging.exists() and staging.is_relative_to(output_path.parent):
-            shutil.rmtree(staging)
+    except BaseException:
+        cleanup_error: Exception | None = None
+        try:
+            if staging.exists() and staging.is_relative_to(output_path.parent):
+                shutil.rmtree(staging)
+        except Exception as exc:
+            cleanup_error = exc
+        if cancelled_error is not None:
+            raise cancelled_error from None
+        if cleanup_error is not None:
+            raise cleanup_error
         raise
 
 
@@ -1086,6 +1330,71 @@ def _validate_authorization_deadline(
             "phase6_authorization_expired", "授权 deadline 已经过期。"
         )
     return normalized
+
+
+def _validate_runtime_denominator_tracker(
+    tracker: RuntimeDenominatorTracker | None,
+    *,
+    required: bool,
+    adapter: ProviderAdapter,
+    selected: Sequence[Phase6Task],
+    max_turns: int,
+    deepseek_policy: _DeepSeekCnyPolicy | None,
+) -> object | None:
+    """Validate the complete dynamic plan before Key lookup or filesystem mutation."""
+
+    if tracker is None:
+        if required:
+            raise Phase6RunError(
+                "completion_telemetry_tracker_required",
+                "真实 Phase 6 运行必须在读取 Key 前绑定 verified runtime denominator tracker。",
+                not_run=True,
+            )
+        return None
+    if type(tracker) is not RuntimeDenominatorTracker:
+        raise Phase6RunError(
+            "completion_telemetry_tracker_invalid",
+            "Runtime denominator tracker 类型无效。",
+            not_run=True,
+        )
+    try:
+        plan = tracker.plan_snapshot()
+        plan_binding = tracker.plan_binding()
+        plan_binding.assert_plan_authority()
+        runtime_binding = tracker.runtime_binding()
+        runtime_binding.assert_runtime_authority(expected_scope="campaign_runtime")
+        binding = runtime_binding.runtime_snapshot()
+    except Exception:
+        raise Phase6RunError(
+            "completion_telemetry_tracker_invalid",
+            "Runtime denominator tracker authority 无效。",
+            not_run=True,
+        ) from None
+    selected_ids = [task.task_id for task in selected]
+    expected_request_cap = (
+        deepseek_policy.total_requests_cap
+        if deepseek_policy is not None
+        else len(selected_ids) * max_turns
+    )
+    if (
+        plan.get("case_ids") != selected_ids
+        or plan.get("max_turns_per_case") != max_turns
+        or plan.get("total_model_request_cap") != expected_request_cap
+        or plan.get("denominator_algorithm")
+        != "transport-response-finalization-v1"
+        or plan.get("exact_response_count_preregistered") is not False
+        or plan.get("binding") != binding
+        or binding.get("provider_id") != adapter.provider_id
+        or binding.get("api_surface") != getattr(adapter, "api_surface", None)
+        or binding.get("transport_id") != adapter.transport_id
+        or binding.get("adapter_version") != getattr(adapter, "adapter_version", None)
+    ):
+        raise Phase6RunError(
+            "completion_telemetry_tracker_binding_mismatch",
+            "Runtime denominator plan 与本次 case/provider/budget 不一致。",
+            not_run=True,
+        )
+    return plan_binding
 
 
 def _validate_depth60_runtime_binding(
@@ -1340,7 +1649,7 @@ def _validate_depth60_runtime_binding(
             "Depth-60 component binding 无效。",
         )
     actual_components = {
-        "source_tree_sha256": _source_tree_sha256(root / "src/researchops"),
+        "source_bundle_sha256": phase6_depth60_source_bundle_sha256(root),
         "phase6_tasks_sha256": _sha256_file(task_source),
         "phase6_splits_sha256": _sha256_file(split_source),
         "requirements_lock_sha256": _sha256_file(root / "requirements.lock"),
@@ -1946,6 +2255,7 @@ async def _run_one_agent(
     model: str,
     max_turns: int,
     timeout_seconds: float,
+    completion_telemetry_session: LedgerCompletionTelemetrySession | None = None,
 ) -> AgentRunRecord:
     try:
         keyword_arguments: dict[str, Any] = {
@@ -1966,6 +2276,16 @@ async def _run_one_agent(
             for item in parameters.values()
         ):
             keyword_arguments["run_timeout_seconds"] = timeout_seconds
+        if completion_telemetry_session is not None:
+            if "completion_telemetry_session" in parameters or supports_var_kwargs:
+                keyword_arguments["completion_telemetry_session"] = (
+                    completion_telemetry_session
+                )
+            else:
+                raise Phase6RunError(
+                    "completion_telemetry_runner_session_unsupported",
+                    "Agent runner 不接受 case-scoped completion telemetry session。",
+                )
         result = runner(request, backend, **keyword_arguments)
         if inspect.isawaitable(result):
             return await asyncio.wait_for(result, timeout=timeout_seconds)
@@ -1981,6 +2301,330 @@ async def _run_one_agent(
             "phase6_agent_runner_failed",
             f"Agent runner 失败：{type(exc).__name__}；未记录异常正文。",
         ) from exc
+
+
+def _seal_runtime_telemetry_case(
+    tracker: RuntimeDenominatorTracker,
+    case_id: str,
+    reconciliation: AgentSdkReconciliation,
+) -> dict[str, Any]:
+    if not isinstance(reconciliation, AgentSdkReconciliation):
+        reconciliation = AgentSdkReconciliation("unavailable", None, None, ())
+    nested = {
+        response_index: tuple(indices)
+        for response_index, indices in reconciliation.sdk_request_usage_indices_by_response
+    }
+    result = tracker.seal_case(
+        case_id,
+        sdk_raw_response_count=reconciliation.raw_response_count,
+        sdk_usage_request_count=reconciliation.aggregate_usage_request_count,
+        sdk_request_usage_indices_by_response=(
+            nested if reconciliation.available else None
+        ),
+    )
+    projection = result.to_dict()
+    projection["sdk_reconciliation_source"] = reconciliation.source
+    return projection
+
+
+def _legacy_completion_telemetry_status() -> dict[str, Any]:
+    return {
+        "schema_version": "phase6-completion-telemetry/1.0",
+        "status": "not_persisted",
+        "runtime_denominator": None,
+        "ledger_reconciliation": None,
+        "closure": {
+            "claim_allowed": False,
+            "claim_scope": "none",
+            "observed_response_count": None,
+            "reasons": ["completion_telemetry_not_persisted"],
+        },
+        "historical_backfill_performed": False,
+    }
+
+
+def _finalize_runtime_completion_telemetry(
+    tracker: RuntimeDenominatorTracker,
+    *,
+    ledger: AuditLedger,
+    audit_index: Sequence[Mapping[str, Any]],
+    ledger_failure_observed: bool,
+) -> dict[str, Any]:
+    try:
+        plan = tracker.plan_snapshot()
+    except Exception:
+        plan = None
+    try:
+        artifact = tracker.seal_runtime()
+        runtime_denominator = artifact.to_dict()
+        closure = evaluate_runtime_denominator_closure(artifact)
+    except Exception:
+        return {
+            "schema_version": "phase6-completion-telemetry/1.0",
+            "status": "outcome_unknown",
+            "runtime_plan": plan,
+            "runtime_denominator": None,
+            "ledger_reconciliation": {
+                "all_chains_valid": all(
+                    bool(item.get("chain_verification", {}).get("valid"))
+                    for item in audit_index
+                ),
+                "ledger_failure_observed": ledger_failure_observed,
+            },
+            "closure": {
+                "claim_allowed": False,
+                "claim_scope": "none",
+                "observed_response_count": None,
+                "reasons": ["runtime_denominator_seal_failed"],
+            },
+            "historical_backfill_performed": False,
+        }
+
+    event_counts = Counter()
+    started_events: dict[int, list[Mapping[str, Any]]] = {}
+    terminal_events: dict[int, list[tuple[str, Mapping[str, Any]]]] = {}
+    all_chains_valid = True
+    export_failed = False
+    event_hashes_by_case: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    reported_event_commitments: dict[str, object] = {}
+    for item in audit_index:
+        run_id = item.get("run_id")
+        case_id = item.get("task_id")
+        if not isinstance(run_id, str) or not isinstance(case_id, str):
+            export_failed = True
+            continue
+        try:
+            current_verification = ledger.verify_chain(run_id)
+        except Exception:
+            all_chains_valid = False
+        else:
+            if not current_verification.valid:
+                all_chains_valid = False
+        reported_event_commitments[case_id] = item.get(
+            "completion_telemetry_event_commitment"
+        )
+        run_hashes = {"started": [], "terminals": []}
+        event_hashes_by_case[case_id] = run_hashes
+        if not isinstance(run_id, str):
+            export_failed = True
+            continue
+        try:
+            exported = ledger.export_run(run_id)
+        except Exception:
+            export_failed = True
+            continue
+        exported_verification = exported.get("chain_verification", {})
+        if (
+            not isinstance(exported_verification, Mapping)
+            or exported_verification.get("valid") is not True
+        ):
+            all_chains_valid = False
+        for event in exported.get("events", ()):
+            event_type = event.get("event_type") if isinstance(event, Mapping) else None
+            if isinstance(event_type, str):
+                event_counts[event_type] += 1
+                payload = event.get("safe_payload")
+                if isinstance(payload, Mapping):
+                    attempt_index = payload.get("attempt_index")
+                    if type(attempt_index) is int:
+                        if event_type == "model_request_started":
+                            started_events.setdefault(attempt_index, []).append(payload)
+                            run_hashes["started"].append(
+                                {
+                                    "attempt_index": attempt_index,
+                                    "event_hash": event.get("event_hash"),
+                                }
+                            )
+                        elif event_type in {
+                            "model_response_telemetry_recorded",
+                            COMPLETION_TELEMETRY_UNMAPPED_EVENT,
+                            "model_response_telemetry_rejected",
+                            "model_request_http_error",
+                            "model_request_no_response",
+                            "model_request_cancelled",
+                            "model_request_outcome_unknown",
+                        }:
+                            terminal_events.setdefault(attempt_index, []).append(
+                                (event_type, payload)
+                            )
+                            run_hashes["terminals"].append(
+                                {
+                                    "attempt_index": attempt_index,
+                                    "event_hash": event.get("event_hash"),
+                                }
+                            )
+
+    terminal_event_count = sum(
+        event_counts[event_type]
+        for event_type in (
+            "model_response_telemetry_recorded",
+            COMPLETION_TELEMETRY_UNMAPPED_EVENT,
+            "model_response_telemetry_rejected",
+            "model_request_http_error",
+            "model_request_no_response",
+            "model_request_cancelled",
+            "model_request_outcome_unknown",
+        )
+    )
+    ledger_reasons: list[str] = []
+    if not all_chains_valid or export_failed:
+        ledger_reasons.append("audit_chain_or_export_invalid")
+    if ledger_failure_observed:
+        ledger_reasons.append("completion_telemetry_ledger_write_failed")
+    if event_counts["model_request_started"] != len(artifact.attempts):
+        ledger_reasons.append("model_request_started_count_mismatch")
+    if terminal_event_count != len(artifact.attempts):
+        ledger_reasons.append("model_request_terminal_count_mismatch")
+    if (
+        event_counts["model_response_telemetry_recorded"]
+        + event_counts[COMPLETION_TELEMETRY_UNMAPPED_EVENT]
+        != artifact.accepted_response_count
+    ):
+        ledger_reasons.append("accepted_response_event_count_mismatch")
+    if (
+        event_counts["model_response_telemetry_rejected"]
+        != artifact.rejected_response_count
+    ):
+        ledger_reasons.append("rejected_response_event_count_mismatch")
+    if event_counts["model_response_usage_recorded"]:
+        ledger_reasons.append("legacy_response_usage_event_present")
+
+    terminal_event_types = {
+        "response_accepted": "model_response_telemetry_recorded",
+        "response_rejected": "model_response_telemetry_rejected",
+        "http_error": "model_request_http_error",
+        "no_response": "model_request_no_response",
+        "cancelled": "model_request_cancelled",
+        "outcome_unknown": "model_request_outcome_unknown",
+    }
+    binding = artifact.plan_binding.runtime_binding().runtime_snapshot()
+    binding_sha256 = sha256_json(binding)
+    commitment_missing = False
+    commitment_mismatch = False
+    expected_case_ids = {item.case_id for item in artifact.cases}
+    if set(reported_event_commitments) != expected_case_ids:
+        commitment_missing = True
+    for case_id in expected_case_ids:
+        reported = reported_event_commitments.get(case_id)
+        hashes = event_hashes_by_case.get(case_id)
+        if not isinstance(reported, Mapping) or hashes is None:
+            commitment_missing = True
+            continue
+        started = sorted(
+            hashes["started"], key=lambda item: item["attempt_index"]
+        )
+        terminals = sorted(
+            hashes["terminals"], key=lambda item: item["attempt_index"]
+        )
+        if any(
+            not isinstance(item.get("event_hash"), str)
+            or not _SHA256_HEX.fullmatch(str(item.get("event_hash")))
+            for item in (*started, *terminals)
+        ):
+            commitment_mismatch = True
+            continue
+        write_failed = reported.get("write_failed")
+        if type(write_failed) is not bool:
+            commitment_mismatch = True
+            continue
+        expected_commitment_body = {
+            "schema_version": "provider-completion-ledger-bridge-commitment/1.0",
+            "case_id": case_id,
+            "binding_sha256": binding_sha256,
+            "started": started,
+            "terminals": terminals,
+            "all_started_attempts_terminal": (
+                {item["attempt_index"] for item in started}
+                == {item["attempt_index"] for item in terminals}
+            ),
+            "write_failed": write_failed,
+        }
+        expected_commitment = {
+            **expected_commitment_body,
+            "commitment_sha256": sha256_json(expected_commitment_body),
+        }
+        if dict(reported) != expected_commitment:
+            commitment_mismatch = True
+    if commitment_missing:
+        ledger_reasons.append("ledger_event_commitment_missing")
+    if commitment_mismatch:
+        ledger_reasons.append("ledger_event_commitment_mismatch")
+    records_by_response = {
+        record["response_index"]: record
+        for record in runtime_denominator.get("records", ())
+        if isinstance(record, Mapping) and type(record.get("response_index")) is int
+    }
+    payload_mismatch = False
+    for attempt in artifact.attempts:
+        expected_started = {
+            "schema_version": COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION,
+            "case_id": attempt.case_id,
+            "attempt_index": attempt.attempt_index,
+            "case_attempt_index": attempt.case_attempt_index,
+            "binding": binding,
+        }
+        actual_started = started_events.get(attempt.attempt_index, [])
+        if len(actual_started) != 1 or dict(actual_started[0]) != expected_started:
+            payload_mismatch = True
+        expected_terminal = {
+            "schema_version": COMPLETION_TELEMETRY_EVENT_SCHEMA_VERSION,
+            "case_id": attempt.case_id,
+            "attempt_index": attempt.attempt_index,
+            "case_attempt_index": attempt.case_attempt_index,
+            "terminal_kind": attempt.terminal_kind,
+            "response_index": attempt.response_index,
+            "error_code": attempt.error_code,
+            "binding": binding,
+        }
+        if attempt.terminal_kind == "response_accepted":
+            expected_terminal["completion_record"] = records_by_response.get(
+                attempt.response_index
+            )
+        actual_terminal = terminal_events.get(attempt.attempt_index, [])
+        expected_event_type = terminal_event_types.get(attempt.terminal_kind)
+        if (
+            attempt.terminal_kind == "response_accepted"
+            and isinstance(expected_terminal.get("completion_record"), Mapping)
+            and expected_terminal["completion_record"].get(
+                "normalized_completion_state"
+            )
+            == "unmapped"
+        ):
+            expected_event_type = COMPLETION_TELEMETRY_UNMAPPED_EVENT
+        if (
+            len(actual_terminal) != 1
+            or actual_terminal[0][0] != expected_event_type
+            or dict(actual_terminal[0][1]) != expected_terminal
+        ):
+            payload_mismatch = True
+    if set(started_events) != {item.attempt_index for item in artifact.attempts}:
+        payload_mismatch = True
+    if set(terminal_events) != {item.attempt_index for item in artifact.attempts}:
+        payload_mismatch = True
+    if payload_mismatch:
+        ledger_reasons.append("ledger_event_payload_mismatch")
+
+    combined_reasons = list(closure.get("reasons", ()))
+    for reason in ledger_reasons:
+        if reason not in combined_reasons:
+            combined_reasons.append(reason)
+    closure["reasons"] = combined_reasons
+    closure["claim_allowed"] = not combined_reasons
+    return {
+        "schema_version": "phase6-completion-telemetry/1.0",
+        "status": "recorded",
+        "runtime_plan": plan,
+        "runtime_denominator": runtime_denominator,
+        "ledger_reconciliation": {
+            "all_chains_valid": all_chains_valid,
+            "ledger_export_failed": export_failed,
+            "ledger_failure_observed": ledger_failure_observed,
+            "event_counts": dict(sorted(event_counts.items())),
+            "reasons": ledger_reasons,
+        },
+        "closure": closure,
+        "historical_backfill_performed": False,
+    }
 
 
 def _estimate_cost(
@@ -2037,6 +2681,7 @@ def _record_model_usage(
     provider: str,
     transport: str,
     prices: tuple[float, float] | None,
+    completion_telemetry_enabled: bool = False,
 ) -> None:
     usage_rows: list[dict[str, Any]] = []
     if record.model_responses:
@@ -2067,37 +2712,38 @@ def _record_model_usage(
                         "complete": usage.complete,
                     }
                 )
-            ledger.append_event(
-                run_id,
-                "model_response_usage_recorded",
-                {
-                    "response_index": response.response_index,
-                    "provider": provider,
-                    "transport": transport,
-                    "response_id_sha256": response.response_id_sha256,
-                    "request_id_sha256": response.request_id_sha256,
-                    "usage_complete": usage.complete,
-                    "request_count": usage.requests,
-                    "input_unit_count": usage.input_tokens,
-                    "output_unit_count": usage.output_tokens,
-                    "total_unit_count": usage.total_tokens,
-                    "cached_input_unit_count": usage.cached_input_tokens,
-                    "request_usage_entries": [
-                        {
-                            "request_index": item.request_index,
-                            "input_unit_count": item.input_tokens,
-                            "output_unit_count": item.output_tokens,
-                            "total_unit_count": item.total_tokens,
-                            "cached_input_unit_count": item.cached_input_tokens,
-                            "cache_write_unit_count": item.cache_write_tokens,
-                            "reasoning_unit_count": item.reasoning_tokens,
-                            "usage_complete": item.complete,
-                        }
-                        for item in response.request_usages
-                    ],
-                },
-                actor_kind="agent_sdk",
-            )
+            if not completion_telemetry_enabled:
+                ledger.append_event(
+                    run_id,
+                    "model_response_usage_recorded",
+                    {
+                        "response_index": response.response_index,
+                        "provider": provider,
+                        "transport": transport,
+                        "response_id_sha256": response.response_id_sha256,
+                        "request_id_sha256": response.request_id_sha256,
+                        "usage_complete": usage.complete,
+                        "request_count": usage.requests,
+                        "input_unit_count": usage.input_tokens,
+                        "output_unit_count": usage.output_tokens,
+                        "total_unit_count": usage.total_tokens,
+                        "cached_input_unit_count": usage.cached_input_tokens,
+                        "request_usage_entries": [
+                            {
+                                "request_index": item.request_index,
+                                "input_unit_count": item.input_tokens,
+                                "output_unit_count": item.output_tokens,
+                                "total_unit_count": item.total_tokens,
+                                "cached_input_unit_count": item.cached_input_tokens,
+                                "cache_write_unit_count": item.cache_write_tokens,
+                                "reasoning_unit_count": item.reasoning_tokens,
+                                "usage_complete": item.complete,
+                            }
+                            for item in response.request_usages
+                        ],
+                    },
+                    actor_kind="agent_sdk",
+                )
     elif record.usage.requests not in {None, 0}:
         usage_rows.append(
             {

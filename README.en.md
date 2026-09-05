@@ -34,7 +34,7 @@ Reviewable artifacts: [analysis bundle](artifacts/phase3/analysis_bundle.json) Â
 
 ## Quickstart
 
-The strict frozen-evidence demo currently supports Python 3.11+ on Windows x86-64 and Linux x86-64 with NumPy/OpenBLAS. macOS and ARM do not yet have a comparable numerical baseline and are outside this strict demo's supported scope.
+The strict frozen-evidence demo currently supports Python 3.12 on Windows x86-64 and Linux x86-64 with NumPy/OpenBLAS; CI pins Python 3.12.10 and 3.12.13, respectively. The locked dependencies require Python â‰¥3.12; Python 3.11 cannot install them. macOS and ARM do not yet have a comparable numerical baseline and are outside this strict demo's supported scope.
 
 To avoid treating cross-OS floating-point differences as the same evidence, the canonical ANCOVA identity is pinned separately to Windows x86-64 `E-36034128278C` and Linux x86-64 `E-14EBFFCA843E`.
 
