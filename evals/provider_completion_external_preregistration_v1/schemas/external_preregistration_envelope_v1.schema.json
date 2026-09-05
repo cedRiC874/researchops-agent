@@ -1,0 +1,571 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-external-preregistration-envelope-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "envelope_id",
+    "status",
+    "candidate_frozen_at_utc",
+    "task_bundle_committed_at_utc",
+    "envelope_frozen_at_utc",
+    "valid_until_utc",
+    "purpose",
+    "execution_binding",
+    "task_custody",
+    "runtime_plan",
+    "closure_evidence",
+    "external_trust",
+    "authorization_boundary",
+    "claim_boundary",
+    "document_sha256",
+    "signatures"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-external-preregistration/1.0"
+    },
+    "document_type": {
+      "const": "completion_telemetry_closure_preregistration"
+    },
+    "envelope_id": {
+      "type": "string",
+      "pattern": "^PCEPR-[A-F0-9]{32}$"
+    },
+    "status": {
+      "const": "frozen_not_authorized_not_run"
+    },
+    "candidate_frozen_at_utc": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "task_bundle_committed_at_utc": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "envelope_frozen_at_utc": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "valid_until_utc": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "purpose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "synthetic_only",
+        "telemetry_closure_only",
+        "agent_runner_required",
+        "is_evaluation",
+        "produces_task_pass",
+        "prompt_or_task_adjustment_after_freeze_allowed"
+      ],
+      "properties": {
+        "synthetic_only": {"const": true},
+        "telemetry_closure_only": {"const": true},
+        "agent_runner_required": {"const": true},
+        "is_evaluation": {"const": false},
+        "produces_task_pass": {"const": false},
+        "prompt_or_task_adjustment_after_freeze_allowed": {"const": false}
+      }
+    },
+    "execution_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "candidate_freeze_receipt_sha256",
+        "candidate_freeze_ledger_entry_sha256",
+        "execution_commit",
+        "execution_tree",
+        "source_integrity_commitment_sha256",
+        "first_live_evidence_commitment_sha256",
+        "first_live_validation_status",
+        "runtime_registry_commitment_sha256",
+        "runtime_registry_binding_allowed",
+        "implementation_commitment_sha256",
+        "runner_config_commitment_sha256",
+        "telemetry_schema_sha256",
+        "mapping_sha256",
+        "sanitizer_sha256",
+        "closure_verifier_sha256",
+        "closure_evidence_contract_commitment_sha256",
+        "dependency_lock_sha256",
+        "provider_id",
+        "model_id",
+        "api_origin",
+        "api_surface",
+        "transport_id",
+        "adapter_version"
+      ],
+      "properties": {
+        "repository": {"const": "cedRiC874/researchops-agent"},
+        "candidate_freeze_receipt_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "candidate_freeze_ledger_entry_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "execution_commit": {"$ref": "#/$defs/git_sha"},
+        "execution_tree": {"$ref": "#/$defs/git_sha"},
+        "source_integrity_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "first_live_evidence_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "first_live_validation_status": {"const": "reviewed_success"},
+        "runtime_registry_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "runtime_registry_binding_allowed": {"const": true},
+        "implementation_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "runner_config_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "telemetry_schema_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "mapping_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "sanitizer_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "closure_verifier_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "closure_evidence_contract_commitment_sha256": {
+          "const": "a96b39a1f4bafa3bcf512fd88a5e7b0ca3987ca2bc9804642a1d1259cbf8cad0"
+        },
+        "dependency_lock_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "provider_id": {"const": "deepseek"},
+        "model_id": {"const": "deepseek-v4-flash"},
+        "api_origin": {"const": "https://api.deepseek.com"},
+        "api_surface": {"const": "responses"},
+        "transport_id": {"const": "openai_compatible_responses"},
+        "adapter_version": {"const": "deepseek-responses-adapter/1.0"}
+      }
+    },
+    "task_custody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_bundle_commitment_sha256",
+        "task_bundle_commitment_algorithm",
+        "task_bundle_schema_version",
+        "task_bundle_canonicalization",
+        "minimum_secret_salt_bytes",
+        "planned_case_count",
+        "case_handle_set_commitment_sha256",
+        "case_order_commitment_sha256",
+        "execution_input_order_commitment_sha256",
+        "opaque_case_handles_only",
+        "seen_task_exclusion_manifest_schema_version",
+        "seen_task_exclusion_manifest_sha256",
+        "seen_task_exclusion_set_commitment_sha256",
+        "seen_task_exclusion_set_count",
+        "seen_source_inventory_commitment_sha256",
+        "seen_task_exclusion_set_complete_attested",
+        "overlap_check_algorithm",
+        "exact_overlap_count",
+        "salt_length_is_custodian_attestation",
+        "overlap_result_is_custodian_attestation",
+        "unseen_to_candidate_developers_attested",
+        "semantic_overlap_excluded_by_software",
+        "plaintext_disclosed_before_consumption",
+        "task_plaintext_in_envelope",
+        "goldens_or_scorer_present",
+        "participant_derived_data_present",
+        "private_or_non_synthetic_data_present",
+        "direct_or_quasi_identifier_data_present"
+      ],
+      "properties": {
+        "task_bundle_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "task_bundle_commitment_algorithm": {
+          "const": "secret-salted-canonical-bundle-sha256-v1"
+        },
+        "task_bundle_schema_version": {
+          "const": "completion-telemetry-unseen-case-bundle/1.0"
+        },
+        "task_bundle_canonicalization": {
+          "const": "utf8-sorted-keys-no-whitespace-reject-duplicate-and-nonfinite-v1"
+        },
+        "minimum_secret_salt_bytes": {
+          "type": "integer",
+          "minimum": 32,
+          "maximum": 1024
+        },
+        "planned_case_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "case_handle_set_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "case_order_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "execution_input_order_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "opaque_case_handles_only": {"const": true},
+        "seen_task_exclusion_manifest_schema_version": {
+          "const": "provider-completion-seen-case-exclusion-manifest/1.0"
+        },
+        "seen_task_exclusion_manifest_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "seen_task_exclusion_set_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "seen_task_exclusion_set_count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "seen_source_inventory_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "seen_task_exclusion_set_complete_attested": {"const": true},
+        "overlap_check_algorithm": {
+          "const": "canonical-case-digest-set-intersection-v1"
+        },
+        "exact_overlap_count": {"const": 0},
+        "salt_length_is_custodian_attestation": {"const": true},
+        "overlap_result_is_custodian_attestation": {"const": true},
+        "unseen_to_candidate_developers_attested": {"const": true},
+        "semantic_overlap_excluded_by_software": {"const": false},
+        "plaintext_disclosed_before_consumption": {"const": false},
+        "task_plaintext_in_envelope": {"const": false},
+        "goldens_or_scorer_present": {"const": false},
+        "participant_derived_data_present": {"const": false},
+        "private_or_non_synthetic_data_present": {"const": false},
+        "direct_or_quasi_identifier_data_present": {"const": false}
+      }
+    },
+    "runtime_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "external_plan_binding_sha256",
+        "denominator_plan_commitment_sha256",
+        "denominator_plan",
+        "telemetry_interpretation",
+        "campaign_topology",
+        "transport_limits",
+        "budget_policy"
+      ],
+      "properties": {
+        "schema_version": {"const": "provider-completion-external-runtime-plan/1.0"},
+        "external_plan_binding_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "denominator_plan_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "denominator_plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "provider_id",
+            "api_surface",
+            "transport_id",
+            "adapter_version",
+            "telemetry_schema_sha256",
+            "mapping_schema_version",
+            "mapping_version",
+            "mapping_sha256",
+            "case_ids",
+            "case_ids_sha256",
+            "max_turns_per_case",
+            "total_model_request_cap",
+            "agents_sdk_retries",
+            "http_client_retries",
+            "denominator_algorithm",
+            "exact_response_count_preregistered"
+          ],
+          "properties": {
+            "schema_version": {"const": "provider-completion-runtime-denominator-plan/1.0"},
+            "provider_id": {"const": "deepseek"},
+            "api_surface": {"const": "responses"},
+            "transport_id": {"const": "openai_compatible_responses"},
+            "adapter_version": {"const": "deepseek-responses-adapter/1.0"},
+            "telemetry_schema_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+            "mapping_schema_version": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]{0,127}$"},
+            "mapping_version": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]{0,127}$"},
+            "mapping_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+            "case_ids": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "uniqueItems": true,
+              "items": {"type": "string", "pattern": "^PCECASE-[A-F0-9]{32}$"}
+            },
+            "case_ids_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+            "max_turns_per_case": {"type": "integer", "minimum": 1, "maximum": 8},
+            "total_model_request_cap": {"type": "integer", "minimum": 1, "maximum": 800},
+            "agents_sdk_retries": {"const": 0},
+            "http_client_retries": {"const": 0},
+            "denominator_algorithm": {"const": "transport-response-finalization-v1"},
+            "exact_response_count_preregistered": {"const": false}
+          }
+        },
+        "telemetry_interpretation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["output_counter_comparability", "output_counter_path"],
+          "properties": {
+            "output_counter_comparability": {"const": "comparable"},
+            "output_counter_path": {"const": "output_tokens"}
+          }
+        },
+        "campaign_topology": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "campaign_id",
+            "case_handle_set_commitment_sha256",
+            "case_handle_order_commitment_sha256",
+            "audit_run_id_derivation",
+            "audit_run_set_commitment_sha256",
+            "one_audit_run_per_case_handle"
+          ],
+          "properties": {
+            "campaign_id": {"type": "string", "pattern": "^PCECAMP-[A-F0-9]{32}$"},
+            "case_handle_set_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+            "case_handle_order_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+            "audit_run_id_derivation": {
+              "const": "sha256-domain-separated-envelope-id-and-case-handle-v1"
+            },
+            "audit_run_set_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+            "one_audit_run_per_case_handle": {"const": true}
+          }
+        },
+        "transport_limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "network_attempt_cap",
+            "concurrency",
+            "resume",
+            "fallback",
+            "tools",
+            "request_timeout_seconds",
+            "total_timeout_seconds"
+          ],
+          "properties": {
+            "network_attempt_cap": {"type": "integer", "minimum": 1, "maximum": 800},
+            "concurrency": {"const": 1},
+            "resume": {"const": false},
+            "fallback": {"const": false},
+            "tools": {"const": 0},
+            "request_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 300},
+            "total_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 7200}
+          }
+        },
+        "budget_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "budget_policy_commitment_sha256",
+            "pricing_snapshot_date",
+            "pricing_source_url",
+            "pricing_source_snapshot_sha256",
+            "pricing_retrieved_at_utc",
+            "official_pricing_attestation_current",
+            "currency",
+            "token_price_unit",
+            "input_price_per_million_cny",
+            "output_price_per_million_cny",
+            "cache_discount_assumed",
+            "input_token_limit_total",
+            "output_token_limit_per_request",
+            "output_token_limit_total",
+            "local_observed_cost_stop_cny",
+            "request_count_and_output_caps_enforced_pre_send",
+            "input_token_limit_enforcement",
+            "cost_stop_enforcement",
+            "single_in_flight_request_may_overshoot_observed_limits",
+            "provider_invoice_hard_cap",
+            "provider_side_retention_verified"
+          ],
+          "properties": {
+            "budget_policy_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+            "pricing_snapshot_date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+            "pricing_source_url": {
+              "const": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+            },
+            "pricing_source_snapshot_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+            "pricing_retrieved_at_utc": {"$ref": "#/$defs/timestamp"},
+            "official_pricing_attestation_current": {"const": true},
+            "currency": {"const": "CNY"},
+            "token_price_unit": {"const": "per_million_tokens"},
+            "input_price_per_million_cny": {"$ref": "#/$defs/money"},
+            "output_price_per_million_cny": {"$ref": "#/$defs/money"},
+            "cache_discount_assumed": {"const": false},
+            "input_token_limit_total": {"type": "integer", "minimum": 1, "maximum": 1000000},
+            "output_token_limit_per_request": {"type": "integer", "minimum": 1, "maximum": 8192},
+            "output_token_limit_total": {"type": "integer", "minimum": 1, "maximum": 500000},
+            "local_observed_cost_stop_cny": {"$ref": "#/$defs/money"},
+            "request_count_and_output_caps_enforced_pre_send": {"const": true},
+            "input_token_limit_enforcement": {"const": "post_response_observed_stop"},
+            "cost_stop_enforcement": {"const": "post_response_observed_stop"},
+            "single_in_flight_request_may_overshoot_observed_limits": {"const": true},
+            "provider_invoice_hard_cap": {"const": false},
+            "provider_side_retention_verified": {"const": false}
+          }
+        }
+      }
+    },
+    "closure_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "closure_evidence_contract_commitment_sha256",
+        "bundle_manifest_schema_version",
+        "outer_telemetry_schema_version",
+        "runtime_denominator_schema_version",
+        "audit_index_schema_version",
+        "ledger_event_schema_version",
+        "bridge_commitment_schema_version",
+        "audit_database_schema_commitment_sha256",
+        "closure_algorithm",
+        "reason_ordering",
+        "exact_bundle_file_set",
+        "post_run_closure_receipt_schema_version",
+        "post_run_closure_receipt_hash_domain",
+        "post_run_ledger_entry_required",
+        "expected_closure_receipt_hash_must_be_supplied_out_of_band",
+        "expected_final_ledger_sequence_and_head_must_be_supplied_out_of_band",
+        "runtime_authority_granted_by_verifier"
+      ],
+      "properties": {
+        "closure_evidence_contract_commitment_sha256": {
+          "const": "a96b39a1f4bafa3bcf512fd88a5e7b0ca3987ca2bc9804642a1d1259cbf8cad0"
+        },
+        "bundle_manifest_schema_version": {"const": "provider-completion-closure-bundle-manifest/1.0"},
+        "outer_telemetry_schema_version": {"const": "phase6-completion-telemetry/1.0"},
+        "runtime_denominator_schema_version": {"const": "provider-completion-runtime-denominator-artifact/1.0"},
+        "audit_index_schema_version": {"const": "1.1"},
+        "ledger_event_schema_version": {"const": "provider-completion-ledger-event/1.1"},
+        "bridge_commitment_schema_version": {"const": "provider-completion-ledger-bridge-commitment/1.0"},
+        "audit_database_schema_commitment_sha256": {
+          "const": "c0df1f54a96fe3c4f5ee196e654203a62e5e775a3e21fd5f47ace9e349169385"
+        },
+        "closure_algorithm": {"const": "provider-completion-full-outer-closure-v1"},
+        "reason_ordering": {"const": "fixed-contract-order-deduplicated-v1"},
+        "exact_bundle_file_set": {
+          "const": [
+            "completion_closure_manifest.json",
+            "phase6_audit.sqlite3",
+            "phase6_audit_index.json",
+            "phase6_completion_telemetry.json"
+          ]
+        },
+        "post_run_closure_receipt_schema_version": {
+          "const": "provider-completion-closure-receipt/1.0"
+        },
+        "post_run_closure_receipt_hash_domain": {
+          "const": "researchops-provider-completion-closure-receipt-v1"
+        },
+        "post_run_ledger_entry_required": {"const": true},
+        "expected_closure_receipt_hash_must_be_supplied_out_of_band": {"const": true},
+        "expected_final_ledger_sequence_and_head_must_be_supplied_out_of_band": {"const": true},
+        "runtime_authority_granted_by_verifier": {"const": false}
+      }
+    },
+    "external_trust": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trust_manifest_sha256",
+        "freeze_authority_key_id",
+        "task_custodian_key_id",
+        "ledger_witness_key_id",
+        "freeze_authority_organization_commitment_sha256",
+        "task_custodian_organization_commitment_sha256",
+        "ledger_witness_organization_commitment_sha256",
+        "ledger_id",
+        "ledger_base_sequence",
+        "ledger_base_head_sha256",
+        "ledger_base_zero_state_consistent",
+        "ledger_entry_schema_version",
+        "ledger_entry_hash_domain",
+        "ledger_head_hash_domain",
+        "expected_envelope_hash_must_be_supplied_out_of_band",
+        "future_preregistration_freeze_entry_required",
+        "future_authorization_must_bind_freeze_entry",
+        "future_closure_receipt_entry_required",
+        "independent_channel_verified_by_software",
+        "hidden_ledger_fork_excluded_by_software"
+      ],
+      "properties": {
+        "trust_manifest_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "freeze_authority_key_id": {"$ref": "#/$defs/key_id"},
+        "task_custodian_key_id": {"$ref": "#/$defs/key_id"},
+        "ledger_witness_key_id": {"$ref": "#/$defs/key_id"},
+        "freeze_authority_organization_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "task_custodian_organization_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "ledger_witness_organization_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+        "ledger_id": {"type": "string", "pattern": "^PCELEDGER-[A-F0-9]{32}$"},
+        "ledger_base_sequence": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "ledger_base_head_sha256": {"$ref": "#/$defs/sha256"},
+        "ledger_base_zero_state_consistent": {"const": true},
+        "ledger_entry_schema_version": {"const": "provider-completion-external-ledger-entry/1.0"},
+        "ledger_entry_hash_domain": {"const": "researchops-provider-completion-external-ledger-entry-v1"},
+        "ledger_head_hash_domain": {"const": "researchops-provider-completion-external-ledger-head-v1"},
+        "expected_envelope_hash_must_be_supplied_out_of_band": {"const": true},
+        "future_preregistration_freeze_entry_required": {"const": true},
+        "future_authorization_must_bind_freeze_entry": {"const": true},
+        "future_closure_receipt_entry_required": {"const": true},
+        "independent_channel_verified_by_software": {"const": false},
+        "hidden_ledger_fork_excluded_by_software": {"const": false}
+      }
+    },
+    "authorization_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "online_execution_authorized",
+        "provider_key_use_authorized",
+        "separate_single_use_grant_required",
+        "consume_before_task_release_and_key_load",
+        "retry_after_any_outcome_allowed"
+      ],
+      "properties": {
+        "online_execution_authorized": {"const": false},
+        "provider_key_use_authorized": {"const": false},
+        "separate_single_use_grant_required": {"const": true},
+        "consume_before_task_release_and_key_load": {"const": true},
+        "retry_after_any_outcome_allowed": {"const": false}
+      }
+    },
+    "claim_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "envelope_alone_closes_status",
+        "claim_scope",
+        "unseen_is_external_attestation_not_software_proof",
+        "model_quality_claim_allowed",
+        "provider_registration_allowed",
+        "private_or_non_synthetic_evaluation_allowed",
+        "historical_attribution_recovered",
+        "unknown_distribution_generalization_claim_allowed",
+        "production_sla_claim_allowed"
+      ],
+      "properties": {
+        "envelope_alone_closes_status": {"const": false},
+        "claim_scope": {"const": "exact_provider_surface_and_single_frozen_campaign_only"},
+        "unseen_is_external_attestation_not_software_proof": {"const": true},
+        "model_quality_claim_allowed": {"const": false},
+        "provider_registration_allowed": {"const": false},
+        "private_or_non_synthetic_evaluation_allowed": {"const": false},
+        "historical_attribution_recovered": {"const": false},
+        "unknown_distribution_generalization_claim_allowed": {"const": false},
+        "production_sla_claim_allowed": {"const": false}
+      }
+    },
+    "document_sha256": {"$ref": "#/$defs/sha256"},
+    "signatures": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/signature"}, {"properties": {"role": {"const": "freeze_authority"}}}]},
+        {"allOf": [{"$ref": "#/$defs/signature"}, {"properties": {"role": {"const": "task_custodian"}}}]}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "git_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "key_id": {"type": "string", "pattern": "^PCEKEY-[A-F0-9]{32}$"},
+    "money": {"type": "string", "pattern": "^(?!0\\.000000$)(0|[1-9][0-9]{0,6})\\.[0-9]{6}$"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "key_id",
+        "algorithm",
+        "signed_sha256",
+        "signature_b64"
+      ],
+      "properties": {
+        "role": {"enum": ["freeze_authority", "task_custodian"]},
+        "key_id": {"$ref": "#/$defs/key_id"},
+        "algorithm": {"const": "ed25519"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-candidate-freeze-receipt-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "receipt_id",
+    "frozen_at_utc",
+    "repository",
+    "candidate_commit",
+    "candidate_tree",
+    "source_integrity_commitment_sha256",
+    "runtime_registry_commitment_sha256",
+    "implementation_commitment_sha256",
+    "runner_config_commitment_sha256",
+    "closure_evidence_contract_commitment_sha256",
+    "dependency_lock_sha256",
+    "prompt_or_task_adjustment_after_freeze_allowed",
+    "online_execution_authorized",
+    "document_sha256",
+    "signatures"
+  ],
+  "properties": {
+    "schema_version": {"const": "provider-completion-candidate-freeze-receipt/1.0"},
+    "document_type": {"const": "completion_telemetry_candidate_freeze"},
+    "receipt_id": {"type": "string", "pattern": "^PCEFREEZE-[A-F0-9]{32}$"},
+    "frozen_at_utc": {"$ref": "#/$defs/timestamp"},
+    "repository": {"const": "cedRiC874/researchops-agent"},
+    "candidate_commit": {"$ref": "#/$defs/git_sha"},
+    "candidate_tree": {"$ref": "#/$defs/git_sha"},
+    "source_integrity_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "runtime_registry_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "implementation_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "runner_config_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "closure_evidence_contract_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "dependency_lock_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "prompt_or_task_adjustment_after_freeze_allowed": {"const": false},
+    "online_execution_authorized": {"const": false},
+    "document_sha256": {"$ref": "#/$defs/sha256"},
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {"$ref": "#/$defs/signature"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "git_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "key_id": {"type": "string", "pattern": "^PCEKEY-[A-F0-9]{32}$"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "key_id", "algorithm", "signed_sha256", "signature_b64"],
+      "properties": {
+        "role": {"const": "freeze_authority"},
+        "key_id": {"$ref": "#/$defs/key_id"},
+        "algorithm": {"const": "ed25519"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    }
+  }
+}

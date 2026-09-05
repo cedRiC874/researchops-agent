@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-transport-send-payload-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "attempt_index",
+    "case_attempt_index",
+    "network_call_index",
+    "provider_id",
+    "api_surface",
+    "transport_id",
+    "adapter_version",
+    "method",
+    "origin",
+    "path",
+    "requested_output_token_cap",
+    "execution_input_commitment_sha256",
+    "audit_request_sha256",
+    "external_plan_binding_sha256",
+    "authorization_grant_sha256",
+    "headers_persisted",
+    "request_body_persisted",
+    "task_content_persisted"
+  ],
+  "properties": {
+    "schema_version": {"const": "provider-completion-transport-send/1.0"},
+    "case_id": {"type": "string", "pattern": "^PCECASE-[A-F0-9]{32}$"},
+    "attempt_index": {"type": "integer", "minimum": 0, "maximum": 799},
+    "case_attempt_index": {"type": "integer", "minimum": 0, "maximum": 7},
+    "network_call_index": {"type": "integer", "minimum": 0, "maximum": 799},
+    "provider_id": {"const": "deepseek"},
+    "api_surface": {"const": "responses"},
+    "transport_id": {"const": "openai_compatible_responses"},
+    "adapter_version": {"const": "deepseek-responses-adapter/1.0"},
+    "method": {"const": "POST"},
+    "origin": {"const": "https://api.deepseek.com"},
+    "path": {"const": "/responses"},
+    "requested_output_token_cap": {"type": "integer", "minimum": 1, "maximum": 8192},
+    "execution_input_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "audit_request_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "external_plan_binding_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "authorization_grant_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "headers_persisted": {"const": false},
+    "request_body_persisted": {"const": false},
+    "task_content_persisted": {"const": false}
+  },
+  "$defs": {
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"}
+  }
+}

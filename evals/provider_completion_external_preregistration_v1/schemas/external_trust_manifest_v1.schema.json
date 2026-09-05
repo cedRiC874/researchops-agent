@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-external-trust-manifest-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "manifest_id",
+    "created_at_utc",
+    "valid_from_utc",
+    "expires_at_utc",
+    "roles",
+    "expected_manifest_hash_must_be_supplied_out_of_band",
+    "document_sha256",
+    "signatures"
+  ],
+  "properties": {
+    "schema_version": {"const": "provider-completion-external-trust-manifest/1.0"},
+    "document_type": {"const": "completion_telemetry_external_trust_manifest"},
+    "manifest_id": {"type": "string", "pattern": "^PCETRUST-[A-F0-9]{32}$"},
+    "created_at_utc": {"$ref": "#/$defs/timestamp"},
+    "valid_from_utc": {"$ref": "#/$defs/timestamp"},
+    "expires_at_utc": {"$ref": "#/$defs/timestamp"},
+    "roles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/role_record"}, {"properties": {"role": {"const": "freeze_authority"}}}]},
+        {"allOf": [{"$ref": "#/$defs/role_record"}, {"properties": {"role": {"const": "task_custodian"}}}]},
+        {"allOf": [{"$ref": "#/$defs/role_record"}, {"properties": {"role": {"const": "ledger_witness"}}}]}
+      ],
+      "items": false
+    },
+    "expected_manifest_hash_must_be_supplied_out_of_band": {"const": true},
+    "document_sha256": {"$ref": "#/$defs/sha256"},
+    "signatures": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/signature"}, {"properties": {"role": {"const": "freeze_authority"}}}]},
+        {"allOf": [{"$ref": "#/$defs/signature"}, {"properties": {"role": {"const": "task_custodian"}}}]},
+        {"allOf": [{"$ref": "#/$defs/signature"}, {"properties": {"role": {"const": "ledger_witness"}}}]}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "key_id": {"type": "string", "pattern": "^PCEKEY-[A-F0-9]{32}$"},
+    "role_record": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "key_id",
+          "algorithm",
+          "public_key_b64",
+          "organization_commitment_sha256",
+          "not_before_utc",
+          "expires_at_utc",
+          "revoked"
+        ],
+        "properties": {
+          "role": {"enum": ["freeze_authority", "task_custodian", "ledger_witness"]},
+          "key_id": {"$ref": "#/$defs/key_id"},
+          "algorithm": {"const": "ed25519"},
+          "public_key_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+          "organization_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "not_before_utc": {"$ref": "#/$defs/timestamp"},
+          "expires_at_utc": {"$ref": "#/$defs/timestamp"},
+          "revoked": {"const": false}
+        }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "key_id", "algorithm", "signed_sha256", "signature_b64"],
+      "properties": {
+        "role": {"enum": ["freeze_authority", "task_custodian", "ledger_witness"]},
+        "key_id": {"$ref": "#/$defs/key_id"},
+        "algorithm": {"const": "ed25519"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    }
+  }
+}
