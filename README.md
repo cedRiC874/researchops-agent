@@ -1,5 +1,12 @@
 # ResearchOps Agent
 
+**中文** · [English](README.en.md)
+
+[![offline-quality-gate](https://github.com/cedRiC874/researchops-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/cedRiC874/researchops-agent/actions/workflows/ci.yml)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+
+_CI 信号：Ubuntu x86-64 安装锁定依赖并运行完整 Linux x86-64 离线演示；Windows 离线质量门运行完整单元/集成套件，并重建与验证固定 50 题 evidence。_
+
 **让 LLM 做科研数据分析，但不让它编数字：** ResearchOps Agent 让模型负责规划，让确定性工具负责数据质量、方法选择、统计计算与可视化，并把每条结论绑定到可复核 evidence 与人工审批边界。
 
 ![ANCOVA 与 Welch 聚合效应图](artifacts/phase3/effect_estimates.png)
@@ -27,13 +34,27 @@ _30 秒演示结果：输入脱敏 CSV、研究问题和显式研究设计，输
 
 ## Quickstart
 
-Windows PowerShell，三行运行无网络、无 API Key 的完整离线演示：
+严格 frozen-evidence 演示当前支持 Python 3.12 的 Windows x86-64 和 Linux x86-64（NumPy/OpenBLAS）；CI 分别固定 Python 3.12.10 与 3.12.13。锁定依赖要求 Python ≥3.12，不能使用 3.11。macOS 与 ARM 尚未建立可比较的数值基线，因此不在这一严格演示的支持范围内。
+
+为避免把跨操作系统的浮点位差异误当成同一证据，canonical ANCOVA identity 分别固定为 Windows x86-64 `E-36034128278C` 与 Linux x86-64 `E-14EBFFCA843E`。
+
+### Windows x86-64 / PowerShell
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 powershell -ExecutionPolicy Bypass -File .\scripts\portfolio_demo.ps1
 ```
+
+### Linux x86-64
+
+```bash
+python3 -m venv .venv
+./.venv/bin/python -m pip install -r requirements.linux.lock
+bash ./scripts/portfolio_demo.sh
+```
+
+Linux 锁文件与 Windows 锁文件保持同一组版本，仅排除 Windows 专用的 `pywin32`；Linux demo 使用独立冻结的 `evals/tasks.linux-x86_64.jsonl`，只重绑定跨操作系统变化的 evidence/chart IDs，不放宽数值或质量阈值。CI 会安装该锁文件并执行完整 demo。
 
 演示会重建固定 50 题确定性评测、验证 50 条事件哈希链、检查敏感信息 canary，并把结果写入一个新的 artifact 目录。它不会运行在线 Provider，也不会覆盖已有产物。
 

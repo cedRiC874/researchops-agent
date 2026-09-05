@@ -1,5 +1,7 @@
 # ResearchOps Agent 跨会话交接
 
+> **归档说明（2026-09-01）：**本文件是历史内部交接快照，不再是当前项目入口或运行指令；分支、commit、candidate 与 CI 状态可能已经过期。当前公开状态以 [STATUS.md](../../STATUS.md) 为准。
+
 > 更新时间：2026-08-26（Asia/Shanghai）
 > 目标：让一个没有历史上下文的新 Codex 会话安全、准确地继续本项目。
 > 语言偏好：中文；先给结论，再给可执行步骤；不要夸大评测或生产化程度。
@@ -7,7 +9,7 @@
 ## 最新 main / candidate v5 / supervised 状态
 
 - GitHub `main` 为 `c65ff65c0cbb67205956ddae991768ba9fca9293`；PR #21 已 regular merge，reviewed head `ccd03ccf…` 与 merge tree 均为 `ddaf063f…a5e9`。合并后的 main runs `32957003253`（offline）、`32957003191`（pilot）与 `32957003204`（production）均为 `completed / success`。
-- Candidate v5 commitment 为 `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`，predecessor v4 为 `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`；它是 pre-call snapshot，`prior_results_inherited=false`，不继承 post-lock receipt，public Provider 仍为 DeepSeek，完整 campaign 仍为 `design_only`。长期快照见 [Kimi Models preflight main CI evidence](docs/evidence/kimi-models-preflight-main-ci-v1/README.md)。
+- Candidate v5 commitment 为 `105b7def81148566219673fd40e88e392674070656c72a17cbcf60405165dffc`，predecessor v4 为 `1741c2b0df53d06a299a5a89dfa91e68eade4c71cef7931d367115c07f6399c7`；它是 pre-call snapshot，`prior_results_inherited=false`，不继承 post-lock receipt，public Provider 仍为 DeepSeek，完整 campaign 仍为 `design_only`。长期快照见 [Kimi Models preflight main CI evidence](../../docs/evidence/kimi-models-preflight-main-ci-v1/README.md)。
 - 本地实现 commit `329a6dc…` 与 PR #16 远端 head `7079af08…` 的 tree 均为 `710ef581f2e1355e33d9af135325468b4db1c095`；commit SHA 不同来自 Git Data API 发布，不是文件内容漂移。最终 merge tree 另含 PR #15，不能与 PR head tree 混为一谈。
 - Anthropic frozen contract 仍为 offline-only；post-lock 一次 official-origin metadata 尝试使用了 CCTK token并返回 `403 / network_calls=1 / model_token_calls=0`，不证明官方 Anthropic或CCTK可用性。CCTK 路线已放弃，generic Anthropic online 入口继续 fail closed。
 - Kimi 中国区 fixed-origin Models-list preflight 在 v5 锁定时为 `implemented_offline_tested_not_run`。锁定后的一次独立授权 GET 于 `2026-08-26T09:41:49.967Z` verified：HTTP 200、attempts/network calls `1/1`、requested/returned `kimi-k3`、认证与 exact visibility true、0 model tokens、cost null。该 receipt 不进入 v5；一次性授权已消耗，不得重试，任何新 request 需新授权。Chat/Responses/tools/usage/cost semantics/质量/注册/private 均未授权；Provider 仍 1/2，private 仍 0/50。
@@ -18,16 +20,16 @@
 - Executor model requests / model-requested tools / backend executions 为 `9 / 3 / 2`；这些不是规划准确率、账户 API 总数或成本。
 - 四个成功展示答案的非专家 feedback 为 understandable/useful `4/4`，明显问题、信息缺失、专家复核需求与安全担忧均 `0/4`；不评价专业正确性。
 - campaign 完成后 worker、API、Funnel 已停止，容器/network 已移除，PostgreSQL volume 保留；安全 incidents 0，telemetry/participant binding 均 valid。
-- Retention 已于 2026-08-25 实际复核：Scheduled Task `Ready`、daily/StartWhenAvailable/IgnoreNew、手动运行 result 0、snapshot `NumberOfMissedRuns=0`；1 个 participant 与 4 条 feedback deadline 均为 90 天上限，当前 due 0，未提前删除。见 [retention verification](docs/evidence/supervised-completion-telemetry-v2-20260825/retention-verification-20260825.md)。
-- private-holdout custodian kit v1.1 已由 PR #14 进入 `main`；synthetic conformance 包含不同 Ed25519 keys、调用方提供的 external anchors、两阶段 ledger、aggregate/budget verifier。真实 private release 固定拒绝；当前 `design_only / private 0/50 / Provider 1/2 / not_authorized` 不变，不能声称已有 private corpus、授权或运行。长期快照见 [private custodian main CI evidence](docs/evidence/eval-v2-private-custodian-main-ci-v1/README.md)。PR #15/#16 historical candidate v3 快照见 [Anthropic offline adapter main CI evidence](docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)；PR #19/main-at-snapshot 快照见 [Anthropic Models preflight main CI evidence](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
-- 脱敏 supervised 证据位于 [supervised Completion Telemetry v2 20260825](docs/evidence/supervised-completion-telemetry-v2-20260825/README.md)。不得用这六题继续调 prompt/scorer，也不得与旧 campaign 聚合。
+- Retention 已于 2026-08-25 实际复核：Scheduled Task `Ready`、daily/StartWhenAvailable/IgnoreNew、手动运行 result 0、snapshot `NumberOfMissedRuns=0`；1 个 participant 与 4 条 feedback deadline 均为 90 天上限，当前 due 0，未提前删除。见 [retention verification](../../docs/evidence/supervised-completion-telemetry-v2-20260825/retention-verification-20260825.md)。
+- private-holdout custodian kit v1.1 已由 PR #14 进入 `main`；synthetic conformance 包含不同 Ed25519 keys、调用方提供的 external anchors、两阶段 ledger、aggregate/budget verifier。真实 private release 固定拒绝；当前 `design_only / private 0/50 / Provider 1/2 / not_authorized` 不变，不能声称已有 private corpus、授权或运行。长期快照见 [private custodian main CI evidence](../../docs/evidence/eval-v2-private-custodian-main-ci-v1/README.md)。PR #15/#16 historical candidate v3 快照见 [Anthropic offline adapter main CI evidence](../../docs/evidence/eval-v2-anthropic-offline-main-ci-v1/README.md)；PR #19/main-at-snapshot 快照见 [Anthropic Models preflight main CI evidence](../../docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
+- 脱敏 supervised 证据位于 [supervised Completion Telemetry v2 20260825](../../docs/evidence/supervised-completion-telemetry-v2-20260825/README.md)。不得用这六题继续调 prompt/scorer，也不得与旧 campaign 聚合。
 - 下文更早状态如有冲突，以本节为准。
 
 ## 0. 新会话首先执行
 
 1. 完整阅读本文件。
 2. 在仓库根目录运行 `git status --short --branch`。
-3. 阅读 [README.md](README.md)、[docs/EVIDENCE.md](docs/EVIDENCE.md)、[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 和 [docs/PORTFOLIO.md](docs/PORTFOLIO.md)。
+3. 阅读 [README.md](../../README.md)、[docs/EVIDENCE.md](../../docs/EVIDENCE.md)、[docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) 和 [docs/PORTFOLIO.md](../../docs/PORTFOLIO.md)。
 4. 保留所有现有未跟踪文件，不覆盖、不清理、不重置。
 5. 未经用户明确要求，不要 commit、push、重新运行付费在线评测或重复使用冻结 holdout 调参。
 6. 不要读取、打印或记录 `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` /
@@ -343,7 +345,7 @@ Repo-local non-secret holdout：
 - 任务和 golden 均在仓库内，可见、不抗污染；
 - 不能表述为未知分布泛化或生产 SLA。
 
-冻结脱敏证据位于 [docs/evidence/phase6-deepseek-v1/](docs/evidence/phase6-deepseek-v1/README.md)。只提交 report、summary、manifest 和 audit index；详细 SQLite/results 未提交，但其 hash/size 进入 manifest。
+冻结脱敏证据位于 [docs/evidence/phase6-deepseek-v1/](../../docs/evidence/phase6-deepseek-v1/README.md)。只提交 report、summary、manifest 和 audit index；详细 SQLite/results 未提交，但其 hash/size 进入 manifest。
 
 ### 5.3 OpenAI 路径
 
@@ -366,9 +368,9 @@ PR #21 后三条 main runs 均绑定精确 merge SHA `c65ff65c…` 并为 `compl
 candidate verifier 仍报告 pre-call snapshot `valid / network_calls=0`。Post-lock metadata receipt
 是独立 observation，不是 PR/main CI 或 candidate 成绩。这些证据都不是 Kimi
 Chat/tools/usage/cost semantics/质量证据。PR #21 长期快照见
-[docs/evidence/kimi-models-preflight-main-ci-v1/](docs/evidence/kimi-models-preflight-main-ci-v1/README.md)，
+[docs/evidence/kimi-models-preflight-main-ci-v1/](../../docs/evidence/kimi-models-preflight-main-ci-v1/README.md)，
 PR #19 历史快照见
-[docs/evidence/anthropic-models-preflight-main-ci-v1/](docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
+[docs/evidence/anthropic-models-preflight-main-ci-v1/](../../docs/evidence/anthropic-models-preflight-main-ci-v1/README.md)。
 
 重要 P1 历史事实：run 32568017243 的 workflow conclusion 虽为 `success`，其新重建
 Phase 5 实际只有 44/50、evidence citations 10/21。根因已定位为 clean checkout
@@ -558,31 +560,31 @@ $env:PYTHONPATH = "src"
 
 ## 12. 快速文件索引
 
-- 项目入口：[README.md](README.md)
-- 架构边界：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- 证据映射：[docs/EVIDENCE.md](docs/EVIDENCE.md)
-- 作品集与旧面试问答：[docs/PORTFOLIO.md](docs/PORTFOLIO.md)
-- 新面试深挖指南：[docs/RESEARCHOPS_INTERVIEW_GUIDE.md](docs/RESEARCHOPS_INTERVIEW_GUIDE.md)
-- Phase 5 语料说明：[evals/README.md](evals/README.md)
-- Phase 6 契约：[evals/PHASE6.md](evals/PHASE6.md)
-- Phase 6 冻结证据：[docs/evidence/phase6-deepseek-v1/README.md](docs/evidence/phase6-deepseek-v1/README.md)
+- 项目入口：[README.md](../../README.md)
+- 架构边界：[docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)
+- 证据映射：[docs/EVIDENCE.md](../../docs/EVIDENCE.md)
+- 作品集与旧面试问答：[docs/PORTFOLIO.md](../../docs/PORTFOLIO.md)
+- 新面试深挖指南：[docs/RESEARCHOPS_INTERVIEW_GUIDE.md](../../docs/RESEARCHOPS_INTERVIEW_GUIDE.md)
+- Phase 5 语料说明：[evals/README.md](../../evals/README.md)
+- Phase 6 契约：[evals/PHASE6.md](../../evals/PHASE6.md)
+- Phase 6 冻结证据：[docs/evidence/phase6-deepseek-v1/README.md](../../docs/evidence/phase6-deepseek-v1/README.md)
 - Production slice main Linux CI：
-  [docs/evidence/production-slice-linux-ci-main-v1/README.md](docs/evidence/production-slice-linux-ci-main-v1/README.md)
+  [docs/evidence/production-slice-linux-ci-main-v1/README.md](../../docs/evidence/production-slice-linux-ci-main-v1/README.md)
 - Main offline gate audit：
-  [docs/evidence/main-offline-gate-20260822/README.md](docs/evidence/main-offline-gate-20260822/README.md)
+  [docs/evidence/main-offline-gate-20260822/README.md](../../docs/evidence/main-offline-gate-20260822/README.md)
 - Supervised 同一参与者 UX regression v2：
-  [docs/evidence/supervised-ux-regression-v2-20260823/README.md](docs/evidence/supervised-ux-regression-v2-20260823/README.md)
-- Production slice 服务：[services/production_slice/README.md](services/production_slice/README.md)
-- Provider 适配：[src/researchops/model_providers.py](src/researchops/model_providers.py)
-- Kimi Provider/preflight 边界：[docs/KIMI_PROVIDER.md](docs/KIMI_PROVIDER.md)
-- Kimi fixed-origin preflight：[src/researchops/kimi_preflight.py](src/researchops/kimi_preflight.py)
-- Phase 6 Agent：[src/researchops/phase6_agent.py](src/researchops/phase6_agent.py)
-- 受控工具运行时：[src/researchops/tool_runtime.py](src/researchops/tool_runtime.py)
-- 审计：[src/researchops/audit.py](src/researchops/audit.py)
-- 统计工具：[src/researchops/analysis_tools.py](src/researchops/analysis_tools.py)
-- 方法选择：[src/researchops/method_selection.py](src/researchops/method_selection.py)
-- 评测 runner：[src/researchops/eval_runner.py](src/researchops/eval_runner.py)
-- Phase 6 scorer：[src/researchops/phase6_eval.py](src/researchops/phase6_eval.py)
+  [docs/evidence/supervised-ux-regression-v2-20260823/README.md](../../docs/evidence/supervised-ux-regression-v2-20260823/README.md)
+- Production slice 服务：[services/production_slice/README.md](../../services/production_slice/README.md)
+- Provider 适配：[src/researchops/model_providers.py](../../src/researchops/model_providers.py)
+- Kimi Provider/preflight 边界：[docs/KIMI_PROVIDER.md](../../docs/KIMI_PROVIDER.md)
+- Kimi fixed-origin preflight：[src/researchops/kimi_preflight.py](../../src/researchops/kimi_preflight.py)
+- Phase 6 Agent：[src/researchops/phase6_agent.py](../../src/researchops/phase6_agent.py)
+- 受控工具运行时：[src/researchops/tool_runtime.py](../../src/researchops/tool_runtime.py)
+- 审计：[src/researchops/audit.py](../../src/researchops/audit.py)
+- 统计工具：[src/researchops/analysis_tools.py](../../src/researchops/analysis_tools.py)
+- 方法选择：[src/researchops/method_selection.py](../../src/researchops/method_selection.py)
+- 评测 runner：[src/researchops/eval_runner.py](../../src/researchops/eval_runner.py)
+- Phase 6 scorer：[src/researchops/phase6_eval.py](../../src/researchops/phase6_eval.py)
 
 ## 13. 新会话接手时的推荐第一项工作
 

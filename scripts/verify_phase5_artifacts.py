@@ -17,22 +17,31 @@ from researchops.audit import AuditLedger  # noqa: E402
 
 
 TEXT_SUFFIXES = {".json", ".jsonl", ".md"}
+ALLOWED_TASK_CORPORA = frozenset(
+    {"tasks.jsonl", "tasks.linux-x86_64.jsonl"}
+)
 FORBIDDEN_CANARIES = {
     "row_id_P0001": "p0001",
     "api_key_prefix": "sk-canary",
     "authorization_header": "authorization: bearer",
     "traceback": "traceback (most recent call last)",
 }
+_EXACT_50_TASK_REQUIREMENTS: tuple[tuple[str, int | float], ...] = (
+    ("task_count", 50),
+    ("passed_count", 50),
+    ("failed_count", 0),
+    ("success_rate", 1.0),
+    ("evidence_citations_required", 21),
+    ("evidence_citations_matched", 21),
+    ("evidence_citation_accuracy", 1.0),
+)
 QUALITY_PROFILE_REQUIREMENTS: dict[str, tuple[tuple[str, int | float], ...]] = {
-    "phase5-ci-v1": (
-        ("task_count", 50),
-        ("passed_count", 50),
-        ("failed_count", 0),
-        ("success_rate", 1.0),
-        ("evidence_citations_required", 21),
-        ("evidence_citations_matched", 21),
-        ("evidence_citation_accuracy", 1.0),
-    )
+    "phase5-ci-v1": _EXACT_50_TASK_REQUIREMENTS,
+    "phase5-linux-x86-ci-v1": _EXACT_50_TASK_REQUIREMENTS,
+}
+QUALITY_PROFILE_TASK_CORPORA = {
+    "phase5-ci-v1": "tasks.jsonl",
+    "phase5-linux-x86-ci-v1": "tasks.linux-x86_64.jsonl",
 }
 
 
@@ -83,10 +92,19 @@ def main() -> int:
         if not path.is_file() or _sha256(path) != metadata["sha256"]:
             hash_mismatches.append(name)
     provenance_mismatches: list[str] = []
-    if _sha256(project_root / "evals" / "tasks.jsonl") != manifest["task_corpus"][
-        "sha256"
-    ]:
+    task_corpus_path = _manifest_task_corpus_path(project_root, manifest)
+    if (
+        task_corpus_path is None
+        or not task_corpus_path.is_file()
+        or _sha256(task_corpus_path) != manifest["task_corpus"]["sha256"]
+    ):
         provenance_mismatches.append("task_corpus")
+    elif (
+        args.quality_profile is not None
+        and task_corpus_path.name
+        != QUALITY_PROFILE_TASK_CORPORA[args.quality_profile]
+    ):
+        provenance_mismatches.append("quality_profile_task_corpus")
     if _sha256(project_root / "data" / "synthetic_trial.csv") != manifest[
         "dataset_sha256"
     ]:
@@ -153,6 +171,25 @@ def main() -> int:
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0 if valid else 1
+
+
+def _manifest_task_corpus_path(
+    project_root: Path, manifest: Mapping[str, Any]
+) -> Path | None:
+    task_corpus = manifest.get("task_corpus")
+    if not isinstance(task_corpus, Mapping):
+        return None
+    file_name = task_corpus.get("file_name")
+    if not isinstance(file_name, str) or file_name not in ALLOWED_TASK_CORPORA:
+        return None
+    relative = Path(file_name)
+    if relative.name != file_name or relative.suffix != ".jsonl":
+        return None
+    evals_root = (project_root / "evals").resolve()
+    candidate = (evals_root / relative).resolve()
+    if not candidate.is_relative_to(evals_root):
+        return None
+    return candidate
 
 
 def _build_quality_gate(

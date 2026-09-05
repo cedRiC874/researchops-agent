@@ -30,6 +30,9 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
     def test_phase5_corpus_is_bound_to_canonical_lf_provenance(self) -> None:
         dataset = (PROJECT_ROOT / "data" / "synthetic_trial.csv").read_bytes()
         corpus = (PROJECT_ROOT / "evals" / "tasks.jsonl").read_bytes()
+        linux_corpus = (
+            PROJECT_ROOT / "evals" / "tasks.linux-x86_64.jsonl"
+        ).read_bytes()
 
         self.assertNotIn(b"\r\n", dataset)
         self.assertEqual(
@@ -49,13 +52,42 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
         self.assertNotIn(b"E-7C87BB6C88EB", corpus)
         self.assertNotIn(b"E-B93CD9DC7751", corpus)
         self.assertNotIn(b"CH-F675F0E546C6", corpus)
+        self.assertNotIn(b"\r\n", linux_corpus)
+        self.assertEqual(
+            hashlib.sha256(linux_corpus).hexdigest(),
+            "68ea85b79a43d8bb32834ae5d990aa2135bbfe5775c50ee7d7b2f239f4b68b23",
+        )
+        translated = corpus.replace(b"E-36034128278C", b"E-14EBFFCA843E")
+        translated = translated.replace(b"E-E5D03B8E6EB8", b"E-5FBD2DA79692")
+        translated = translated.replace(b"CH-6D27DA2CB989", b"CH-BF5193D84458")
+        self.assertEqual(linux_corpus, translated)
 
     def test_phase5_ci_profile_accepts_exact_release_thresholds(self) -> None:
-        gate = VERIFIER._build_quality_gate("phase5-ci-v1", _perfect_report())
+        for profile in ("phase5-ci-v1", "phase5-linux-x86-ci-v1"):
+            with self.subTest(profile=profile):
+                gate = VERIFIER._build_quality_gate(profile, _perfect_report())
 
-        self.assertEqual(gate["status"], "valid")
-        self.assertIsNone(gate["error_code"])
-        self.assertEqual(gate["mismatches"], [])
+                self.assertEqual(gate["status"], "valid")
+                self.assertIsNone(gate["error_code"])
+                self.assertEqual(gate["mismatches"], [])
+
+    def test_verifier_resolves_only_manifest_bound_eval_corpora(self) -> None:
+        manifest = {"task_corpus": {"file_name": "tasks.linux-x86_64.jsonl"}}
+        self.assertEqual(
+            VERIFIER._manifest_task_corpus_path(PROJECT_ROOT, manifest),
+            (PROJECT_ROOT / "evals" / "tasks.linux-x86_64.jsonl").resolve(),
+        )
+        for file_name in (
+            "../tasks.jsonl",
+            "tasks.json",
+            "unfrozen-tasks.jsonl",
+            "",
+        ):
+            with self.subTest(file_name=file_name):
+                manifest["task_corpus"]["file_name"] = file_name
+                self.assertIsNone(
+                    VERIFIER._manifest_task_corpus_path(PROJECT_ROOT, manifest)
+                )
 
     def test_phase5_ci_profile_rejects_main_regression_with_stable_order(self) -> None:
         report = _perfect_report()
@@ -155,21 +187,95 @@ class Phase5ArtifactQualityGateTests(unittest.TestCase):
         self.assertIn("phase5_offline_quality_gate_failed", workflow)
         self.assertIn("exit 1", workflow)
 
-    def test_portfolio_demo_uses_the_same_canonical_numerical_baseline(self) -> None:
-        script_path = PROJECT_ROOT / "scripts" / "portfolio_demo.ps1"
-        self.assertTrue(script_path.read_bytes().startswith(b"\xef\xbb\xbf"))
-        script = script_path.read_text(encoding="utf-8-sig")
+    def test_portfolio_demo_uses_strict_platform_numerical_baselines(self) -> None:
+        core = (PROJECT_ROOT / "scripts" / "portfolio_demo.py").read_text(
+            encoding="utf-8"
+        )
+        powershell = (PROJECT_ROOT / "scripts" / "portfolio_demo.ps1").read_text(
+            encoding="utf-8"
+        )
+        shell = (PROJECT_ROOT / "scripts" / "portfolio_demo.sh").read_text(
+            encoding="utf-8"
+        )
 
-        self.assertIn('OPENBLAS_CORETYPE = "NEHALEM"', script)
-        self.assertIn('OPENBLAS_NUM_THREADS = "1"', script)
-        self.assertIn('OMP_NUM_THREADS = "1"', script)
-        self.assertIn('MKL_NUM_THREADS = "1"', script)
-        self.assertIn('NUMEXPR_NUM_THREADS = "1"', script)
-        self.assertIn('NPY_DISABLE_CPU_FEATURES = "X86_V3,X86_V4"', script)
-        self.assertIn("Core:\\s*Nehalem", script)
-        self.assertIn("E-36034128278C", script)
-        self.assertIn("$stepErrorActionPreference = $ErrorActionPreference", script)
-        self.assertIn("$ErrorActionPreference = $stepErrorActionPreference", script)
+        for name, value in (
+            ("OPENBLAS_CORETYPE", "NEHALEM"),
+            ("OPENBLAS_NUM_THREADS", "1"),
+            ("OMP_NUM_THREADS", "1"),
+            ("MKL_NUM_THREADS", "1"),
+            ("NUMEXPR_NUM_THREADS", "1"),
+            ("NPY_DISABLE_CPU_FEATURES", "X86_V3,X86_V4"),
+        ):
+            self.assertIn(f'"{name}": "{value}"', core)
+        self.assertIn("Core:\\s*Nehalem", core)
+        self.assertIn("E-36034128278C", core)
+        self.assertIn("E-14EBFFCA843E", core)
+        self.assertIn('"phase5-ci-v1"', core)
+        self.assertIn('"phase5-linux-x86-ci-v1"', core)
+        self.assertIn("PROVIDER_CREDENTIAL_VARIABLES", core)
+        self.assertIn("output.is_relative_to(artifacts_root)", core)
+
+        self.assertIn("scripts\\portfolio_demo.py", powershell)
+        self.assertIn("ForEach-Object { Write-Host", powershell)
+        self.assertNotIn("$capturedOutput = @(", powershell)
+        self.assertIn("$LASTEXITCODE", powershell)
+        self.assertTrue(shell.startswith("#!/usr/bin/env bash\nset -euo pipefail\n"))
+        self.assertIn("${PYTHON_PATH:-${repo_root}/.venv/bin/python}", shell)
+        self.assertIn('scripts/portfolio_demo.py" "$@"', shell)
+
+    def test_supported_demo_platforms_are_documented_and_checked_in_ci(self) -> None:
+        readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+        english_readme = (PROJECT_ROOT / "README.en.md").read_text(encoding="utf-8")
+        windows_requirements = (PROJECT_ROOT / "requirements.lock").read_text(
+            encoding="utf-8"
+        )
+        linux_requirements = (PROJECT_ROOT / "requirements.linux.lock").read_text(
+            encoding="utf-8"
+        )
+        workflow = (PROJECT_ROOT / ".github/workflows/ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Python 3.12", readme)
+        self.assertNotIn("Python 3.11+", readme)
+        self.assertIn("Windows x86-64", readme)
+        self.assertIn("Linux x86-64", readme)
+        self.assertIn("macOS 与 ARM", readme)
+        self.assertIn("requirements.linux.lock", readme)
+        self.assertIn("Python 3.12", english_readme)
+        self.assertNotIn("Python 3.11+", english_readme)
+        self.assertIn("Windows x86-64", english_readme)
+        self.assertIn("Linux x86-64", english_readme)
+        self.assertIn("macOS and ARM", english_readme)
+        self.assertIn("requirements.linux.lock", english_readme)
+        self.assertIn("scripts\\portfolio_demo.ps1", readme)
+        self.assertIn("scripts/portfolio_demo.sh", readme)
+        windows_requirement_lines = windows_requirements.splitlines()
+        linux_requirement_lines = linux_requirements.splitlines()
+        self.assertEqual(windows_requirement_lines.count("pywin32==312"), 1)
+        self.assertIn("pywin32==312", windows_requirement_lines)
+        self.assertNotIn("pywin32==312", linux_requirement_lines)
+        self.assertEqual(
+            [
+                requirement
+                for requirement in windows_requirement_lines
+                if requirement != "pywin32==312"
+            ],
+            linux_requirement_lines,
+        )
+        self.assertIn("linux-x86-demo:", workflow)
+        self.assertIn("runs-on: ubuntu-latest", workflow)
+        self.assertIn("python -m pip install -r requirements.linux.lock", workflow)
+        self.assertIn("python -m pip check", workflow)
+        self.assertIn('test "$(uname -m)" = "x86_64"', workflow)
+        self.assertIn("bash -n scripts/portfolio_demo.sh", workflow)
+        self.assertIn(
+            "bash scripts/portfolio_demo.sh --output-dir artifacts/ci_linux_x86_demo",
+            workflow,
+        )
+        self.assertIn("test ! -e handoff.md", workflow)
+        self.assertIn("test -f docs/internal/handoff.md", workflow)
+        self.assertNotIn("Validate macOS and Linux", workflow)
 
 
 if __name__ == "__main__":
