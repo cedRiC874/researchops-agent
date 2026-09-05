@@ -17,6 +17,9 @@ The model never sees real filesystem paths and cannot freely run Python, SQL or 
 
 > This is a research prototype and portfolio project, not a clinical decision tool or a production-validated product.
 
+Further reading: [How to Design an Agent Evaluation That Doesn’t Lie to You (English article)](https://github.com/cedRiC874/researchops-agent/blob/6457358d74cc07106dfb7a348ac143cdaa87e459/docs/articles/honest-agent-evaluation/article.md) ·
+[Hacker News discussion](https://news.ycombinator.com/item?id=49518667)
+
 ## A concrete result: baseline-adjusted treatment effect
 
 Example question: in a fully synthetic 240-row randomized trial, do follow-up systolic blood-pressure values differ between treatment and control, after accounting for baseline pressure?
