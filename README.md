@@ -17,6 +17,9 @@ _30 秒演示结果：输入脱敏 CSV、研究问题和显式研究设计，输
 
 > 这是一个 research prototype / portfolio project，不是临床决策工具，也不是已经通过生产验证的产品。
 
+延伸阅读：[如何设计一个不会骗你的 Agent 评测（知乎中文版）](https://zhuanlan.zhihu.com/p/2078131794466099751) ·
+[Hacker News 讨论](https://news.ycombinator.com/item?id=49518667)
+
 ## 一个具体结果：基线校正后的治疗效应
 
 示例问题：在 240 行完全模拟的随机对照试验中，治疗组与对照组的随访收缩压是否不同？考虑基线收缩压后，结论是否仍成立？
