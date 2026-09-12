@@ -1,0 +1,182 @@
+{
+  "schema_version": "provider-completion-timing-contract/1.0",
+  "contract_id": "provider-completion-timing-v1",
+  "status": "frozen_field_contract_offline_authoring_not_runtime_integrated",
+  "confirmed_on": "2026-09-06",
+  "predecessors": {
+    "admission_contract_sha256": "94c23d0f64593d2fb52adcffd2d0decf531f2e78907d0e0b4cd85573c2b60561",
+    "external_design_sha256": "3b16e6d65ec7030fb1f271b57cbde369a55fbf4f966ad57cb73e591d5333d61d",
+    "closure_evidence_sha256": "2c904737b2776ac1df2358df86e320e6421c6eed17b48ab97d49f7512d37e439",
+    "changed": false
+  },
+  "schemas": [
+    {
+      "name": "completion_timing_evidence_v1.schema.json",
+      "bytes": 11446,
+      "sha256": "1b42c6deb4633ba5e39402f557f110a3ef0306ed5036dbf8f8a12464dab1fda7"
+    },
+    {
+      "name": "completion_timing_plan_v1.schema.json",
+      "bytes": 4186,
+      "sha256": "252dbd83b678068639e44733e2c043f0593a6dfb4c49f536dc4036cd16e4599c"
+    },
+    {
+      "name": "completion_timing_publication_v1.schema.json",
+      "bytes": 2516,
+      "sha256": "dce2aad05c077b9ccbc23ab20576cb6bee7a0629ac966fc15fef5296751a8ff7"
+    },
+    {
+      "name": "completion_timing_segment_v1.schema.json",
+      "bytes": 3989,
+      "sha256": "be4cc86e0416f5a2dc2caa3e73288392f864d6749d861b1121899cb432a1d64b"
+    },
+    {
+      "name": "completion_timing_terminal_projection_v1.schema.json",
+      "bytes": 2099,
+      "sha256": "459a62560bc88951a5797f16c2c1ca4fa2f9b67152c82d01d28c27521cc0ca8f"
+    }
+  ],
+  "scopes": {
+    "phase_origin": "after_verified_external_consumption_anchor_before_task_release_opening_and_key_load",
+    "phase_end": "after_all_required_raw_cleanup_post_cleanup_and_key_reference_release",
+    "request_interval": "send_started_ns_to_complete_local_transport_response_or_failure_terminal_ns",
+    "concurrency_lifetime": "attempt_started_ns_through_raw_cleanup_terminal_or_not_applicable_transport_terminal",
+    "raw_cleanup_counts_in_phase": true,
+    "raw_cleanup_counts_in_request_timeout": false,
+    "artifact_sealing_counts_in_phase": false,
+    "external_review_and_witness_waits_count_in_phase": false,
+    "artifact_sealing_scope": "bounded_artifact_set_before_publication_receipt",
+    "publication_receipt_self_write_not_measured_by_itself": true,
+    "publication_receipt_terminalization_requires_separate_local_deadline": true,
+    "external_waits_bound_by_signed_utc_validity_not_monotonic_phase": true,
+    "no_actual_campaign_budget_or_authorization_selected": true,
+    "first_live_uses_same_enabled_collector": true,
+    "first_live_requires_separately_frozen_successor_origin_and_artifact_profile": true,
+    "local_first_live_consumption_is_not_external_campaign_consumption_anchor": true
+  },
+  "limits": {
+    "max_safe_offset_ns": 9007199254740991,
+    "max_request_timeout_ns": 300000000000,
+    "max_phase_timeout_ns": 7200000000000,
+    "max_artifact_sealing_timeout_ns": 300000000000,
+    "max_plan_bytes": 131072,
+    "max_evidence_bytes": 4194304,
+    "max_segment_bytes": 16384,
+    "max_publication_bytes": 32768,
+    "max_terminal_projection_bytes": 16384,
+    "max_attempts": 800,
+    "max_case_count": 100,
+    "max_attempts_per_case": 8
+  },
+  "byte_protocol": {
+    "canonical_json": "UTF-8 ensure_ascii=false sorted_keys compact_separators; reject duplicate keys, non-finite numbers and invalid Unicode",
+    "timing_contract_sha256": "SHA256(exact contract file bytes); not embedded as a self-reference",
+    "document_commitment": "SHA256(fixed domain || NUL || canonical(document with only its own commitment field omitted))",
+    "runtime_plan_core": "canonical runtime plan with only external_plan_binding_sha256 and timing_plan_commitment_sha256 omitted; all other fields included",
+    "record_and_usage_hashes": "SHA256(canonical(completion_record)) and SHA256(canonical(completion_record.usage)); derived from the SAME verified terminal event",
+    "domains": {
+      "plan": "researchops-provider-completion-timing-plan-v1",
+      "segment": "researchops-provider-completion-timing-segment-v1",
+      "evidence": "researchops-provider-completion-timing-evidence-v1",
+      "publication": "researchops-provider-completion-timing-publication-v1",
+      "runtime_plan_core": "researchops-provider-completion-timing-runtime-plan-core-v1",
+      "execution_binding": "researchops-provider-completion-timing-execution-binding-v1"
+    },
+    "self_fields": {
+      "plan": "plan_commitment_sha256",
+      "segment": "segment_commitment_sha256",
+      "evidence": "evidence_commitment_sha256",
+      "publication": "publication_commitment_sha256"
+    }
+  },
+  "acyclic_order": [
+    "candidate source and normative contract freeze",
+    "runtime plan core and timing plan",
+    "full runtime plan including timing-plan commitment",
+    "authorization grant binding the full runtime plan",
+    "independently verified authorization consumption anchor",
+    "execution binding plus fresh clock domain",
+    "record/usage hashes and completed timing segment",
+    "combined terminal event referencing segment hash",
+    "final audit heads and phase timing evidence",
+    "artifact manifest binding audit and timing files",
+    "publication receipt binding manifest and timing file bytes",
+    "external closure receipt and witness"
+  ],
+  "schema_relationships": {
+    "evidence_embedded_segment_equals_segment_schema": true,
+    "planning_binding_is_exact_subset_of_execution_binding": true,
+    "authoring_terminal_projection_is_not_an_authoritative_ledger": true,
+    "actual_ledger_extraction_and_hash_chain_verification_required_for_integration": true,
+    "successor_manifest_binds_timing_evidence_and_audit_artifacts": true,
+    "successor_closure_receipt_binds_publication_receipt": true,
+    "legacy_four_file_manifest_not_silently_extended": true,
+    "legacy_closure_result_not_current_t7_authority": true,
+    "timing_plan_operational_data_outside_candidate_source_tree": true,
+    "grant_and_consumption_hashes_not_in_preregistration_timing_plan": true
+  },
+  "semantic_rules": [
+    "all required schema fields must be present; null is not zero and absence is not null",
+    "all timing offsets are JSON-safe integer relative nanoseconds in one clock domain; units do not claim clock resolution",
+    "plan max_attempts is at least planned case count and at most count times max_attempts_per_case",
+    "plan commitment and raw contract hash match independent frozen expectations",
+    "evidence planning binding exactly matches timing plan; execution binding hash is recomputed",
+    "segment indices are consecutive in plan case-prefix order; per-case indices begin at zero and respect caps",
+    "request_index equals attempt_index; response indices advance only for accepted or rejected responses",
+    "every segment matches exactly one terminal projection including record and usage hashes; projections remain non-authoritative inputs here",
+    "accepted response may use recorded or mapping-unmapped event; outer completion-state gate must still reject unmapped",
+    "accepted/rejected/http_error/outcome_unknown require a send; no_response/cancelled are no-send kinds matching the predecessor transport taxonomy",
+    "only accepted response segments contain completion_record_sha256 and usage_sha256",
+    "known offsets are nondecreasing within a segment; lifetime ends at raw cleanup terminal or not-applicable transport terminal",
+    "request duration is at most request_timeout_ns; every send begins strictly before phase_timeout_ns",
+    "known lifetime end of the previous attempt is at most the next attempt start; equality is allowed",
+    "unknown lifetime, failed raw cleanup or non-accepted terminal forbids any later attempt",
+    "phase task release precedes key load; sends follow both; phase end follows all recorded lifetimes, post cleanup and key release",
+    "phase end is at most phase_timeout_ns; missing phase/lifetime data is incomplete evidence, never a duration of zero",
+    "timing gate completeness requires live_monotonic_capture provenance, every planned case with an accepted response, all attempts accepted, raw cleanup completed, post cleanup completed and key references released",
+    "publication sealing starts at or after phase end and finishes within artifact_sealing_timeout_ns; unknown sealing is not sealed",
+    "UTC, SDK latency aggregates and token counters are forbidden substitutes for these durations"
+  ],
+  "first_live_and_integration_gates": {
+    "current_v7_c1c25226_covers_this_new_pack": false,
+    "new_source_profile_recipe_must_bind_this_contract_and_all_schemas": true,
+    "collector_and_adapter_event_wiring_not_implemented_by_contract": true,
+    "first_live_successor_profile_not_implemented_by_contract": true,
+    "new_manifest_and_external_receipt_schemas_must_be_frozen_before_integration": true,
+    "all_src_python_lock_and_pyproject_bytes_equal_first_live_campaign": true,
+    "provider_calls": 0,
+    "real_key_loads": 0,
+    "current_t7_closure_allowed": false
+  },
+  "error_priority": [
+    "timing_contract_invalid",
+    "timing_sensitive_content",
+    "timing_schema_invalid",
+    "timing_commitment_mismatch",
+    "timing_binding_mismatch",
+    "timing_projection_mismatch",
+    "timing_clock_domain_mismatch",
+    "timing_index_invalid",
+    "timing_clock_order_invalid",
+    "timing_lifetime_invalid",
+    "timing_request_timeout_exceeded",
+    "timing_phase_timeout_exceeded",
+    "timing_concurrency_overlap",
+    "timing_sealing_timeout_exceeded"
+  ],
+  "claim_boundary": {
+    "authoring_validation_is_not_runtime_or_live_evidence": true,
+    "synthetic_fixture_is_not_live_capture": true,
+    "clock_measurement_independently_attested": false,
+    "provider_billing_or_retention_verified": false,
+    "remote_generation_physically_stopped_proved": false,
+    "kernel_preemption_proved": false,
+    "host_wide_key_copy_absence_proved": false,
+    "commit_push_merge_authorized": false,
+    "provider_calls_authorized": false,
+    "provider_registration_authorized": false,
+    "private_or_nonsynthetic_evaluation_authorized": false,
+    "historical_backfill_allowed": false,
+    "locked_depth60_score_unchanged": "20/60"
+  }
+}

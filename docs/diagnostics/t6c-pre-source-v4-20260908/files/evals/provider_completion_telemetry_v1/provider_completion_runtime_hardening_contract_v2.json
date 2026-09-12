@@ -1,0 +1,108 @@
+{
+  "schema_version": "provider-completion-runtime-hardening/2.0",
+  "contract_id": "provider-completion-runtime-hardening-v2",
+  "status": "offline_only_hardening_successor",
+  "documented_on": "2026-09-03",
+  "predecessors": {
+    "provider_completion_record_contract_v1": {
+      "relative_path": "evals/provider_completion_telemetry_v1/provider_completion_record_contract_v1.json",
+      "bytes": 15450,
+      "sha256": "01800a73bac82895af6865387e465ee09c3340033b5b48126f5d56aeb453166e",
+      "immutable": true
+    },
+    "provider_completion_mapping_v1": {
+      "relative_path": "evals/provider_completion_telemetry_v1/provider_completion_mapping_v1.json",
+      "bytes": 48071,
+      "sha256": "2a3e4c6a81fd76d9e20542091fbffdd4c6137d2e730b626117446109658b946d",
+      "immutable": true
+    }
+  },
+  "scope": {
+    "hardening_steps": [
+      "A1",
+      "A2",
+      "A4"
+    ],
+    "online_calls_performed": 0,
+    "runtime_authorization": false,
+    "provider_runtime_gate_promoted": false,
+    "status_defect_state": "open",
+    "historical_v1_files_modified": false
+  },
+  "a1_planned_case_closure": {
+    "implementation_symbol": "researchops_completion_telemetry.capture.evaluate_runtime_denominator_closure",
+    "minimum_per_planned_case": {
+      "terminal_kind": "response_accepted",
+      "count": 1
+    },
+    "failure_reason": "planned_case_without_accepted_response",
+    "zero_attempt_case_forbids_claim": true,
+    "zero_observed_response_case_forbids_claim": true,
+    "max_turns_is_upper_bound_not_required_count": true
+  },
+  "a2_dynamic_denominator_subartifact": {
+    "schema_version": "provider-completion-runtime-denominator-artifact/1.0",
+    "validator_symbol": "researchops_completion_telemetry.sanitization.validate_runtime_denominator_artifact",
+    "compatibility_symbol": "researchops_completion_telemetry.sanitization.validate_completion_artifact",
+    "scope": "runtime_denominator_subartifact_only",
+    "revalidates": [
+      "plan_binding",
+      "attempt_and_response_indices",
+      "terminal_counts",
+      "case_counts",
+      "sdk_reconciliation",
+      "matched_sdk_response_row_coverage",
+      "live_completion_records"
+    ],
+    "matched_sdk_response_rows": "exact_zero_based_coverage_0_to_n_minus_1",
+    "does_not_validate": [
+      "outer_phase6_completion_telemetry_envelope",
+      "outer_closure_report",
+      "audit_database",
+      "audit_index",
+      "append_only_event_chain",
+      "artifact_manifest"
+    ],
+    "full_closure_evidence_verifier_implemented": false
+  },
+  "a4_unmapped_atomic_terminal": {
+    "ledger_event_schema_version": "provider-completion-ledger-event/1.1",
+    "event_type": "provider_completion_mapping_unmapped",
+    "terminal_kind": "response_accepted",
+    "replaces_event_type": "model_response_telemetry_recorded",
+    "accepted_terminal_event_types": [
+      "model_response_telemetry_recorded",
+      "provider_completion_mapping_unmapped"
+    ],
+    "additional_side_event_emitted": false,
+    "exactly_one_terminal_event_per_attempt": true,
+    "completion_record_contains_usage": true,
+    "selection_rule": "event_type_is_unmapped_iff_normalized_completion_state_is_unmapped",
+    "state_event_bijection": {
+      "unmapped_state_requires_event_type": "provider_completion_mapping_unmapped",
+      "event_type_requires_normalized_state": "unmapped"
+    },
+    "recognized_state_event_type": "model_response_telemetry_recorded",
+    "predecessor_v1_record_and_mapping_unchanged": true,
+    "closure_claim_allowed": false,
+    "closure_reason": "completion_state_unmapped",
+    "implementation_symbols": [
+      "researchops.audit.COMPLETION_TELEMETRY_UNMAPPED_EVENT",
+      "researchops.completion_telemetry_ledger.LedgerCompletionTelemetrySession",
+      "researchops.phase6_runner._finalize_runtime_completion_telemetry"
+    ]
+  },
+  "unfinished_prerequisites": {
+    "a3_external_preregistration_binding": "not_implemented",
+    "adapter_path_first_live_validation": "not_performed",
+    "registry_successor_runtime_promotion": "not_implemented",
+    "full_outer_closure_ledger_verifier": "not_implemented"
+  },
+  "claim_boundary": {
+    "green_ci_closes_defect": false,
+    "runtime_execution_authorized": false,
+    "provider_registration_authorized": false,
+    "model_quality_claim_allowed": false,
+    "historical_backfill_performed": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": "t6c-concurrency-review/1.0",
+  "status": "gap_reproduced",
+  "scope": "pure_semantic_synthetic_counterexample_not_full_A_B",
+  "bound_concurrency": 1,
+  "send_times": ["2026-09-04T03:01:02Z", "2026-09-04T03:01:02.500000Z"],
+  "terminal_times": ["2026-09-04T03:01:03Z", "2026-09-04T03:01:03.500000Z"],
+  "semantic_closure_claim_allowed": true,
+  "reasons": [],
+  "semantics_source_sha256": "081b3510a47a1dd35fddf166298a3f988868e031831a7eba1089a578b7bbdcaf",
+  "provider_calls": 0,
+  "real_key_loads": 0,
+  "utc_overlap_is_monotonic_concurrency_proof": false
+}

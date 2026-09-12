@@ -1,0 +1,57 @@
+{
+  "schema_version": "provider-completion-first-live-artifact-contract/1.0",
+  "first_live_audit_profile_sha256": "b0e8c8470cff76388285cf4e2bcb8eb7d680f66eda3869b3586bfdb5dcd1ff74",
+  "first_live_control_profile_sha256": "ad7915042f33da62f608827489b921a31a87ebb601f26b0efcae3704cd224245",
+  "schemas": [
+    {
+      "name": "manifest_v1.schema.json",
+      "bytes": 2382,
+      "sha256": "48fd24eb52f70f56fa84f9fff8f10a74a3d925b27526cda9e83760befa91a9e4"
+    },
+    {
+      "name": "bundle_v1.schema.json",
+      "bytes": 2731,
+      "sha256": "f0a06013bd4581564abba5ead51d87265ac44ff3c11842a9d57f12de615916aa"
+    }
+  ],
+  "payload_files": [
+    "audit.sqlite3",
+    "authorization.json",
+    "claim_intent.json",
+    "claim_receipt.json",
+    "completion_timing_plan.json",
+    "completion_timing_evidence.json"
+  ],
+  "artifact_files": [
+    "audit.sqlite3",
+    "authorization.json",
+    "claim_intent.json",
+    "claim_receipt.json",
+    "completion_timing_plan.json",
+    "completion_timing_evidence.json",
+    "manifest.json",
+    "completion_timing_publication.json"
+  ],
+  "manifest_file": "manifest.json",
+  "publication_file": "completion_timing_publication.json",
+  "bundle_domain": "researchops-provider-completion-first-live-artifact-bundle-v1",
+  "max_file_bytes": 100000000,
+  "max_total_bytes": 100000000,
+  "max_envelope_bytes": 16384,
+  "rules": [
+    "All eight exact files must be bounded, single-link, non-reparse; extras, missing files and sidecars fail. Scan raw and canonical bytes before database opening.",
+    "Manifest hashes exactly six payloads. Publication binds the manifest and timing-evidence bytes under the first-live timing profile.",
+    "The external bundle envelope hashes all eight files, including manifest and publication. Its domain-separated commitment excludes only bundle_commitment_sha256. This avoids a manifest/publication self-reference cycle.",
+    "Expected bundle and authorization commitments are supplied independently. Self-rehashing an archive is not consent, review approval or source admission.",
+    "All envelope and manifest authorization/plan/execution identifiers must match the independently verified direct-control and actual SQLite timing graph.",
+    "Derive records and terminal projections from actual immutable SQLite rows; never accept them from the archive as caller-generated replacements.",
+    "The archived claim receipt is verified as data. The portable archive verifier does not inspect or provision a local claim store and cannot attest winning-claim ownership or authorize resume.",
+    "Re-read the exact eight-file set after all verification. Publication receipt self-write duration is not measured by itself.",
+    "Only completed-pair data is supported; partial/quarantine needs a separate successor. Old first-live artifact formats remain unchanged.",
+    "Review signatures, independent review digest, exact first-live/campaign source and dependency identity, actual provenance and runtime admission remain external mandatory gates."
+  ],
+  "provider_calls_authorized": false,
+  "runtime_authority_granted": false,
+  "first_live_success_verified": false,
+  "current_closure_claim_allowed": false
+}

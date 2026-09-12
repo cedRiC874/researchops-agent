@@ -1,0 +1,89 @@
+{
+  "schema_version": "provider-completion-first-live-timing-contract/1.0",
+  "status": "frozen_offline_contract_not_live_success",
+  "core_timing_contract_sha256": "7490576433693a45520e82bb161ee371d5a3087fa65975f5a1ac7418f6b13c6f",
+  "local_claim_contract_sha256": "10e6a6f50712b9f6b7bdf1bcf628f1745d2bfcf5723fd9f7d230ea682ee90695",
+  "frozen_design": {
+    "path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_contract_v1.json",
+    "bytes": 9991,
+    "sha256": "477addbc41987d11c6ac7ede3fa6f94d74322efe09c541ea20f3a7937eb96496"
+  },
+  "predecessor_implementation": {
+    "path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_implementation_v3.json",
+    "bytes": 3721,
+    "sha256": "6e11120ad2463ae4aaeed076b4e490e98e977fb21c8e71fce91e9bb4bc9118eb"
+  },
+  "schemas": [
+    {
+      "name": "completion_timing_evidence_v1.schema.json",
+      "bytes": 11571,
+      "sha256": "fe7fa13c05e41454040401f960bc1e48a2c17a585f20d13e7fc83e272c95732c"
+    },
+    {
+      "name": "completion_timing_plan_v1.schema.json",
+      "bytes": 4212,
+      "sha256": "4b1607619fa7c027f6a484547e7cb880cac55a27b00c7703d3be79d711ea6fbe"
+    },
+    {
+      "name": "completion_timing_publication_v1.schema.json",
+      "bytes": 2738,
+      "sha256": "28b70f4eed13e35ff6c05304359e5d0894d9e40feb3eed6a7379997b08cd0dad"
+    }
+  ],
+  "domains": {
+    "plan": "researchops-provider-completion-first-live-timing-plan-v1",
+    "evidence": "researchops-provider-completion-first-live-timing-evidence-v1",
+    "publication": "researchops-provider-completion-first-live-timing-publication-v1"
+  },
+  "shared_segment_and_execution_binding_domains_unchanged": true,
+  "case_handles": [
+    "PCECASE-00000000000000000000000000000041",
+    "PCECASE-00000000000000000000000000000042"
+  ],
+  "scenario_mapping": [
+    {
+      "scenario_index": 0,
+      "max_output_tokens": 256,
+      "required_completion_state": "completed"
+    },
+    {
+      "scenario_index": 1,
+      "max_output_tokens": 16,
+      "required_completion_state": "incomplete_length"
+    }
+  ],
+  "validation_run_id_derivation": "PCEVALID- + first 32 uppercase hex of SHA256(researchops-first-live-timing-run-v1 || NUL || raw authorization-ID SHA256 bytes || NUL || execution_environment_id ASCII || NUL || execution_commit ASCII)",
+  "limits": {
+    "request_timeout_ns": 120000000000,
+    "phase_timeout_ns": 300000000000,
+    "artifact_sealing_timeout_ns": 30000000000,
+    "whole_process_seconds": 330,
+    "network_attempts": 2,
+    "model_requests": 2,
+    "input_tokens_total": 1024,
+    "output_tokens_total": 272,
+    "concurrency": 1,
+    "tools": 0,
+    "client_retries": 0,
+    "resume": false,
+    "fallback": false,
+    "local_cost_stop_cny": "1.000000"
+  },
+  "rules": [
+    "Inputs and output caps come unchanged from the two frozen design scenarios; these are not evaluation tasks or tuning data.",
+    "One deterministic case handle per frozen scenario makes both scenarios mandatory; at most one attempt per case.",
+    "Local-claim origin is explicit and cannot masquerade as an external campaign consumption anchor.",
+    "Phase begins after verified local claim and before Key load or fixed-input use; ends after raw/post cleanup and Key-reference release.",
+    "The whole-process budget covers preflight/claim and terminalization too; publication cannot measure completion of its own write.",
+    "Plan/evidence/publication use distinct first-live schema versions and domains; response-level segment/event linkage and numeric constraints use the shared engine.",
+    "Binding contains no fabricated campaign ID, runtime-plan core or external consumption anchor.",
+    "Authorization binding and local claim receipt hashes must later be verified against real control artifacts, not trusted from this authoring input.",
+    "A timing-complete authoring fixture is not first-live success; actual accepted records must additionally show completed then incomplete_length with the fixed caps.",
+    "First-live must actually enable the same collector used by campaign; source presence alone does not satisfy this gate.",
+    "A new source profile, runtime authority path, artifact/receipt and review/registry binding must be integrated before this can enable first-live execution."
+  ],
+  "runtime_authority_granted": false,
+  "first_live_success_verified": false,
+  "provider_calls_authorized": false,
+  "current_closure_claim_allowed": false
+}

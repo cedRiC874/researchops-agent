@@ -1,0 +1,46 @@
+{
+  "schema_version": "provider-completion-surface-fixture-manifest/2.0",
+  "status": "offline_only_zero_adapter_changes",
+  "registry": {
+    "file": "provider_completion_surface_registry_v2.json",
+    "bytes": 20311,
+    "sha256": "916f37e6bd8fbc25e1e7f84dce7888cba55422c3982149574bce6706ce04f24a"
+  },
+  "fixtures": [
+    {
+      "fixture_id": "deepseek_responses_completed_20260903",
+      "file": "fixtures/deepseek_responses_completed_20260903.json",
+      "bytes": 1184,
+      "sha256": "90c4ac51700379c70d15b20fff4ef8dd4d5b99ba32a9d6196ed05b66ea0fa938",
+      "fixture_kind": "unmodified_live_projection"
+    },
+    {
+      "fixture_id": "deepseek_responses_length_capped_20260903",
+      "file": "fixtures/deepseek_responses_length_capped_20260903.json",
+      "bytes": 1236,
+      "sha256": "f5f57bf8705626d32d45a14a3c0cf671940b363bc2cc761471125c59e9db5860",
+      "fixture_kind": "unmodified_live_projection"
+    },
+    {
+      "fixture_id": "deepseek_responses_missing_fields_20260903",
+      "file": "fixtures/deepseek_responses_missing_fields_20260903.json",
+      "bytes": 1471,
+      "sha256": "8163fbdc706e4ebc64566eb4fe99a511f74ca011145d74e7aab44f85664a4118",
+      "fixture_kind": "synthetic_mutation"
+    },
+    {
+      "fixture_id": "deepseek_responses_unknown_value_20260903",
+      "file": "fixtures/deepseek_responses_unknown_value_20260903.json",
+      "bytes": 1537,
+      "sha256": "22b32ff41566d21a2621d3873c5589a4c76435505ee554d9f5e0269887683a7e",
+      "fixture_kind": "synthetic_mutation"
+    }
+  ],
+  "summary": {
+    "fixture_count": 4,
+    "live_capture_fixture_count": 2,
+    "synthetic_mutation_fixture_count": 2,
+    "online_calls_performed_for_this_successor": false,
+    "adapter_changes_included": false
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "fixture_schema_version": "provider-completion-fixture/1.0",
+  "fixture_id": "deepseek_length_capped_20260902",
+  "provider_id": "deepseek",
+  "api_surface": "openai_compatible_chat_completions",
+  "scenario": "length_capped",
+  "provenance": {
+    "tier": "live_capture",
+    "as_of_date": "2026-09-02",
+    "unverified_shape": false,
+    "live_validation": "validated",
+    "source": {
+      "kind": "live_response",
+      "capture_profile": "minimal_completion_probe_v1",
+      "model": "deepseek-v4-flash",
+      "origin": "https://api.deepseek.com",
+      "stream": false,
+      "thinking": "disabled",
+      "prompt": "fixed_trivial_input_content_not_persisted",
+      "network_attempts": 1,
+      "client_retries": 0,
+      "max_tokens": 1,
+      "captured_at_utc": "2026-09-02T05:16:55.456402Z"
+    }
+  },
+  "derivation": null,
+  "response_projection": {
+    "finish_reason": "length",
+    "usage": {
+      "completion_tokens": 1,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 5,
+      "prompt_tokens": 5,
+      "total_tokens": 6
+    },
+    "provider_request_id_sha256": "0d86f6941bcb8edf2260b1bc681a77bc9dd1ffc1041aeeb9c91162d61c2d3dca",
+    "http_status": 200
+  },
+  "capture_boundary": {
+    "telemetry_contract_development_only": true,
+    "evaluation_task": false,
+    "run_ledger_written": false,
+    "task_pass_computed": false,
+    "model_quality_claim_allowed": false,
+    "content_omitted": true,
+    "reasoning_content_omitted": true,
+    "tool_call_arguments_omitted": true,
+    "system_prompt_omitted": true,
+    "raw_response_persisted": false,
+    "api_key_persisted": false,
+    "private_or_non_synthetic_evaluation_data": false
+  }
+}

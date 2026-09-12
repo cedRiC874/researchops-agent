@@ -1,0 +1,40 @@
+{
+  "fixture_schema_version": "provider-completion-fixture/2.0",
+  "fixture_id": "deepseek_responses_completed_20260903",
+  "provider_id": "deepseek",
+  "api_surface": "responses",
+  "scenario": "completed",
+  "provenance": {
+    "source_tier": "live_capture",
+    "fixture_kind": "unmodified_live_projection",
+    "unverified_shape": false,
+    "source_receipt_sha256": "cb3417b0f3c56eca7fd6d05dda68c4717315004ba0d6e5d6da408d52d990131d",
+    "source_probe_label": "responses_normal_completion",
+    "capture_scope": "minimal_direct_probe_not_sdk_built"
+  },
+  "response_projection": {
+    "status": "completed",
+    "incomplete_details": null,
+    "usage": {
+      "input_tokens": 90,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 9,
+      "output_tokens_details": {
+        "reasoning_tokens": 7
+      },
+      "total_tokens": 99
+    },
+    "provider_request_id_sha256": null,
+    "http_status": 200
+  },
+  "capture_boundary": {
+    "evaluation_task": false,
+    "run_ledger_written": false,
+    "raw_response_persisted": false,
+    "content_omitted": true,
+    "api_key_persisted": false,
+    "model_quality_claim_allowed": false
+  }
+}

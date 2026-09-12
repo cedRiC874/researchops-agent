@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/runtime_registry_admission_bundle_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "predecessor_registry_sha256",
+    "registry_document_sha256",
+    "first_live_evidence_commitment_sha256",
+    "review_document_sha256",
+    "reviewed_evidence_commit",
+    "reviewed_evidence_tree",
+    "subject",
+    "campaign_selected_mapping_sha256",
+    "admission_contract_sha256",
+    "eligibility_requires_full_verification",
+    "changes_to_other_provider_entries",
+    "automatic_registry_promotion_allowed",
+    "online_execution_authorized",
+    "commitment_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-runtime-registry-admission-bundle/1.0"
+    },
+    "document_type": {
+      "const": "completion_telemetry_runtime_registry_admission_bundle"
+    },
+    "predecessor_registry_sha256": {
+      "const": "916f37e6bd8fbc25e1e7f84dce7888cba55422c3982149574bce6706ce04f24a"
+    },
+    "registry_document_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "first_live_evidence_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "review_document_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "reviewed_evidence_commit": {
+      "type": "string",
+      "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+    },
+    "reviewed_evidence_tree": {
+      "type": "string",
+      "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_id",
+        "model_id",
+        "api_origin",
+        "api_surface",
+        "transport_id",
+        "adapter_version",
+        "first_live_execution_commit",
+        "first_live_execution_tree",
+        "first_live_source_integrity_commitment_sha256",
+        "first_live_implementation_commitment_sha256",
+        "source_byte_inventory_sha256",
+        "dependency_lock_sha256",
+        "pyproject_sha256",
+        "selected_mapping_sha256"
+      ],
+      "properties": {
+        "provider_id": {
+          "const": "deepseek"
+        },
+        "model_id": {
+          "const": "deepseek-v4-flash"
+        },
+        "api_origin": {
+          "const": "https://api.deepseek.com"
+        },
+        "api_surface": {
+          "const": "responses"
+        },
+        "transport_id": {
+          "const": "openai_compatible_responses"
+        },
+        "adapter_version": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._/-]{0,127}$"
+        },
+        "first_live_execution_commit": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+        },
+        "first_live_execution_tree": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+        },
+        "first_live_source_integrity_commitment_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "first_live_implementation_commitment_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "source_byte_inventory_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "dependency_lock_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "pyproject_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "selected_mapping_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        }
+      }
+    },
+    "campaign_selected_mapping_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "admission_contract_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "eligibility_requires_full_verification": {
+      "const": true
+    },
+    "changes_to_other_provider_entries": {
+      "const": false
+    },
+    "automatic_registry_promotion_allowed": {
+      "const": false
+    },
+    "online_execution_authorized": {
+      "const": false
+    },
+    "commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    }
+  }
+}
