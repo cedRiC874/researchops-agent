@@ -82,7 +82,7 @@ class HeldCampaignPublicationTests(unittest.IsolatedAsyncioTestCase):
         from tests import test_completion_campaign_artifacts as fixtures
         from tests import test_completion_campaign_runner_bridge as bridge
         temporary=tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
-        root=Path(temporary.name)
+        root=Path(temporary.name).resolve(strict=True)
         helper=fixtures.CampaignArtifactProducerTests()
         with _owned_campaign_work_paths(root,'b'*64) as (database,archive,summary):
             # Redirect only the fixture's ledger constructor; production's exact

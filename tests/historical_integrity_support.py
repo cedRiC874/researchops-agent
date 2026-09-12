@@ -55,7 +55,9 @@ def historical_integrity_root() -> Path:
         ROOT, HISTORICAL_COMMIT, selected, expected_tree_oid=HISTORICAL_TREE
     )
     temporary = tempfile.TemporaryDirectory(prefix="researchops-historical-integrity-")
-    root = Path(temporary.name)
+    # The fixed-file verifier compares resolved files against this root. Keep
+    # historical bytes/commitments intact; normalize only our owned temp location.
+    root = Path(temporary.name).resolve(strict=True)
     try:
         for blob in snapshot.blobs:
             target = root / blob.path

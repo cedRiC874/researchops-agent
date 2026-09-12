@@ -19,7 +19,7 @@ from tests.test_external_closure_execution_components import component_fixture_f
 class SourceSnapshotFailureReceiptTests(unittest.TestCase):
     def exercise(self, generator, files, output_paths):
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary)
+            root=Path(temporary).resolve(strict=True)
             for relative,payload in files.items():
                 path=root/relative
                 path.parent.mkdir(parents=True,exist_ok=True)
@@ -27,6 +27,8 @@ class SourceSnapshotFailureReceiptTests(unittest.TestCase):
             first=root/output_paths[0]
             second=root/output_paths[1]
             original_open=Path.open
+            injection_opens=[]
+            injection_writes=[]
 
             class PartialWriter:
                 def __init__(self, stream):
@@ -38,6 +40,7 @@ class SourceSnapshotFailureReceiptTests(unittest.TestCase):
                 def write(self, payload):
                     self.stream.write(payload[:11])
                     self.stream.flush()
+                    injection_writes.append(11)
                     raise OSError("synthetic write failure; do not print exception text")
 
                 def __exit__(self, *args):
@@ -46,12 +49,17 @@ class SourceSnapshotFailureReceiptTests(unittest.TestCase):
 
             def open_file(path, mode="r", *args, **kwargs):
                 stream=original_open(path,mode,*args,**kwargs)
-                return PartialWriter(stream) if mode=="xb" and path==first else stream
+                if mode=="xb" and path==first:
+                    injection_opens.append(path)
+                    return PartialWriter(stream)
+                return stream
 
             captured=io.StringIO()
             with patch.object(Path,"open",open_file),contextlib.redirect_stdout(captured):
                 code=generator.main(["--project-root",str(root),"--write"])
             result=json.loads(captured.getvalue())
+            self.assertEqual(injection_opens,[first],"failure injection must hit the intended exclusive open once")
+            self.assertEqual(injection_writes,[11],"failure injection must execute the partial write once")
             self.assertEqual(code,2)
             self.assertEqual(result["status"],"failed")
             self.assertEqual(result["created_paths"],[output_paths[0]])

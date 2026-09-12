@@ -85,7 +85,7 @@ class CampaignPostClaimFailureTests(unittest.TestCase):
         from tests.test_completion_execution_scope import scoped_fixture, verify
         from tests.test_completion_timing_pre_execution import documents
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary); known = root / 'known'; known.mkdir()
+            root = Path(temporary).resolve(strict=True); known = root / 'known'; known.mkdir()
             with patch.object(start.local_claim, '_windows_local_app_data', return_value=known):
                 environment = start.local_claim.provision_local_claim_store()['execution_environment_id']
                 fixture, plan = scoped_fixture(environment); scope = verify(fixture, plan)

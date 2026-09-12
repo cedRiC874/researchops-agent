@@ -44,7 +44,9 @@ class TimedEvidenceFixture:
         self.stack = ExitStack()
         try:
             self.temporary = self.stack.enter_context(tempfile.TemporaryDirectory())
-            self.root = Path(self.temporary)
+            # Launch copied source from the same canonical spelling as module ROOTs.
+            # Windows TEMP may use an 8.3 alias; do not relax production origin checks.
+            self.root = Path(self.temporary).resolve(strict=True)
             self.repository = Repository(self.root / "repo")
             source_module = source
             if implementation_version == 4:
