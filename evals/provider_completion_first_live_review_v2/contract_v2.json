@@ -1,0 +1,25 @@
+{
+  "schema_version": "provider-completion-timed-first-live-review-contract/2.0",
+  "predecessor_admission_contract_sha256": "94c23d0f64593d2fb52adcffd2d0decf531f2e78907d0e0b4cd85573c2b60561",
+  "first_live_artifact_contract_sha256": "4e50cbfa2a92473f3ed56763fd4895dc5a2e1cf4871e31e364e64b11f0bda265",
+  "review_schema": {
+    "name": "review_v2.schema.json",
+    "bytes": 6054,
+    "sha256": "f200d8d6e855d05650e8809c2976f46a840d283ae489ebe359433f2ec523c939"
+  },
+  "document_type": "completion_telemetry_timed_first_live_review",
+  "review_domain": "researchops-provider-completion-timed-first-live-review-v2",
+  "signature_domain": "researchops-provider-completion-timed-first-live-review-signature-v2",
+  "rules": [
+    "Preserve v1 review documents and signatures unchanged. The timed archive uses a distinct document type, review scope and hash/signature domains; v1 signatures cannot authorize this review.",
+    "Require exactly one freeze_authority signature under the unchanged external trust manifest, with all three trust signatures and role validity/revocation checks.",
+    "Require independently expected review and trust digests plus the unchanged external review observation. A hash supplied from the same review is not independent approval.",
+    "Bind the eight-file archive commitment, reviewed evidence commit/tree, actual first-live completion time and independently verified subject. The outer verifier must derive these expectations from archive and historical Git rather than copy them from the review.",
+    "Keep the ordered completion/evidence/review/observation/candidate-freeze timeline. Rejected reviews may have valid signatures but cannot become eligible.",
+    "Review signature verification alone proves neither archive integrity, historical source equality, installed dependencies, registry admission nor live execution. These remain distinct required gates."
+  ],
+  "runtime_authority_granted": false,
+  "first_live_success_verified": false,
+  "current_closure_claim_allowed": false,
+  "provider_calls_authorized": false
+}

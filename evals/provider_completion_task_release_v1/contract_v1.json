@@ -1,0 +1,20 @@
+{
+  "schema_version": "provider-completion-task-release-contract/1.0",
+  "private_package_schema_version": "provider-completion-custodian-opening/1.0",
+  "private_package_fields": ["schema_version", "bundle", "secret_salt_b64", "seen_task_digests"],
+  "maximum_package_bytes": 72000000,
+  "minimum_salt_bytes": 32,
+  "maximum_salt_bytes": 4096,
+  "maximum_seen_task_digests": 1000000,
+  "local_fixed_drive_only": true,
+  "absolute_path_required": true,
+  "reparse_points_and_named_streams_allowed": false,
+  "claim_required_before_private_read": true,
+  "source_environment_store_and_expiry_rechecked_before_and_after": true,
+  "release_clock_marks_earliest_possible_private_read_attempt": true,
+  "failed_read_is_not_successful_opening": true,
+  "private_input_persistence_allowed": false,
+  "key_loading_implemented": false,
+  "provider_execution_implemented": false,
+  "closure_claim_allowed": false
+}

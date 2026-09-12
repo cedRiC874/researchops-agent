@@ -1,0 +1,131 @@
+{
+  "schema_version": "provider-completion-execution-component-recipe/2.0",
+  "contract_id": "provider-completion-execution-component-recipe-v2",
+  "status": "offline_source_identity_not_admission",
+  "base_recipe": {
+    "path": "evals/provider_completion_execution_binding_v1/execution_component_recipe_v1.json",
+    "sha256": "4f86881db9c65012d51dbb87c52fe76a7fb3b0020c54c8a0ca8c341433eaa61b",
+    "engine": "v6-pure-component-derivation-no-output-written"
+  },
+  "artifact_directory": "evals/provider_completion_execution_binding_v2/",
+  "profiles": {
+    "first_live": {
+      "plan_id": "phase6-deepseek-depth60-v7",
+      "plan_schema_version": "7.0",
+      "plan_path": "evals/phase6_deepseek_depth60_plan_v7.json",
+      "manifest_path": "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json",
+      "plan_domain": "researchops-phase6-deepseek-depth60-successor-plan-v7",
+      "manifest_domain": "researchops-provider-completion-first-live-source-manifest-v1",
+      "registry_activation_data_required": false
+    },
+    "campaign": {
+      "plan_id": "phase6-deepseek-depth60-v8",
+      "plan_schema_version": "8.0",
+      "plan_path": "evals/phase6_deepseek_depth60_plan_v8.json",
+      "manifest_path": "evals/provider_completion_execution_binding_v2/implementation_manifest_campaign_v1.json",
+      "plan_domain": "researchops-phase6-deepseek-depth60-successor-plan-v8",
+      "manifest_domain": "researchops-provider-completion-campaign-source-manifest-v1",
+      "registry_activation_data_required": true
+    }
+  },
+  "extensions": {
+    "contract_json_roots": [
+      "evals/provider_completion_admission_link_v1/",
+      "evals/provider_completion_execution_binding_v2/",
+      "evals/provider_completion_runtime_registry_v3/"
+    ],
+    "all_profiles_excluded_paths": [
+      "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json",
+      "evals/provider_completion_execution_binding_v2/implementation_manifest_campaign_v1.json"
+    ],
+    "first_live_excluded_paths": [
+      "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.json",
+      "evals/provider_completion_runtime_registry_v3/registry_admission_bundle_v1.json"
+    ],
+    "campaign_required_paths": [
+      "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.json",
+      "evals/provider_completion_runtime_registry_v3/registry_admission_bundle_v1.json",
+      "evals/phase6_deepseek_depth60_plan_v7.json",
+      "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json"
+    ],
+    "mandatory_paths": [
+      "evals/provider_completion_admission_link_v1/admission_link_contract_v1.json",
+      "evals/provider_completion_admission_link_v1/first_live_artifact_profile_v1.json",
+      "evals/provider_completion_admission_link_v1/schemas/external_review_observation_v1.schema.json",
+      "evals/provider_completion_admission_link_v1/schemas/first_live_evidence_bundle_v1.schema.json",
+      "evals/provider_completion_admission_link_v1/schemas/first_live_review_record_v1.schema.json",
+      "evals/provider_completion_admission_link_v1/schemas/runtime_registry_admission_bundle_v1.schema.json",
+      "evals/provider_completion_execution_binding_v2/execution_component_recipe_v2.json",
+      "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.schema.json",
+      "evals/phase6_deepseek_depth60_plan_v6.json",
+      "evals/provider_completion_execution_binding_v1/implementation_manifest_v1.json",
+      "evals/provider_completion_runtime_registry_v3/protocol_v3.json",
+      "src/researchops_external_closure/execution_components_v2.py",
+      "src/researchops_external_closure/execution_binding_v2.py",
+      "src/researchops_external_closure/admission_identity.py",
+      "src/researchops_external_closure/admission_registry.py",
+      "src/researchops_external_closure/admission_first_live.py",
+      "src/researchops_external_closure/first_live_success_semantics.py",
+      "src/researchops_external_closure/admission_contract.py",
+      "src/researchops_external_closure/admission_review.py",
+      "src/researchops_external_closure/admission_source.py",
+      "src/researchops_external_closure/admission_source_git.py",
+      "src/researchops_external_closure/admission_bundle_bytes.py"
+    ],
+    "domain": "researchops-provider-completion-execution-contract-extensions-v2"
+  },
+  "frozen_predecessor_v6": {
+    "plan_path": "evals/phase6_deepseek_depth60_plan_v6.json",
+    "plan_bytes": 1801,
+    "plan_sha256": "bed517817d7c65e2920939836521aa055c9c8571359da7c25bc1cc05cc2f27ee",
+    "plan_commitment_sha256": "dbb73febfc5d475809aeb76b8060c17aa9a379742a13d8104038e6f9e80bbf19",
+    "manifest_path": "evals/provider_completion_execution_binding_v1/implementation_manifest_v1.json",
+    "manifest_bytes": 35487,
+    "manifest_sha256": "508510c966808f23f0ac26ddbd875970962aaad8297c8dbc448b1c169ad2d2f3",
+    "manifest_commitment_sha256": "1b463d0fc3dff7f6842bb31ac3ebb36282f9efc7e3e078b9429ae2869ff497c5",
+    "predecessor_metadata_recomputed": true,
+    "historical_runtime_reexecuted": false
+  },
+  "fixed_bindings": [
+    {
+      "path": "evals/provider_completion_admission_link_v1/admission_link_contract_v1.json",
+      "bytes": 6831,
+      "sha256": "94c23d0f64593d2fb52adcffd2d0decf531f2e78907d0e0b4cd85573c2b60561"
+    },
+    {
+      "path": "evals/provider_completion_admission_link_v1/first_live_artifact_profile_v1.json",
+      "bytes": 5309,
+      "sha256": "573a3294662f28556585af225929e6b5a8f7cbae64b2e7eeb0429457a3ef7af0"
+    },
+    {
+      "path": "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.schema.json",
+      "bytes": 6706,
+      "sha256": "c2112ab4cfbcc83ad9141018a4d52213da9ccc19bf5dcaf5ad662acd559b7162"
+    },
+    {
+      "path": "evals/provider_completion_runtime_registry_v3/protocol_v3.json",
+      "bytes": 1753,
+      "sha256": "5866dfd68722b8579a34cea3f39bfac7f817813a91b584c3a0ea677583384905"
+    }
+  ],
+  "algorithm": {
+    "canonical_json": "existing-strict-canonical-json-v1",
+    "raw_files": "exact-bytes-no-normalization",
+    "manifest_inventory": "sorted path, bytes, sha256 over base-engine inputs plus profile extension inputs",
+    "source_and_runtime_components": "reuse v6 engine domains over current complete source inventory, never substitute its old recorded digest",
+    "contract_bundle_component": "SHA256(extension domain || NUL || canonical({base_contract_bundle_sha256,extension_inventory}))",
+    "first_live_to_campaign": "all src/**/*.py, requirements.lock and pyproject.toml byte-identical; exact selected mapping hash unchanged",
+    "campaign_revalidates_first_live_snapshot": true,
+    "campaign_manifest_does_not_reference_its_own_commit": true,
+    "execute_snapshot_code": false,
+    "fetch_missing_objects": false
+  },
+  "authority": {
+    "source_integrity_only": true,
+    "online_execution_authorized": false,
+    "runtime_admission_verified": false,
+    "historical_result_revalidated": false,
+    "provider_calls": 0,
+    "key_loads": 0
+  }
+}

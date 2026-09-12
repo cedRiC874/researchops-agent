@@ -1,8 +1,15 @@
 # ResearchOps Agent — Current Status
 
-> Snapshot: 2026-09-04 (Asia/Shanghai)
-> Implementation base Git anchor: `main@20ad1da04aac9874f87d48ebe1ef2df1daa6245c`
-> Base tree: `c4bd9afbed0906d3dfc23f42d3590f1af9643a42`
+> Publication snapshot: 2026-09-12 (Asia/Shanghai)
+> T6-C 本地完整离线回归 batch-v6：2,015 tests / 0 failures / 0 errors / 15 skips；test exit 0 / wrapper exit 0。当前发布候选保留已验收的源码、测试与合同字节；远端 CI 为 pending，尚未合并或发布为 Release。
+> PR-B 依赖尚未合并的 [PR-A #41](https://github.com/cedRiC874/researchops-agent/pull/41)。范围、固定承诺与本地验收记录的公开边界见 [T6-C 发布状态](docs/T6C_PUBLICATION_STATUS.md)。原始本机 receipt 与日志未随 PR 发表；本页摘要不提供该本机运行的公开独立复验证据。
+> 此次离线验收与 PR 工作流均不授权 Provider 调用、Key 加载、registry promotion 或未知任务运行。Depth-60 仍为 20/60，旧归因不补写，T7 保持 open。
+
+以下保留已有状态账本与历史证据；其中阶段性“当前”“未完成”和 Git/CI 状态均以各自形成时的快照为准。本轮 T6-C 实现与发布进展以上述摘要及链接页面为准，不扩大旧证据的验证范围。
+
+> Preserved earlier snapshot: 2026-09-04 (Asia/Shanghai)
+> Earlier implementation base Git anchor: `main@20ad1da04aac9874f87d48ebe1ef2df1daa6245c`
+> Earlier base tree: `c4bd9afbed0906d3dfc23f42d3590f1af9643a42`
 
 本页是给深度评审者看的状态账本，不是首页营销材料。机器合同、版本化 evidence 和冻结 artifacts 是最终事实来源；本页只做可读投影。`not_run`、`failed`、`unknown` 和 `0` 不可互换。
 
@@ -31,13 +38,13 @@ T1–T4 已完成本地离线接线与审阅，尚未完成 live validation：T1
 
 T6-B 已通过 PR #38 合并到 `main@5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab`；merge tree 与固定审阅 head `cdcf4b0ef87e3f6054e0e74030b4f2acbe0d177a` 的 `30ecfd86ac00aecd8b67305a7c6ed2af88eeee10` 完全相同，合并后的 offline-quality-gate、pilot-staging-ci 和 production-slice-e2e 均成功，但尚未在线执行。已确认的 design commitment 为 `ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc`，implementation successor commitment 为 `187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10`。固定 commit 与后续完整 diff 审阅发现的 evidence/verifier blocker 已在 successor 中收紧：run 与 verify 都必须接收 artifact 外保存的 authorization binding v2；calculator/run/verifier 共用 CNY 1 最坏成本预留；verifier 从无 replace/no-lazy-fetch 的 execution-commit 快照重算完整 v5；full/manifestless 共用精确 ledger parser；terminal Key/cleanup/error 必须与执行阶段一致；manifestless 文件只能是固定 writer 前缀且每个已有 JSON 都验证 schema 与交叉投影；只有 started/send/record usage 完整双射才允许 top-level usage/cost 非空。受支持的公开 run API 不暴露 Key、clock、Git、artifact-root 或 transport 测试 seam；validation-only authority 不能进入普通 Ledger、generic Phase 6 或 Eval v2。330 秒 in-process 上限在同一预算内预留末 30 秒用于清理与终态，但无法抢占 kernel-blocked 同步 `fsync`；若威胁模型包含主机文件系统永久卡死，仍需外部进程 supervisor。固定运行仍必须显式绑定上述 merge commit、v5 source-integrity commitment、同日官方定价确认和新的单次用户授权。成功也只允许两个 completion projection shape 的 Adapter-path 归因，`closure_claim_allowed=false` 且不得自动提升 registry；当前四个 Provider triple 仍全部 `runtime_binding_allowed=false`。
 
-T6-C 的 external preregistration 字段合同以 `main@5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab` 为基线提交独立 contract-only 审阅；本提交不含 verifier 实现，尚未合并或在线运行：design 为 65,751 bytes，文件 SHA-256 `3b16e6d65ec7030fb1f271b57cbde369a55fbf4f966ad57cb73e591d5333d61d`，semantic commitment `480a8511d35d295d8a99ba7561a19f742b189094dec589bbd8317899c1f833c8`；closure-evidence supporting contract 为 39,575 bytes，文件 SHA-256 `2c904737b2776ac1df2358df86e320e6421c6eed17b48ab97d49f7512d37e439`，semantic commitment `a96b39a1f4bafa3bcf512fd88a5e7b0ca3987ca2bc9804642a1d1259cbf8cad0`。14 个 strict schema 覆盖 candidate freeze、seen exclusion、外部 observation/ledger、授权消费、hidden synthetic task、transport send、postrun facts、完整或 prefix-only closure evidence；合同及回归验证以本 PR 固定 head 的离线 checks 为准。signed receipt 只保存 `pre_anchor_closure_eligible`，只有最终 verifier 在验证后续 witness entry 与外部 observation 后才可返回 `closure_claim_allowed`；quarantine 只能返回失败已封账，不得发布 artifact hash 或声称复验隔离内容。当前仍没有 external custodian task、真实签名、registry successor、one-time grant、Provider Key load 或网络调用，STATUS 缺陷保持 `open`。
+T6-C 的 external preregistration 字段合同以 `main@5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab` 为基线提交独立 contract-only 审阅，已通过 [PR #39](https://github.com/cedRiC874/researchops-agent/pull/39) 合并为 `41751bfce273449673f25f60f876bc3afa891e6b`；该历史合同提交不含 verifier 实现，也未在线运行。其冻结 design 为 65,751 bytes，文件 SHA-256 `3b16e6d65ec7030fb1f271b57cbde369a55fbf4f966ad57cb73e591d5333d61d`，semantic commitment `480a8511d35d295d8a99ba7561a19f742b189094dec589bbd8317899c1f833c8`；closure-evidence supporting contract 为 39,575 bytes，文件 SHA-256 `2c904737b2776ac1df2358df86e320e6421c6eed17b48ab97d49f7512d37e439`，semantic commitment `a96b39a1f4bafa3bcf512fd88a5e7b0ca3987ca2bc9804642a1d1259cbf8cad0`。14 个 strict schema 覆盖 candidate freeze、seen exclusion、外部 observation/ledger、授权消费、hidden synthetic task、transport send、postrun facts、完整或 prefix-only closure evidence；该合同提交的回归验证以当时固定 head 的离线 checks 为准，后续实现与本轮验收范围见 [T6-C 发布状态](docs/T6C_PUBLICATION_STATUS.md)。signed receipt 只保存 `pre_anchor_closure_eligible`，只有最终 verifier 在验证后续 witness entry 与外部 observation 后才可返回 `closure_claim_allowed`；quarantine 只能返回失败已封账，不得发布 artifact hash 或声称复验隔离内容。当前仍没有 external custodian task、真实签名、registry successor、one-time grant、Provider Key load 或网络调用，STATUS 缺陷保持 `open`。
 
 ### Depth-60 source-bundle successor（offline source integrity only）
 
 历史 v1 plan 保持 5,398 bytes、文件 SHA-256 `f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20`、plan commitment `8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e` 与 source-bundle commitment `914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84`，未被覆盖。当前树与其冻结源码不同，因此历史 plan 在当前树上应以 `phase6_depth60_component_drift` fail-closed；这不是历史 commitment 失效。
 
-v2 算法使用独立 domain，纳入直接子模块导入会执行的每一级 package `__init__.py` 及其依赖，并覆盖 namespace-package fromlist 子模块，保留 whole-package conservative closure，在相对导入逃逸 `researchops` 时拒绝。validator 只接受 v1/v2/v3/v4/v5 五个固定 plan 路径，并重新计算 predecessor 的完整 commitment。冻结 v2 source-bundle SHA-256 为 `cd46dc03771fc0ebca7ea50798fe2b32fa76248882881f7249c777cd3270ab25`。
+v2 算法使用独立 domain，纳入直接子模块导入会执行的每一级 package `__init__.py` 及其依赖，并覆盖 namespace-package fromlist 子模块，保留 whole-package conservative closure，在相对导入逃逸 `researchops` 时拒绝。历史 v1/v2/v3/v4/v5 固定 plan 路径与 predecessor 完整 commitment 校验保持不变。后续版本使用各自固定路径与版本化 execution-component/profile 校验器，不接受任意 plan 路径。当前 first-live 源码完整性快照为 v4 recipe 下的 v11，plan commitment 为 `7ef11c4658967e47a56d92323e6ac118dfaef57ffd699b721bac1e25d0383b8d`，implementation commitment 为 `b4c384f5cd832f0bcbcfe1effbdf03da799aa4bd9b8f6910619ea575b487a24c`；campaign v12 尚未生成。上述承诺只绑定离线源码身份，不授予运行或在线权限。冻结 v2 source-bundle SHA-256 仍为 `cd46dc03771fc0ebca7ea50798fe2b32fa76248882881f7249c777cd3270ab25`。
 
 冻结的 `phase6-deepseek-depth60-v2` plan 保持 2,170 bytes、文件 SHA-256 `fc4ca5cc2131efb36d82f1d739f65ad2a026e1c7534f0da9c873942a40c1002f`、plan commitment `3077a55e09f3f2137155a68d96a5bda60d8553cc9b5dd36ca83d33bbbc3dcf7e`；它对当前新增 telemetry/Adapter 树报告 component drift 是预期历史状态，不应被误判为 plan 损坏。
 
@@ -219,6 +226,8 @@ Operator-side observation（只读核验于 `2026-08-31`）：四封 Gmail 草�
 | v8 diagnostic successor | `b41269ac6db96e2999fedc95f08f3b77a48699f8c0b50b63764bcb6e1f9e962c` | v7 | false |
 
 ## 8. Git、CI 与发布
+
+下表保留此前 main/CI 的历史记录，不是本轮 T5 发布候选的 CI 结果。本轮 PR-A #41 尚未合并，PR-B 以其固定 head 为依赖，远端 CI 为 pending；当前范围与锚点见 [T6-C 发布状态](docs/T6C_PUBLICATION_STATUS.md)。
 
 | 项目 | 当前事实 |
 | --- | --- |

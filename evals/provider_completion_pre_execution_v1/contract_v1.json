@@ -1,0 +1,52 @@
+{
+  "schema_version": "provider-completion-timed-pre-execution-contract/1.0",
+  "status": "frozen_offline_verifier_not_execution_authority",
+  "timing_contract_sha256": "7490576433693a45520e82bb161ee371d5a3087fa65975f5a1ac7418f6b13c6f",
+  "schemas": [
+    {
+      "path": "observation_v1.schema.json",
+      "bytes": 4692,
+      "sha256": "35a68baadae05855bf1911a93f2154acd52db4b4a339415a9ad92780e48daa20"
+    },
+    {
+      "path": "preregistration_v2.schema.json",
+      "bytes": 29346,
+      "sha256": "70c3818a09f82e626ab7d9b0d177b12dea5ce1e8b8fe629cfc97cc1c402864b0"
+    }
+  ],
+  "envelope_successor_changes": [
+    "schema_version becomes provider-completion-external-preregistration/2.0",
+    "runtime_plan requires timing_plan_commitment_sha256; every other predecessor field remains required and unchanged"
+  ],
+  "observation_changes": [
+    "dedicated pre_execution version/mode",
+    "manifest_observation, closure_receipt_observation and closure_evidence_anchor are forbidden rather than fabricated or filled with null"
+  ],
+  "document_schema_scope": "All nine predecessor document schemas are retained except the explicit v2 preregistration schema; original schema files and postrun verifier behavior are unchanged.",
+  "signature_roles": [
+    "freeze_authority",
+    "task_custodian",
+    "ledger_witness"
+  ],
+  "rules": [
+    "Verify every document/ledger hash, required signature role, key/trust validity and cross-document/OOB projection with the shared predecessor implementation.",
+    "Verify the chronology only through the consumed anchor; never synthesize a future manifest observation to pass the postrun timeline.",
+    "Require consumed-anchor observation <= explicit verification_time_utc < grant expiry, envelope expiry and trust expiry.",
+    "verification_time_utc is an explicit input to this readonly verifier, not a proof of current time; the future runtime gateway must obtain its own fresh clock.",
+    "Timing plan commitment matches its full bytes and the signed v2 runtime plan; the grant and consumption receipt bind the resulting full external-plan commitment.",
+    "Recompute runtime_plan_core_sha256 omitting only external_plan_binding_sha256 and timing_plan_commitment_sha256; no other field may be omitted.",
+    "Timing plan case order, attempt caps, per-case cap, request/phase timeouts and Provider identity equal the signed runtime/denominator plans.",
+    "Artifact-sealing cap is authorized indirectly by the signed timing-plan commitment and remains within the frozen timing schema ceiling.",
+    "Timing execution binding extends the plan binding with the signed grant document hash, canonical external consumed-anchor hash and full external-plan commitment.",
+    "Return immutable hashes/time only, not task content, public/private keys, decoded documents, runtime bindings or a reusable execution permit.",
+    "Current source, same freeze_authority review, independent review digest, first-live/campaign byte equality, durable one-shot claim and actual consumption-origin collection remain separate runtime gates."
+  ],
+  "consumption_anchor_hash": "SHA256(canonical(pre_execution_observation.authorization_consumed_anchor))",
+  "runtime_plan_commitment_sha256": "verified runtime_plan.external_plan_binding_sha256",
+  "old_postrun_schema_changed": false,
+  "one_shot_execution_claimed": false,
+  "runtime_authority_granted": false,
+  "current_closure_claim_allowed": false,
+  "provider_calls_authorized": false,
+  "real_key_loads_authorized": false
+}

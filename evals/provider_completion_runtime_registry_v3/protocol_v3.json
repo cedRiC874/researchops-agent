@@ -1,0 +1,37 @@
+{
+  "schema_version": "provider-completion-runtime-registry-protocol/3.0",
+  "status": "offline_schema_and_verifier_contract_not_an_active_registry",
+  "schema": {
+    "path": "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.schema.json",
+    "bytes": 6706,
+    "sha256": "c2112ab4cfbcc83ad9141018a4d52213da9ccc19bf5dcaf5ad662acd559b7162"
+  },
+  "paths": {
+    "registry": "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.json",
+    "admission_bundle": "evals/provider_completion_runtime_registry_v3/registry_admission_bundle_v1.json",
+    "reviewed_evidence_bundle_template": "docs/evidence/provider-completion-first-live-v1/{authorization_id_sha256}/bundle.json"
+  },
+  "rules": {
+    "immutable_v2_not_modified": true,
+    "selected_mapping_is_exact_v2_offline_projection": true,
+    "metadata_waivers": [],
+    "registry_document_cannot_grant_authority": true,
+    "only_deepseek_responses_entry_can_be_eligible": true,
+    "eligibility_requires_actual_git_component_recomputation": true,
+    "eligibility_requires_first_live_artifact_semantics": true,
+    "eligibility_requires_source_lock_pyproject_byte_identity": true,
+    "eligibility_requires_freeze_authority_review_and_out_of_band_digest": true,
+    "reviewed_evidence_git_blob_must_equal_supplied_bundle_bytes": true,
+    "first_live_profile": "phase6-deepseek-depth60-v7",
+    "campaign_profile": "phase6-deepseek-depth60-v8",
+    "source_code_must_be_ready_before_first_live": true
+  },
+  "boundaries": {
+    "online_execution_authorized": false,
+    "provider_registration_authorized": false,
+    "registry_publication_authorized": false,
+    "runtime_authority_returned_by_readonly_verifier": false,
+    "provider_calls": 0,
+    "key_loads": 0
+  }
+}

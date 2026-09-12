@@ -5,6 +5,7 @@ import json
 import math
 import re
 import sqlite3
+import threading
 import unicodedata
 import uuid
 from collections.abc import Callable, Mapping, Sequence
@@ -56,6 +57,15 @@ COMPLETION_TELEMETRY_TERMINAL_EVENT_TYPES = frozenset(
 COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES = frozenset(
     {COMPLETION_TELEMETRY_STARTED_EVENT, *COMPLETION_TELEMETRY_TERMINAL_EVENT_TYPES}
 )
+COMPLETION_TRANSPORT_SEND_EVENT = "provider_transport_request_sent"
+_COMPLETION_SEND_FIELDS = frozenset({
+    "schema_version", "case_id", "attempt_index", "case_attempt_index", "network_call_index",
+    "provider_id", "api_surface", "transport_id", "adapter_version", "method", "origin", "path",
+    "requested_output_token_cap", "execution_input_commitment_sha256", "audit_request_sha256",
+    "external_plan_binding_sha256", "authorization_grant_sha256", "headers_persisted",
+    "request_body_persisted", "task_content_persisted",
+})
+_COMPLETION_SEND_TOKEN = object()
 _COMPLETION_TERMINAL_KIND_BY_EVENT = {
     "model_response_telemetry_recorded": "response_accepted",
     COMPLETION_TELEMETRY_UNMAPPED_EVENT: "response_accepted",
@@ -124,6 +134,8 @@ class _CompletionTelemetryWriteCapability:
         "_session",
         "_started_handles",
         "_terminal_attempts",
+        "_send_attempts",
+        "_send_lock",
     )
 
     def __init__(self, *args: object, **kwargs: object) -> None:
@@ -161,6 +173,8 @@ class _CompletionTelemetryWriteCapability:
         object.__setattr__(instance, "_binding_summary", dict(binding_summary))
         object.__setattr__(instance, "_started_handles", {})
         object.__setattr__(instance, "_terminal_attempts", set())
+        object.__setattr__(instance, "_send_attempts", set())
+        object.__setattr__(instance, "_send_lock", threading.Lock())
         object.__setattr__(instance, "_locked", True)
         return instance
 
@@ -174,6 +188,38 @@ class _CompletionTelemetryWriteCapability:
                 "audit_completion_write_capability_required",
                 "Completion telemetry 写入需要 bridge-only capability。",
             )
+
+
+class _CompletionTransportSendCapability:
+    """One immutable send projection; never accepts a caller timestamp."""
+    __slots__ = ("_ledger", "_case_capability", "_handle", "_payload_bytes", "_occurred_at", "_used", "_lock")
+
+    def __init__(self, token, ledger, case_capability, handle, payload_bytes):
+        if token is not _COMPLETION_SEND_TOKEN:
+            raise TypeError("transport send capability is private")
+        self._ledger, self._case_capability, self._handle = ledger, case_capability, handle
+        self._payload_bytes, self._occurred_at, self._used = payload_bytes, None, False
+        self._lock = threading.Lock()
+
+    def __setattr__(self, name, value):
+        if hasattr(self, name):
+            raise AttributeError("transport send capability is immutable")
+        object.__setattr__(self, name, value)
+
+    def __delattr__(self, name):
+        raise AttributeError("transport send capability is immutable")
+
+    def _mark_dispatch_boundary(self):
+        # Called after preflight IO, before the timed transport's final positive
+        # budget checkpoint. A failed checkpoint never commits this projection.
+        with self._lock:
+            if self._used or self._occurred_at is not None:
+                raise AuditError("audit_transport_send_reused", "Send capability 已使用。")
+            object.__setattr__(self, "_occurred_at", self._ledger._now())
+
+    def __copy__(self): raise TypeError("send capability cannot be copied")
+    def __deepcopy__(self, memo): raise TypeError("send capability cannot be copied")
+    def __reduce_ex__(self, protocol): raise TypeError("send capability cannot be serialized")
 
 
 class AuditError(RuntimeError):
@@ -302,7 +348,11 @@ class AuditLedger:
         database_path: str | Path,
         *,
         clock: Callable[[], datetime] | None = None,
+        timestamp_format: str = "iso8601",
     ) -> None:
+        if type(timestamp_format) is not str or timestamp_format not in {"iso8601", "utc_z"}:
+            raise AuditError("audit_timestamp_format_invalid", "不支持的审计时间戳格式。")
+        self._timestamp_format = timestamp_format
         self.database_path = Path(database_path).resolve()
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self._clock = clock or (lambda: datetime.now(timezone.utc))
@@ -590,6 +640,129 @@ class AuditLedger:
             binding_summary=binding,
         )
 
+    def append_first_live_transport_send_event(self, *, session, attempt_handle):
+        """Write the legacy send wire only for its checked first-live owner.
+
+        Do not unreserve the shared event name: generic callers and campaign
+        sessions must still use their own capability-gated paths. Payload,
+        actor and timestamp are derived here, never supplied by the caller.
+        """
+        from .deepseek_completion_first_live_validation import _DeepSeekFirstLiveValidationLedgerSession
+        from researchops_completion_telemetry.capture import RuntimeAttemptHandle
+
+        if (type(self) is not AuditLedger
+                or type(session) is not _DeepSeekFirstLiveValidationLedgerSession
+                or session._ledger is not self):
+            raise AuditError("audit_first_live_send_owner_required", "需要本 ledger 的 first-live session。")
+        capability = session._capability
+        if type(capability) is not _CompletionTelemetryWriteCapability:
+            raise AuditError("audit_first_live_send_owner_required", "需要真实写入 capability。")
+        capability._assert_authority(self._completion_capability_token)
+        capability._runtime_binding.assert_runtime_authority(expected_scope="first_live_validation")
+        session.assert_provider_telemetry_authority()
+        with capability._send_lock:
+            index = session._transport_send_count
+            if (type(attempt_handle) is not RuntimeAttemptHandle
+                    or session._transport_observation_armed is not True
+                    or session._pending_transport_handle is not attempt_handle
+                    or capability._session is not session._session
+                    or capability._run_id != session._validation_run_id
+                    or capability._started_handles.get(attempt_handle.attempt_index) is not attempt_handle
+                    or capability._session._tracker._pending.get(attempt_handle.attempt_index) is not attempt_handle
+                    or attempt_handle.attempt_index in capability._terminal_attempts
+                    or attempt_handle.attempt_index in capability._send_attempts
+                    or type(index) is not int or not 0 <= index < 2
+                    or index != len(capability._send_attempts)):
+                raise AuditError("audit_first_live_send_attempt_invalid", "Send 必须对应唯一未终态 attempt。")
+            payload = dict(schema_version="deepseek-first-live-transport-send/1.0",
+                case_id=capability._case_id, attempt_index=attempt_handle.attempt_index,
+                case_attempt_index=attempt_handle.case_attempt_index, network_call_index=index,
+                method="POST", origin="https://api.deepseek.com", path="/responses")
+            # Uncertain/failed append consumes the local send slot as well.
+            capability._send_attempts.add(attempt_handle.attempt_index)
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                run = connection.execute("SELECT status FROM runs WHERE run_id=?", (capability._run_id,)).fetchone()
+                last = connection.execute(
+                    "SELECT event_type,safe_payload_json FROM audit_events WHERE run_id=? ORDER BY sequence DESC LIMIT 1",
+                    (capability._run_id,)).fetchone()
+                if (run is None or run["status"] != "running" or last is None
+                        or last["event_type"] != COMPLETION_TELEMETRY_STARTED_EVENT
+                        or json.loads(last["safe_payload_json"])["attempt_index"] != attempt_handle.attempt_index):
+                    raise AuditError("audit_first_live_send_transition_invalid", "Send 必须紧随对应 start。")
+                return self._append_event_tx(connection, capability._run_id, COMPLETION_TRANSPORT_SEND_EVENT,
+                    payload, actor_kind="provider_adapter", occurred_at=self._now(), allow_reserved_event=True)
+
+    def _create_transport_send_capability(self, payload, *, capability, attempt_handle,
+                                          campaign_id, model_id, expected_output_token_cap):
+        from researchops_completion_telemetry.capture import RuntimeAttemptHandle
+        from researchops_external_closure.io import scan_public_artifact_bytes
+        if type(self) is not AuditLedger or type(capability) is not _CompletionTelemetryWriteCapability:
+            raise AuditError("audit_transport_send_capability_required", "需要实际 case capability。")
+        capability._assert_authority(self._completion_capability_token)
+        capability._runtime_binding.assert_runtime_authority(expected_scope="campaign_runtime")
+        with capability._send_lock:
+            if (type(attempt_handle) is not RuntimeAttemptHandle
+                or capability._started_handles.get(attempt_handle.attempt_index) is not attempt_handle
+                or capability._session._tracker._pending.get(attempt_handle.attempt_index) is not attempt_handle
+                or attempt_handle.attempt_index in capability._terminal_attempts
+                or attempt_handle.attempt_index in capability._send_attempts):
+                raise AuditError("audit_transport_send_attempt_invalid", "Send 必须对应未终态的唯一 start。")
+            value = json.loads(canonical_json(_completion_exact_mapping(payload, _COMPLETION_SEND_FIELDS, "audit_transport_send_payload_invalid")))
+            if (type(campaign_id) is not str or re.fullmatch(r"PCECAMP-[A-F0-9]{32}", campaign_id) is None
+                or type(model_id) is not str or _COMPLETION_SAFE_ID.fullmatch(model_id) is None
+                or type(expected_output_token_cap) is not int or not 1 <= expected_output_token_cap <= 8192):
+                raise AuditError("audit_transport_send_binding_invalid", "Send context 无效。")
+            expected = dict(schema_version="provider-completion-transport-send/1.0", case_id=capability._case_id,
+                attempt_index=attempt_handle.attempt_index, case_attempt_index=attempt_handle.case_attempt_index,
+                method="POST", origin="https://api.deepseek.com", path="/responses",
+                requested_output_token_cap=expected_output_token_cap, headers_persisted=False,
+                request_body_persisted=False, task_content_persisted=False,
+                **{name: capability._binding_summary[name] for name in ("provider_id", "api_surface", "transport_id", "adapter_version")})
+            if any(type(value[name]) is not type(item) or value[name] != item for name, item in expected.items()):
+                raise AuditError("audit_transport_send_binding_invalid", "Send 与 case/transport/cap 不匹配。")
+            if type(value["network_call_index"]) is not int or not 0 <= value["network_call_index"] < 800:
+                raise AuditError("audit_transport_send_binding_invalid", "Send index 无效。")
+            for name in ("execution_input_commitment_sha256", "audit_request_sha256", "external_plan_binding_sha256", "authorization_grant_sha256"):
+                if type(value[name]) is not str or not _COMPLETION_SHA256.fullmatch(value[name]) or value[name] == "0" * 64:
+                    raise AuditError("audit_transport_send_binding_invalid", "Send digest 无效。")
+            projection = dict(campaign_id=campaign_id, case_handle=value["case_id"], model_id=model_id,
+                **{name: value[name] for name in ("execution_input_commitment_sha256", "external_plan_binding_sha256",
+                    "authorization_grant_sha256", "provider_id", "api_surface", "transport_id")})
+            encoded = canonical_json(value).encode("utf-8")
+            scan_public_artifact_bytes((encoded,))
+            with self._connect() as connection:
+                run = connection.execute("SELECT status,request_sha256 FROM runs WHERE run_id=?", (capability._run_id,)).fetchone()
+            if run is None or run["status"] != "running" or run["request_sha256"] != value["audit_request_sha256"] or sha256_json(projection) != value["audit_request_sha256"]:
+                raise AuditError("audit_transport_send_binding_invalid", "Send 与 run/plan/grant/input 不匹配。")
+            result = _CompletionTransportSendCapability(_COMPLETION_SEND_TOKEN, self, capability, attempt_handle, encoded)
+            capability._send_attempts.add(attempt_handle.attempt_index)
+            return result
+
+    def append_transport_send_event(self, send_capability):
+        if type(send_capability) is not _CompletionTransportSendCapability or send_capability._ledger is not self:
+            raise AuditError("audit_transport_send_capability_required", "需要本 ledger 的 send capability。")
+        token = send_capability
+        with token._lock:
+            if token._used or token._occurred_at is None:
+                raise AuditError("audit_transport_send_reused", "Send 尚未到交接边界或已使用。")
+            object.__setattr__(token, "_used", True)  # Failed writes never authorize a retry.
+            case, handle = token._case_capability, token._handle
+            case._assert_authority(self._completion_capability_token)
+            if case._session._tracker._pending.get(handle.attempt_index) is not handle:
+                raise AuditError("audit_transport_send_attempt_invalid", "Send attempt 已终态。")
+            payload = json.loads(token._payload_bytes)
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                run = connection.execute("SELECT status,request_sha256 FROM runs WHERE run_id=?", (case._run_id,)).fetchone()
+                last = connection.execute("SELECT event_type,safe_payload_json FROM audit_events WHERE run_id=? ORDER BY sequence DESC LIMIT 1", (case._run_id,)).fetchone()
+                if (run is None or run["status"] != "running" or run["request_sha256"] != payload["audit_request_sha256"]
+                    or last is None or last["event_type"] != COMPLETION_TELEMETRY_STARTED_EVENT
+                    or json.loads(last["safe_payload_json"])["attempt_index"] != handle.attempt_index):
+                    raise AuditError("audit_transport_send_transition_invalid", "Send 必须紧随对应 start。")
+                return self._append_event_tx(connection, case._run_id, COMPLETION_TRANSPORT_SEND_EVENT, payload,
+                    actor_kind="provider_adapter", occurred_at=token._occurred_at, allow_reserved_event=True)
+
     def append_completion_telemetry_event(
         self,
         event_type: str,
@@ -620,6 +793,54 @@ class AuditLedger:
             runtime_binding=capability._runtime_binding,
             binding=capability._binding_summary,
         )
+        return AuditLedger._append_validated_completion_terminal_or_start(
+            self, event_type, validated, capability=capability, attempt_handle=attempt_handle
+        )
+
+    def append_timed_completion_telemetry_event(
+        self,
+        event_type: str,
+        legacy_payload: Mapping[str, Any],
+        *,
+        capability: object,
+        attempt_handle: object,
+        terminal: object,
+        segment_bytes: bytes,
+        expected_timing_binding: dict[str, str],
+        sensitive_canaries: tuple[bytes, ...] = (),
+    ) -> str:
+        """Append a v1.2 terminal, not a timing admission/consumption assertion.
+
+        This is an explicit new write surface. Ordinary v1.1 appends still reject
+        the extension. A future consumed-authority runner must separately prove
+        origin, clock capture and the complete denominator; this API cannot.
+        """
+        if type(self) is not AuditLedger or type(capability) is not _CompletionTelemetryWriteCapability:
+            raise AuditError("audit_completion_write_capability_required", "需要精确 ledger 和既有写入 capability。")
+        capability._assert_authority(self._completion_capability_token)
+        _validate_completion_capability_identity(
+            capability, event_type, legacy_payload, attempt_handle=attempt_handle, terminal=terminal
+        )
+        from researchops_completion_timing.ledger_event import prepare_timed_terminal
+
+        validated = prepare_timed_terminal(
+            event_type, legacy_payload, runtime_binding=capability._runtime_binding,
+            binding=capability._binding_summary, segment_bytes=segment_bytes,
+            expected_timing_binding=expected_timing_binding, sensitive_canaries=sensitive_canaries,
+        )
+        # Recheck the detached payload actually written, not only the earlier
+        # caller-owned mapping. Timing preparation grants no write capability.
+        _validate_completion_capability_identity(
+            capability, event_type, validated, attempt_handle=attempt_handle, terminal=terminal
+        )
+        return AuditLedger._append_validated_completion_terminal_or_start(
+            self, event_type, validated, capability=capability, attempt_handle=attempt_handle
+        )
+
+    def _append_validated_completion_terminal_or_start(
+        self, event_type, validated, *, capability, attempt_handle
+    ) -> str:
+        """Shared transaction after either version's strict capability/schema gate."""
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             run = connection.execute(
@@ -1085,32 +1306,7 @@ class AuditLedger:
             rows = connection.execute(
                 "SELECT * FROM audit_events WHERE run_id = ? ORDER BY sequence", (run_id,)
             ).fetchall()
-        previous = ZERO_HASH
-        for expected_sequence, row in enumerate(rows, start=1):
-            sequence = int(row["sequence"])
-            if sequence != expected_sequence:
-                return ChainVerification(
-                    False, run_id, len(rows), previous, "audit_sequence_gap", sequence
-                )
-            if not _secure_equal(str(row["prev_hash"]), previous):
-                return ChainVerification(
-                    False, run_id, len(rows), previous, "audit_prev_hash_mismatch", sequence
-                )
-            expected_hash = _event_hash(
-                run_id=run_id,
-                sequence=sequence,
-                event_type=str(row["event_type"]),
-                occurred_at_utc=str(row["occurred_at_utc"]),
-                actor_kind=str(row["actor_kind"]),
-                safe_payload_json=str(row["safe_payload_json"]),
-                prev_hash=previous,
-            )
-            if not _secure_equal(str(row["event_hash"]), expected_hash):
-                return ChainVerification(
-                    False, run_id, len(rows), previous, "audit_event_hash_mismatch", sequence
-                )
-            previous = expected_hash
-        return ChainVerification(True, run_id, len(rows), previous)
+        return verify_audit_chain_rows(run_id, [dict(row) for row in rows])
 
     def export_run(self, run_id: str) -> dict[str, Any]:
         with self._connect() as connection:
@@ -1195,7 +1391,7 @@ class AuditLedger:
         allow_reserved_event: bool = False,
     ) -> str:
         if (
-            event_type in COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES
+            (event_type in COMPLETION_TELEMETRY_RESERVED_EVENT_TYPES or event_type == COMPLETION_TRANSPORT_SEND_EVENT)
             and not allow_reserved_event
         ):
             raise AuditError(
@@ -1245,7 +1441,12 @@ class AuditLedger:
         value = self._clock()
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc).isoformat()
+        rendered = value.astimezone(timezone.utc).isoformat()
+        # Opt-in for new writers only. Never rewrite stored events or change
+        # the legacy default: those bytes participate in their audit hashes.
+        if self._timestamp_format == "utc_z":
+            return rendered.removesuffix("+00:00") + "Z"
+        return rendered
 
 
 def _completion_exact_mapping(
@@ -1693,3 +1894,86 @@ def _secure_equal(left: str, right: str) -> bool:
     import hmac
 
     return hmac.compare_digest(left.encode("utf-8"), right.encode("utf-8"))
+
+
+def verify_audit_chain_rows(
+    run_id: str,
+    rows: Sequence[Mapping[str, Any]],
+) -> ChainVerification:
+    """Verify already-read audit rows without opening or mutating a database."""
+
+    if not isinstance(run_id, str) or not run_id:
+        return ChainVerification(
+            False, str(run_id), 0, ZERO_HASH, "audit_run_id_invalid"
+        )
+    if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes, bytearray)):
+        return ChainVerification(False, run_id, 0, ZERO_HASH, "audit_event_rows_invalid")
+    previous = ZERO_HASH
+    count = len(rows)
+    for expected_sequence, row in enumerate(rows, start=1):
+        if not isinstance(row, Mapping):
+            return ChainVerification(
+                False,
+                run_id,
+                count,
+                previous,
+                "audit_event_row_invalid",
+                expected_sequence,
+            )
+        sequence = row.get("sequence")
+        if type(sequence) is not int:
+            return ChainVerification(
+                False,
+                run_id,
+                count,
+                previous,
+                "audit_event_row_invalid",
+                expected_sequence,
+            )
+        if sequence != expected_sequence:
+            return ChainVerification(
+                False, run_id, count, previous, "audit_sequence_gap", sequence
+            )
+        values = {
+            name: row.get(name)
+            for name in (
+                "run_id",
+                "event_type",
+                "occurred_at_utc",
+                "actor_kind",
+                "safe_payload_json",
+                "prev_hash",
+                "event_hash",
+            )
+        }
+        if (
+            values["run_id"] != run_id
+            or any(type(values[name]) is not str for name in values)
+        ):
+            return ChainVerification(
+                False,
+                run_id,
+                count,
+                previous,
+                "audit_event_row_invalid",
+                sequence,
+            )
+        if not _secure_equal(values["prev_hash"], previous):
+            return ChainVerification(
+                False, run_id, count, previous, "audit_prev_hash_mismatch", sequence
+            )
+        expected_hash = _event_hash(
+            run_id=run_id,
+            sequence=sequence,
+            event_type=values["event_type"],
+            occurred_at_utc=values["occurred_at_utc"],
+            actor_kind=values["actor_kind"],
+            safe_payload_json=values["safe_payload_json"],
+            prev_hash=previous,
+        )
+        if not _secure_equal(values["event_hash"], expected_hash):
+            return ChainVerification(
+                False, run_id, count, previous, "audit_event_hash_mismatch", sequence
+            )
+        previous = expected_hash
+    return ChainVerification(True, run_id, count, previous)

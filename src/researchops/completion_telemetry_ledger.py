@@ -50,6 +50,10 @@ class LedgerCompletionTelemetrySession:
     def _required_runtime_authority_scope(self) -> str:
         return "campaign_runtime"
 
+    def _completion_sensitive_canaries(self) -> tuple[str, ...]:
+        """Private capture policy; adding canaries never grants runtime authority."""
+        return ()
+
     def _is_exact_supported_session_type(self) -> bool:
         return type(self) is LedgerCompletionTelemetrySession
 

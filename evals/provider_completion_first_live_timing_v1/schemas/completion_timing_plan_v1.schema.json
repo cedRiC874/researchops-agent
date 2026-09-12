@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/completion_first_live_timing_plan_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "timing_contract_sha256",
+    "binding",
+    "clock_source",
+    "clock_unit",
+    "clock_domain_policy",
+    "origin_scope",
+    "origin_offset_ns",
+    "request_timeout_ns",
+    "phase_timeout_ns",
+    "artifact_sealing_timeout_ns",
+    "planned_case_handles",
+    "max_attempts",
+    "max_attempts_per_case",
+    "concurrency",
+    "client_retries",
+    "resume",
+    "fallback",
+    "online_execution_authorized",
+    "plan_commitment_sha256",
+    "first_live_profile_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-timing-plan/1.0"
+    },
+    "document_type": {
+      "const": "completion_first_live_timing_plan"
+    },
+    "timing_contract_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_commit",
+        "execution_tree",
+        "source_integrity_commitment_sha256",
+        "provider_id",
+        "api_surface",
+        "transport_id",
+        "adapter_version",
+        "validation_run_id",
+        "authorization_id_sha256",
+        "execution_environment_id"
+      ],
+      "properties": {
+        "execution_commit": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[0-9a-f]{40}$",
+          "minLength": 40,
+          "maxLength": 40
+        },
+        "execution_tree": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[0-9a-f]{40}$",
+          "minLength": 40,
+          "maxLength": 40
+        },
+        "source_integrity_commitment_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "provider_id": {
+          "const": "deepseek"
+        },
+        "api_surface": {
+          "const": "responses"
+        },
+        "transport_id": {
+          "const": "openai_compatible_responses"
+        },
+        "adapter_version": {
+          "const": "deepseek-responses-adapter/1.0"
+        },
+        "validation_run_id": {
+          "type": "string",
+          "pattern": "^PCEVALID-[A-F0-9]{32}$"
+        },
+        "authorization_id_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "execution_environment_id": {
+          "type": "string",
+          "pattern": "^PCEENV-[A-F0-9]{32}$"
+        }
+      }
+    },
+    "clock_source": {
+      "const": "time.monotonic_ns"
+    },
+    "clock_unit": {
+      "const": "relative_integer_nanoseconds"
+    },
+    "clock_domain_policy": {
+      "const": "single_process_single_epoch_no_resume"
+    },
+    "origin_scope": {
+      "const": "after_verified_local_claim_before_key_load_and_fixed_input_use"
+    },
+    "origin_offset_ns": {
+      "const": 0
+    },
+    "request_timeout_ns": {
+      "const": 120000000000
+    },
+    "phase_timeout_ns": {
+      "const": 300000000000
+    },
+    "artifact_sealing_timeout_ns": {
+      "const": 30000000000
+    },
+    "planned_case_handles": {
+      "const": [
+        "PCECASE-00000000000000000000000000000041",
+        "PCECASE-00000000000000000000000000000042"
+      ]
+    },
+    "max_attempts": {
+      "const": 2
+    },
+    "max_attempts_per_case": {
+      "const": 1
+    },
+    "concurrency": {
+      "const": 1
+    },
+    "client_retries": {
+      "const": 0
+    },
+    "resume": {
+      "const": false
+    },
+    "fallback": {
+      "const": false
+    },
+    "online_execution_authorized": {
+      "const": false
+    },
+    "plan_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "first_live_profile_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    }
+  }
+}

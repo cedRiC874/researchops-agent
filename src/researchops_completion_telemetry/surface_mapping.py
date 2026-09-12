@@ -2831,9 +2831,27 @@ def _selection_mapping(
     entry: Mapping[str, Any],
     provider_mapping: Mapping[str, Any],
 ) -> dict[str, Any]:
+    return _selection_mapping_from_documents(
+        verified._predecessor,
+        verified._registry["predecessor_mapping"],
+        key=key,
+        entry=entry,
+        provider_mapping=provider_mapping,
+    )
+
+
+def _selection_mapping_from_documents(
+    predecessor_document: Mapping[str, Any],
+    predecessor_commitment: Mapping[str, Any],
+    *,
+    key: tuple[str, str, str],
+    entry: Mapping[str, Any],
+    provider_mapping: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Pure projection shared by file loading and historical-byte verification."""
+
     provider_id, api_surface, transport_id = key
-    predecessor = _thaw_json(verified._predecessor)
-    predecessor_commitment = verified._registry["predecessor_mapping"]
+    predecessor = _thaw_json(predecessor_document)
     selected = predecessor
     selected["schema_version"] = _SELECTION_SCHEMA_VERSION
     selected["status"] = "surface_selected_offline_zero_adapter_changes"
@@ -2910,6 +2928,36 @@ def _selection_mapping(
     selected["precedence_stage_contract"] = stage_contract
     selected["materialized_provider_rule_count"] = len(rule_ids)
     return selected
+
+
+def _offline_mapping_projection_from_documents(
+    registry_document: Mapping[str, Any],
+    predecessor_document: Mapping[str, Any],
+    *,
+    key: tuple[str, str, str],
+) -> dict[str, Any]:
+    """Recompute v2 mapping bytes without constructing any runtime authority.
+
+    The caller independently verifies the raw document commitments. This
+    function validates the v2 registry semantics and uses the very same pure
+    mapping projection as the ordinary verified registry loader. Its returned
+    dictionary is not a VerifiedSurfaceSelection or runtime capability.
+    """
+
+    registry = _thaw_json(registry_document)
+    predecessor = _thaw_json(predecessor_document)
+    entries, mappings = _validate_registry(registry, predecessor)
+    entry = entries.get(key)
+    provider_mapping = mappings.get(key)
+    if entry is None or provider_mapping is None:
+        raise _error("surface_mapping_provider_unknown", "mapping triple is absent")
+    return _selection_mapping_from_documents(
+        predecessor,
+        registry["predecessor_mapping"],
+        key=key,
+        entry=entry,
+        provider_mapping=provider_mapping,
+    )
 
 
 def _validate_selected_fixture_expectations(

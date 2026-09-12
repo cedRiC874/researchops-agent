@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/completion_timing_segment_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "plan_commitment_sha256",
+    "execution_binding_sha256",
+    "clock_domain_id",
+    "case_handle",
+    "attempt_index",
+    "case_attempt_index",
+    "request_index",
+    "response_index",
+    "terminal_kind",
+    "attempt_started_ns",
+    "send_started_ns",
+    "transport_terminal_ns",
+    "raw_cleanup_terminal_ns",
+    "raw_cleanup_status",
+    "lifetime_ended_ns",
+    "completion_record_sha256",
+    "usage_sha256",
+    "segment_commitment_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-timing-segment/1.0"
+    },
+    "document_type": {
+      "const": "completion_timing_segment"
+    },
+    "plan_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "execution_binding_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "clock_domain_id": {
+      "type": "string",
+      "pattern": "^PCECLOCK-[A-F0-9]{32}$",
+      "maxLength": 41
+    },
+    "case_handle": {
+      "type": "string",
+      "pattern": "^PCECASE-[A-F0-9]{32}$",
+      "maxLength": 40
+    },
+    "attempt_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 799
+    },
+    "case_attempt_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 7
+    },
+    "request_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 799
+    },
+    "response_index": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 799
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "terminal_kind": {
+      "enum": [
+        "response_accepted",
+        "response_rejected",
+        "http_error",
+        "no_response",
+        "cancelled",
+        "outcome_unknown"
+      ]
+    },
+    "attempt_started_ns": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "send_started_ns": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "transport_terminal_ns": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "raw_cleanup_terminal_ns": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "raw_cleanup_status": {
+      "enum": [
+        "completed",
+        "not_applicable",
+        "failed",
+        "timed_out",
+        "cancelled",
+        "unknown"
+      ]
+    },
+    "lifetime_ended_ns": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "completion_record_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "usage_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "segment_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    }
+  }
+}

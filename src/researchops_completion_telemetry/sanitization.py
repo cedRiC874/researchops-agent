@@ -7,9 +7,10 @@ import re
 import unicodedata
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .surface_mapping import VerifiedRuntimeCompletionBinding
+if TYPE_CHECKING:
+    from .surface_mapping import VerifiedRuntimeCompletionBinding
 
 
 JsonValue = None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
@@ -1038,6 +1039,8 @@ def _validate_offline_binding(
 def _validate_runtime_binding(
     binding: VerifiedRuntimeCompletionBinding,
 ) -> dict[str, str]:
+    from .surface_mapping import VerifiedRuntimeCompletionBinding
+
     if type(binding) is not VerifiedRuntimeCompletionBinding:
         raise _error("completion_telemetry_runtime_binding_required")
     try:
@@ -2006,6 +2009,156 @@ _RUNTIME_ERROR_TERMINALS = frozenset(
         "outcome_unknown",
     }
 )
+_RUNTIME_DENOMINATOR_PLAN_FIELDS = frozenset(
+    {
+        "schema_version",
+        "provider_id",
+        "api_surface",
+        "transport_id",
+        "adapter_version",
+        "telemetry_schema_sha256",
+        "mapping_schema_version",
+        "mapping_version",
+        "mapping_sha256",
+        "case_ids",
+        "case_ids_sha256",
+        "max_turns_per_case",
+        "total_model_request_cap",
+        "agents_sdk_retries",
+        "http_client_retries",
+        "denominator_algorithm",
+        "exact_response_count_preregistered",
+    }
+)
+_RUNTIME_PLAN_BINDING_FIELDS = (
+    "provider_id",
+    "api_surface",
+    "transport_id",
+    "adapter_version",
+    "telemetry_schema_sha256",
+    "mapping_schema_version",
+    "mapping_version",
+    "mapping_sha256",
+)
+_RUNTIME_DENOMINATOR_PLAN_SCHEMA_VERSION = (
+    "provider-completion-runtime-denominator-plan/1.0"
+)
+_RUNTIME_DENOMINATOR_ALGORITHM = "transport-response-finalization-v1"
+_RUNTIME_CLOSURE_RECOGNIZED_STATES = frozenset(
+    {
+        "completed",
+        "incomplete_length",
+        "incomplete_content_filter",
+        "incomplete_other",
+        "error",
+    }
+)
+_VALIDATED_DENOMINATOR_SUMMARY_TOKEN = object()
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ValidatedRuntimeAttemptSummary:
+    case_ordinal: int
+    attempt_index: int
+    case_attempt_index: int
+    terminal_kind: str
+    response_index: int | None
+    error_code: str | None
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise TypeError("validated runtime attempt summary cannot be constructed")
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ValidatedRuntimeUsageIndexSummary:
+    response_index: int
+    sdk_raw_response_index: int
+    sdk_request_usage_indices: tuple[int, ...]
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise TypeError("validated runtime usage index summary cannot be constructed")
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ValidatedRuntimeCaseSummary:
+    case_ordinal: int
+    attempts_started: int
+    attempts_terminal: int
+    observed_response_count: int
+    accepted_response_count: int
+    rejected_response_count: int
+    sdk_raw_response_count: int | None
+    sdk_raw_response_reconciliation: str
+    sdk_usage_request_count: int | None
+    sdk_usage_request_reconciliation: str
+    sdk_request_usage_indices_by_response: tuple[
+        ValidatedRuntimeUsageIndexSummary, ...
+    ]
+    closure_eligible: bool
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise TypeError("validated runtime case summary cannot be constructed")
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ValidatedRuntimeResponseSummary:
+    response_index: int
+    request_index: int
+    normalized_completion_state: str
+    truncation_signal_source: str
+    usage_complete: bool
+    requests: int | None
+    input_tokens: int | None
+    output_tokens: int | None
+    total_tokens: int | None
+    cached_input_tokens: int | None
+    cache_write_tokens: int | None
+    reasoning_tokens: int | None
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise TypeError("validated runtime response summary cannot be constructed")
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ValidatedRuntimeDenominatorSummary:
+    planned_case_count: int
+    attempt_count: int
+    attempts_started: int
+    attempts_terminal: int
+    observed_response_count: int
+    accepted_response_count: int
+    rejected_response_count: int
+    not_finalized_case_count: int
+    attempts: tuple[ValidatedRuntimeAttemptSummary, ...]
+    cases: tuple[ValidatedRuntimeCaseSummary, ...]
+    responses: tuple[ValidatedRuntimeResponseSummary, ...]
+    accepted_record_usage_complete: bool
+    accepted_record_input_token_total: int | None
+    accepted_record_output_token_total: int | None
+    accepted_record_total_token_total: int | None
+    inner_closure_reasons: tuple[str, ...]
+    inner_closure_claim_allowed: bool
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise TypeError("validated runtime denominator summary cannot be constructed")
+
+
+def _new_validated_denominator_summary(
+    cls: type[Any], token: object, **values: Any
+) -> Any:
+    if token is not _VALIDATED_DENOMINATOR_SUMMARY_TOKEN or set(values) != set(
+        cls.__dataclass_fields__
+    ):
+        raise TypeError("validated runtime denominator summary token invalid")
+    instance = object.__new__(cls)
+    for name in cls.__dataclass_fields__:
+        object.__setattr__(instance, name, values[name])
+    return instance
 
 
 def _runtime_artifact_count(value: object, code: str) -> int:
@@ -2266,47 +2419,326 @@ def _validate_runtime_cases(
             raise _error("completion_telemetry_runtime_artifact_case_invalid")
 
 
-def validate_runtime_denominator_artifact(
-    artifact: Mapping[str, Any],
+def _validate_runtime_denominator_plan_snapshot(
+    plan_snapshot: Mapping[str, Any],
     *,
-    plan_binding: object,
-    sensitive_canaries: Iterable[str] = (),
-) -> None:
-    """Strictly revalidate a JSON-read runtime denominator subartifact.
+    binding_snapshot: Mapping[str, Any],
+    preregistration_commitment: str,
+) -> dict[str, Any]:
+    """Validate the exact persisted plan projection without runtime authority."""
 
-    All counts and reconciliations are derived again from attempts, cases and
-    records.  No field is repaired and only an opaque verified dynamic plan can
-    authorize live-record validation.  This function does not validate the
-    outer Phase 6 closure report, audit database, or append-only event chain.
-    """
+    binding = _validate_binding_snapshot(binding_snapshot)
+    plan = dict(
+        _validate_exact_fields(
+            plan_snapshot,
+            _RUNTIME_DENOMINATOR_PLAN_FIELDS,
+            "completion_telemetry_runtime_plan_snapshot_invalid",
+        )
+    )
+    case_ids_value = plan["case_ids"]
+    if not isinstance(case_ids_value, list) or not case_ids_value:
+        raise _error("completion_telemetry_runtime_plan_snapshot_invalid")
+    case_ids = tuple(_safe_identifier(value) for value in case_ids_value)
+    max_turns = _runtime_artifact_count(
+        plan["max_turns_per_case"],
+        "completion_telemetry_runtime_plan_snapshot_invalid",
+    )
+    request_cap = _runtime_artifact_count(
+        plan["total_model_request_cap"],
+        "completion_telemetry_runtime_plan_snapshot_invalid",
+    )
+    expected_case_ids_sha256 = hashlib.sha256(
+        _canonical_json_bytes(list(case_ids))
+    ).hexdigest()
+    if (
+        plan["schema_version"] != _RUNTIME_DENOMINATOR_PLAN_SCHEMA_VERSION
+        or plan["denominator_algorithm"] != _RUNTIME_DENOMINATOR_ALGORITHM
+        or plan["exact_response_count_preregistered"] is not False
+        or type(plan["agents_sdk_retries"]) is not int
+        or plan["agents_sdk_retries"] != 0
+        or type(plan["http_client_retries"]) is not int
+        or plan["http_client_retries"] != 0
+        or type(plan["max_turns_per_case"]) is not int
+        or type(plan["total_model_request_cap"]) is not int
+        or len(case_ids) != len(set(case_ids))
+        or plan["case_ids_sha256"] != expected_case_ids_sha256
+        or max_turns < 1
+        or request_cap < 1
+        or request_cap > len(case_ids) * max_turns
+    ):
+        raise _error("completion_telemetry_runtime_plan_snapshot_invalid")
+    if any(plan[field] != binding[field] for field in _RUNTIME_PLAN_BINDING_FIELDS):
+        raise _error("completion_telemetry_runtime_plan_binding_mismatch")
+    if (
+        not isinstance(preregistration_commitment, str)
+        or not _SHA256.fullmatch(preregistration_commitment)
+        or hashlib.sha256(_canonical_json_bytes(plan)).hexdigest()
+        != preregistration_commitment
+    ):
+        raise _error("completion_telemetry_runtime_plan_commitment_mismatch")
+    return dict(plan)
 
-    # Local import avoids a module cycle: capture uses the live record builder.
-    from .capture import VerifiedRuntimeDenominatorPlanBinding
 
-    if type(plan_binding) is not VerifiedRuntimeDenominatorPlanBinding:
-        raise _error("completion_telemetry_capture_plan_binding_required")
-    try:
-        plan_binding.assert_plan_authority()
-        binding = plan_binding.runtime_binding()
-        planned_case_ids = tuple(plan_binding.case_ids)
-        max_turns_per_case = plan_binding.max_turns_per_case
-        total_model_request_cap = plan_binding.total_model_request_cap
-        preregistration_commitment = plan_binding.preregistration_commitment
-        denominator_algorithm = plan_binding.denominator_algorithm
-    except Exception:
-        raise _error("completion_telemetry_capture_plan_binding_required") from None
-    _validate_runtime_binding(binding)
-    artifact = _validate_exact_fields(
+def _defensive_runtime_artifact_snapshot(
+    artifact: Mapping[str, Any], *, canaries: tuple[str, ...]
+) -> dict[str, Any]:
+    """Copy caller-owned JSON before semantic validation and later derivation."""
+
+    def copy_value(value: Any) -> Any:
+        if isinstance(value, Mapping):
+            return {key: copy_value(child) for key, child in value.items()}
+        if isinstance(value, list):
+            return [copy_value(child) for child in value]
+        if isinstance(value, Sequence) and not isinstance(
+            value, (str, bytes, bytearray)
+        ):
+            return tuple(copy_value(child) for child in value)
+        return value
+
+    source = _validate_exact_fields(
         artifact,
         _RUNTIME_ARTIFACT_FIELDS,
         "completion_telemetry_runtime_artifact_shape_invalid",
     )
+    _scan_json_value(source, canaries)
+    try:
+        snapshot = copy_value(source)
+    except Exception:
+        raise _error("completion_telemetry_runtime_artifact_snapshot_invalid") from None
+    snapshot = dict(
+        _validate_exact_fields(
+            snapshot,
+            _RUNTIME_ARTIFACT_FIELDS,
+            "completion_telemetry_runtime_artifact_shape_invalid",
+        )
+    )
+    _scan_json_value(snapshot, canaries)
+    return snapshot
+
+
+def _runtime_inner_closure_reasons(
+    artifact: Mapping[str, Any],
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+
+    def add(reason: str) -> None:
+        if reason not in reasons:
+            reasons.append(reason)
+
+    attempts = artifact["attempts"]
+    cases = artifact["cases"]
+    records = artifact["records"]
+    planned_case_ids = artifact["planned_case_ids"]
+    if artifact["not_finalized_case_ids"]:
+        add("planned_cases_not_finalized")
+    if not attempts:
+        add("no_model_attempts_observed")
+    if artifact["observed_response_count"] < 1:
+        add("no_provider_responses_observed")
+    accepted_case_ids = {
+        attempt["case_id"]
+        for attempt in attempts
+        if attempt["terminal_kind"] == "response_accepted"
+    }
+    if any(case_id not in accepted_case_ids for case_id in planned_case_ids):
+        add("planned_case_without_accepted_response")
+    terminal_reasons = {
+        "response_rejected": "response_telemetry_rejected",
+        "http_error": "http_error_response_observed",
+        "no_response": "request_failed_without_response",
+        "cancelled": "model_request_cancelled",
+        "outcome_unknown": "model_request_outcome_unknown",
+    }
+    for attempt in attempts:
+        reason = terminal_reasons.get(attempt["terminal_kind"])
+        if reason is not None:
+            add(reason)
+    for case in cases:
+        if case["sdk_raw_response_reconciliation"] == "mismatched":
+            add("sdk_raw_response_count_mismatched")
+        elif case["sdk_raw_response_reconciliation"] == "unavailable":
+            add("sdk_raw_response_count_unavailable")
+        if case["sdk_usage_request_reconciliation"] == "mismatched":
+            add("sdk_usage_request_count_mismatched")
+        elif case["sdk_usage_request_reconciliation"] == "unavailable":
+            add("sdk_usage_request_count_unavailable")
+    if len(records) != artifact["observed_response_count"]:
+        add("completion_record_denominator_mismatch")
+    for record in records:
+        state = record["normalized_completion_state"]
+        source = record["truncation_signal_source"]
+        if state == "unmapped":
+            add("completion_state_unmapped")
+        elif state == "not_provided":
+            add("completion_state_not_provided")
+        elif state == "not_persisted":
+            add("completion_state_not_persisted")
+        elif state not in _RUNTIME_CLOSURE_RECOGNIZED_STATES:
+            add("completion_state_unrecognized")
+        if source == "token_cap_fallback":
+            add("truncation_signal_token_cap_fallback")
+        elif source == "none":
+            add("truncation_signal_none")
+        elif source != "native_status":
+            add("truncation_signal_unrecognized")
+    return tuple(reasons)
+
+
+def _summarize_validated_runtime_denominator(
+    artifact: Mapping[str, Any], plan: Mapping[str, Any]
+) -> ValidatedRuntimeDenominatorSummary:
+    case_ordinals = {
+        case_id: ordinal for ordinal, case_id in enumerate(plan["case_ids"])
+    }
+    attempt_summaries = tuple(
+        _new_validated_denominator_summary(
+            ValidatedRuntimeAttemptSummary,
+            _VALIDATED_DENOMINATOR_SUMMARY_TOKEN,
+            case_ordinal=case_ordinals[attempt["case_id"]],
+            attempt_index=attempt["attempt_index"],
+            case_attempt_index=attempt["case_attempt_index"],
+            terminal_kind=attempt["terminal_kind"],
+            response_index=attempt["response_index"],
+            error_code=attempt["error_code"],
+        )
+        for attempt in artifact["attempts"]
+    )
+    case_summaries: list[ValidatedRuntimeCaseSummary] = []
+    for case in artifact["cases"]:
+        usage_indices = tuple(
+            _new_validated_denominator_summary(
+                ValidatedRuntimeUsageIndexSummary,
+                _VALIDATED_DENOMINATOR_SUMMARY_TOKEN,
+                response_index=item["response_index"],
+                sdk_raw_response_index=item["sdk_raw_response_index"],
+                sdk_request_usage_indices=tuple(item["sdk_request_usage_indices"]),
+            )
+            for item in case["sdk_request_usage_indices_by_response"]
+        )
+        case_summaries.append(
+            _new_validated_denominator_summary(
+                ValidatedRuntimeCaseSummary,
+                _VALIDATED_DENOMINATOR_SUMMARY_TOKEN,
+                case_ordinal=case_ordinals[case["case_id"]],
+                attempts_started=case["attempts_started"],
+                attempts_terminal=case["attempts_terminal"],
+                observed_response_count=case["observed_response_count"],
+                accepted_response_count=case["accepted_response_count"],
+                rejected_response_count=case["rejected_response_count"],
+                sdk_raw_response_count=case["sdk_raw_response_count"],
+                sdk_raw_response_reconciliation=(
+                    case["sdk_raw_response_reconciliation"]
+                ),
+                sdk_usage_request_count=case["sdk_usage_request_count"],
+                sdk_usage_request_reconciliation=(
+                    case["sdk_usage_request_reconciliation"]
+                ),
+                sdk_request_usage_indices_by_response=usage_indices,
+                closure_eligible=case["closure_eligible"],
+            )
+        )
+    response_summaries: list[ValidatedRuntimeResponseSummary] = []
+    for record in artifact["records"]:
+        usage = record["usage"]
+        normalized = usage["normalized"]
+        response_summaries.append(
+            _new_validated_denominator_summary(
+                ValidatedRuntimeResponseSummary,
+                _VALIDATED_DENOMINATOR_SUMMARY_TOKEN,
+                response_index=record["response_index"],
+                request_index=record["request_index"],
+                normalized_completion_state=record["normalized_completion_state"],
+                truncation_signal_source=record["truncation_signal_source"],
+                usage_complete=usage["complete"],
+                requests=normalized["requests"],
+                input_tokens=normalized["input_tokens"],
+                output_tokens=normalized["output_tokens"],
+                total_tokens=normalized["total_tokens"],
+                cached_input_tokens=normalized["cached_input_tokens"],
+                cache_write_tokens=normalized["cache_write_tokens"],
+                reasoning_tokens=normalized["reasoning_tokens"],
+            )
+        )
+    responses = tuple(response_summaries)
+    complete_usage = bool(responses) and all(
+        response.usage_complete
+        and response.input_tokens is not None
+        and response.output_tokens is not None
+        and response.total_tokens is not None
+        for response in responses
+    )
+    if complete_usage:
+        input_total = sum(
+            response.input_tokens for response in responses
+            if response.input_tokens is not None
+        )
+        output_total = sum(
+            response.output_tokens for response in responses
+            if response.output_tokens is not None
+        )
+        token_total = sum(
+            response.total_tokens for response in responses
+            if response.total_tokens is not None
+        )
+    else:
+        input_total = None
+        output_total = None
+        token_total = None
+    reasons = _runtime_inner_closure_reasons(artifact)
+    return _new_validated_denominator_summary(
+        ValidatedRuntimeDenominatorSummary,
+        _VALIDATED_DENOMINATOR_SUMMARY_TOKEN,
+        planned_case_count=len(plan["case_ids"]),
+        attempt_count=len(artifact["attempts"]),
+        attempts_started=artifact["attempts_started"],
+        attempts_terminal=artifact["attempts_terminal"],
+        observed_response_count=artifact["observed_response_count"],
+        accepted_response_count=artifact["accepted_response_count"],
+        rejected_response_count=artifact["rejected_response_count"],
+        not_finalized_case_count=len(artifact["not_finalized_case_ids"]),
+        attempts=attempt_summaries,
+        cases=tuple(case_summaries),
+        responses=responses,
+        accepted_record_usage_complete=complete_usage,
+        accepted_record_input_token_total=input_total,
+        accepted_record_output_token_total=output_total,
+        accepted_record_total_token_total=token_total,
+        inner_closure_reasons=reasons,
+        inner_closure_claim_allowed=not reasons,
+    )
+
+
+def _validate_runtime_denominator_artifact_core(
+    artifact: Mapping[str, Any],
+    *,
+    plan_snapshot: Mapping[str, Any],
+    binding_snapshot: Mapping[str, Any],
+    preregistration_commitment: str,
+    mapping_resolver: Callable[[Mapping[str, Any]], CompletionMappingResult],
+    sensitive_canaries: Iterable[str] = (),
+) -> ValidatedRuntimeDenominatorSummary:
+    """Pure mapping-based denominator validation shared by both trust paths."""
+
+    if not callable(mapping_resolver):
+        raise _error("completion_telemetry_mapping_resolver_required")
+    binding = _validate_binding_snapshot(binding_snapshot)
+    plan = _validate_runtime_denominator_plan_snapshot(
+        plan_snapshot,
+        binding_snapshot=binding,
+        preregistration_commitment=preregistration_commitment,
+    )
+    planned_case_ids = tuple(plan["case_ids"])
+    max_turns_per_case = int(plan["max_turns_per_case"])
+    total_model_request_cap = int(plan["total_model_request_cap"])
     canaries = _normalized_canaries(sensitive_canaries)
-    _scan_json_value(artifact, canaries)
+    artifact = _defensive_runtime_artifact_snapshot(
+        artifact,
+        canaries=canaries,
+    )
     if (
         artifact["schema_version"]
         != RUNTIME_DENOMINATOR_ARTIFACT_SCHEMA_VERSION
-        or artifact["denominator_algorithm"] != denominator_algorithm
+        or artifact["denominator_algorithm"] != plan["denominator_algorithm"]
         or artifact["exact_response_count_preregistered"] is not False
         or artifact["derived_after_run"] is not True
     ):
@@ -2391,9 +2823,11 @@ def validate_runtime_denominator_artifact(
     for raw_record in records:
         if not isinstance(raw_record, Mapping):
             raise _error("completion_telemetry_runtime_artifact_record_set_invalid")
-        validate_completion_record(
+        _validate_completion_record(
             raw_record,
             binding=binding,
+            mapping_resolver=mapping_resolver,
+            allowed_provenances=frozenset({"live_adapter_write"}),
             sensitive_canaries=canaries,
         )
         actual_record_indices.append(
@@ -2405,6 +2839,67 @@ def validate_runtime_denominator_artifact(
     ]
     if actual_record_indices != expected_record_indices:
         raise _error("completion_telemetry_runtime_artifact_record_set_invalid")
+    return _summarize_validated_runtime_denominator(artifact, plan)
+
+
+def validate_runtime_denominator_artifact(
+    artifact: Mapping[str, Any],
+    *,
+    plan_binding: object,
+    sensitive_canaries: Iterable[str] = (),
+) -> None:
+    """Strictly revalidate a JSON-read runtime denominator subartifact.
+
+    All counts and reconciliations are derived again from attempts, cases and
+    records.  No field is repaired and only an opaque verified dynamic plan can
+    authorize live-record validation.  This function does not validate the
+    outer Phase 6 closure report, audit database, or append-only event chain.
+    """
+
+    # Local import avoids a module cycle: capture uses the live record builder.
+    from .capture import VerifiedRuntimeDenominatorPlanBinding
+
+    if type(plan_binding) is not VerifiedRuntimeDenominatorPlanBinding:
+        raise _error("completion_telemetry_capture_plan_binding_required")
+    try:
+        plan_binding.assert_plan_authority()
+        binding = plan_binding.runtime_binding()
+        planned_case_ids = tuple(plan_binding.case_ids)
+        case_ids_sha256 = plan_binding.case_ids_sha256
+        max_turns_per_case = plan_binding.max_turns_per_case
+        total_model_request_cap = plan_binding.total_model_request_cap
+        preregistration_commitment = plan_binding.preregistration_commitment
+        denominator_algorithm = plan_binding.denominator_algorithm
+    except Exception:
+        raise _error("completion_telemetry_capture_plan_binding_required") from None
+    binding_snapshot = _validate_runtime_binding(binding)
+    plan_snapshot = {
+        "schema_version": _RUNTIME_DENOMINATOR_PLAN_SCHEMA_VERSION,
+        **{
+            field: binding_snapshot[field]
+            for field in _RUNTIME_PLAN_BINDING_FIELDS
+        },
+        "case_ids": list(planned_case_ids),
+        "case_ids_sha256": case_ids_sha256,
+        "max_turns_per_case": max_turns_per_case,
+        "total_model_request_cap": total_model_request_cap,
+        "agents_sdk_retries": 0,
+        "http_client_retries": 0,
+        "denominator_algorithm": denominator_algorithm,
+        "exact_response_count_preregistered": False,
+    }
+
+    def resolve(projection: Mapping[str, Any]) -> CompletionMappingResult:
+        return _resolve_runtime_mapping(binding, projection)
+
+    _validate_runtime_denominator_artifact_core(
+        artifact,
+        plan_snapshot=plan_snapshot,
+        binding_snapshot=binding_snapshot,
+        preregistration_commitment=preregistration_commitment,
+        mapping_resolver=resolve,
+        sensitive_canaries=sensitive_canaries,
+    )
 
 
 def validate_completion_artifact(

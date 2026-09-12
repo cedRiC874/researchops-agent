@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_contract_sha256",
+    "authorization_binding_sha256",
+    "plan_commitment_sha256",
+    "execution_binding_sha256",
+    "files",
+    "bundle_commitment_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-bundle/1.0"
+    },
+    "artifact_contract_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "authorization_binding_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "plan_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "execution_binding_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audit.sqlite3",
+        "authorization.json",
+        "claim_intent.json",
+        "claim_receipt.json",
+        "completion_timing_plan.json",
+        "completion_timing_evidence.json",
+        "manifest.json",
+        "completion_timing_publication.json"
+      ],
+      "properties": {
+        "audit.sqlite3": {
+          "$ref": "#/$defs/file"
+        },
+        "authorization.json": {
+          "$ref": "#/$defs/file"
+        },
+        "claim_intent.json": {
+          "$ref": "#/$defs/file"
+        },
+        "claim_receipt.json": {
+          "$ref": "#/$defs/file"
+        },
+        "completion_timing_plan.json": {
+          "$ref": "#/$defs/file"
+        },
+        "completion_timing_evidence.json": {
+          "$ref": "#/$defs/file"
+        },
+        "manifest.json": {
+          "$ref": "#/$defs/file"
+        },
+        "completion_timing_publication.json": {
+          "$ref": "#/$defs/file"
+        }
+      }
+    },
+    "bundle_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000000
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "schema_version": "provider-completion-timed-ledger-contract/1.0",
+  "status": "frozen_offline_implementation_not_runtime_admission",
+  "event_schema_version": "provider-completion-ledger-event/1.2",
+  "predecessor_event_schema_version": "provider-completion-ledger-event/1.1",
+  "timing_contract_sha256": "7490576433693a45520e82bb161ee371d5a3087fa65975f5a1ac7418f6b13c6f",
+  "applies_to": "reserved_completion_terminal_events_only",
+  "started_event_schema_unchanged": true,
+  "extension_field": "timing",
+  "extension_fields": [
+    "timing_contract_sha256",
+    "plan_commitment_sha256",
+    "execution_binding_sha256",
+    "clock_domain_id",
+    "segment_commitment_sha256"
+  ],
+  "allowed_terminal_events": [
+    "model_response_telemetry_recorded",
+    "provider_completion_mapping_unmapped",
+    "model_response_telemetry_rejected",
+    "model_request_http_error",
+    "model_request_no_response",
+    "model_request_cancelled",
+    "model_request_outcome_unknown"
+  ],
+  "max_terminal_payload_bytes": 262144,
+  "rules": [
+    "Validate the exact predecessor payload and live completion record before extending it; never silently strip unknown fields.",
+    "Validate the complete segment against the frozen timing schema, privacy scanner and recomputed domain-separated commitment.",
+    "Match segment case_handle to event case_id and every attempt/case-attempt/response/request index.",
+    "Match terminal kind and independently expected plan/execution/clock binding.",
+    "Derive completion-record and usage hashes from the same validated terminal payload; never trust caller-provided digests.",
+    "Accepted and mapping-unmapped events both bind record and usage; failure events contain neither.",
+    "Terminal event stores only the segment reference; the separately manifested timing artifact retains the full segment.",
+    "Legacy append API rejects v1.2 and new append API rejects pre-extended or unsupported input.",
+    "New append API requires the existing exact ledger, runtime/session/terminal write capability and unchanged transition checks.",
+    "Validate and scan before beginning the SQLite write transaction; one terminal row contains record, usage and timing reference.",
+    "Hash-chain validity alone does not prove independent consumption, actual clock capture, task completeness or current closure.",
+    "Ordinary runtime write capability is not consumed timing authority; the future timed execution gateway must supply that proof independently.",
+    "Old four-file artifacts and old A/B paths must not be interpreted as timing-enabled admission."
+  ],
+  "provider_calls_authorized": false,
+  "current_closure_claim_allowed": false,
+  "historical_backfill_allowed": false
+}

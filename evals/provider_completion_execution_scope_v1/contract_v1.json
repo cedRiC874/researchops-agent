@@ -1,0 +1,26 @@
+{
+  "schema_version": "provider-completion-execution-scope-contract/1.0",
+  "scope": "single_host_fixed_store",
+  "pre_execution_contract_sha256": "29730b198c2519894341266d7e1ea3f1a6f2ed341235766f70458c572c972cc7",
+  "local_claim_contract_sha256": "10e6a6f50712b9f6b7bdf1bcf628f1745d2bfcf5723fd9f7d230ea682ee90695",
+  "schema": {
+    "path": "preregistration_v3.schema.json",
+    "bytes": 30345,
+    "sha256": "5ce31f98a106faa86b8404ded3853d4dce6903ebddb5a334f660449866c84cee"
+  },
+  "rules": [
+    "Only explicit v3 preregistration carries the required execution_scope; old v1/v2 envelopes never satisfy this entrypoint.",
+    "execution_scope contains the environment ID and the fixed local-claim contract hash, forbids cross-host execution and temporary store overrides.",
+    "The complete scope remains inside runtime_plan_core and full runtime-plan commitments, and therefore inside the signed grant/consumption graph. No scope field is omitted.",
+    "Public verification is readonly, validates at an explicit supplied time and never provisions or reserves a real store.",
+    "The immutable scoped proof derives local-claim request hashes from the verified signed documents; callers cannot substitute grant, authorization ID, execution commit or environment ID.",
+    "Clock-domain selection is still a future runtime-factory responsibility; constructing request bytes is not clock provenance or permission.",
+    "The real store must be checked against signed environment scope after current source/review/first-live admission and fresh-time checks; then make the one-shot claim before Key/task use.",
+    "Any source/admission failure, absent/mismatched store or old unscoped authorization must fail closed; no fallback to worktree-local storage.",
+    "The existing v2 verifier and all predecessor schema files remain unchanged in accepted document versions."
+  ],
+  "real_store_provisioning_authorized": false,
+  "provider_calls_authorized": false,
+  "runtime_authority_granted": false,
+  "current_closure_claim_allowed": false
+}

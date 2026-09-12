@@ -31,6 +31,7 @@ from researchops.phase6_source_bundle import (
     completion_telemetry_runtime_bundle_sha256,
 )
 from tests.test_phase6_depth60_source_integrity_v4 import _copy_file, _copy_v4_root
+from tests.historical_integrity_support import historical_integrity_root
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -222,11 +223,11 @@ class Phase6Depth60V5IntegrityTests(unittest.TestCase):
                 validate_phase6_depth60_plan(root, target)
             self.assertEqual(commitment.exception.code, "phase6_depth60_v5_plan_invalid")
 
-    def test_generated_v5_plan_has_exact_identity_and_validates(self) -> None:
+    def test_frozen_v5_plan_has_exact_identity_and_validates_historical_source(self) -> None:
         payload = V5_PLAN.read_bytes()
         self.assertEqual(len(payload), V5_PLAN_BYTES)
         self.assertEqual(hashlib.sha256(payload).hexdigest(), V5_PLAN_FILE_SHA256)
-        result = validate_phase6_depth60_plan(ROOT, V5_PLAN)
+        result = validate_phase6_depth60_plan(historical_integrity_root(), DEPTH60_SUCCESSOR_V5_PLAN_PATH)
         self.assertEqual(result["status"], "valid")
         self.assertEqual(result["plan_commitment_sha256"], V5_PLAN_COMMITMENT)
         self.assertEqual(result["supersedes_plan_id"], "phase6-deepseek-depth60-v4")

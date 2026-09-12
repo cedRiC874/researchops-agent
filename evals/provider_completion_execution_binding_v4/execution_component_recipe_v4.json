@@ -1,0 +1,251 @@
+{
+  "schema_version": "provider-completion-execution-component-recipe/4.0",
+  "contract_id": "provider-completion-timed-execution-component-recipe-v4",
+  "status": "offline_source_identity_not_admission",
+  "predecessor_recipes": [
+    {
+      "path": "evals/provider_completion_execution_binding_v1/execution_component_recipe_v1.json",
+      "sha256": "4f86881db9c65012d51dbb87c52fe76a7fb3b0020c54c8a0ca8c341433eaa61b"
+    },
+    {
+      "path": "evals/provider_completion_execution_binding_v2/execution_component_recipe_v2.json",
+      "sha256": "a474542348d71d6becced84c327cfcca6353ffe33033be4426370c8ef8d58c6e"
+    },
+    {
+      "path": "evals/provider_completion_execution_binding_v3/execution_component_recipe_v3.json",
+      "sha256": "26eefc30007379e0d3b4276b18b4fd586b2503948a0142c9c6041873aef836b2"
+    }
+  ],
+  "profiles": {
+    "first_live": {
+      "plan_id": "phase6-deepseek-depth60-v11",
+      "plan_schema_version": "11.0",
+      "plan_path": "evals/phase6_deepseek_depth60_plan_v11.json",
+      "manifest_path": "evals/provider_completion_execution_binding_v4/implementation_manifest_first_live_v3.json",
+      "plan_domain": "researchops-phase6-deepseek-depth60-successor-plan-v11",
+      "manifest_domain": "researchops-provider-completion-timed-first-live-source-manifest-v3"
+    },
+    "campaign": {
+      "plan_id": "phase6-deepseek-depth60-v12",
+      "plan_schema_version": "12.0",
+      "plan_path": "evals/phase6_deepseek_depth60_plan_v12.json",
+      "manifest_path": "evals/provider_completion_execution_binding_v4/implementation_manifest_campaign_v3.json",
+      "plan_domain": "researchops-phase6-deepseek-depth60-successor-plan-v12",
+      "manifest_domain": "researchops-provider-completion-timed-campaign-source-manifest-v3"
+    }
+  },
+  "limits": {
+    "available_paths": 16384,
+    "selected_files": 320,
+    "file_bytes": 8388608,
+    "total_bytes": 33554432,
+    "recipe_bytes": 32768
+  },
+  "selection": {
+    "base": "interpret pinned v1 file_groups and mandatory/raw/predecessor paths, then inherit v2/v3 mandatory paths; do not invoke their 256-file selectors on the v4 inventory",
+    "source_prefix": "src/",
+    "source_suffix": ".py",
+    "contract_directory_prefix": "evals/provider_completion_",
+    "contract_suffix": ".json",
+    "manifest_does_not_choose_coverage": true,
+    "all_profiles_excluded_paths": [
+      "evals/provider_completion_execution_binding_v1/implementation_manifest_v1.json",
+      "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json",
+      "evals/provider_completion_execution_binding_v2/implementation_manifest_campaign_v1.json",
+      "evals/provider_completion_execution_binding_v3/implementation_manifest_first_live_v2.json",
+      "evals/provider_completion_execution_binding_v3/implementation_manifest_campaign_v2.json",
+      "evals/provider_completion_execution_binding_v4/implementation_manifest_first_live_v3.json",
+      "evals/provider_completion_execution_binding_v4/implementation_manifest_campaign_v3.json",
+      "evals/phase6_deepseek_depth60_plan_v8.json",
+      "evals/phase6_deepseek_depth60_plan_v9.json",
+      "evals/phase6_deepseek_depth60_plan_v10.json",
+      "evals/phase6_deepseek_depth60_plan_v11.json",
+      "evals/phase6_deepseek_depth60_plan_v12.json"
+    ],
+    "first_live_excluded_paths": [
+      "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.json",
+      "evals/provider_completion_runtime_registry_v3/registry_admission_bundle_v1.json"
+    ],
+    "mandatory_readdition": "frozen v6/v7 lineage inputs required by inherited mandatory paths are re-added after generated-output exclusions",
+    "mandatory_paths": [
+      "evals/provider_completion_admission_link_v1/admission_link_contract_v1.json",
+      "evals/provider_completion_admission_link_v1/first_live_artifact_profile_v1.json",
+      "evals/provider_completion_admission_link_v1/schemas/external_review_observation_v1.schema.json",
+      "evals/provider_completion_admission_link_v1/schemas/first_live_evidence_bundle_v1.schema.json",
+      "evals/provider_completion_admission_link_v1/schemas/first_live_review_record_v1.schema.json",
+      "evals/provider_completion_admission_link_v1/schemas/runtime_registry_admission_bundle_v1.schema.json",
+      "evals/provider_completion_campaign_run_v1/contract_v1.json",
+      "evals/provider_completion_campaign_wire_v1/contract_v1.json",
+      "evals/provider_completion_execution_binding_v1/execution_component_recipe_v1.json",
+      "evals/provider_completion_execution_binding_v1/implementation_manifest_v1.json",
+      "evals/provider_completion_execution_binding_v1/runner_config_v1.json",
+      "evals/provider_completion_execution_binding_v2/execution_component_recipe_v2.json",
+      "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json",
+      "evals/provider_completion_execution_binding_v3/execution_component_recipe_v3.json",
+      "evals/provider_completion_execution_binding_v4/execution_component_recipe_v4.json",
+      "evals/provider_completion_execution_scope_v1/contract_v1.json",
+      "evals/provider_completion_execution_scope_v1/preregistration_v3.schema.json",
+      "evals/provider_completion_external_preregistration_v1/closure_evidence_contract_v1.json",
+      "evals/provider_completion_external_preregistration_v1/external_preregistration_design_contract_v1.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/authorization_grant_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/candidate_freeze_receipt_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/closure_bundle_manifest_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/closure_receipt_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/closure_run_event_projection_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/consumption_receipt_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/external_ledger_entry_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/external_observation_bundle_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/external_preregistration_envelope_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/external_trust_manifest_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/postrun_attested_facts_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/seen_task_exclusion_manifest_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/transport_send_payload_v1.schema.json",
+      "evals/provider_completion_external_preregistration_v1/schemas/unseen_case_bundle_v1.schema.json",
+      "evals/provider_completion_first_live_artifact_v1/bundle_v1.schema.json",
+      "evals/provider_completion_first_live_artifact_v1/contract_v1.json",
+      "evals/provider_completion_first_live_artifact_v1/manifest_v1.schema.json",
+      "evals/provider_completion_first_live_audit_v1/contract_v1.json",
+      "evals/provider_completion_first_live_control_v1/authorization_v1.schema.json",
+      "evals/provider_completion_first_live_control_v1/claim_intent_v1.schema.json",
+      "evals/provider_completion_first_live_control_v1/contract_v1.json",
+      "evals/provider_completion_first_live_failure_artifact_v1/manifest_v1.schema.json",
+      "evals/provider_completion_first_live_failure_v1/receipt_v1.schema.json",
+      "evals/provider_completion_first_live_review_v2/contract_v2.json",
+      "evals/provider_completion_first_live_review_v2/review_v2.schema.json",
+      "evals/provider_completion_first_live_run_v4/summary_v4.schema.json",
+      "evals/provider_completion_first_live_timing_v1/contract_v1.json",
+      "evals/provider_completion_first_live_timing_v1/schemas/completion_timing_evidence_v1.schema.json",
+      "evals/provider_completion_first_live_timing_v1/schemas/completion_timing_plan_v1.schema.json",
+      "evals/provider_completion_first_live_timing_v1/schemas/completion_timing_publication_v1.schema.json",
+      "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_contract_v1.json",
+      "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_implementation_v2.json",
+      "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_implementation_v3.json",
+      "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_implementation_v4.json",
+      "evals/provider_completion_local_claim_v1/contract_v1.json",
+      "evals/provider_completion_pre_execution_v1/contract_v1.json",
+      "evals/provider_completion_pre_execution_v1/observation_v1.schema.json",
+      "evals/provider_completion_pre_execution_v1/preregistration_v2.schema.json",
+      "evals/provider_completion_runtime_registry_v3/protocol_v3.json",
+      "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.schema.json",
+      "evals/provider_completion_task_release_v1/contract_v1.json",
+      "evals/provider_completion_telemetry_v1/fixture_manifest.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_completed_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_conflict_end_turn_with_stop_sequence_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_conflict_missing_reason_with_stop_sequence_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_conflict_non_string_stop_sequence_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_conflict_null_reason_with_stop_sequence_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_conflict_stop_sequence_missing_value_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_conflict_stop_sequence_without_value_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_length_capped_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_missing_fields_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_stop_sequence_with_value_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/anthropic_unknown_value_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/deepseek_completed_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/deepseek_length_capped_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/deepseek_missing_fields_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/deepseek_unknown_value_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/kimi_completed_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/kimi_length_capped_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/kimi_missing_fields_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/kimi_unknown_value_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_completed_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_conflict_missing_status_non_null_details_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_conflict_non_object_incomplete_details_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_conflict_null_status_non_null_details_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_length_capped_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_missing_fields_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_missing_status_null_details_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_null_status_missing_details_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_null_status_null_details_20260902.json",
+      "evals/provider_completion_telemetry_v1/fixtures/openai_unknown_value_20260902.json",
+      "evals/provider_completion_telemetry_v1/provider_completion_mapping_v1.json",
+      "evals/provider_completion_telemetry_v1/provider_completion_record_contract_v1.json",
+      "evals/provider_completion_telemetry_v1/provider_completion_runtime_hardening_contract_v2.json",
+      "evals/provider_completion_telemetry_v1/rule_coverage_v1.json",
+      "evals/provider_completion_telemetry_v1/schemas/provider_completion_record_v1.schema.json",
+      "evals/provider_completion_telemetry_v2/fixture_manifest_v2.json",
+      "evals/provider_completion_telemetry_v2/fixtures/deepseek_responses_completed_20260903.json",
+      "evals/provider_completion_telemetry_v2/fixtures/deepseek_responses_length_capped_20260903.json",
+      "evals/provider_completion_telemetry_v2/fixtures/deepseek_responses_missing_fields_20260903.json",
+      "evals/provider_completion_telemetry_v2/fixtures/deepseek_responses_unknown_value_20260903.json",
+      "evals/provider_completion_telemetry_v2/provider_completion_surface_registry_v2.json",
+      "evals/provider_completion_timed_ledger_v1/contract_v1.json",
+      "evals/provider_completion_timing_artifacts_v1/contract_v1.json",
+      "evals/provider_completion_timing_artifacts_v1/manifest_v1.schema.json",
+      "evals/provider_completion_timing_v1/schemas/completion_timing_evidence_v1.schema.json",
+      "evals/provider_completion_timing_v1/schemas/completion_timing_plan_v1.schema.json",
+      "evals/provider_completion_timing_v1/schemas/completion_timing_publication_v1.schema.json",
+      "evals/provider_completion_timing_v1/schemas/completion_timing_segment_v1.schema.json",
+      "evals/provider_completion_timing_v1/schemas/completion_timing_terminal_projection_v1.schema.json",
+      "evals/provider_completion_timing_v1/timing_contract_v1.json",
+      "src/researchops_external_closure/execution_components_v4.py"
+    ],
+    "campaign_required_paths": [
+      "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.json",
+      "evals/provider_completion_runtime_registry_v3/registry_admission_bundle_v1.json",
+      "evals/phase6_deepseek_depth60_plan_v11.json",
+      "evals/provider_completion_execution_binding_v4/implementation_manifest_first_live_v3.json"
+    ]
+  },
+  "component_groups": {
+    "source_bundle_sha256": {
+      "domain": "researchops-provider-completion-all-first-party-python-v4",
+      "selection": "all_selected_src_python"
+    },
+    "completion_telemetry_runtime_bundle_sha256": {
+      "domain": "researchops-provider-completion-timed-runtime-v4",
+      "selection": "selected_telemetry_and_timing_python"
+    },
+    "closure_verifier_sha256": {
+      "domain": "researchops-provider-completion-conservative-closure-code-v4",
+      "selection": "all_selected_src_python"
+    },
+    "sanitizer_sha256": {
+      "domain": "researchops-provider-completion-conservative-sanitizer-code-v4",
+      "selection": "all_selected_src_python"
+    },
+    "completion_telemetry_contract_bundle_sha256": {
+      "domain": "researchops-provider-completion-protocol-data-v4",
+      "selection": "all_selected_json"
+    }
+  },
+  "additional_components": {
+    "raw_components": "inherit exact raw_components from pinned v1 recipe",
+    "runner_config_commitment_sha256": "validate v1 runner_config_values and reuse its runner_config domain; this is not a claim the runtime is v1",
+    "telemetry_schema_sha256": "SHA256(exact v1 recipe schema_binding_path bytes)",
+    "mapping_sha256": "unchanged full canonical offline-selected mapping projection, no wrapper omissions",
+    "source_byte_inventory_sha256": "use existing admission-link source_inventory domain over all selected src Python rows",
+    "admission_contract_sha256": "SHA256(exact admission_link_contract_v1.json bytes)"
+  },
+  "hash_protocol": {
+    "inventory_order": "ascending repository-relative path",
+    "inventory_row_fields": [
+      "path",
+      "bytes",
+      "sha256"
+    ],
+    "group_hash": "SHA256(UTF8(fixed group domain) || NUL || canonical ordered inventory rows)",
+    "document_hash": "SHA256(UTF8(fixed document domain) || NUL || canonical object omitting only its own commitment field)",
+    "canonical_json": "existing strict canonical JSON without newline",
+    "serialized_profile_trailing_newline": true
+  },
+  "lineage": {
+    "first_live": "rehash exact pinned c1 v7 plan/manifest and earlier frozen v1-v6 graph, using v3/v2/v1 metadata rules; do not regenerate or reexecute history",
+    "campaign": "recompute v11 from exact same static/source/lock/pyproject bytes and require its stored plan and manifest to byte-match before adding the two late registry data files",
+    "old_v9_v10_required": false
+  },
+  "rules": [
+    "Old v1-v3 algorithms, limits, frozen artifacts and domains remain unchanged.",
+    "The new 320-file limit applies to the entire v4 selection, including Python-heavy inventories; no hidden inherited 256-file selector is used.",
+    "Keep 8 MiB per file, 32 MiB total and 16384 available-path limits; reject before enumerating an oversized supplied file mapping.",
+    "Preserve v1 frozen graph, v2 fixed bindings/schema bindings/v6 metadata, and v3 c1 v7 metadata checks without writing intermediate v6/v7/v9 artifacts.",
+    "Conservative closure/sanitizer component groups include all first-party Python so imported timing/runtime helpers are not omitted.",
+    "All current selected provider_completion JSON paths are mandatory; a missing static contract directory cannot silently remove coverage.",
+    "V11/v12 manifests and plans are source-only artifacts, not Provider registration, first-live success, runtime admission or an online grant.",
+    "No actual worktree plan or manifest is generated during unstable batch development."
+  ],
+  "source_integrity_only": true,
+  "runtime_admission_verified": false,
+  "online_execution_authorized": false,
+  "historical_result_revalidated": false
+}

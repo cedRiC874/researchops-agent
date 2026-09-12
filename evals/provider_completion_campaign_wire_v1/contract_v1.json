@@ -1,0 +1,15 @@
+{
+  "schema_version": "provider-completion-campaign-wire-contract/1.0",
+  "api_surface": "responses",
+  "input_shape": "one_user_message_with_string_content",
+  "canary_prefix": "\n\n[researchops-completion-canary:",
+  "canary_suffix": "]",
+  "task_text_rewritten": false,
+  "canary_appended_to_every_case_request": true,
+  "wire_input_must_equal_opened_task_plus_fixed_canary": true,
+  "response_capture_scans_canary_before_truncation_or_id_hashing": true,
+  "canary_policy_snapshotted_before_send": true,
+  "input_check_alone_validates_entire_request": false,
+  "input_check_grants_runtime_authority": false,
+  "input_or_canary_persistence_allowed": false
+}

@@ -29,6 +29,7 @@ from .audit import (
     sha256_json,
 )
 from .completion_telemetry_ledger import LedgerCompletionTelemetrySession
+from .first_live_execution_profiles import execution_profile
 from .phase6_runner import _finalize_runtime_completion_telemetry
 from researchops_completion_telemetry.capture import (
     CompletionCaptureError,
@@ -718,6 +719,7 @@ class _ConsumedValidationAuthorization:
         "output_price_per_million_cny",
         "_authority_token",
         "_session_claimed",
+        "_execution_version",
     )
 
     def __init__(self, *args: object, **kwargs: object) -> None:
@@ -728,11 +730,13 @@ class _ConsumedValidationAuthorization:
     def _create(cls, token: object, **values: Any) -> _ConsumedValidationAuthorization:
         if token is not _AUTHORITY_TOKEN:
             raise TypeError("invalid first-live authority token")
+        version = execution_profile(values.pop("_execution_version", 2)).version
         instance = object.__new__(cls)
         for name, value in values.items():
             object.__setattr__(instance, name, value)
         object.__setattr__(instance, "_authority_token", _AUTHORITY_TOKEN)
         object.__setattr__(instance, "_session_claimed", False)
+        object.__setattr__(instance, "_execution_version", version)
         return instance
 
     def assert_authority(self) -> None:
@@ -741,7 +745,7 @@ class _ConsumedValidationAuthorization:
             or getattr(self, "_authority_token", None) is not _AUTHORITY_TOKEN
             or self.contract_commitment_sha256 != CONTRACT_COMMITMENT_SHA256
             or self.implementation_commitment_sha256
-            != IMPLEMENTATION_COMMITMENT_SHA256
+            != execution_profile(self._execution_version).implementation_commitment_sha256
             or datetime.now(timezone.utc) >= self.authorization_expires_at_utc
         ):
             raise _error("deepseek_first_live_authority_invalid")
@@ -835,20 +839,8 @@ class _DeepSeekFirstLiveValidationLedgerSession(LedgerCompletionTelemetrySession
         if handle.attempt_index in self._sent_attempt_indices:
             raise _error("deepseek_first_live_transport_retry_detected")
         next_index = self._transport_send_count
-        self._ledger.append_event(
-            self._validation_run_id,
-            "provider_transport_request_sent",
-            {
-                "schema_version": "deepseek-first-live-transport-send/1.0",
-                "case_id": handle.case_id,
-                "attempt_index": handle.attempt_index,
-                "case_attempt_index": handle.case_attempt_index,
-                "network_call_index": next_index,
-                "method": "POST",
-                "origin": "https://api.deepseek.com",
-                "path": "/responses",
-            },
-            actor_kind="provider_adapter",
+        AuditLedger.append_first_live_transport_send_event(
+            self._ledger, session=self, attempt_handle=handle
         )
         self._sent_attempt_indices.add(handle.attempt_index)
         self._transport_send_count = next_index + 1
@@ -1123,15 +1115,22 @@ def _network_logging_disabled() -> bool:
 
 
 def _git_offline_environment() -> dict[str, str]:
-    environment = dict(os.environ)
-    environment["GIT_NO_LAZY_FETCH"] = "1"
-    environment["GIT_TERMINAL_PROMPT"] = "0"
-    environment["GIT_OPTIONAL_LOCKS"] = "0"
+    # Do not copy Provider credentials into a Git child process, especially
+    # before the one-shot authorization has been consumed.
+    environment = {name: value for name in ("PATH", "SystemRoot", "WINDIR", "COMSPEC", "TEMP", "TMP", "TMPDIR")
+                   if (value := os.environ.get(name)) is not None}
+    environment.update(GIT_NO_LAZY_FETCH="1", GIT_TERMINAL_PROMPT="0", GIT_OPTIONAL_LOCKS="0",
+                       GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull,
+                       GIT_CONFIG_COUNT="3", GIT_CONFIG_KEY_0="protocol.allow", GIT_CONFIG_VALUE_0="never",
+                       GIT_CONFIG_KEY_1="core.fsmonitor", GIT_CONFIG_VALUE_1="false",
+                       GIT_CONFIG_KEY_2="core.hooksPath", GIT_CONFIG_VALUE_2=os.devnull)
     return environment
 
 
 def _environment_isolated(environment: Mapping[str, str]) -> bool:
-    return not any(environment.get(name) for name in _FORBIDDEN_OPENAI_ENVIRONMENT)
+    # Checking presence avoids reading unrelated secret values before consent.
+    # Even an empty forbidden variable must be unset, not copied into a client.
+    return not any(name in _FORBIDDEN_OPENAI_ENVIRONMENT for name in environment)
 
 
 def _validate_dependencies() -> None:
@@ -1368,10 +1367,28 @@ def _validate_persisted_execution_identity(
     return committed_runtime_binding
 
 
+def _validate_execution_profile_implementation(root: Path, *, _execution_version: int = 2) -> dict[str, Any]:
+    profile = execution_profile(_execution_version)
+    if profile.version == 2:
+        return validate_deepseek_first_live_implementation(root)
+    _validate_dependencies()
+    payload = _safe_fixed_file(root, Path(profile.implementation_path)).read_bytes()
+    if len(payload) != profile.implementation_bytes or _sha256(payload) != profile.implementation_sha256:
+        raise _error("deepseek_first_live_implementation_invalid", not_run=True)
+    document = _decode_json_object(payload)
+    digest = _sha256(b"researchops-provider-completion-first-live-implementation-v3\0" + _canonical_bytes(document))
+    if digest != profile.implementation_commitment_sha256:
+        raise _error("deepseek_first_live_implementation_invalid", not_run=True)
+    return document
+
+
 def _validate_source_integrity(
     root: Path,
     expected_commitment: str,
+    *,
+    _execution_version: int = 2,
 ) -> dict[str, Any]:
+    profile = execution_profile(_execution_version)
     if not isinstance(expected_commitment, str) or not _SHA256.fullmatch(
         expected_commitment
     ):
@@ -1380,13 +1397,13 @@ def _validate_source_integrity(
         from .phase6_depth60 import validate_phase6_depth60_plan
 
         result = validate_phase6_depth60_plan(
-            root, SOURCE_INTEGRITY_PLAN_RELATIVE_PATH
+            root, Path(profile.source_plan_path)
         )
     except Exception:
         raise _error("deepseek_first_live_source_integrity_invalid", not_run=True) from None
     if (
         result.get("status") != "valid"
-        or result.get("plan_id") != SOURCE_INTEGRITY_PLAN_ID
+        or result.get("plan_id") != profile.source_plan_id
         or result.get("plan_commitment_sha256") != expected_commitment
         or result.get("online_execution_authorized") is not False
         or result.get("network_calls") != 0
@@ -1406,6 +1423,7 @@ def _authorization_binding(
     pricing_source_url: str,
     input_price: Decimal,
     output_price: Decimal,
+    _execution_version: int = 2,
 ) -> str:
     if not isinstance(authorization_id_sha256, str) or not _SHA256.fullmatch(
         authorization_id_sha256
@@ -1421,7 +1439,7 @@ def _authorization_binding(
                 "authorization_expires_at_utc": expires_at_utc,
                 "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
                 "implementation_commitment_sha256": (
-                    IMPLEMENTATION_COMMITMENT_SHA256
+                    execution_profile(_execution_version).implementation_commitment_sha256
                 ),
                 "execution_commit": execution_commit,
                 "source_integrity_commitment_sha256": source_integrity_commitment,
@@ -1529,10 +1547,11 @@ def _revalidate_execution_state(
     expected_source_integrity_commitment: str,
     expected_execution_commit: str,
     git_state_loader: Callable[[Path], tuple[str, bool, str]],
+    _execution_version: int = 2,
 ) -> None:
     validate_deepseek_first_live_contract(root)
-    validate_deepseek_first_live_implementation(root)
-    _validate_source_integrity(root, expected_source_integrity_commitment)
+    _validate_execution_profile_implementation(root, _execution_version=_execution_version)
+    _validate_source_integrity(root, expected_source_integrity_commitment, _execution_version=_execution_version)
     head, clean, origin_main = git_state_loader(root)
     if (
         head != expected_execution_commit
@@ -3564,6 +3583,7 @@ def _write_evidence_artifacts(
     audit_index: list[dict[str, Any]],
     completion: Mapping[str, Any],
     runtime_plan_binding: VerifiedRuntimeDenominatorPlanBinding,
+    _execution_version: int = 2,
 ) -> tuple[dict[str, Any], str]:
     runtime_denominator = completion.get("runtime_denominator")
     if not isinstance(runtime_denominator, Mapping):
@@ -3594,7 +3614,7 @@ def _write_evidence_artifacts(
         "schema_version": MANIFEST_SCHEMA_VERSION,
         "status": "complete",
         "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
-        "implementation_commitment_sha256": IMPLEMENTATION_COMMITMENT_SHA256,
+        "implementation_commitment_sha256": execution_profile(_execution_version).implementation_commitment_sha256,
         "files": files,
         "raw_response_body_persisted": False,
         "message_content_persisted": False,
@@ -3609,6 +3629,7 @@ def _failed_evidence(
     *,
     error_code: str | None,
     outcome_unknown: bool,
+    _execution_version: int = 2,
 ) -> dict[str, Any]:
     return {
         "schema_version": EVIDENCE_SCHEMA_VERSION,
@@ -3617,7 +3638,7 @@ def _failed_evidence(
         "outcome_unknown": outcome_unknown,
         "contract_id": VALIDATION_ID,
         "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
-        "implementation_commitment_sha256": IMPLEMENTATION_COMMITMENT_SHA256,
+        "implementation_commitment_sha256": execution_profile(_execution_version).implementation_commitment_sha256,
         "runtime_plan": outer["runtime_plan"],
         "runtime_denominator": outer["runtime_denominator"],
         "ledger_reconciliation": outer["ledger_reconciliation"],
@@ -3856,8 +3877,11 @@ async def _run_deepseek_first_live_validation_impl(
     _git_state_loader: Callable[[Path], tuple[str, bool, str]] = _git_state,
     _artifact_root: Path | None = None,
     _monotonic: Callable[[], float] = time.monotonic,
+    _execution_version: int = 2,
 ) -> dict[str, Any]:
     """Consume one grant and run exactly two fixed Adapter-path shape calls."""
+
+    profile = execution_profile(_execution_version)
 
     try:
         wall_started = _monotonic_now(_monotonic)
@@ -3898,11 +3922,10 @@ async def _run_deepseek_first_live_validation_impl(
     root = Path(project_root).resolve()
     try:
         contract = validate_deepseek_first_live_contract(root)
-        validate_deepseek_first_live_implementation(root)
+        _validate_execution_profile_implementation(root, _execution_version=_execution_version)
         _validate_dependencies()
         source_integrity = _validate_source_integrity(
-            root, expected_source_integrity_commitment_sha256
-        )
+            root, expected_source_integrity_commitment_sha256, _execution_version=_execution_version)
         now = _clock_now(_clock)
         expiry = _parse_utc(authorization_expires_at_utc)
         if expiry <= now:
@@ -3952,8 +3975,7 @@ async def _run_deepseek_first_live_validation_impl(
         pricing_snapshot_date=resolved_date.isoformat(),
         pricing_source_url=resolved_url,
         input_price=input_price,
-        output_price=output_price,
-    )
+        output_price=output_price, _execution_version=_execution_version)
     if not hmac.compare_digest(
         authorization_binding_sha256,
         expected_authorization_binding_sha256,
@@ -3968,7 +3990,7 @@ async def _run_deepseek_first_live_validation_impl(
             "contract_id": VALIDATION_ID,
             "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
             "implementation_commitment_sha256": (
-                IMPLEMENTATION_COMMITMENT_SHA256
+                profile.implementation_commitment_sha256
             ),
             "source_integrity_plan_id": source_integrity["plan_id"],
             "source_integrity_commitment_sha256": (
@@ -4022,14 +4044,13 @@ async def _run_deepseek_first_live_validation_impl(
         authorization_binding_sha256=authorization_binding_sha256,
         authorization_expires_at_utc=expiry,
         contract_commitment_sha256=CONTRACT_COMMITMENT_SHA256,
-        implementation_commitment_sha256=IMPLEMENTATION_COMMITMENT_SHA256,
+        implementation_commitment_sha256=profile.implementation_commitment_sha256,
         execution_commit=expected_execution_commit,
         source_integrity_commitment_sha256=(
             expected_source_integrity_commitment_sha256
         ),
         input_price_per_million_cny=input_price,
-        output_price_per_million_cny=output_price,
-    )
+        output_price_per_million_cny=output_price, _execution_version=_execution_version)
     del consumption_bytes
     status = "failed"
     error_code: str | None = None
@@ -4077,8 +4098,7 @@ async def _run_deepseek_first_live_validation_impl(
                         expected_source_integrity_commitment_sha256
                     ),
                     expected_execution_commit=expected_execution_commit,
-                    git_state_loader=_git_state_loader,
-                )
+                    git_state_loader=_git_state_loader, _execution_version=_execution_version)
             except Exception:
                 raise _error(
                     "deepseek_first_live_post_consumption_revalidation_failed"
@@ -4110,7 +4130,7 @@ async def _run_deepseek_first_live_validation_impl(
                         "validation_id": VALIDATION_ID,
                         "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
                         "implementation_commitment_sha256": (
-                            IMPLEMENTATION_COMMITMENT_SHA256
+                            profile.implementation_commitment_sha256
                         ),
                         "authorization_id_sha256": authorization_id_sha256,
                         "scenario_count": 2,
@@ -4166,8 +4186,7 @@ async def _run_deepseek_first_live_validation_impl(
                                     expected_execution_commit=(
                                         expected_execution_commit
                                     ),
-                                    git_state_loader=_git_state_loader,
-                                )
+                                    git_state_loader=_git_state_loader, _execution_version=_execution_version)
                             except Exception:
                                 raise _error(
                                     "deepseek_first_live_runtime_revalidation_failed"
@@ -4337,7 +4356,7 @@ async def _run_deepseek_first_live_validation_impl(
                 "contract_id": VALIDATION_ID,
                 "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
                 "implementation_commitment_sha256": (
-                    IMPLEMENTATION_COMMITMENT_SHA256
+                    profile.implementation_commitment_sha256
                 ),
                 "runtime_plan": completion["runtime_plan"],
                 "runtime_denominator": completion["runtime_denominator"],
@@ -4364,8 +4383,7 @@ async def _run_deepseek_first_live_validation_impl(
                     ledger=ledger,
                     audit_index=audit_index,
                     completion=evidence,
-                    runtime_plan_binding=runtime_plan_binding,
-                )
+                    runtime_plan_binding=runtime_plan_binding, _execution_version=_execution_version)
             except Exception:
                 raise _error(
                     "deepseek_first_live_evidence_persistence_failed"
@@ -4453,8 +4471,7 @@ async def _run_deepseek_first_live_validation_impl(
             partial_evidence = _failed_evidence(
                 completion,
                 error_code=error_code,
-                outcome_unknown=outcome_unknown,
-            )
+                outcome_unknown=outcome_unknown, _execution_version=_execution_version)
             completion = partial_evidence
             manifest, manifest_sha256 = _write_evidence_artifacts(
                 directory,
@@ -4462,8 +4479,7 @@ async def _run_deepseek_first_live_validation_impl(
                 ledger=ledger,
                 audit_index=audit_index,
                 completion=partial_evidence,
-                runtime_plan_binding=runtime_plan_binding,
-            )
+                runtime_plan_binding=runtime_plan_binding, _execution_version=_execution_version)
         except Exception:
             manifest = None
             manifest_sha256 = None
@@ -4515,8 +4531,7 @@ async def _run_deepseek_first_live_validation_impl(
             partial_evidence = _failed_evidence(
                 outer,
                 error_code=error_code,
-                outcome_unknown=outcome_unknown,
-            )
+                outcome_unknown=outcome_unknown, _execution_version=_execution_version)
             completion = partial_evidence
             manifest, manifest_sha256 = _write_evidence_artifacts(
                 directory,
@@ -4524,8 +4539,7 @@ async def _run_deepseek_first_live_validation_impl(
                 ledger=ledger,
                 audit_index=partial_index,
                 completion=partial_evidence,
-                runtime_plan_binding=runtime_plan_binding,
-            )
+                runtime_plan_binding=runtime_plan_binding, _execution_version=_execution_version)
         except Exception:
             manifest = None
             manifest_sha256 = None
@@ -4566,7 +4580,7 @@ async def _run_deepseek_first_live_validation_impl(
         "outcome_unknown": outcome_unknown,
         "contract_id": VALIDATION_ID,
         "contract_commitment_sha256": CONTRACT_COMMITMENT_SHA256,
-        "implementation_commitment_sha256": IMPLEMENTATION_COMMITMENT_SHA256,
+        "implementation_commitment_sha256": profile.implementation_commitment_sha256,
         "source_integrity_plan_id": source_integrity["plan_id"],
         "source_integrity_commitment_sha256": (
             expected_source_integrity_commitment_sha256

@@ -1,0 +1,56 @@
+{
+  "schema_version": "provider-completion-timing-artifact-contract/1.0",
+  "status": "frozen_offline_verification_not_admission",
+  "timing_contract_sha256": "7490576433693a45520e82bb161ee371d5a3087fa65975f5a1ac7418f6b13c6f",
+  "timed_ledger_contract_sha256": "5acc5b2d7d018202a5af42a736d178fa4e0cdc74b25a60a055d2883bc93b7002",
+  "manifest_schema": {
+    "path": "manifest_v1.schema.json",
+    "bytes": 5087,
+    "sha256": "bcae4539294a8affab77e048728a36ae48dd7003f4de47cd430b982f85d7c9ef"
+  },
+  "payload_files": [
+    "phase6_audit.sqlite3",
+    "phase6_audit_index.json",
+    "phase6_completion_telemetry.json",
+    "completion_timing_plan.json",
+    "completion_timing_evidence.json"
+  ],
+  "manifest_file": "completion_closure_manifest.json",
+  "publication_file": "completion_timing_publication.json",
+  "exact_sealed_file_count": 7,
+  "max_file_bytes": 100000000,
+  "max_total_bytes": 100000000,
+  "expected_database_schema_sha256": "c0df1f54a96fe3c4f5ee196e654203a62e5e775a3e21fd5f47ace9e349169385",
+  "ordered_audit_heads_domain": "researchops-provider-completion-audit-run-set-v1",
+  "ordered_audit_heads_tag": "final_chain_heads",
+  "ordered_audit_heads_projection": "plan-case-prefix order: [{run_id, final_chain_head_sha256}]; SHA256(domain || NUL || tag || NUL || canonical(projection))",
+  "independent_inputs": [
+    "manifest_file_sha256",
+    "timing_plan_commitment_sha256",
+    "execution_binding_sha256",
+    "denominator_plan_bytes",
+    "case_handle_to_run_id_mapping"
+  ],
+  "verification_rules": [
+    "All seven exact files must be regular, single-link, non-reparse files under the bounded directory reader; reject extras, WAL/SHM sidecars and missing files.",
+    "Scan all exact file bytes before SQLite opening, including NUL-separated data; validate strict canonical JSON and reject duplicate keys.",
+    "Verify manifest and each declared payload size/SHA against independent expected manifest bytes hash.",
+    "Verify the pinned SQLite schema and bind query results to the same serialized database image before and after reads; re-read all seven files before returning.",
+    "Verify each actual audit hash chain and its indexed head/count in preregistered case-prefix order, with independently expected run IDs.",
+    "Recompute bridge start/terminal hashes and require exactly one start/terminal per observed attempt; no supplied projections are accepted.",
+    "Every completion terminal is v1.2; legacy terminal versions cannot be silently upgraded or used as timing evidence.",
+    "Validate live-record semantics through the readonly persisted-evidence context; mint no runtime binding.",
+    "Recompute record/usage digests from that same terminal and compare its v1.2 reference with the complete timing segment.",
+    "Require event attempts and accepted records to equal the validated runtime denominator; compare case order and caps against the independent denominator plan.",
+    "Derive the timing terminal projection from actual rows, then apply the shared numeric/coverage/plan/execution/publication validator.",
+    "Do not trust input closure or reconciliation booleans as proof; full budget/tool/source/consumption/signature/registry and A/B semantics remain separate required gates."
+  ],
+  "partial_or_quarantined_profile_supported": false,
+  "partial_profile_requires_separate_frozen_successor": true,
+  "old_four_file_profile_changed": false,
+  "publication_self_write_measured_by_itself": false,
+  "runtime_authority_granted": false,
+  "current_closure_claim_allowed": false,
+  "provider_calls_authorized": false,
+  "historical_backfill_allowed": false
+}

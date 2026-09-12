@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "error_code",
+    "observation_scope",
+    "claim_consumed",
+    "observed_send_markers",
+    "dispatch_attempt_count",
+    "validated_response_count",
+    "inflight",
+    "token_usage",
+    "provider_bill",
+    "exception_text_recorded",
+    "model_content_recorded",
+    "api_key_recorded",
+    "retry_authorized",
+    "resume_authorized",
+    "fallback_authorized",
+    "model_quality_claim_allowed",
+    "runtime_authority_granted",
+    "closure_claim_allowed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-failure/1.0"
+    },
+    "status": {
+      "enum": [
+        "failed_before_dispatch",
+        "failed",
+        "outcome_unknown"
+      ]
+    },
+    "error_code": {
+      "enum": [
+        "first_live_preparation_failed",
+        "first_live_runtime_failed",
+        "first_live_publication_failed",
+        "first_live_failure_unknown",
+        "first_live_authorization_expired",
+        "first_live_source_changed",
+        "first_live_http_error",
+        "first_live_output_rejected",
+        "first_live_timeout"
+      ]
+    },
+    "observation_scope": {
+      "enum": [
+        "preparation_branch",
+        "owned_clock_and_factory",
+        "insufficient_observation"
+      ]
+    },
+    "claim_consumed": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "observed_send_markers": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dispatch_attempt_count": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "validated_response_count": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "inflight": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "token_usage": {
+      "const": null
+    },
+    "provider_bill": {
+      "const": null
+    },
+    "exception_text_recorded": {
+      "const": false
+    },
+    "model_content_recorded": {
+      "const": false
+    },
+    "api_key_recorded": {
+      "const": false
+    },
+    "retry_authorized": {
+      "const": false
+    },
+    "resume_authorized": {
+      "const": false
+    },
+    "fallback_authorized": {
+      "const": false
+    },
+    "model_quality_claim_allowed": {
+      "const": false
+    },
+    "runtime_authority_granted": {
+      "const": false
+    },
+    "closure_claim_allowed": {
+      "const": false
+    }
+  }
+}

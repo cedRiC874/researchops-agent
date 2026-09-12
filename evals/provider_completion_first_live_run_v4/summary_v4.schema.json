@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "summary_only", "authorization_id_sha256", "artifact_directory", "bundle_path", "bundle_commitment_sha256", "dispatch_attempt_count", "model_quality_claim_allowed", "provider_registration_authorized", "runtime_authority_granted", "closure_claim_allowed", "retry_authorized", "resume_authorized"],
+  "properties": {
+    "schema_version": {"const": "provider-completion-first-live-run/4.0"},
+    "status": {"const": "completed"},
+    "summary_only": {"const": true},
+    "authorization_id_sha256": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "artifact_directory": {"type": "string", "pattern": "^output/first-live-v4/[0-9a-f]{64}$", "maxLength": 85},
+    "bundle_path": {"type": "string", "pattern": "^output/first-live-v4/[0-9a-f]{64}\\.bundle\\.json$", "maxLength": 97},
+    "bundle_commitment_sha256": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "dispatch_attempt_count": {"const": 2},
+    "model_quality_claim_allowed": {"const": false},
+    "provider_registration_authorized": {"const": false},
+    "runtime_authority_granted": {"const": false},
+    "closure_claim_allowed": {"const": false},
+    "retry_authorized": {"const": false},
+    "resume_authorized": {"const": false}
+  }
+}

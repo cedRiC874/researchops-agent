@@ -58,6 +58,8 @@ DEPTH60_SUCCESSOR_V5_PLAN_DOMAIN = (
 DEPTH60_SUCCESSOR_V5_PLAN_PATH = Path(
     "evals/phase6_deepseek_depth60_plan_v5.json"
 )
+DEPTH60_SUCCESSOR_V6_PLAN_ID = "phase6-deepseek-depth60-v6"
+DEPTH60_SUCCESSOR_V6_PLAN_PATH = Path("evals/phase6_deepseek_depth60_plan_v6.json")
 # The historical commitment is an assertion about a commit, not about HEAD.
 # These literals exist so the successor cannot be validated while the history
 # it claims to supersede has been altered or removed.
@@ -471,6 +473,35 @@ def build_depth60_successor_plan_v5(
     return plan
 
 
+def _validate_depth60_successor_v6_plan(root: Path) -> dict[str, Any]:
+    from researchops_external_closure.execution_binding import (
+        verify_current_execution_components,
+    )
+
+    try:
+        verified = verify_current_execution_components(root)
+    except Exception:
+        raise Phase6RunError(
+            "phase6_depth60_v6_component_drift",
+            "Depth-60 v6 source-only components do not verify against this tree.",
+            not_run=True,
+        ) from None
+    return {
+        "status": "valid",
+        "plan_id": DEPTH60_SUCCESSOR_V6_PLAN_ID,
+        "plan_commitment_sha256": verified.source_integrity_commitment_sha256,
+        "implementation_commitment_sha256": verified.implementation_commitment_sha256,
+        "source_integrity_scope": "execution_component_recipe_v1_complete_inventory",
+        "component_hashes": dict(verified.component_hashes),
+        "verified_file_count": verified.file_count,
+        "online_execution_authorized": False,
+        "runtime_admission_verified": False,
+        "historical_result_revalidated": False,
+        "network_calls": 0,
+        "model_calls": 0,
+    }
+
+
 def validate_phase6_depth60_plan(
     project_root: str | Path,
     plan_path: str | Path = DEPTH60_PLAN_PATH,
@@ -480,6 +511,32 @@ def validate_phase6_depth60_plan(
     if not resolved_plan.is_absolute():
         resolved_plan = root / resolved_plan
     resolved_plan = resolved_plan.resolve()
+    for profile, relative in (
+        ("first_live", "evals/phase6_deepseek_depth60_plan_v7.json"),
+        ("campaign", "evals/phase6_deepseek_depth60_plan_v8.json"),
+    ):
+        if resolved_plan == (root / relative).resolve():
+            from researchops_external_closure.execution_current_v2 import verify_current_profile
+
+            try:
+                checked = verify_current_profile(root, profile=profile)
+            except Exception:
+                raise Phase6RunError(
+                    "phase6_depth60_profile_component_drift",
+                    "Source profile does not verify against the current tree.",
+                    not_run=True,
+                ) from None
+            return {
+                "status": "valid", "plan_id": "phase6-deepseek-depth60-v7" if profile == "first_live" else "phase6-deepseek-depth60-v8",
+                "profile": profile, "plan_commitment_sha256": checked.source_integrity_commitment_sha256,
+                "implementation_commitment_sha256": checked.implementation_commitment_sha256,
+                "component_hashes": dict(checked.component_hashes), "verified_file_count": checked.selected_file_count,
+                "source_integrity_only": True, "online_execution_authorized": False,
+                "runtime_admission_verified": False, "network_calls": 0, "model_calls": 0,
+                "historical_result_revalidated": False,
+            }
+    if resolved_plan == (root / DEPTH60_SUCCESSOR_V6_PLAN_PATH).resolve():
+        return _validate_depth60_successor_v6_plan(root)
     if resolved_plan == (root / DEPTH60_SUCCESSOR_PLAN_PATH).resolve():
         return _validate_depth60_successor_plan(root, resolved_plan)
     if resolved_plan == (root / DEPTH60_SUCCESSOR_V3_PLAN_PATH).resolve():

@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-runtime-registry-v3.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "predecessor_registry_sha256",
+    "admission_contract_sha256",
+    "entries",
+    "offline_projection_bytes_unchanged",
+    "runtime_authority_granted_by_document",
+    "online_execution_authorized",
+    "provider_registration_authorized"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-runtime-registry/3.0"
+    },
+    "document_type": {
+      "const": "completion_telemetry_evidence_gated_runtime_registry"
+    },
+    "predecessor_registry_sha256": {
+      "const": "916f37e6bd8fbc25e1e7f84dce7888cba55422c3982149574bce6706ce04f24a"
+    },
+    "admission_contract_sha256": {
+      "const": "94c23d0f64593d2fb52adcffd2d0decf531f2e78907d0e0b4cd85573c2b60561"
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "provider_id",
+            "api_surface",
+            "transport_id",
+            "eligibility",
+            "mapping_origin",
+            "selected_mapping_sha256",
+            "first_live_evidence_commitment_sha256",
+            "review_document_sha256",
+            "automatic_runtime_authority"
+          ],
+          "properties": {
+            "provider_id": {
+              "const": "deepseek"
+            },
+            "api_surface": {
+              "const": "responses"
+            },
+            "transport_id": {
+              "const": "openai_compatible_responses"
+            },
+            "eligibility": {
+              "const": "requires_verified_first_live_review"
+            },
+            "mapping_origin": {
+              "const": "immutable_v2_offline_projection"
+            },
+            "selected_mapping_sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            },
+            "first_live_evidence_commitment_sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            },
+            "review_document_sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            },
+            "automatic_runtime_authority": {
+              "const": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "provider_id",
+            "api_surface",
+            "transport_id",
+            "eligibility",
+            "mapping_origin",
+            "selected_mapping_sha256",
+            "first_live_evidence_commitment_sha256",
+            "review_document_sha256",
+            "automatic_runtime_authority"
+          ],
+          "properties": {
+            "provider_id": {
+              "const": "openai"
+            },
+            "api_surface": {
+              "const": "responses"
+            },
+            "transport_id": {
+              "const": "openai_responses"
+            },
+            "eligibility": {
+              "const": "not_eligible"
+            },
+            "mapping_origin": {
+              "const": "immutable_v2_offline_projection"
+            },
+            "selected_mapping_sha256": {
+              "const": null
+            },
+            "first_live_evidence_commitment_sha256": {
+              "const": null
+            },
+            "review_document_sha256": {
+              "const": null
+            },
+            "automatic_runtime_authority": {
+              "const": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "provider_id",
+            "api_surface",
+            "transport_id",
+            "eligibility",
+            "mapping_origin",
+            "selected_mapping_sha256",
+            "first_live_evidence_commitment_sha256",
+            "review_document_sha256",
+            "automatic_runtime_authority"
+          ],
+          "properties": {
+            "provider_id": {
+              "const": "anthropic"
+            },
+            "api_surface": {
+              "const": "messages"
+            },
+            "transport_id": {
+              "const": "litellm_anthropic_chat_completions"
+            },
+            "eligibility": {
+              "const": "not_eligible"
+            },
+            "mapping_origin": {
+              "const": "immutable_v2_offline_projection"
+            },
+            "selected_mapping_sha256": {
+              "const": null
+            },
+            "first_live_evidence_commitment_sha256": {
+              "const": null
+            },
+            "review_document_sha256": {
+              "const": null
+            },
+            "automatic_runtime_authority": {
+              "const": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "provider_id",
+            "api_surface",
+            "transport_id",
+            "eligibility",
+            "mapping_origin",
+            "selected_mapping_sha256",
+            "first_live_evidence_commitment_sha256",
+            "review_document_sha256",
+            "automatic_runtime_authority"
+          ],
+          "properties": {
+            "provider_id": {
+              "const": "moonshot_kimi"
+            },
+            "api_surface": {
+              "const": "openai_compatible_chat_completions"
+            },
+            "transport_id": {
+              "const": "moonshot_direct_chat_completions_sse_v3"
+            },
+            "eligibility": {
+              "const": "not_eligible"
+            },
+            "mapping_origin": {
+              "const": "immutable_v2_offline_projection"
+            },
+            "selected_mapping_sha256": {
+              "const": null
+            },
+            "first_live_evidence_commitment_sha256": {
+              "const": null
+            },
+            "review_document_sha256": {
+              "const": null
+            },
+            "automatic_runtime_authority": {
+              "const": false
+            }
+          }
+        }
+      ],
+      "items": false
+    },
+    "offline_projection_bytes_unchanged": {
+      "const": true
+    },
+    "runtime_authority_granted_by_document": {
+      "const": false
+    },
+    "online_execution_authorized": {
+      "const": false
+    },
+    "provider_registration_authorized": {
+      "const": false
+    }
+  }
+}

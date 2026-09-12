@@ -1,0 +1,150 @@
+{
+  "schema_version": "provider-completion-admission-link-contract/1.0",
+  "contract_id": "provider-completion-admission-link-v1",
+  "status": "frozen_offline_contract_not_runtime_admission",
+  "confirmed_on": "2026-09-05",
+  "user_confirmed_baseline": {
+    "review_signer_role": "freeze_authority",
+    "independent_out_of_band_review_digest_required": true,
+    "all_src_python_bytes_equal": true,
+    "dependency_lock_bytes_equal": true,
+    "pyproject_bytes_equal": true
+  },
+  "predecessors": {
+    "external_design_commitment": "480a8511d35d295d8a99ba7561a19f742b189094dec589bbd8317899c1f833c8",
+    "closure_contract_commitment": "a96b39a1f4bafa3bcf512fd88a5e7b0ca3987ca2bc9804642a1d1259cbf8cad0",
+    "trust_schema": {
+      "path": "evals/provider_completion_external_preregistration_v1/schemas/external_trust_manifest_v1.schema.json",
+      "bytes": 3643,
+      "sha256": "ce393c8afca005f198c23e1d73a3ba82f23048238f6fd9f39a13ce2b08cfa670"
+    },
+    "registry_v2_raw_sha256": "916f37e6bd8fbc25e1e7f84dce7888cba55422c3982149574bce6706ce04f24a"
+  },
+  "schema_bindings": [
+    {
+      "name": "external_review_observation_v1.schema.json",
+      "bytes": 1886,
+      "sha256": "aa490e4141a100936ec181c757de2d9aa81d22e9252de7ddadf0831d79c3814a"
+    },
+    {
+      "name": "first_live_evidence_bundle_v1.schema.json",
+      "bytes": 7961,
+      "sha256": "095f4df76c3023125de4445e4104a11923c2bed1c118f81c9d8ac24e876f0ec7"
+    },
+    {
+      "name": "first_live_review_record_v1.schema.json",
+      "bytes": 5850,
+      "sha256": "bb6952425c60464f587bff092a57ec063b7c614b6abfd2d727e934f006f006e6"
+    },
+    {
+      "name": "runtime_registry_admission_bundle_v1.schema.json",
+      "bytes": 4418,
+      "sha256": "e71fc474f96ab973b719a1be09dda335930f2e886d6d6363bc606bcdebfc3690"
+    }
+  ],
+  "byte_protocol": {
+    "canonical_json": "UTF-8 ensure_ascii=false sorted_keys compact_separators reject_duplicates_nonfinite_invalid_unicode",
+    "contract_commitment": "SHA256(domain || NUL || canonical(entire contract document)); commitment not stored inside contract",
+    "unsigned_bundle_commitment": "SHA256(fixed bundle domain || NUL || canonical(document without commitment_sha256))",
+    "review_document_commitment": "SHA256(review domain || NUL || canonical(document without document_sha256 and signatures))",
+    "review_signature_message": "signature domain || NUL || document_type || NUL || freeze_authority || NUL || key_id || NUL || raw 32-byte review document digest",
+    "signature_encoding": "canonical-base64-64-byte-ed25519",
+    "source_inventory_commitment": "SHA256(source domain || NUL || canonical(sorted [{path,bytes,sha256}] for every src/**/*.py))",
+    "file_sha256": "exact raw bytes; no newline or Unicode normalization",
+    "domain_values": {
+      "contract": "researchops-provider-completion-admission-link-contract-v1",
+      "evidence_bundle": "researchops-first-live-evidence-bundle-v1",
+      "registry_bundle": "researchops-runtime-registry-admission-bundle-v1",
+      "review": "researchops-provider-completion-first-live-review-v1",
+      "review_signature": "researchops-provider-completion-first-live-review-signature-v1",
+      "source_inventory": "researchops-provider-completion-all-source-byte-inventory-v1"
+    }
+  },
+  "limits": {
+    "review_document_bytes": 32768,
+    "review_observation_bytes": 16384,
+    "evidence_bundle_bytes": 65536,
+    "registry_bundle_bytes": 32768,
+    "trust_manifest_bytes": 2000000,
+    "source_file_bytes": 8388608,
+    "source_total_bytes": 33554432,
+    "source_selected_paths": 256,
+    "artifact_total_bytes": 33554432
+  },
+  "evidence_file_order": [
+    "audit.sqlite3",
+    "audit_index.json",
+    "completion_telemetry.json",
+    "consumption.json",
+    "manifest.json",
+    "runtime_denominator.json",
+    "terminal.json"
+  ],
+  "source_identity": {
+    "scope": "all src/**/*.py plus requirements.lock and pyproject.toml",
+    "mandatory_paths": [
+      "src/researchops/__init__.py",
+      "src/researchops/model_providers.py",
+      "requirements.lock",
+      "pyproject.toml"
+    ],
+    "inventory_derived_from_complete_verified_git_tree": true,
+    "byte_comparison_required": true,
+    "version_string_equality_insufficient": true,
+    "missing_objects_fail_closed": true,
+    "current_worktree_fallback": false,
+    "execute_historical_source": false,
+    "mutable_origin_main_as_trust_anchor": false,
+    "installed_environment_verified_by_this_check": false
+  },
+  "review_rules": {
+    "exactly_one_freeze_authority_signature": true,
+    "existing_trust_manifest_all_three_signatures_verified": true,
+    "external_trust_and_review_expected_digests_required": true,
+    "review_subject_must_equal_independently_verified_evidence_and_git_subject": true,
+    "review_decision_must_be_approved_for_admission": true,
+    "rejected_review_is_valid_but_not_eligible": true,
+    "key_ids_derived_and_roles_distinct": true,
+    "revoked_or_out_of_validity_keys_rejected": true,
+    "role_reuse_proves_personnel_independence": false,
+    "external_observation_source_software_independence_proof": false
+  },
+  "timeline_rules": [
+    "trust_created <= trust_observed <= reviewed_at",
+    "trust_valid_from <= reviewed_at < trust_expires",
+    "freeze_authority_not_before <= reviewed_at < freeze_authority_expires",
+    "first_live_completed <= evidence_observed <= reviewed_at <= review_observed < candidate_frozen",
+    "review_observation_candidate_receipt_hash equals independently verified candidate freeze receipt"
+  ],
+  "mapping_rules": {
+    "full_selected_mapping_hash_definition_unchanged": true,
+    "allowed_metadata_change_paths": [],
+    "changed_selected_mapping_requires_separately_reviewed_successor": true,
+    "no_whole_surface_selection_omission": true,
+    "no_rule_precedence_unknown_missing_conflict_or_claim_gate_changes": true
+  },
+  "acyclicity": {
+    "evidence_references_future_registry": false,
+    "review_references_its_own_container_commit": false,
+    "registry_references_its_own_container_commit": false,
+    "candidate_freeze_receipt_stored_outside_candidate_tree": true
+  },
+  "verification_layers": {
+    "review_and_source_prerequisites_not_sufficient_for_admission": true,
+    "full_first_live_artifact_recomputation_required": true,
+    "full_registry_review_evidence_binding_required": true,
+    "full_public_layer_a_and_layer_b_required": true,
+    "offline_primitives_return_runtime_authority": false
+  },
+  "authorization_boundary": {
+    "online_execution_authorized": false,
+    "registry_promotion_authorized": false,
+    "provider_registration_authorized": false,
+    "commit_push_merge_authorized": false,
+    "status_closure_authorized": false,
+    "historical_attribution_recovered": false,
+    "model_quality_claim_allowed": false,
+    "provider_calls": 0,
+    "key_loads": 0
+  }
+}

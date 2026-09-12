@@ -29,6 +29,7 @@ from researchops.kimi_k3_handshake import (
     run_kimi_k3_handshake,
     validate_kimi_k3_handshake,
 )
+from tests.historical_integrity_support import historical_integrity_root
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -87,13 +88,17 @@ def _invoke(arguments: list[str]) -> tuple[int, dict]:
 
 
 class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.historical_root = historical_integrity_root()
+
     def test_frozen_plan_contract_and_commitment_validate_offline(self) -> None:
-        result = validate_kimi_k3_handshake(ROOT)
+        result = validate_kimi_k3_handshake(self.historical_root)
         self.assertEqual(result["status"], "valid")
         self.assertEqual(result["plan_commitment_sha256"], PLAN_COMMITMENT_SHA256)
         self.assertEqual(result["network_calls"], 0)
         self.assertFalse(result["key_loaded"])
-        plan = kimi_k3_handshake_plan()
+        plan = kimi_k3_handshake_plan(self.historical_root)
         self.assertEqual(plan["locked_caps"]["network_attempts"], 3)
         self.assertEqual(plan["locked_caps"]["network_calls"], 3)
         self.assertEqual(plan["locked_caps"]["model_requests"], 2)
@@ -113,7 +118,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             plan["component_hashes"]["handshake_runner_source_sha256"],
             handshake_module._sha256_file(
-                ROOT / "src/researchops/kimi_k3_handshake.py"
+                self.historical_root / "src/researchops/kimi_k3_handshake.py"
             ),
         )
         self.assertFalse(kimi_k3_handshake_contract()["cli_api_key_argument_allowed"])
@@ -128,7 +133,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_component_drift_invalidates_plan_before_online_authorization(self) -> None:
-        actual = handshake_module._implementation_component_hashes(ROOT)
+        actual = handshake_module._implementation_component_hashes(self.historical_root)
         drifted = dict(actual)
         drifted["nonstreaming_transport_source_sha256"] = "0" * 64
         with patch.object(
@@ -137,16 +142,32 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
             return_value=drifted,
         ):
             with self.assertRaises(handshake_module.KimiK3HandshakeError) as caught:
-                validate_kimi_k3_handshake(ROOT)
+                validate_kimi_k3_handshake(self.historical_root)
         self.assertEqual(caught.exception.code, "kimi_k3_handshake_plan_drift")
+
+    def test_imported_handshake_sources_and_lock_still_match_the_historical_fixture(self) -> None:
+        # The source functions exercised below have not been changed. Only the
+        # broader project's pyproject metadata moved; v6 binds that current tree.
+        for name, relative in handshake_module._IMPLEMENTATION_COMPONENT_PATHS.items():
+            if name == "pyproject_sha256":
+                continue
+            with self.subTest(component=name):
+                self.assertEqual((ROOT / relative).read_bytes(), (self.historical_root / relative).read_bytes())
+
+    def test_current_tree_rejects_old_handshake_plan_and_has_a_valid_v11_anchor(self) -> None:
+        from researchops_external_closure.execution_current_v4 import verify_current_timed_profile
+        with self.assertRaises(handshake_module.KimiK3HandshakeError) as caught:
+            validate_kimi_k3_handshake(ROOT)
+        self.assertEqual(caught.exception.code, "kimi_k3_handshake_plan_drift")
+        current = verify_current_timed_profile(ROOT, profile="first_live")
+        self.assertTrue(current.source_integrity_only)
+        self.assertFalse(current.online_execution_authorized)
+        self.assertFalse(current.runtime_admission_verified)
 
     def test_offline_ci_binds_zero_call_handshake_validation(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python -m researchops.kimi_k3_handshake_cli", workflow)
-        self.assertIn(
-            'validate | Out-String)',
-            workflow,
-        )
+        self.assertIn("python scripts/verify_pre_v6_integrity.py", workflow)
+        self.assertIn("$kimiHandshake = $history.kimi", workflow)
         self.assertIn(PLAN_COMMITMENT_SHA256, workflow)
         self.assertIn("$kimiHandshake.network_attempts -ne 0", workflow)
         self.assertIn("$kimiHandshake.key_loaded -ne $false", workflow)
@@ -208,7 +229,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as directory:
             artifact_directory = Path(directory)
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id=AUTHORIZATION_ID,
                 authorization_expires_at_utc=EXPIRY,
                 expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -293,7 +314,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as directory:
             artifacts = Path(directory)
             first = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id=AUTHORIZATION_ID,
                 authorization_expires_at_utc=EXPIRY,
                 expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -312,7 +333,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
                 raise AssertionError("consumed authorization must fail before Key load")
 
             second = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id=AUTHORIZATION_ID,
                 authorization_expires_at_utc=EXPIRY,
                 expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -341,7 +362,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as directory:
             artifacts = Path(directory)
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id="kimi-k3-handshake-failure-001",
                 authorization_expires_at_utc=EXPIRY,
                 expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -377,7 +398,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id="kimi-k3-handshake-usage-cap-001",
                 authorization_expires_at_utc=EXPIRY,
                 expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -427,7 +448,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id="kimi-k3-handshake-probe-failure-001",
                 authorization_expires_at_utc=EXPIRY,
                 expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -463,7 +484,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
             artifacts = Path(directory)
             with self.assertRaises(asyncio.CancelledError):
                 await run_kimi_k3_handshake(
-                    project_root=ROOT,
+                    project_root=self.historical_root,
                     authorization_id="kimi-k3-handshake-cancel-001",
                     authorization_expires_at_utc=EXPIRY,
                     expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -495,7 +516,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id="kimi-k3-handshake-expired-after-consume-001",
                 authorization_expires_at_utc=(
                     expiry.isoformat().replace("+00:00", "Z")
@@ -548,7 +569,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id="kimi-k3-handshake-attempt-deadline-001",
                 authorization_expires_at_utc=(
                     expiry.isoformat().replace("+00:00", "Z")
@@ -602,7 +623,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id="kimi-k3-handshake-probe-deadline-001",
                 authorization_expires_at_utc=(
                     expiry.isoformat().replace("+00:00", "Z")
@@ -659,7 +680,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
             InvalidResultExecutor,
         ):
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id="kimi-k3-handshake-tool-count-001",
                 authorization_expires_at_utc=EXPIRY,
                 expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -703,7 +724,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         for index, (override, expected) in enumerate(cases):
             with self.subTest(error=expected), tempfile.TemporaryDirectory() as directory:
                 arguments = {
-                    "project_root": ROOT,
+                    "project_root": self.historical_root,
                     "authorization_id": f"kimi-k3-handshake-gate-{index:03d}",
                     "authorization_expires_at_utc": EXPIRY,
                     "expected_plan_commitment_sha256": PLAN_COMMITMENT_SHA256,
@@ -733,7 +754,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as directory:
             artifacts = Path(directory)
             result = await run_kimi_k3_handshake(
-                project_root=ROOT,
+                project_root=self.historical_root,
                 authorization_id="kimi-k3-handshake-missing-key-001",
                 authorization_expires_at_utc=EXPIRY,
                 expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -771,7 +792,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(error=expected_error), tempfile.TemporaryDirectory() as directory:
                 artifacts = Path(directory)
                 result = await run_kimi_k3_handshake(
-                    project_root=ROOT,
+                    project_root=self.historical_root,
                     authorization_id=f"kimi-k3-handshake-window-{index:03d}",
                     authorization_expires_at_utc=expiry,
                     expected_plan_commitment_sha256=PLAN_COMMITMENT_SHA256,
@@ -796,13 +817,10 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
 
 
 class KimiK3HandshakeCliTests(unittest.TestCase):
-    def test_validate_cli_is_zero_call(self) -> None:
+    def test_current_validate_cli_rejects_historical_plan_drift_without_key(self) -> None:
         exit_code, result = _invoke(["validate"])
-        self.assertEqual(exit_code, 0)
-        self.assertEqual(result["status"], "valid")
-        self.assertEqual(result["plan_commitment_sha256"], PLAN_COMMITMENT_SHA256)
-        self.assertEqual(result["network_calls"], 0)
-        self.assertFalse(result["key_loaded"])
+        self.assertEqual(exit_code, 4)
+        self.assertEqual(result, {"status": "invalid", "error_code": "kimi_k3_handshake_plan_drift"})
 
     def test_run_cli_has_no_key_argument_and_passes_private_loader(self) -> None:
         parser = handshake_cli.build_parser()
