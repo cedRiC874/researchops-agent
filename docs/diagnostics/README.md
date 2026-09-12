@@ -15,8 +15,11 @@ relabeled as synthetic or counted again as new live evidence.
   and counterexamples with their stated scope, not actual campaign outcomes.
 
 Git attributes preserve archive bytes, including files ending in `.before.txt`.
-Original manifest hashes must continue to match after checkout. The tests verify
-those hashes before replay and do not execute archived source as runtime code.
+Original manifest hashes must continue to match after checkout. Historical
+identity checks verify archive hashes without executing archived code. Separate
+offline process tests may execute temporary fixtures built from archived source,
+sometimes with current-source overlays; these tests do not constitute new live
+Provider evidence.
 
 Local full-run logs, operator paths, temporary checkpoints, API credentials,
 email output, private task packages and model response bodies are not part of
