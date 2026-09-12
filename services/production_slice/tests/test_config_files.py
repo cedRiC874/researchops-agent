@@ -24,6 +24,11 @@ def test_compose_and_otel_configs_are_valid_and_pinned() -> None:
         image = compose["services"][name]["image"]
         assert "@sha256:" in image
         assert ":latest" not in image
+    # Use the upstream Quay source without changing the previously pinned image bytes.
+    assert compose["services"]["minio"]["image"] == (
+        "quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z@"
+        "sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0"
+    )
     assert compose["services"]["api"]["ports"] == ["127.0.0.1:8080:8080"]
     assert compose["services"]["api"]["read_only"] is True
     assert compose["services"]["worker"]["read_only"] is True
