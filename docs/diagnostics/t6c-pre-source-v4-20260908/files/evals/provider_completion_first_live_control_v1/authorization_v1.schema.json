@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/first_live_authorization_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "first_live_profile_sha256",
+    "authorization_id_sha256",
+    "execution_environment_id",
+    "timing_plan_commitment_sha256",
+    "authorized_at_utc",
+    "expires_at_utc",
+    "pricing_snapshot_date",
+    "pricing_source_url",
+    "pricing_retrieved_at_utc",
+    "input_price_per_million_cny",
+    "output_price_per_million_cny",
+    "official_pricing_attested_current",
+    "accept_locked_caps",
+    "confirm_online",
+    "scope",
+    "cross_host_execution_allowed",
+    "retries",
+    "resume",
+    "fallback",
+    "provider_registration_allowed",
+    "model_quality_claim_allowed",
+    "closure_claim_allowed",
+    "authorization_binding_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-authorization/1.0"
+    },
+    "first_live_profile_sha256": {
+      "const": "f104f5c4cc483a708313e6cdd984145ee8b231f8e4489d9ff52426ed4b9fdd2a"
+    },
+    "authorization_id_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "execution_environment_id": {
+      "type": "string",
+      "pattern": "^PCEENV-[A-F0-9]{32}$"
+    },
+    "timing_plan_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "authorized_at_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+      "maxLength": 27
+    },
+    "expires_at_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+      "maxLength": 27
+    },
+    "pricing_snapshot_date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "pricing_source_url": {
+      "const": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+    },
+    "pricing_retrieved_at_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+      "maxLength": 27
+    },
+    "input_price_per_million_cny": {
+      "type": "string",
+      "pattern": "^[0-9]{1,10}\\.[0-9]{6}$"
+    },
+    "output_price_per_million_cny": {
+      "type": "string",
+      "pattern": "^[0-9]{1,10}\\.[0-9]{6}$"
+    },
+    "official_pricing_attested_current": {
+      "const": true
+    },
+    "accept_locked_caps": {
+      "const": true
+    },
+    "confirm_online": {
+      "const": true
+    },
+    "scope": {
+      "const": "single_host_fixed_store"
+    },
+    "cross_host_execution_allowed": {
+      "const": false
+    },
+    "retries": {
+      "const": 0
+    },
+    "resume": {
+      "const": false
+    },
+    "fallback": {
+      "const": false
+    },
+    "provider_registration_allowed": {
+      "const": false
+    },
+    "model_quality_claim_allowed": {
+      "const": false
+    },
+    "closure_claim_allowed": {
+      "const": false
+    },
+    "authorization_binding_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/first_live_claim_intent_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "authorization_id_sha256",
+    "execution_environment_id",
+    "authorization_binding_sha256",
+    "authorization_document_sha256",
+    "timing_plan_commitment_sha256",
+    "clock_domain_id",
+    "intended_at_utc",
+    "task_or_key_use_authorized"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-claim-intent/1.0"
+    },
+    "status": {
+      "const": "intent_only_not_reserved"
+    },
+    "authorization_id_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "execution_environment_id": {
+      "type": "string",
+      "pattern": "^PCEENV-[A-F0-9]{32}$"
+    },
+    "authorization_binding_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "authorization_document_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "timing_plan_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "clock_domain_id": {
+      "type": "string",
+      "pattern": "^PCECLOCK-[A-F0-9]{32}$"
+    },
+    "intended_at_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+      "maxLength": 27
+    },
+    "task_or_key_use_authorized": {
+      "const": false
+    }
+  }
+}

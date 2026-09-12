@@ -1,0 +1,28 @@
+{
+  "schema_version": "provider-completion-first-live-audit-contract/1.0",
+  "first_live_timing_profile_sha256": "f104f5c4cc483a708313e6cdd984145ee8b231f8e4489d9ff52426ed4b9fdd2a",
+  "timed_artifact_profile_sha256": "4d5102ef7fffac81f07d62584e2b86463e5f0bc4cd637a994d1e491a9a8afc72",
+  "run_id_source": "plan.binding.validation_run_id",
+  "run_mode": "deepseek_first_live_timed_validation",
+  "run_status": "completed",
+  "run_count": 1,
+  "event_count": 6,
+  "completion_attempt_count": 2,
+  "request_summary_fields": ["plan_commitment_sha256", "execution_binding_sha256"],
+  "request_summary_hash": "researchops.audit.sha256_json",
+  "ordered_heads_protocol": "reuse timed artifact profile domain and final_chain_heads tag with the single validation run",
+  "rules": [
+    "Read bounded single-link SQLite bytes, scan before opening, and require an independent expected database hash.",
+    "Use the existing pinned database schema and immutable connection-image checks; reject WAL, SHM and journal sidecars before and after reading.",
+    "Require exactly one completed validation run, no dataset or terminal error, and empty model_calls, tool_calls, tool_attempts and approval_decisions tables.",
+    "Require exactly run_started, start/accepted-terminal for fixed scenario one, start/accepted-terminal for fixed scenario two, run_status_changed, in that order.",
+    "Validate lifecycle rows, provider actor, actual hash chain, both v1.2 terminal references, and record/usage hashes from the same terminal rows.",
+    "Derive the record set and timing projection from actual rows; apply the shared first-live timing and ordered shape checks without accepting caller projections.",
+    "Recheck database bytes after verification. A valid local hash chain is not independent proof of real Provider or clock provenance.",
+    "This completed-pair profile cannot validate partial or quarantined outcomes and never upgrades old first-live evidence. Runtime/source/control/store/review/publication admission remains separate."
+  ],
+  "provider_calls_authorized": false,
+  "runtime_authority_granted": false,
+  "first_live_success_verified": false,
+  "current_closure_claim_allowed": false
+}

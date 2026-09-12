@@ -1,0 +1,360 @@
+{
+  "schema_version": "provider-completion-timed-closure-contract/1.0",
+  "status": "locally_frozen_offline_not_implemented_not_authorized",
+  "fixed_bindings": [
+    {
+      "path": "evals/provider_completion_external_preregistration_v1/closure_evidence_contract_v1.json",
+      "bytes": 39575,
+      "sha256": "2c904737b2776ac1df2358df86e320e6421c6eed17b48ab97d49f7512d37e439"
+    },
+    {
+      "path": "evals/provider_completion_external_preregistration_v1/schemas/closure_receipt_v1.schema.json",
+      "bytes": 43178,
+      "sha256": "00888d1a8efea40adb31bcbb9a3cfd53341d66c131de35e8c7e4cee95c5f3887"
+    },
+    {
+      "path": "evals/provider_completion_external_preregistration_v1/schemas/external_ledger_entry_v1.schema.json",
+      "bytes": 4948,
+      "sha256": "ca144941633ada0ec04b438aa49b6519dceab2a23c77324913733c858993343d"
+    },
+    {
+      "path": "evals/provider_completion_external_preregistration_v1/schemas/external_observation_bundle_v1.schema.json",
+      "bytes": 6904,
+      "sha256": "059ca8eea5cfbc8ea658b3d552ab2389a51dce701c1e58a8367032935f599c17"
+    },
+    {
+      "path": "evals/provider_completion_external_preregistration_v1/schemas/postrun_attested_facts_v1.schema.json",
+      "bytes": 21587,
+      "sha256": "37b608aa99ede4416d542fd8e31e1d32b1e89467a4373cf0d351136644e7ba95"
+    },
+    {
+      "path": "evals/provider_completion_timing_v1/timing_contract_v1.json",
+      "bytes": 10171,
+      "sha256": "7490576433693a45520e82bb161ee371d5a3087fa65975f5a1ac7418f6b13c6f"
+    },
+    {
+      "path": "evals/provider_completion_timing_artifacts_v1/contract_v1.json",
+      "bytes": 3611,
+      "sha256": "4d5102ef7fffac81f07d62584e2b86463e5f0bc4cd637a994d1e491a9a8afc72"
+    },
+    {
+      "path": "evals/provider_completion_timed_ledger_v1/contract_v1.json",
+      "bytes": 2717,
+      "sha256": "5acc5b2d7d018202a5af42a736d178fa4e0cdc74b25a60a055d2883bc93b7002"
+    },
+    {
+      "path": "evals/provider_completion_execution_scope_v1/contract_v1.json",
+      "bytes": 2042,
+      "sha256": "f200c361792fe87772c4314a6ce99d7c7340c61913c7440ee39a6e74f3b328cb"
+    },
+    {
+      "path": "evals/provider_completion_execution_binding_v4/execution_component_recipe_v4.json",
+      "bytes": 18216,
+      "sha256": "d07be82febc00009b03a63541c3a86d3dea81f9bd00983c157e41f28eeaded08"
+    },
+    {
+      "path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_implementation_v5.json",
+      "bytes": 4773,
+      "sha256": "09fab825fef91286576ef486f2860b47a9ff01efeba9c5d93dff8f0c3145d315"
+    }
+  ],
+  "schema_bindings": [
+    {
+      "path": "evals/provider_completion_timed_closure_v1/closure_ledger_entry_v2.schema.json",
+      "bytes": 6583,
+      "sha256": "625ad354faff762e553f5207958791c418034c61e2fed0f5c7b6960500383321"
+    },
+    {
+      "path": "evals/provider_completion_timed_closure_v1/closure_observation_v2.schema.json",
+      "bytes": 9319,
+      "sha256": "935873267b248cc2f658863096c132fef3ba9f4b53a3e63eddc5052c17ebb7f5"
+    },
+    {
+      "path": "evals/provider_completion_timed_closure_v1/closure_receipt_v2.schema.json",
+      "bytes": 76222,
+      "sha256": "25b919dd9a8993e167d659854521b53d4e2f9a44e52d3ae3fb63c2ec4ecd9f79"
+    },
+    {
+      "path": "evals/provider_completion_timed_closure_v1/postrun_facts_v2.schema.json",
+      "bytes": 35682,
+      "sha256": "45dcbdcad56320e5289f82016e936540c604da422a85bf212d8309837bcc7c9e"
+    }
+  ],
+  "entrypoints": {
+    "layer_a": "evaluate_timed_closure_bundle",
+    "layer_b": "verify_closed_timed_campaign",
+    "raw_inputs": [
+      "v3_pre_receipt_documents",
+      "v1_pre_execution_observation",
+      "v2_postrun_observation",
+      "timing_plan_bytes",
+      "v5_first_live_v4_source_admission_inputs",
+      "artifact_directory_or_none",
+      "v2_postrun_facts"
+    ],
+    "additional_layer_b_inputs": [
+      "v2_signed_closure_receipt",
+      "v2_final_ledger_entry",
+      "v2_final_observation"
+    ],
+    "caller_verifier_callbacks_or_success_objects_allowed": false,
+    "legacy_entrypoints_unchanged": true
+  },
+  "versions": {
+    "preregistration": 3,
+    "source_recipe": 4,
+    "first_live_source_plan": 11,
+    "campaign_source_plan": 12,
+    "first_live_implementation": 5,
+    "terminal_event": "provider-completion-ledger-event/1.2",
+    "receipt": "provider-completion-closure-receipt/2.0",
+    "final_ledger_entry": "provider-completion-timed-closure-ledger-entry/2.0",
+    "observation": "provider-completion-timed-closure-observation/2.0",
+    "postrun_facts": "provider-completion-postrun-attested-facts/2.0"
+  },
+  "limits": {
+    "contract_bytes": 32768,
+    "schema_bytes": 131072,
+    "document_bytes": 2000000,
+    "artifact_file_bytes": 100000000,
+    "artifact_total_bytes": 100000000,
+    "artifact_files": 7,
+    "maximum_cases": 100,
+    "maximum_attempts": 800
+  },
+  "domains": {
+    "receipt": "researchops-provider-completion-timed-closure-receipt-v2",
+    "receipt_id": "researchops-provider-completion-timed-closure-receipt-id-v2",
+    "reasons": "researchops-provider-completion-timed-closure-reasons-v2",
+    "signature": "researchops-provider-completion-timed-closure-signature-v2",
+    "ledger_entry": "researchops-provider-completion-timed-closure-ledger-entry-v2",
+    "ledger_head": "researchops-provider-completion-timed-closure-ledger-head-v2"
+  },
+  "byte_protocol": {
+    "canonical_json": "existing strict UTF8 canonical JSON, duplicate/nonfinite/float numeric values rejected for these documents",
+    "receipt_body_omissions": [
+      "document_sha256",
+      "signatures"
+    ],
+    "receipt_hash": "SHA256(UTF8(receipt domain) || NUL || canonical receipt body); no nested timing omission",
+    "reasons_hash": "SHA256(UTF8(reasons domain) || NUL || canonical ordered deduplicated reason array)",
+    "receipt_id": "PCECLOSE- plus uppercase first 32 hex characters of SHA256(UTF8(receipt_id domain) || NUL || canonical {campaign_id, authorization_grant_sha256, authorization_consumption_entry_sha256})",
+    "signature_message": "UTF8(signature domain) || NUL || ASCII(document_type) || NUL || ASCII(role) || NUL || ASCII(key_id) || NUL || raw32(signed_sha256)",
+    "ledger_entry_omissions": [
+      "entry_sha256",
+      "resulting_head_sha256",
+      "signatures"
+    ],
+    "ledger_entry_hash": "SHA256(UTF8(ledger_entry domain) || NUL || ASCII(ledger_id) || NUL || uint64be(sequence) || raw32(previous_head_sha256) || canonical entry body)",
+    "ledger_head_hash": "SHA256(UTF8(ledger_head domain) || NUL || raw32(previous_head_sha256) || raw32(entry_sha256))",
+    "all_expected_contract_hash_fields_equal_this_exact_contract_file_sha256": true,
+    "absolute_end_regex_required": true,
+    "signature_base64_must_be_canonical": true
+  },
+  "signers": {
+    "receipt": "task_custodian",
+    "final_ledger_entry": "ledger_witness",
+    "first_live_review": "freeze_authority",
+    "new_roles_added": false,
+    "public_keys_from_verified_existing_trust_manifest_only": true,
+    "key_role_validity_revocation_and_exact_signer_sets_required": true,
+    "previous_v1_signatures_cannot_authorize_v2_receipt_or_final_entry": true
+  },
+  "artifact_write_order": [
+    "phase6_audit.sqlite3",
+    "phase6_audit_index.json",
+    "phase6_completion_telemetry.json",
+    "completion_timing_plan.json",
+    "completion_timing_evidence.json",
+    "completion_closure_manifest.json",
+    "completion_timing_publication.json"
+  ],
+  "timed_write_stages": [
+    "not_started",
+    "audit_database_written",
+    "audit_index_written",
+    "completion_telemetry_written",
+    "timing_plan_written",
+    "timing_evidence_written",
+    "manifest_written",
+    "timing_publication_written"
+  ],
+  "core_stage_and_error_projection": {
+    "not_started": [
+      "not_started",
+      "pce_artifact_not_started_failed"
+    ],
+    "audit_database_written": [
+      "audit_database_written",
+      "pce_artifact_audit_index_failed"
+    ],
+    "audit_index_written": [
+      "audit_index_written",
+      "pce_artifact_completion_telemetry_failed"
+    ],
+    "completion_telemetry_written": [
+      "completion_telemetry_written",
+      "pce_artifact_timing_plan_failed"
+    ],
+    "timing_plan_written": [
+      "completion_telemetry_written",
+      "pce_artifact_timing_evidence_failed"
+    ],
+    "timing_evidence_written": [
+      "completion_telemetry_written",
+      "pce_artifact_manifest_failed"
+    ],
+    "manifest_written": [
+      "manifest_written",
+      "pce_artifact_timing_publication_failed"
+    ],
+    "timing_publication_written": [
+      "manifest_written",
+      null
+    ]
+  },
+  "partial_rules": [
+    "The complete seven-file manifest/publication format is unchanged and validated through its pinned profile.",
+    "A normal partial directory must contain an exact initial prefix of artifact_write_order, with no gaps, extra files or sidecars; the last attempted file may be empty or partial.",
+    "timed_last_completed_write_stage is an external postrun attestation, not inferred from file existence. Present prefix length must equal its completed-stage index or that index plus one, capped at seven.",
+    "Map the new completed write stage and file-specific artifact error into the v2 facts/receipt using core_stage_and_error_projection; do not describe a timing-plan write failure as a manifest write failure.",
+    "manifestless_failure means no completed usable manifest, not that no partial manifest path can exist. A completed manifest with missing/invalid publication is manifest_present_invalid.",
+    "A normal complete bundle requires all seven files and independent structural/hash/timing verification. Partial or invalid bundles never authorize closure.",
+    "Require private/public privacy and fresh-database/normative-mutation attestations before normal artifact inspection; scan actual bytes before parsing or publishing any hash.",
+    "Only safely inspected normal-prefix bytes may populate partial_artifacts; no unavailable file, inferred zero count or unverified total may be invented."
+  ],
+  "layer_a_rules": [
+    "Verify exact v3 signed pre-execution graph and its separate v1 pre-execution observations; derive its as-of from the independently supplied consumed-anchor observation.",
+    "Require postrun/final v2 observation history to match the verified pre-execution observations canonically; wrapper version/mode differences are explicit, never a re-signed document downgrade.",
+    "Derive candidate/source/runner/registry/model/budget/case/run and manifest expectations from signed documents and out-of-band observations, never from archive claims.",
+    "For normal evidence verify v4 historical source, v5 first-live protocol/artifact/review, complete first-live/campaign src/lock/pyproject equivalence, and registry admission before eligibility.",
+    "Verify every actual audit chain using the original v1.2 bytes and hashes. Explicitly accept only the fixed timing extension; do not rewrite events to v1.1 or repair their hashes.",
+    "Recompute all inherited record/denominator/SDK usage/index/send/tool/input-commitment/budget/UTC chronology predicates on these same verified rows.",
+    "Validate all timing segments, record/usage references, clock domains, complete denominators, monotonic request/phase/cleanup bounds, no overlap and publication linkage using the pinned timing contract.",
+    "The contract's timing conditions are additional conjuncts, not a replacement for inherited safety/usage/budget/private-canary conditions.",
+    "evidence_valid denotes structural/semantic validity, not eligibility; valid incomplete evidence yields false eligibility and reasons.",
+    "Do not sign, mint runtime bindings/claims, read real Keys, perform Provider/network calls, rescore or backfill historical data."
+  ],
+  "layer_b_rules": [
+    "Validate the new receipt's schema, ID, body/reasons hashes, exact task_custodian signature and temporal/role validity.",
+    "Validate the v2 final closure_evidence_anchored entry using the new entry/head/signature domains; its sequence/previous head continue the verified v1 consumption chain exactly.",
+    "The final entry binds the entire new receipt hash; compare every independently supplied receipt and final-anchor observation plus all existing chronology constraints.",
+    "For normal evidence invoke the exact timed layer A once on raw inputs; require byte-equal unsigned receipt projection including every timing field before any true closure flag.",
+    "No boolean, validated-looking summary, self-reported source identity, legacy receipt or caller callback can replace recomputation."
+  ],
+  "quarantine_rules": [
+    "For sensitive_quarantined or privacy_unverified_quarantined, inspect no artifact directory, timing evidence/publication file or private postrun data; layer B does not call layer A.",
+    "Validate only the signed public failure receipt, v3 pre-history and final witness/observations; a failure attestation is not execution or valid artifact evidence.",
+    "All artifact hashes and partial_artifacts are null/empty as specified; timing.status is quarantined, gate false, file hashes/clock domain/duration null.",
+    "Never promote quarantine to evidence_valid or closure true, even when signatures and witness are valid."
+  ],
+  "reason_order": [
+    "planned_cases_not_finalized",
+    "no_model_attempts_observed",
+    "no_provider_responses_observed",
+    "local_terminal_outcome_not_succeeded",
+    "task_not_released",
+    "provider_key_not_loaded",
+    "task_bundle_opening_unverified",
+    "leak_canary_injection_unverified",
+    "raw_response_cleanup_incomplete",
+    "post_request_cleanup_incomplete",
+    "provider_key_reference_not_released",
+    "planned_case_without_accepted_response",
+    "response_telemetry_rejected",
+    "http_error_response_observed",
+    "request_failed_without_response",
+    "model_request_cancelled",
+    "model_request_outcome_unknown",
+    "sdk_raw_response_count_mismatched",
+    "sdk_raw_response_count_unavailable",
+    "sdk_usage_request_count_mismatched",
+    "sdk_usage_request_count_unavailable",
+    "completion_state_projection_mismatch",
+    "completion_record_denominator_mismatch",
+    "completion_state_unmapped",
+    "completion_state_not_provided",
+    "completion_state_not_persisted",
+    "completion_state_unrecognized",
+    "truncation_signal_token_cap_fallback",
+    "truncation_signal_none",
+    "truncation_signal_unrecognized",
+    "audit_chain_or_export_invalid",
+    "completion_telemetry_ledger_write_failed",
+    "model_request_started_count_mismatch",
+    "model_request_terminal_count_mismatch",
+    "transport_send_count_mismatch",
+    "transport_retry_or_cap_violation",
+    "accepted_response_event_count_mismatch",
+    "rejected_response_event_count_mismatch",
+    "legacy_response_usage_event_present",
+    "ledger_event_commitment_missing",
+    "ledger_event_commitment_mismatch",
+    "ledger_event_payload_mismatch",
+    "record_usage_incomplete",
+    "record_usage_index_coverage_mismatch",
+    "observed_input_token_cap_exceeded",
+    "observed_output_token_cap_exceeded",
+    "observed_cost_stop_exceeded",
+    "timing_evidence_unavailable",
+    "timing_evidence_invalid",
+    "timing_constraints_incomplete",
+    "timing_publication_unverified"
+  ],
+  "additional_reason_triggers": {
+    "timing_evidence_unavailable": "timing.status is unavailable or quarantined",
+    "timing_evidence_invalid": "timing.status is invalid",
+    "timing_constraints_incomplete": "timing.status is incomplete",
+    "timing_publication_unverified": "publication_unverified appears in timing.incomplete_reasons"
+  },
+  "timing_status_rules": {
+    "verified": "same-row timing and all numeric/coverage/publication constraints complete; error null, reasons empty, both file hashes/domain/duration present",
+    "incomplete": "well-formed linked evidence has missing/unsuccessful observations; error null, nonempty fixed incomplete reasons, gate false",
+    "invalid": "structural/hash/binding/order/duration violation; fixed error non-null, evidence_valid false, gate false; no unvalidated phase duration",
+    "unavailable": "no safely available timing evidence; gate false and artifact timing observations null, not zero",
+    "quarantined": "policy prohibits artifact inspection; not a claim that files do not exist"
+  },
+  "timing_error_codes": [
+    "timing_contract_invalid",
+    "timing_schema_invalid",
+    "timing_commitment_mismatch",
+    "timing_binding_mismatch",
+    "timing_projection_mismatch",
+    "timing_clock_domain_mismatch",
+    "timing_index_invalid",
+    "timing_clock_order_invalid",
+    "timing_lifetime_invalid",
+    "timing_request_timeout_exceeded",
+    "timing_phase_timeout_exceeded",
+    "timing_concurrency_overlap",
+    "timing_sealing_timeout_exceeded",
+    "timing_artifact_invalid"
+  ],
+  "timing_incomplete_reasons": [
+    "attempt_not_successful",
+    "missing_attempt_offsets",
+    "missing_phase_offsets",
+    "phase_cleanup_incomplete",
+    "planned_case_without_accepted_response",
+    "not_live_provenance",
+    "publication_unverified"
+  ],
+  "error_precedence": "existing privacy/origin/source/structure/chain/projection/budget checks before timing checks; primary rejection order is not causal attribution",
+  "eligibility_rule": "normal complete bundle AND all inherited recomputed closure predicates AND verified v4/v5 admission AND timing.status=verified AND timing.gate_complete=true AND empty ordered reasons; true closure is returned only after valid final witness and layer-B recomputation",
+  "failure_gate_rule": "any unknown/missing/unmapped completion state, fallback source, empty case, pending/unknown attempt, privacy failure, drift, budget violation or missing/invalid/overlapping timing forbids closure",
+  "boundaries": {
+    "clock_measurement_independently_attested": false,
+    "physical_remote_generation_stop_proved": false,
+    "kernel_preemption_proved": false,
+    "local_claim_receipt_alone_proves_winning_ownership": false,
+    "source_identity_alone_proves_execution": false,
+    "verifier_mints_runtime_authority": false,
+    "provider_registration_authorized": false,
+    "model_quality_claim_allowed": false,
+    "online_execution_authorized": false,
+    "key_use_authorized": false,
+    "historical_backfill_allowed": false,
+    "locked_depth60_score": "20/60"
+  },
+  "implementation_state": "schema_and_byte_contract_only_not_layer_a_or_b_implementation"
+}

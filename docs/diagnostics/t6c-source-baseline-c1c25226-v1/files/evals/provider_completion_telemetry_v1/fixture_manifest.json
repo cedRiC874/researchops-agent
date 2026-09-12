@@ -1,0 +1,375 @@
+{
+  "claim_boundary": {
+    "evaluation_run": false,
+    "mapping_is_adapter_implementation": false,
+    "model_quality_claim_allowed": false,
+    "provider_registration_allowed": false,
+    "run_ledger_written": false,
+    "task_pass_computed": false
+  },
+  "fixtures": [
+    {
+      "bytes": 1832,
+      "derivation_kind": null,
+      "file": "anthropic_completed_20260902.json",
+      "fixture_id": "anthropic_completed_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "completed",
+      "sha256": "372d70207e7344d8de19f2cf6b3ed22d77f9b4b08fa4158ced94429bf2f7336c",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2183,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_conflict_end_turn_with_stop_sequence_20260902.json",
+      "fixture_id": "anthropic_conflict_end_turn_with_stop_sequence_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "conflict_end_turn_with_stop_sequence",
+      "sha256": "b965798988d6e0a123b9bde81102de2dc10cfc2067fe02f0a054506dcfd9cccb",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2256,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_conflict_missing_reason_with_stop_sequence_20260902.json",
+      "fixture_id": "anthropic_conflict_missing_reason_with_stop_sequence_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "conflict_missing_reason_with_stop_sequence",
+      "sha256": "e09cf2936f97eec04e46f362036adac50a6870810802ff6d7b8ff60a5d9b6abc",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2127,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_conflict_non_string_stop_sequence_20260902.json",
+      "fixture_id": "anthropic_conflict_non_string_stop_sequence_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "conflict_non_string_stop_sequence",
+      "sha256": "3838362a357b0cf888f46a1b6ad1fc1626cc96f906510e719dd92443e042f21b",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2299,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_conflict_null_reason_with_stop_sequence_20260902.json",
+      "fixture_id": "anthropic_conflict_null_reason_with_stop_sequence_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "conflict_null_reason_with_stop_sequence",
+      "sha256": "2bdddcb5bad98b2bbe8fbdc1579850c2e4f1d81941e44ac728df8b44f76ed41b",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2200,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_conflict_stop_sequence_missing_value_20260902.json",
+      "fixture_id": "anthropic_conflict_stop_sequence_missing_value_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "conflict_stop_sequence_missing_value",
+      "sha256": "cbbf04c7d339fd9014eab5767ff0e1a0e5c166e91113ed0777c722d5d1bb9602",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2133,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_conflict_stop_sequence_without_value_20260902.json",
+      "fixture_id": "anthropic_conflict_stop_sequence_without_value_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "conflict_stop_sequence_without_value",
+      "sha256": "8327bae8c187e328879456ce8af0ac71cd835c4aa1257aeb7d625514e003ef71",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 1842,
+      "derivation_kind": null,
+      "file": "anthropic_length_capped_20260902.json",
+      "fixture_id": "anthropic_length_capped_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "length_capped",
+      "sha256": "4a6d7e438f3025ad46d7c89b978d94b41737f2aef08ae06a32caf3fb03fdf606",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2062,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_missing_fields_20260902.json",
+      "fixture_id": "anthropic_missing_fields_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "missing_fields",
+      "sha256": "8690b69083bc5a5db195c343373a31f5e563d2dceae65006ea2111f9060ecf45",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2291,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_stop_sequence_with_value_20260902.json",
+      "fixture_id": "anthropic_stop_sequence_with_value_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "stop_sequence_with_value",
+      "sha256": "425ba29073a6e72d1e4d5676450bf497ad2c988325e2763b6904967cecc42da0",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2156,
+      "derivation_kind": "synthetic_mutation",
+      "file": "anthropic_unknown_value_20260902.json",
+      "fixture_id": "anthropic_unknown_value_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "anthropic",
+      "scenario": "unknown_value",
+      "sha256": "a2e9fdd24cb662e25672b6b883421c3490091ec48d301d3eeee5b098ab18617f",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 1679,
+      "derivation_kind": null,
+      "file": "deepseek_completed_20260902.json",
+      "fixture_id": "deepseek_completed_20260902",
+      "provenance_tier": "live_capture",
+      "provider_id": "deepseek",
+      "scenario": "completed",
+      "sha256": "815deb3b00ca66dcd0afbde76031bab6261ebe0c3b7290cabddfcb2d03ec3b81",
+      "unverified_shape": false
+    },
+    {
+      "bytes": 1687,
+      "derivation_kind": null,
+      "file": "deepseek_length_capped_20260902.json",
+      "fixture_id": "deepseek_length_capped_20260902",
+      "provenance_tier": "live_capture",
+      "provider_id": "deepseek",
+      "scenario": "length_capped",
+      "sha256": "962b1c41db03245caa1089fe73c9ce9a2f5c526c35ee6a756024fc7746e2fd79",
+      "unverified_shape": false
+    },
+    {
+      "bytes": 1896,
+      "derivation_kind": "synthetic_mutation",
+      "file": "deepseek_missing_fields_20260902.json",
+      "fixture_id": "deepseek_missing_fields_20260902",
+      "provenance_tier": "live_capture",
+      "provider_id": "deepseek",
+      "scenario": "missing_fields",
+      "sha256": "99c2b03c316556e0a31c77ac361691ba92271a205dfe1f391535e55c1667222b",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2036,
+      "derivation_kind": "synthetic_mutation",
+      "file": "deepseek_unknown_value_20260902.json",
+      "fixture_id": "deepseek_unknown_value_20260902",
+      "provenance_tier": "live_capture",
+      "provider_id": "deepseek",
+      "scenario": "unknown_value",
+      "sha256": "15aa342f00a8b9b3ad32f473689b4e86a63070100fe1328d5c15b91d87051698",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 1644,
+      "derivation_kind": null,
+      "file": "kimi_completed_20260902.json",
+      "fixture_id": "kimi_completed_20260902",
+      "provenance_tier": "doc_prose",
+      "provider_id": "moonshot_kimi",
+      "scenario": "completed",
+      "sha256": "dcae8db2472836f051592534c5776c6d57af340c79143d7a2f90edac331be36c",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 1654,
+      "derivation_kind": null,
+      "file": "kimi_length_capped_20260902.json",
+      "fixture_id": "kimi_length_capped_20260902",
+      "provenance_tier": "doc_prose",
+      "provider_id": "moonshot_kimi",
+      "scenario": "length_capped",
+      "sha256": "24e75f4b417a7a41d52a51e6dfc7dc8ae68081cca54d20675ab144ea11a4a5e8",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 1829,
+      "derivation_kind": "synthetic_mutation",
+      "file": "kimi_missing_fields_20260902.json",
+      "fixture_id": "kimi_missing_fields_20260902",
+      "provenance_tier": "doc_prose",
+      "provider_id": "moonshot_kimi",
+      "scenario": "missing_fields",
+      "sha256": "931ed6eb394ddb2af8001d259384f77dedbf26b83fd17a25af610715fa73621f",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 1969,
+      "derivation_kind": "synthetic_mutation",
+      "file": "kimi_unknown_value_20260902.json",
+      "fixture_id": "kimi_unknown_value_20260902",
+      "provenance_tier": "doc_prose",
+      "provider_id": "moonshot_kimi",
+      "scenario": "unknown_value",
+      "sha256": "7fd8d7158cd046e45dae6bb2ff447c6995d2f77ddd650ad363f76ce4e48ce76f",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 1802,
+      "derivation_kind": null,
+      "file": "openai_completed_20260902.json",
+      "fixture_id": "openai_completed_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "completed",
+      "sha256": "5eb59d3355333b8e1f4f80e10bcf3e8571c1bc97efa2b295c8c3ae8a580df677",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2079,
+      "derivation_kind": "synthetic_mutation",
+      "file": "openai_conflict_missing_status_non_null_details_20260902.json",
+      "fixture_id": "openai_conflict_missing_status_non_null_details_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "conflict_missing_status_non_null_details",
+      "sha256": "1f831ef1e184eb2a771bef90e4e8bd6086a97e1b2c21fc63d1e48f36a5389b62",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2184,
+      "derivation_kind": "synthetic_mutation",
+      "file": "openai_conflict_non_object_incomplete_details_20260902.json",
+      "fixture_id": "openai_conflict_non_object_incomplete_details_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "conflict_non_object_incomplete_details",
+      "sha256": "6e3c79abe955d4191f81b4a9196807820df061d5091c4dbd5680f52c72c7e7eb",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2117,
+      "derivation_kind": "synthetic_mutation",
+      "file": "openai_conflict_null_status_non_null_details_20260902.json",
+      "fixture_id": "openai_conflict_null_status_non_null_details_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "conflict_null_status_non_null_details",
+      "sha256": "2dec2d251e1e10124f6c1d0a3b62e34d6e176e211fb9a971702e016e747187bb",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 1850,
+      "derivation_kind": null,
+      "file": "openai_length_capped_20260902.json",
+      "fixture_id": "openai_length_capped_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "length_capped",
+      "sha256": "a9b8e853cedc61165fc9bb98ff431a75bafd5941d24579d666cc240e300b6c49",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2028,
+      "derivation_kind": "synthetic_mutation",
+      "file": "openai_missing_fields_20260902.json",
+      "fixture_id": "openai_missing_fields_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "missing_fields",
+      "sha256": "df71b2c5ec93fb69cd48b2cbf43e61828bea54a59ffc411fa36e67ff1e928e37",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2010,
+      "derivation_kind": "synthetic_mutation",
+      "file": "openai_missing_status_null_details_20260902.json",
+      "fixture_id": "openai_missing_status_null_details_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "missing_status_null_details",
+      "sha256": "034e7f4069a39e277069107d9b7347fafde4883bf1459859b25f8f29937012e8",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2121,
+      "derivation_kind": "synthetic_mutation",
+      "file": "openai_null_status_missing_details_20260902.json",
+      "fixture_id": "openai_null_status_missing_details_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "null_status_missing_details",
+      "sha256": "6ef7eefb7a108b538671f4b2c6afd72d68859c2227d62814c5bd780afb277d67",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2048,
+      "derivation_kind": "synthetic_mutation",
+      "file": "openai_null_status_null_details_20260902.json",
+      "fixture_id": "openai_null_status_null_details_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "null_status_null_details",
+      "sha256": "da172fa149ee83dbbe8ec7daa150a28012eb9fb8d06c7ef2b617de7ea40f6104",
+      "unverified_shape": true
+    },
+    {
+      "bytes": 2117,
+      "derivation_kind": "synthetic_mutation",
+      "file": "openai_unknown_value_20260902.json",
+      "fixture_id": "openai_unknown_value_20260902",
+      "provenance_tier": "official_schema",
+      "provider_id": "openai",
+      "scenario": "unknown_value",
+      "sha256": "f961021c0701aba77a3821cb8f85caeffc864cccff74e505904490dc75eb677d",
+      "unverified_shape": true
+    }
+  ],
+  "generated_on": "2026-09-02",
+  "mapping": {
+    "bytes": 48071,
+    "file": "provider_completion_mapping_v1.json",
+    "sha256": "2a3e4c6a81fd76d9e20542091fbffdd4c6137d2e730b626117446109658b946d"
+  },
+  "rule_coverage": {
+    "bytes": 7797,
+    "file": "rule_coverage_v1.json",
+    "sha256": "f336b4b32f966d79d521ef36e0b3e7b5589558cb96d89e0b533bba4449e29342"
+  },
+  "privacy_review": {
+    "absolute_paths_absent": true,
+    "api_keys_absent": true,
+    "content_fields_absent": true,
+    "duplicate_keys_rejected": true,
+    "emails_absent": true,
+    "manual_review_completed": true,
+    "manual_review_finding_count": 0,
+    "manual_review_required_before_commit": true,
+    "manual_review_scope": "all_29_fixtures",
+    "org_account_identifiers_absent": true,
+    "raw_request_ids_absent": true,
+    "strict_json_parsed": true,
+    "system_prompt_absent": true,
+    "tool_arguments_absent": true
+  },
+  "schema_version": "provider-completion-fixture-manifest/1.0",
+  "status": "valid",
+  "summary": {
+    "adapter_changes": 0,
+    "deepseek_live_network_calls": 2,
+    "fixture_count": 29,
+    "live_attribution_fixture_count": 2,
+    "mapper_implementation_included": true,
+    "other_provider_live_network_calls": 0,
+    "provenance_counts": {
+      "doc_prose": 4,
+      "live_capture": 4,
+      "official_schema": 21
+    },
+    "provider_count": 4,
+    "unverified_shape_count": 27
+  }
+}

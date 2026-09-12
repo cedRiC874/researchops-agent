@@ -1,0 +1,57 @@
+{
+  "fixture_schema_version": "provider-completion-fixture/1.0",
+  "fixture_id": "kimi_length_capped_20260902",
+  "provider_id": "moonshot_kimi",
+  "api_surface": "openai_compatible_chat_completions",
+  "scenario": "length_capped",
+  "provenance": {
+    "tier": "doc_prose",
+    "as_of_date": "2026-09-02",
+    "unverified_shape": true,
+    "live_validation": "no_successful_handshake",
+    "source": {
+      "kind": "doc_prose",
+      "official_reference": "https://platform.kimi.com/docs/api/chat",
+      "model": "kimi-k3",
+      "documented_finish_reasons": [
+        "stop",
+        "length",
+        "tool_calls"
+      ],
+      "documented_usage_fields": [
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens",
+        "cached_tokens"
+      ],
+      "successful_handshake_observed": false,
+      "existing_status": "no_successful_handshake",
+      "openai_style_compatibility_complete": false
+    }
+  },
+  "derivation": null,
+  "response_projection": {
+    "finish_reason": "length",
+    "usage": {
+      "prompt_tokens": 1,
+      "completion_tokens": 1,
+      "total_tokens": 2,
+      "cached_tokens": 0
+    },
+    "http_status": 200
+  },
+  "capture_boundary": {
+    "telemetry_contract_development_only": true,
+    "evaluation_task": false,
+    "run_ledger_written": false,
+    "task_pass_computed": false,
+    "model_quality_claim_allowed": false,
+    "content_omitted": true,
+    "reasoning_content_omitted": true,
+    "tool_call_arguments_omitted": true,
+    "system_prompt_omitted": true,
+    "raw_response_persisted": false,
+    "api_key_persisted": false,
+    "private_or_non_synthetic_evaluation_data": false
+  }
+}

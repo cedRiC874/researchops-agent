@@ -1,0 +1,245 @@
+{
+  "schema_version": "provider-completion-first-live-validation/1.0",
+  "contract_id": "deepseek-responses-adapter-first-live-validation-v1",
+  "status": "design_only_offline_not_executable",
+  "documented_on": "2026-09-04",
+  "contract_commitment": {
+    "algorithm": "sha256-domain-separated-canonical-json-v1",
+    "domain": "researchops-provider-completion-first-live-validation-v1",
+    "payload": "whole_contract_with_contract_commitment.sha256_omitted",
+    "sha256": "ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc"
+  },
+  "implementation_base": {
+    "repository": "cedRiC874/researchops-agent",
+    "main_commit": "20ad1da04aac9874f87d48ebe1ef2df1daa6245c",
+    "main_tree": "c4bd9afbed0906d3dfc23f42d3590f1af9643a42",
+    "role": "design_base_not_execution_authority",
+    "execution_commit": null,
+    "execution_requires_new_committed_successor": true
+  },
+  "purpose": {
+    "validation_kind": "adapter_path_completion_shape_only",
+    "is_evaluation": false,
+    "produces_task_pass": false,
+    "enters_model_quality_ledger": false,
+    "closes_status_defect": false,
+    "validates_direct_probe_equivalence": "two_locked_completion_projection_shapes_only"
+  },
+  "provider_binding": {
+    "provider_id": "deepseek",
+    "model_id": "deepseek-v4-flash",
+    "api_origin": "https://api.deepseek.com",
+    "api_surface": "responses",
+    "transport_id": "openai_compatible_responses",
+    "adapter_version": "deepseek-responses-adapter/1.0",
+    "model_alias_is_mutable": true,
+    "exact_backend_version_claim_allowed": false,
+    "execution_path": "DeepSeekProvider.open_model -> OpenAIResponsesModel._fetch_response",
+    "stream": false,
+    "tools": false,
+    "fallback": false
+  },
+  "frozen_inputs": {
+    "public_synthetic_only": true,
+    "scenarios": [
+      {
+        "scenario_id": "adapter-completed-001",
+        "input": "Reply with exactly the lowercase token ok and nothing else.",
+        "max_output_tokens": 256,
+        "expected_normalized_completion_state": "completed"
+      },
+      {
+        "scenario_id": "adapter-length-capped-001",
+        "input": "Write the lowercase token ok 200 times, separated by single spaces, and nothing else.",
+        "max_output_tokens": 16,
+        "expected_normalized_completion_state": "incomplete_length"
+      }
+    ],
+    "scenario_count": 2,
+    "scenario_order_locked": true,
+    "prompt_or_scenario_adjustment_after_lock_allowed": false
+  },
+  "hard_limits": {
+    "network_attempts_max": 2,
+    "network_calls_max": 2,
+    "model_requests_max": 2,
+    "concurrency": 1,
+    "agents_sdk_retries": 0,
+    "http_client_retries": 0,
+    "resume": false,
+    "fallback": false,
+    "tools": 0,
+    "input_utf8_bytes_per_request_max": 256,
+    "input_utf8_bytes_total_max": 512,
+    "observed_input_tokens_per_request_max": 512,
+    "observed_input_tokens_total_max": 1024,
+    "output_token_caps_in_order": [
+      256,
+      16
+    ],
+    "output_token_cap_total": 272,
+    "request_timeout_seconds": 120,
+    "request_phase_total_timeout_seconds": 300,
+    "raw_response_cleanup_timeout_seconds_per_response": 5,
+    "raw_response_cleanup_resources_max": 2,
+    "post_request_cleanup_timeout_seconds_per_resource": 5,
+    "post_request_cleanup_resources_max": 2,
+    "whole_process_wall_timeout_seconds": 330,
+    "authorization_deadline_preempts_all_stages": true,
+    "local_observed_cost_stop_cny": "1.000000",
+    "provider_billing_hard_cap": false
+  },
+  "pricing_gate": {
+    "fresh_official_pricing_attestation_required_at_authorization": true,
+    "input_price_per_million_cny": null,
+    "output_price_per_million_cny": null,
+    "actual_provider_bill_available": false,
+    "cost_stop_is_post_response_observed_not_provider_side": true,
+    "provider_side_retention_verified": false
+  },
+  "authorization_gate": {
+    "separate_one_time_authorization_required": true,
+    "authorization_id_required": true,
+    "authorization_expiry_utc_required": true,
+    "expected_contract_commitment_required": true,
+    "exact_committed_execution_main_required": true,
+    "accept_locked_caps_required": true,
+    "confirm_online_required": true,
+    "authorization_max_horizon_hours": 24,
+    "authorization_window_min_seconds": 330,
+    "consume_before_key_load": true,
+    "key_environment_name": "DEEPSEEK_API_KEY",
+    "key_cli_argument_allowed": false,
+    "authorization_reuse_allowed": false,
+    "predecessor_authorization_inherited": false,
+    "retry_after_any_terminal_outcome_allowed": false,
+    "success_failure_timeout_cancellation_or_outcome_unknown_stops_immediately": true
+  },
+  "artifact_paths": {
+    "root": "artifacts/provider_completion_first_live_validation/deepseek-responses-v1",
+    "authorization_directory_name": "authorization_id_sha256",
+    "consumption_receipt": "consumption.json",
+    "terminal_receipt": "terminal.json",
+    "audit_database": "audit.sqlite3",
+    "audit_index": "audit_index.json",
+    "runtime_denominator": "runtime_denominator.json",
+    "completion_telemetry": "completion_telemetry.json",
+    "manifest": "manifest.json",
+    "output_directory_must_not_exist": true,
+    "overwrite_allowed": false
+  },
+  "telemetry_bindings": {
+    "surface_registry": {
+      "relative_path": "evals/provider_completion_telemetry_v2/provider_completion_surface_registry_v2.json",
+      "bytes": 20311,
+      "sha256": "916f37e6bd8fbc25e1e7f84dce7888cba55422c3982149574bce6706ce04f24a",
+      "current_runtime_binding_allowed": false,
+      "validation_only_binding_allowed": false
+    },
+    "record_schema": {
+      "relative_path": "evals/provider_completion_telemetry_v1/schemas/provider_completion_record_v1.schema.json",
+      "bytes": 30403,
+      "sha256": "5984e6d7ba2f27e6ab6726baa508e9b86ecf8e179cd06340a70147abcc487aa8"
+    },
+    "mapping": {
+      "relative_path": "evals/provider_completion_telemetry_v1/provider_completion_mapping_v1.json",
+      "bytes": 48071,
+      "sha256": "2a3e4c6a81fd76d9e20542091fbffdd4c6137d2e730b626117446109658b946d"
+    },
+    "runtime_hardening_contract": {
+      "relative_path": "evals/provider_completion_telemetry_v1/provider_completion_runtime_hardening_contract_v2.json",
+      "bytes": 4353,
+      "sha256": "a395ae2110b68ec1bba470885ef5e30a821ae235ca47017cb913920d31094d26"
+    },
+    "depth60_source_integrity_successor": {
+      "relative_path": "evals/phase6_deepseek_depth60_plan_v4.json",
+      "bytes": 3087,
+      "sha256": "ae961e069afa9c842c294f7fb6951e0cf3a4ad86dfcdd16cb96a2c264c232956",
+      "plan_commitment_sha256": "c36dc0dd0487aa350dc2bd636b45bb494381e0c732c80be7b410be4b9beda612",
+      "role": "design_baseline_only",
+      "new_successor_required_before_execution": true
+    },
+    "requirements_lock": {
+      "relative_path": "requirements.lock",
+      "bytes": 1431,
+      "sha256": "15a40bd036716b0145823f42ea3004be70769ce3ca41f8a0fd9696fc19afd86b"
+    },
+    "ledger_event_schema_version": "provider-completion-ledger-event/1.1",
+    "denominator_algorithm": "transport-response-finalization-v1"
+  },
+  "required_execution_order": [
+    "validate_contract_and_all_bound_bytes",
+    "validate_exact_main_commit_and_clean_tree",
+    "validate_authorization_and_locked_caps",
+    "exclusively_create_consumption_receipt",
+    "load_provider_key",
+    "create_exact_deepseek_adapter_and_validation_only_ledger_session",
+    "execute_two_scenarios_sequentially",
+    "close_every_raw_response",
+    "seal_denominator_and_event_chain",
+    "write_terminal_receipt_once",
+    "stop"
+  ],
+  "success_gate": {
+    "both_scenarios_observed": true,
+    "network_attempts_equal_network_calls": true,
+    "every_started_attempt_has_exactly_one_terminal": true,
+    "every_terminal_is_response_accepted": true,
+    "sdk_response_and_usage_reconciliation_required": true,
+    "audit_chain_valid_required": true,
+    "completion_record_count": 2,
+    "every_record_provenance": "live_adapter_write",
+    "every_truncation_signal_source": "native_status",
+    "states_in_order": [
+      "completed",
+      "incomplete_length"
+    ],
+    "direct_probe_comparison_fields": [
+      "status_key_presence_and_value",
+      "incomplete_details_key_presence_and_reason"
+    ],
+    "unmapped_or_not_provided_forbids_success": true,
+    "raw_response_cleanup_success_required": true,
+    "closure_claim_allowed": false,
+    "automatic_registry_promotion_allowed": false
+  },
+  "receipt_boundary": {
+    "consumption_and_terminal_receipts_required": true,
+    "output_directory_must_not_exist": true,
+    "canonical_json_only": true,
+    "raw_response_body_persisted": false,
+    "message_content_persisted": false,
+    "input_content_repeated_in_receipt": false,
+    "tool_call_arguments_persisted": false,
+    "system_prompt_persisted": false,
+    "api_key_persisted": false,
+    "authorization_id_raw_persisted": false,
+    "authorization_id_sha256_persisted": true,
+    "exception_text_persisted": false,
+    "absolute_path_persisted": false,
+    "provider_request_id_raw_persisted": false,
+    "provider_request_id_sha256_allowed": true
+  },
+  "claim_boundary": {
+    "adapter_path_shape_validation_claim_allowed_on_success": true,
+    "two_shape_completion_projection_equivalence_claim_allowed_on_success": true,
+    "full_request_kwargs_transport_or_backend_equivalence_claim_allowed": false,
+    "status_defect_closure_allowed": false,
+    "historical_kimi_or_depth60_attribution_recovered": false,
+    "prompt_scorer_tool_schema_candidate_or_task_adjustment_authorized": false,
+    "provider_registration_authorized": false,
+    "model_quality_claim_allowed": false,
+    "private_or_non_synthetic_evaluation_authorized": false,
+    "production_sla_claim_allowed": false
+  },
+  "implementation_state": {
+    "contract_only": true,
+    "cli_implemented": false,
+    "validation_only_authority_implemented": false,
+    "single_use_receipts_implemented": false,
+    "online_execution_authorized": false,
+    "network_calls": 0,
+    "model_calls": 0,
+    "provider_key_loaded": false
+  }
+}

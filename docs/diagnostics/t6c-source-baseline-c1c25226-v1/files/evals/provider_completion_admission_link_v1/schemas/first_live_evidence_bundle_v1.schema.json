@@ -1,0 +1,306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/first_live_evidence_bundle_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "subject",
+    "authorization_id_sha256",
+    "external_authorization_binding_sha256",
+    "first_live_completed_at_utc",
+    "artifact_files",
+    "first_live_design_commitment_sha256",
+    "first_live_implementation_contract_sha256",
+    "complete_artifact_set_required",
+    "raw_body_included",
+    "online_authority_granted",
+    "commitment_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-evidence-bundle/1.0"
+    },
+    "document_type": {
+      "const": "completion_telemetry_first_live_evidence_bundle"
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_id",
+        "model_id",
+        "api_origin",
+        "api_surface",
+        "transport_id",
+        "adapter_version",
+        "first_live_execution_commit",
+        "first_live_execution_tree",
+        "first_live_source_integrity_commitment_sha256",
+        "first_live_implementation_commitment_sha256",
+        "source_byte_inventory_sha256",
+        "dependency_lock_sha256",
+        "pyproject_sha256",
+        "selected_mapping_sha256"
+      ],
+      "properties": {
+        "provider_id": {
+          "const": "deepseek"
+        },
+        "model_id": {
+          "const": "deepseek-v4-flash"
+        },
+        "api_origin": {
+          "const": "https://api.deepseek.com"
+        },
+        "api_surface": {
+          "const": "responses"
+        },
+        "transport_id": {
+          "const": "openai_compatible_responses"
+        },
+        "adapter_version": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._/-]{0,127}$"
+        },
+        "first_live_execution_commit": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+        },
+        "first_live_execution_tree": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+        },
+        "first_live_source_integrity_commitment_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "first_live_implementation_commitment_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "source_byte_inventory_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "dependency_lock_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "pyproject_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "selected_mapping_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        }
+      }
+    },
+    "authorization_id_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "external_authorization_binding_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "first_live_completed_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "maxLength": 96
+    },
+    "artifact_files": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "name": {
+              "const": "audit.sqlite3"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 33554432
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "name": {
+              "const": "audit_index.json"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2097152
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "name": {
+              "const": "completion_telemetry.json"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2097152
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "name": {
+              "const": "consumption.json"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2097152
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "name": {
+              "const": "manifest.json"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2097152
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "name": {
+              "const": "runtime_denominator.json"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2097152
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "name": {
+              "const": "terminal.json"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2097152
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+            }
+          }
+        }
+      ],
+      "items": false
+    },
+    "first_live_design_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "first_live_implementation_contract_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "complete_artifact_set_required": {
+      "const": true
+    },
+    "raw_body_included": {
+      "const": false
+    },
+    "online_authority_granted": {
+      "const": false
+    },
+    "commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    }
+  }
+}

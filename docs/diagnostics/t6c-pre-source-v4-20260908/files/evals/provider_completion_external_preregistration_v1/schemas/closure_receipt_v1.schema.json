@@ -1,0 +1,891 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-closure-receipt-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "receipt_id",
+    "campaign_id",
+    "completed_at_utc",
+    "receipt_issued_at_utc",
+    "bundle_status",
+    "artifact_publication_disposition",
+    "terminal_stage",
+    "local_terminal_outcome",
+    "terminal_provider_outcome_state",
+    "terminal_error_code",
+    "last_completed_artifact_write_stage",
+    "artifact_error_code",
+    "preregistration_envelope_sha256",
+    "preregistration_freeze_entry_sha256",
+    "authorization_grant_sha256",
+    "consumption_receipt_sha256",
+    "authorization_consumption_entry_sha256",
+    "task_released",
+    "task_released_at_utc",
+    "provider_key_loaded",
+    "provider_key_loaded_at_utc",
+    "released_task_bundle_commitment_sha256",
+    "released_case_handle_order_commitment_sha256",
+    "task_bundle_opening_verified_in_memory",
+    "task_bundle_opening_persisted",
+    "custodian_private_leak_canary_scan_status",
+    "public_generic_privacy_scan_status",
+    "canary_injection_verified_for_every_send",
+    "database_origin_status",
+    "database_mutation_status",
+    "released_execution_input_order_commitment_sha256",
+    "closure_bundle_manifest_sha256",
+    "partial_artifacts",
+    "observed_audit_run_set_commitment_sha256",
+    "ordered_final_chain_heads_commitment_sha256",
+    "planned_case_count",
+    "attempt_count",
+    "accepted_response_count",
+    "network_attempt_count_observed",
+    "model_request_count_observed",
+    "usage_complete",
+    "observed_input_tokens",
+    "observed_output_tokens",
+    "observed_cost_cny",
+    "evidence_valid",
+    "evidence_error_code",
+    "pre_anchor_closure_eligible",
+    "closure_reasons",
+    "closure_reasons_commitment_sha256",
+    "task_content_included_in_receipt",
+    "case_ids_included_in_receipt",
+    "records_included_in_receipt",
+    "provider_content_included_in_receipt",
+    "raw_response_cleanup_status",
+    "post_request_cleanup_status",
+    "provider_key_reference_release_status",
+    "document_sha256",
+    "signatures"
+  ],
+  "properties": {
+    "schema_version": {"const": "provider-completion-closure-receipt/1.0"},
+    "document_type": {"const": "completion_telemetry_closure_receipt"},
+    "receipt_id": {"type": "string", "pattern": "^PCECLOSE-[A-F0-9]{32}$"},
+    "campaign_id": {"type": "string", "pattern": "^PCECAMP-[A-F0-9]{32}$"},
+    "completed_at_utc": {"$ref": "#/$defs/timestamp"},
+    "receipt_issued_at_utc": {"$ref": "#/$defs/timestamp"},
+    "bundle_status": {"enum": ["complete", "manifest_present_invalid", "manifestless_failure"]},
+    "artifact_publication_disposition": {"enum": ["normal", "sensitive_quarantined", "privacy_unverified_quarantined"]},
+    "terminal_stage": {
+      "enum": [
+        "none",
+        "post_consumption",
+        "task_release",
+        "task_opening",
+        "key_load",
+        "pre_send",
+        "transport",
+        "response",
+        "raw_response_cleanup",
+        "post_request_cleanup",
+        "key_reference_release",
+        "run_finalization"
+      ]
+    },
+    "local_terminal_outcome": {"enum": ["succeeded", "failed", "timed_out", "cancelled"]},
+    "terminal_provider_outcome_state": {"enum": ["not_applicable", "not_sent", "response_observed", "outcome_unknown"]},
+    "terminal_error_code": {
+      "oneOf": [{"$ref": "#/$defs/terminal_error_code"}, {"type": "null"}]
+    },
+    "last_completed_artifact_write_stage": {
+      "enum": [
+        "not_started",
+        "audit_database_written",
+        "audit_index_written",
+        "completion_telemetry_written",
+        "manifest_written"
+      ]
+    },
+    "artifact_error_code": {
+      "oneOf": [{"$ref": "#/$defs/artifact_error_code"}, {"type": "null"}]
+    },
+    "preregistration_envelope_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "preregistration_freeze_entry_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "authorization_grant_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "consumption_receipt_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "authorization_consumption_entry_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "task_released": {"type": "boolean"},
+    "task_released_at_utc": {
+      "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+    },
+    "provider_key_loaded": {"type": "boolean"},
+    "provider_key_loaded_at_utc": {
+      "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+    },
+    "released_task_bundle_commitment_sha256": {
+      "oneOf": [{"$ref": "#/$defs/nonzero_sha256"}, {"type": "null"}]
+    },
+    "released_case_handle_order_commitment_sha256": {
+      "oneOf": [{"$ref": "#/$defs/nonzero_sha256"}, {"type": "null"}]
+    },
+    "task_bundle_opening_verified_in_memory": {"type": "boolean"},
+    "task_bundle_opening_persisted": {"const": false},
+    "custodian_private_leak_canary_scan_status": {"enum": ["passed", "unavailable", "leak_detected"]},
+    "public_generic_privacy_scan_status": {"enum": ["passed", "unavailable", "sensitive_detected"]},
+    "canary_injection_verified_for_every_send": {"type": "boolean"},
+    "database_origin_status": {"enum": ["fresh_path_confirmed", "path_preexisted", "unavailable"]},
+    "database_mutation_status": {"enum": ["normative_only", "reuse_or_delete_detected", "unavailable"]},
+    "released_execution_input_order_commitment_sha256": {
+      "oneOf": [{"$ref": "#/$defs/nonzero_sha256"}, {"type": "null"}]
+    },
+    "closure_bundle_manifest_sha256": {
+      "oneOf": [{"$ref": "#/$defs/nonzero_sha256"}, {"type": "null"}]
+    },
+    "partial_artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 4,
+      "properties": {
+        "phase6_audit.sqlite3": {"$ref": "#/$defs/file_commitment"},
+        "phase6_audit_index.json": {"$ref": "#/$defs/file_commitment"},
+        "phase6_completion_telemetry.json": {"$ref": "#/$defs/file_commitment"},
+        "completion_closure_manifest.json": {"$ref": "#/$defs/file_commitment"}
+      }
+    },
+    "observed_audit_run_set_commitment_sha256": {
+      "oneOf": [{"$ref": "#/$defs/nonzero_sha256"}, {"type": "null"}]
+    },
+    "ordered_final_chain_heads_commitment_sha256": {
+      "oneOf": [{"$ref": "#/$defs/nonzero_sha256"}, {"type": "null"}]
+    },
+    "planned_case_count": {"type": "integer", "minimum": 1, "maximum": 100},
+    "attempt_count": {
+      "oneOf": [{"type": "integer", "minimum": 0, "maximum": 800}, {"type": "null"}]
+    },
+    "accepted_response_count": {
+      "oneOf": [{"type": "integer", "minimum": 0, "maximum": 800}, {"type": "null"}]
+    },
+    "network_attempt_count_observed": {"type": "integer", "minimum": 0, "maximum": 800},
+    "model_request_count_observed": {"type": "integer", "minimum": 0, "maximum": 800},
+    "usage_complete": {"oneOf": [{"type": "boolean"}, {"type": "null"}]},
+    "observed_input_tokens": {
+      "oneOf": [{"type": "integer", "minimum": 0, "maximum": 9007199254740991}, {"type": "null"}]
+    },
+    "observed_output_tokens": {
+      "oneOf": [{"type": "integer", "minimum": 0, "maximum": 9007199254740991}, {"type": "null"}]
+    },
+    "observed_cost_cny": {
+      "oneOf": [{"$ref": "#/$defs/observed_money"}, {"type": "null"}]
+    },
+    "evidence_valid": {"type": "boolean"},
+    "evidence_error_code": {
+      "oneOf": [{"$ref": "#/$defs/evidence_error_code"}, {"type": "null"}]
+    },
+    "pre_anchor_closure_eligible": {"type": "boolean"},
+    "closure_reasons": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/closure_reason"}
+    },
+    "closure_reasons_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "task_content_included_in_receipt": {"const": false},
+    "case_ids_included_in_receipt": {"const": false},
+    "records_included_in_receipt": {"const": false},
+    "provider_content_included_in_receipt": {"const": false},
+    "raw_response_cleanup_status": {"enum": ["completed", "not_applicable", "failed", "timed_out", "cancelled"]},
+    "post_request_cleanup_status": {"enum": ["completed", "not_applicable", "failed", "timed_out", "cancelled"]},
+    "provider_key_reference_release_status": {"enum": ["released", "not_loaded", "failed", "timed_out", "cancelled"]},
+    "document_sha256": {"$ref": "#/$defs/sha256"},
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {"$ref": "#/$defs/signature"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"bundle_status": {"const": "complete"}}, "required": ["bundle_status"]},
+      "then": {
+        "properties": {
+          "last_completed_artifact_write_stage": {"const": "manifest_written"}
+        }
+      },
+      "else": {"properties": {"pre_anchor_closure_eligible": {"const": false}}}
+    },
+    {
+      "if": {"properties": {"bundle_status": {"const": "manifest_present_invalid"}}, "required": ["bundle_status"]},
+      "then": {
+        "properties": {
+          "last_completed_artifact_write_stage": {"const": "manifest_written"},
+          "artifact_error_code": {"type": "null"},
+          "evidence_valid": {"const": false},
+          "pre_anchor_closure_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"bundle_status": {"const": "manifestless_failure"}}, "required": ["bundle_status"]},
+      "then": {
+        "properties": {
+          "last_completed_artifact_write_stage": {"not": {"const": "manifest_written"}},
+          "closure_bundle_manifest_sha256": {"type": "null"},
+          "evidence_valid": {"const": false},
+          "pre_anchor_closure_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"artifact_publication_disposition": {"const": "sensitive_quarantined"}}, "required": ["artifact_publication_disposition"]},
+      "then": {
+        "properties": {
+          "closure_bundle_manifest_sha256": {"type": "null"},
+          "partial_artifacts": {"maxProperties": 0},
+          "evidence_valid": {"const": false},
+          "evidence_error_code": {"const": "closure_sensitive_content_detected"},
+          "pre_anchor_closure_eligible": {"const": false}
+        },
+        "anyOf": [
+          {"properties": {"custodian_private_leak_canary_scan_status": {"const": "leak_detected"}}},
+          {"properties": {"public_generic_privacy_scan_status": {"const": "sensitive_detected"}}}
+        ]
+      }
+    },
+    {
+      "if": {"properties": {"artifact_publication_disposition": {"const": "privacy_unverified_quarantined"}}, "required": ["artifact_publication_disposition"]},
+      "then": {
+        "properties": {
+          "closure_bundle_manifest_sha256": {"type": "null"},
+          "partial_artifacts": {"maxProperties": 0},
+          "evidence_valid": {"const": false},
+          "pre_anchor_closure_eligible": {"const": false}
+        },
+        "anyOf": [
+          {"properties": {"custodian_private_leak_canary_scan_status": {"const": "unavailable"}}},
+          {"properties": {"public_generic_privacy_scan_status": {"const": "unavailable"}}},
+          {"properties": {"database_origin_status": {"not": {"const": "fresh_path_confirmed"}}}},
+          {"properties": {"database_mutation_status": {"not": {"const": "normative_only"}}}}
+        ]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"artifact_publication_disposition": {"const": "normal"}}, "required": ["artifact_publication_disposition"]},
+          {"properties": {"bundle_status": {"const": "complete"}}, "required": ["bundle_status"]}
+        ]
+      },
+      "then": {
+        "properties": {
+          "closure_bundle_manifest_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "partial_artifacts": {"maxProperties": 0}
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"artifact_publication_disposition": {"const": "normal"}}, "required": ["artifact_publication_disposition"]},
+          {"properties": {"bundle_status": {"const": "manifest_present_invalid"}}, "required": ["bundle_status"]}
+        ]
+      },
+      "then": {
+        "properties": {
+          "closure_bundle_manifest_sha256": {"type": "null"},
+          "partial_artifacts": {
+            "minProperties": 4,
+            "maxProperties": 4,
+            "required": [
+              "phase6_audit.sqlite3",
+              "phase6_audit_index.json",
+              "phase6_completion_telemetry.json",
+              "completion_closure_manifest.json"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"local_terminal_outcome": {"const": "succeeded"}}, "required": ["local_terminal_outcome"]},
+      "then": {
+        "properties": {
+          "terminal_error_code": {"type": "null"},
+          "terminal_stage": {"const": "none"},
+          "terminal_provider_outcome_state": {"const": "response_observed"},
+          "task_released": {"const": true},
+          "provider_key_loaded": {"const": true},
+          "network_attempt_count_observed": {"type": "integer", "minimum": 1, "maximum": 800},
+          "model_request_count_observed": {"type": "integer", "minimum": 1, "maximum": 800},
+          "raw_response_cleanup_status": {"const": "completed"},
+          "post_request_cleanup_status": {"const": "completed"},
+          "provider_key_reference_release_status": {"const": "released"}
+        }
+      },
+      "else": {"properties": {"terminal_error_code": {"$ref": "#/$defs/terminal_error_code"}}}
+    },
+    {
+      "if": {"properties": {"local_terminal_outcome": {"const": "failed"}}, "required": ["local_terminal_outcome"]},
+      "then": {"properties": {"terminal_error_code": {"$ref": "#/$defs/failed_terminal_error_code"}}}
+    },
+    {
+      "if": {"properties": {"local_terminal_outcome": {"const": "timed_out"}}, "required": ["local_terminal_outcome"]},
+      "then": {"properties": {"terminal_error_code": {"$ref": "#/$defs/timed_out_terminal_error_code"}}}
+    },
+    {
+      "if": {"properties": {"local_terminal_outcome": {"const": "cancelled"}}, "required": ["local_terminal_outcome"]},
+      "then": {"properties": {"terminal_error_code": {"$ref": "#/$defs/cancelled_terminal_error_code"}}}
+    },
+    {
+      "if": {"properties": {"task_released": {"const": true}}, "required": ["task_released"]},
+      "then": {
+        "properties": {
+          "task_released_at_utc": {"$ref": "#/$defs/timestamp"},
+          "released_task_bundle_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "released_case_handle_order_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "released_execution_input_order_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"}
+        }
+      },
+      "else": {
+        "properties": {
+          "task_released_at_utc": {"type": "null"},
+          "released_task_bundle_commitment_sha256": {"type": "null"},
+          "released_case_handle_order_commitment_sha256": {"type": "null"},
+          "released_execution_input_order_commitment_sha256": {"type": "null"},
+          "task_bundle_opening_verified_in_memory": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"provider_key_loaded": {"const": true}}, "required": ["provider_key_loaded"]},
+      "then": {"properties": {"provider_key_loaded_at_utc": {"$ref": "#/$defs/timestamp"}, "task_bundle_opening_verified_in_memory": {"const": true}, "provider_key_reference_release_status": {"enum": ["released", "failed", "timed_out", "cancelled"]}}},
+      "else": {"properties": {"provider_key_loaded_at_utc": {"type": "null"}, "provider_key_reference_release_status": {"const": "not_loaded"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"enum": ["pce_task_opening_failed", "pce_task_opening_timed_out", "pce_task_opening_cancelled"]}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"task_bundle_opening_verified_in_memory": {"const": false}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"enum": ["pce_key_load_failed", "pce_key_load_timed_out", "pce_key_load_cancelled"]}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"task_bundle_opening_verified_in_memory": {"const": true}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_raw_response_cleanup_failed"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"raw_response_cleanup_status": {"const": "failed"}, "post_request_cleanup_status": {"const": "not_applicable"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_raw_response_cleanup_timed_out"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"raw_response_cleanup_status": {"const": "timed_out"}, "post_request_cleanup_status": {"const": "not_applicable"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_raw_response_cleanup_cancelled"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"raw_response_cleanup_status": {"const": "cancelled"}, "post_request_cleanup_status": {"const": "not_applicable"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_post_request_cleanup_failed"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"raw_response_cleanup_status": {"const": "completed"}, "post_request_cleanup_status": {"const": "failed"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_post_request_cleanup_timed_out"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"raw_response_cleanup_status": {"const": "completed"}, "post_request_cleanup_status": {"const": "timed_out"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_post_request_cleanup_cancelled"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"raw_response_cleanup_status": {"const": "completed"}, "post_request_cleanup_status": {"const": "cancelled"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_key_reference_release_failed"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"provider_key_reference_release_status": {"const": "failed"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_key_reference_release_timed_out"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"provider_key_reference_release_status": {"const": "timed_out"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_key_reference_release_cancelled"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"provider_key_reference_release_status": {"const": "cancelled"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"const": "pce_response_failed"}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"terminal_provider_outcome_state": {"const": "response_observed"}}}
+    },
+    {
+      "if": {"properties": {"terminal_error_code": {"enum": ["pce_response_timed_out", "pce_response_cancelled", "pce_response_outcome_unknown"]}}, "required": ["terminal_error_code"]},
+      "then": {"properties": {"terminal_provider_outcome_state": {"const": "outcome_unknown"}}}
+    },
+    {
+      "if": {"properties": {"usage_complete": {"const": true}}, "required": ["usage_complete"]},
+      "then": {
+        "properties": {
+          "observed_input_tokens": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "observed_output_tokens": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "observed_cost_cny": {"$ref": "#/$defs/observed_money"}
+        }
+      },
+      "else": {
+        "properties": {
+          "observed_input_tokens": {"type": "null"},
+          "observed_output_tokens": {"type": "null"},
+          "observed_cost_cny": {"type": "null"},
+          "pre_anchor_closure_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"evidence_valid": {"const": true}}, "required": ["evidence_valid"]},
+      "then": {
+        "properties": {
+          "evidence_error_code": {"type": "null"},
+          "bundle_status": {"const": "complete"},
+          "artifact_publication_disposition": {"const": "normal"},
+          "closure_bundle_manifest_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "observed_audit_run_set_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "ordered_final_chain_heads_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "attempt_count": {"type": "integer", "minimum": 0, "maximum": 800},
+          "accepted_response_count": {"type": "integer", "minimum": 0, "maximum": 800},
+          "usage_complete": {"type": "boolean"}
+        }
+      },
+      "else": {
+        "properties": {
+          "evidence_error_code": {"$ref": "#/$defs/evidence_error_code"},
+          "pre_anchor_closure_eligible": {"const": false},
+          "observed_audit_run_set_commitment_sha256": {"type": "null"},
+          "ordered_final_chain_heads_commitment_sha256": {"type": "null"},
+          "attempt_count": {"type": "null"},
+          "accepted_response_count": {"type": "null"},
+          "usage_complete": {"type": "null"},
+          "observed_input_tokens": {"type": "null"},
+          "observed_output_tokens": {"type": "null"},
+          "observed_cost_cny": {"type": "null"},
+          "closure_reasons": {"maxItems": 0},
+          "closure_reasons_commitment_sha256": {"const": "2507147c335dbc6ec940d57f870df0275bc8143fec60f99385ede8d5bc2642cf"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"last_completed_artifact_write_stage": {"const": "not_started"}}, "required": ["last_completed_artifact_write_stage"]},
+      "then": {
+        "properties": {
+          "artifact_error_code": {"const": "pce_artifact_not_started_failed"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"last_completed_artifact_write_stage": {"const": "audit_database_written"}}, "required": ["last_completed_artifact_write_stage"]},
+      "then": {
+        "properties": {
+          "artifact_error_code": {"const": "pce_artifact_audit_index_failed"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"last_completed_artifact_write_stage": {"const": "audit_index_written"}}, "required": ["last_completed_artifact_write_stage"]},
+      "then": {
+        "properties": {
+          "artifact_error_code": {"const": "pce_artifact_completion_telemetry_failed"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"last_completed_artifact_write_stage": {"const": "completion_telemetry_written"}}, "required": ["last_completed_artifact_write_stage"]},
+      "then": {
+        "properties": {
+          "artifact_error_code": {"const": "pce_artifact_manifest_failed"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"last_completed_artifact_write_stage": {"const": "manifest_written"}}, "required": ["last_completed_artifact_write_stage"]},
+      "then": {"properties": {"artifact_error_code": {"type": "null"}}}
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"artifact_publication_disposition": {"const": "normal"}}, "required": ["artifact_publication_disposition"]},
+          {"properties": {"last_completed_artifact_write_stage": {"const": "not_started"}}, "required": ["last_completed_artifact_write_stage"]}
+        ]
+      },
+      "then": {"properties": {"partial_artifacts": {"maxProperties": 0}}}
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"artifact_publication_disposition": {"const": "normal"}}, "required": ["artifact_publication_disposition"]},
+          {"properties": {"last_completed_artifact_write_stage": {"const": "audit_database_written"}}, "required": ["last_completed_artifact_write_stage"]}
+        ]
+      },
+      "then": {"properties": {"partial_artifacts": {"minProperties": 1, "maxProperties": 1, "required": ["phase6_audit.sqlite3"]}}}
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"artifact_publication_disposition": {"const": "normal"}}, "required": ["artifact_publication_disposition"]},
+          {"properties": {"last_completed_artifact_write_stage": {"const": "audit_index_written"}}, "required": ["last_completed_artifact_write_stage"]}
+        ]
+      },
+      "then": {"properties": {"partial_artifacts": {"minProperties": 2, "maxProperties": 2, "required": ["phase6_audit.sqlite3", "phase6_audit_index.json"]}}}
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"artifact_publication_disposition": {"const": "normal"}}, "required": ["artifact_publication_disposition"]},
+          {"properties": {"last_completed_artifact_write_stage": {"const": "completion_telemetry_written"}}, "required": ["last_completed_artifact_write_stage"]}
+        ]
+      },
+      "then": {"properties": {"partial_artifacts": {"minProperties": 3, "maxProperties": 3, "required": ["phase6_audit.sqlite3", "phase6_audit_index.json", "phase6_completion_telemetry.json"]}}}
+    },
+    {
+      "if": {"properties": {"custodian_private_leak_canary_scan_status": {"const": "leak_detected"}}, "required": ["custodian_private_leak_canary_scan_status"]},
+      "then": {
+        "properties": {
+          "artifact_publication_disposition": {"const": "sensitive_quarantined"},
+          "evidence_valid": {"const": false},
+          "evidence_error_code": {"const": "closure_sensitive_content_detected"},
+          "pre_anchor_closure_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"public_generic_privacy_scan_status": {"const": "sensitive_detected"}}, "required": ["public_generic_privacy_scan_status"]},
+      "then": {
+        "properties": {
+          "artifact_publication_disposition": {"const": "sensitive_quarantined"},
+          "evidence_valid": {"const": false},
+          "evidence_error_code": {"const": "closure_sensitive_content_detected"},
+          "pre_anchor_closure_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"custodian_private_leak_canary_scan_status": {"const": "unavailable"}}, "required": ["custodian_private_leak_canary_scan_status"]},
+          {"properties": {"public_generic_privacy_scan_status": {"not": {"const": "sensitive_detected"}}}, "required": ["public_generic_privacy_scan_status"]}
+        ]
+      },
+      "then": {
+        "properties": {
+          "artifact_publication_disposition": {"const": "privacy_unverified_quarantined"},
+          "evidence_valid": {"const": false},
+          "evidence_error_code": {"const": "closure_sensitive_scan_unavailable"},
+          "pre_anchor_closure_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"public_generic_privacy_scan_status": {"const": "unavailable"}}, "required": ["public_generic_privacy_scan_status"]},
+          {"properties": {"custodian_private_leak_canary_scan_status": {"not": {"const": "leak_detected"}}}, "required": ["custodian_private_leak_canary_scan_status"]}
+        ]
+      },
+      "then": {
+        "properties": {
+          "artifact_publication_disposition": {"const": "privacy_unverified_quarantined"},
+          "evidence_valid": {"const": false},
+          "evidence_error_code": {"const": "closure_sensitive_scan_unavailable"},
+          "pre_anchor_closure_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "anyOf": [
+              {"properties": {"database_origin_status": {"not": {"const": "fresh_path_confirmed"}}}, "required": ["database_origin_status"]},
+              {"properties": {"database_mutation_status": {"not": {"const": "normative_only"}}}, "required": ["database_mutation_status"]}
+            ]
+          },
+          {"properties": {"custodian_private_leak_canary_scan_status": {"const": "passed"}}, "required": ["custodian_private_leak_canary_scan_status"]},
+          {"properties": {"public_generic_privacy_scan_status": {"const": "passed"}}, "required": ["public_generic_privacy_scan_status"]}
+        ]
+      },
+      "then": {
+        "properties": {
+          "artifact_publication_disposition": {"const": "privacy_unverified_quarantined"},
+          "evidence_valid": {"const": false},
+          "evidence_error_code": {"const": "closure_database_origin_untrusted"},
+          "pre_anchor_closure_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "post_consumption"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"const": "pce_post_consumption_failed"}, "terminal_provider_outcome_state": {"const": "not_applicable"}, "task_released": {"const": false}, "provider_key_loaded": {"const": false}, "network_attempt_count_observed": {"const": 0}, "model_request_count_observed": {"const": 0}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "none"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"local_terminal_outcome": {"const": "succeeded"}, "terminal_error_code": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "task_release"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_task_release_failed", "pce_task_release_timed_out", "pce_task_release_cancelled"]}, "terminal_provider_outcome_state": {"const": "not_applicable"}, "task_released": {"const": false}, "provider_key_loaded": {"const": false}, "network_attempt_count_observed": {"const": 0}, "model_request_count_observed": {"const": 0}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "task_opening"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_task_opening_failed", "pce_task_opening_timed_out", "pce_task_opening_cancelled"]}, "terminal_provider_outcome_state": {"const": "not_applicable"}, "task_released": {"const": true}, "provider_key_loaded": {"const": false}, "network_attempt_count_observed": {"const": 0}, "model_request_count_observed": {"const": 0}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "key_load"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_key_load_failed", "pce_key_load_timed_out", "pce_key_load_cancelled"]}, "terminal_provider_outcome_state": {"const": "not_applicable"}, "task_released": {"const": true}, "provider_key_loaded": {"const": false}, "network_attempt_count_observed": {"const": 0}, "model_request_count_observed": {"const": 0}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "pre_send"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_pre_send_failed", "pce_pre_send_timed_out", "pce_pre_send_cancelled"]}, "terminal_provider_outcome_state": {"const": "not_sent"}, "task_released": {"const": true}, "provider_key_loaded": {"const": true}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "transport"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_transport_failed", "pce_transport_timed_out", "pce_transport_cancelled", "pce_transport_outcome_unknown"]}, "terminal_provider_outcome_state": {"const": "outcome_unknown"}, "task_released": {"const": true}, "provider_key_loaded": {"const": true}, "network_attempt_count_observed": {"type": "integer", "minimum": 1, "maximum": 800}, "model_request_count_observed": {"type": "integer", "minimum": 1, "maximum": 800}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "response"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_response_failed", "pce_response_timed_out", "pce_response_cancelled", "pce_response_outcome_unknown"]}, "task_released": {"const": true}, "provider_key_loaded": {"const": true}, "network_attempt_count_observed": {"type": "integer", "minimum": 1, "maximum": 800}, "model_request_count_observed": {"type": "integer", "minimum": 1, "maximum": 800}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "raw_response_cleanup"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_raw_response_cleanup_failed", "pce_raw_response_cleanup_timed_out", "pce_raw_response_cleanup_cancelled"]}, "terminal_provider_outcome_state": {"const": "response_observed"}, "task_released": {"const": true}, "provider_key_loaded": {"const": true}, "network_attempt_count_observed": {"type": "integer", "minimum": 1, "maximum": 800}, "model_request_count_observed": {"type": "integer", "minimum": 1, "maximum": 800}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "post_request_cleanup"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_post_request_cleanup_failed", "pce_post_request_cleanup_timed_out", "pce_post_request_cleanup_cancelled"]}, "terminal_provider_outcome_state": {"const": "not_applicable"}, "task_released": {"const": true}, "provider_key_loaded": {"const": true}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "key_reference_release"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_key_reference_release_failed", "pce_key_reference_release_timed_out", "pce_key_reference_release_cancelled"]}, "terminal_provider_outcome_state": {"const": "not_applicable"}, "task_released": {"const": true}, "provider_key_loaded": {"const": true}}}
+    },
+    {
+      "if": {"properties": {"terminal_stage": {"const": "run_finalization"}}, "required": ["terminal_stage"]},
+      "then": {"properties": {"terminal_error_code": {"enum": ["pce_run_finalization_failed", "pce_run_finalization_timed_out", "pce_run_finalization_cancelled"]}, "terminal_provider_outcome_state": {"const": "not_applicable"}}}
+    },
+    {
+      "if": {"properties": {"pre_anchor_closure_eligible": {"const": true}}, "required": ["pre_anchor_closure_eligible"]},
+      "then": {
+        "properties": {
+          "evidence_valid": {"const": true},
+          "artifact_publication_disposition": {"const": "normal"},
+          "usage_complete": {"const": true},
+          "task_released": {"const": true},
+          "provider_key_loaded": {"const": true},
+          "task_bundle_opening_verified_in_memory": {"const": true},
+          "custodian_private_leak_canary_scan_status": {"const": "passed"},
+          "public_generic_privacy_scan_status": {"const": "passed"},
+          "canary_injection_verified_for_every_send": {"const": true},
+          "database_origin_status": {"const": "fresh_path_confirmed"},
+          "database_mutation_status": {"const": "normative_only"},
+          "local_terminal_outcome": {"const": "succeeded"},
+          "terminal_provider_outcome_state": {"const": "response_observed"},
+          "raw_response_cleanup_status": {"const": "completed"},
+          "post_request_cleanup_status": {"const": "completed"},
+          "provider_key_reference_release_status": {"const": "released"},
+          "closure_reasons": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_valid": {"const": true},
+          "pre_anchor_closure_eligible": {"const": false}
+        },
+        "required": ["evidence_valid", "pre_anchor_closure_eligible"]
+      },
+      "then": {"properties": {"closure_reasons": {"minItems": 1}}}
+    },
+    {
+      "if": {
+        "anyOf": [
+          {"properties": {"raw_response_cleanup_status": {"enum": ["failed", "timed_out", "cancelled"]}}, "required": ["raw_response_cleanup_status"]},
+          {"properties": {"post_request_cleanup_status": {"enum": ["failed", "timed_out", "cancelled"]}}, "required": ["post_request_cleanup_status"]},
+          {"properties": {"provider_key_reference_release_status": {"enum": ["failed", "timed_out", "cancelled"]}}, "required": ["provider_key_reference_release_status"]}
+        ]
+      },
+      "then": {"properties": {"pre_anchor_closure_eligible": {"const": false}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "observed_money": {"type": "string", "pattern": "^(0|[1-9][0-9]{0,17})\\.[0-9]{12}$"},
+    "terminal_error_code": {
+      "enum": [
+        "pce_post_consumption_failed",
+        "pce_task_release_failed",
+        "pce_task_release_timed_out",
+        "pce_task_release_cancelled",
+        "pce_task_opening_failed",
+        "pce_task_opening_timed_out",
+        "pce_task_opening_cancelled",
+        "pce_key_load_failed",
+        "pce_key_load_timed_out",
+        "pce_key_load_cancelled",
+        "pce_pre_send_failed",
+        "pce_pre_send_timed_out",
+        "pce_pre_send_cancelled",
+        "pce_transport_failed",
+        "pce_transport_timed_out",
+        "pce_transport_cancelled",
+        "pce_transport_outcome_unknown",
+        "pce_response_failed",
+        "pce_response_timed_out",
+        "pce_response_cancelled",
+        "pce_response_outcome_unknown",
+        "pce_raw_response_cleanup_failed",
+        "pce_raw_response_cleanup_timed_out",
+        "pce_raw_response_cleanup_cancelled",
+        "pce_post_request_cleanup_failed",
+        "pce_post_request_cleanup_timed_out",
+        "pce_post_request_cleanup_cancelled",
+        "pce_key_reference_release_failed",
+        "pce_key_reference_release_timed_out",
+        "pce_key_reference_release_cancelled",
+        "pce_run_finalization_failed",
+        "pce_run_finalization_timed_out",
+        "pce_run_finalization_cancelled"
+      ]
+    },
+    "failed_terminal_error_code": {
+      "enum": [
+        "pce_post_consumption_failed",
+        "pce_task_release_failed",
+        "pce_task_opening_failed",
+        "pce_key_load_failed",
+        "pce_pre_send_failed",
+        "pce_transport_failed",
+        "pce_transport_outcome_unknown",
+        "pce_response_failed",
+        "pce_response_outcome_unknown",
+        "pce_raw_response_cleanup_failed",
+        "pce_post_request_cleanup_failed",
+        "pce_key_reference_release_failed",
+        "pce_run_finalization_failed"
+      ]
+    },
+    "timed_out_terminal_error_code": {
+      "enum": [
+        "pce_task_release_timed_out",
+        "pce_task_opening_timed_out",
+        "pce_key_load_timed_out",
+        "pce_pre_send_timed_out",
+        "pce_transport_timed_out",
+        "pce_response_timed_out",
+        "pce_raw_response_cleanup_timed_out",
+        "pce_post_request_cleanup_timed_out",
+        "pce_key_reference_release_timed_out",
+        "pce_run_finalization_timed_out"
+      ]
+    },
+    "cancelled_terminal_error_code": {
+      "enum": [
+        "pce_task_release_cancelled",
+        "pce_task_opening_cancelled",
+        "pce_key_load_cancelled",
+        "pce_pre_send_cancelled",
+        "pce_transport_cancelled",
+        "pce_response_cancelled",
+        "pce_raw_response_cleanup_cancelled",
+        "pce_post_request_cleanup_cancelled",
+        "pce_key_reference_release_cancelled",
+        "pce_run_finalization_cancelled"
+      ]
+    },
+    "artifact_error_code": {
+      "enum": [
+        "pce_artifact_not_started_failed",
+        "pce_artifact_audit_index_failed",
+        "pce_artifact_completion_telemetry_failed",
+        "pce_artifact_manifest_failed"
+      ]
+    },
+    "file_commitment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bytes", "sha256"],
+      "properties": {
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 100000000},
+        "sha256": {"$ref": "#/$defs/nonzero_sha256"}
+      }
+    },
+    "key_id": {"type": "string", "pattern": "^PCEKEY-[A-F0-9]{32}$"},
+    "closure_reason": {
+      "enum": [
+        "planned_cases_not_finalized",
+        "no_model_attempts_observed",
+        "no_provider_responses_observed",
+        "local_terminal_outcome_not_succeeded",
+        "task_not_released",
+        "provider_key_not_loaded",
+        "task_bundle_opening_unverified",
+        "leak_canary_injection_unverified",
+        "raw_response_cleanup_incomplete",
+        "post_request_cleanup_incomplete",
+        "provider_key_reference_not_released",
+        "planned_case_without_accepted_response",
+        "response_telemetry_rejected",
+        "http_error_response_observed",
+        "request_failed_without_response",
+        "model_request_cancelled",
+        "model_request_outcome_unknown",
+        "sdk_raw_response_count_mismatched",
+        "sdk_raw_response_count_unavailable",
+        "sdk_usage_request_count_mismatched",
+        "sdk_usage_request_count_unavailable",
+        "completion_state_projection_mismatch",
+        "completion_record_denominator_mismatch",
+        "completion_state_unmapped",
+        "completion_state_not_provided",
+        "completion_state_not_persisted",
+        "completion_state_unrecognized",
+        "truncation_signal_token_cap_fallback",
+        "truncation_signal_none",
+        "truncation_signal_unrecognized",
+        "audit_chain_or_export_invalid",
+        "completion_telemetry_ledger_write_failed",
+        "model_request_started_count_mismatch",
+        "model_request_terminal_count_mismatch",
+        "transport_send_count_mismatch",
+        "transport_retry_or_cap_violation",
+        "accepted_response_event_count_mismatch",
+        "rejected_response_event_count_mismatch",
+        "legacy_response_usage_event_present",
+        "ledger_event_commitment_missing",
+        "ledger_event_commitment_mismatch",
+        "ledger_event_payload_mismatch",
+        "record_usage_incomplete",
+        "record_usage_index_coverage_mismatch",
+        "observed_input_token_cap_exceeded",
+        "observed_output_token_cap_exceeded",
+        "observed_cost_stop_exceeded"
+      ]
+    },
+    "evidence_error_code": {
+      "enum": [
+        "closure_bundle_manifest_invalid",
+        "closure_bundle_hash_mismatch",
+        "closure_audit_schema_invalid",
+        "closure_audit_chain_invalid",
+        "closure_audit_run_set_invalid",
+        "closure_event_projection_invalid",
+        "closure_denominator_invalid",
+        "closure_outer_projection_invalid",
+        "closure_timeline_invalid",
+        "closure_budget_invalid",
+        "closure_sensitive_content_detected",
+        "closure_sensitive_scan_unavailable",
+        "closure_database_origin_untrusted"
+      ]
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "key_id", "algorithm", "signed_sha256", "signature_b64"],
+      "properties": {
+        "role": {"const": "task_custodian"},
+        "key_id": {"$ref": "#/$defs/key_id"},
+        "algorithm": {"const": "ed25519"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/external_review_observation_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "review_document_sha256",
+    "review_observed_at_utc",
+    "review_observation_source_commitment_sha256",
+    "trust_manifest_sha256",
+    "trust_observed_at_utc",
+    "trust_observation_source_commitment_sha256",
+    "candidate_freeze_receipt_sha256",
+    "candidate_frozen_at_utc",
+    "expectations_supplied_out_of_band"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-review-observation/1.0"
+    },
+    "document_type": {
+      "const": "completion_telemetry_first_live_review_observation"
+    },
+    "review_document_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "review_observed_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "maxLength": 96
+    },
+    "review_observation_source_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "trust_manifest_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "trust_observed_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "maxLength": 96
+    },
+    "trust_observation_source_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "candidate_freeze_receipt_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "candidate_frozen_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "maxLength": 96
+    },
+    "expectations_supplied_out_of_band": {
+      "const": true
+    }
+  }
+}

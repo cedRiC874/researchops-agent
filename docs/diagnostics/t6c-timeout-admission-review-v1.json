@@ -1,0 +1,19 @@
+{
+  "bound_total_timeout_seconds": 600,
+  "layer_a_eligible": true,
+  "layer_a_error": null,
+  "layer_a_evidence_valid": true,
+  "layer_b_closure_claim_allowed": true,
+  "layer_b_error": null,
+  "layer_b_status": "closed_evidence_verified",
+  "provider_calls": 0,
+  "real_key_loads": 0,
+  "recorded_first_send_to_last_terminal_seconds": 661,
+  "runtime_authority_constructed": false,
+  "schema_version": "t6c-timeout-review/1.0",
+  "scope": "synthetic_offline_protocol_counterexample_not_execution_evidence",
+  "semantics_source_sha256": "081b3510a47a1dd35fddf166298a3f988868e031831a7eba1089a578b7bbdcaf",
+  "status": "gap_reproduced",
+  "utc_span_is_monotonic_duration_proof": false,
+  "verdict_stub_used": false
+}

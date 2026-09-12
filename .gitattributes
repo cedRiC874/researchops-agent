@@ -22,3 +22,16 @@ artifacts/portfolio_baseline_provider/* -text -diff
 docs/evidence/phase6-deepseek-v1/development/* -text -diff
 docs/evidence/phase6-deepseek-v1/holdout/* -text -diff
 /probe_out_v3.json -text -diff
+
+# Frozen source/schema replay inputs must retain their exact original bytes.
+docs/diagnostics/t6c-pre-source-v4-20260908/** -text
+docs/diagnostics/t6c-source-baseline-c1c25226-v1/** -text
+docs/diagnostics/t6c-review-pre-hardening-v7-20260906/** -text
+docs/diagnostics/t6c-review-before-budget-fix-v7-20260906/** -text
+docs/diagnostics/timed-closure-pre-freeze-correction-20260908/** -text
+docs/diagnostics/timed-closure-before-empty-partial-20260908/** -text
+docs/diagnostics/timed-closure-before-prefix-expansion-20260908/** -text
+docs/diagnostics/t6c-*-review*-v1.json -text
+docs/diagnostics/t6c-admission-boundaries-v1.json -text
+docs/diagnostics/t6c-pre-source-v4-20260908/files/probe_out_v3.json -text -diff
+docs/diagnostics/t6c-source-baseline-c1c25226-v1/files/probe_out_v3.json -text -diff

@@ -1,0 +1,16 @@
+{
+  "cost_stop_cny": "0.000001",
+  "decimal_precision_results": {
+    "1": "accepted",
+    "28": "external_closure_budget_invalid"
+  },
+  "documents_source_sha256": "16c70bb34a5b3b365c7f1b595fb21a62cd4ab8e1a34503f2f1551581b1cfea50",
+  "exact_reserved_cost_cny": "0.000001000002",
+  "full_signed_document_graph_revalidated": false,
+  "provider_calls": 0,
+  "real_key_loads": 0,
+  "same_input_documents": true,
+  "schema_version": "t6c-decimal-context-review/1.0",
+  "scope": "envelope_commitment_helper_only_not_full_A_B",
+  "status": "gap_reproduced"
+}

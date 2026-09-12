@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/first_live_review_record_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "review_id",
+    "reviewed_at_utc",
+    "first_live_completed_at_utc",
+    "evidence_observed_at_utc",
+    "evidence_commit",
+    "evidence_tree",
+    "first_live_evidence_commitment_sha256",
+    "subject",
+    "decision",
+    "reason_code",
+    "review_scope",
+    "reviewer_independence_claimed",
+    "online_execution_authorized",
+    "provider_registration_authorized",
+    "document_sha256",
+    "signatures"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-review/1.0"
+    },
+    "document_type": {
+      "const": "completion_telemetry_first_live_review"
+    },
+    "review_id": {
+      "type": "string",
+      "pattern": "^PCEREVIEW-[A-F0-9]{32}$"
+    },
+    "reviewed_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "maxLength": 96
+    },
+    "first_live_completed_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "maxLength": 96
+    },
+    "evidence_observed_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "maxLength": 96
+    },
+    "evidence_commit": {
+      "type": "string",
+      "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+    },
+    "evidence_tree": {
+      "type": "string",
+      "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+    },
+    "first_live_evidence_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_id",
+        "model_id",
+        "api_origin",
+        "api_surface",
+        "transport_id",
+        "adapter_version",
+        "first_live_execution_commit",
+        "first_live_execution_tree",
+        "first_live_source_integrity_commitment_sha256",
+        "first_live_implementation_commitment_sha256",
+        "source_byte_inventory_sha256",
+        "dependency_lock_sha256",
+        "pyproject_sha256",
+        "selected_mapping_sha256"
+      ],
+      "properties": {
+        "provider_id": {
+          "const": "deepseek"
+        },
+        "model_id": {
+          "const": "deepseek-v4-flash"
+        },
+        "api_origin": {
+          "const": "https://api.deepseek.com"
+        },
+        "api_surface": {
+          "const": "responses"
+        },
+        "transport_id": {
+          "const": "openai_compatible_responses"
+        },
+        "adapter_version": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._/-]{0,127}$"
+        },
+        "first_live_execution_commit": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+        },
+        "first_live_execution_tree": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
+        },
+        "first_live_source_integrity_commitment_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "first_live_implementation_commitment_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "source_byte_inventory_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "dependency_lock_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "pyproject_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        },
+        "selected_mapping_sha256": {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+        }
+      }
+    },
+    "decision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ]
+    },
+    "reason_code": {
+      "enum": [
+        "passed",
+        "evidence_invalid",
+        "execution_identity_mismatch",
+        "usage_incomplete",
+        "privacy_not_verified",
+        "scope_mismatch"
+      ]
+    },
+    "review_scope": {
+      "const": "two_response_adapter_completion_shapes_only"
+    },
+    "reviewer_independence_claimed": {
+      "const": false
+    },
+    "online_execution_authorized": {
+      "const": false
+    },
+    "provider_registration_authorized": {
+      "const": false
+    },
+    "document_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "key_id",
+          "algorithm",
+          "signed_sha256",
+          "signature_b64"
+        ],
+        "properties": {
+          "role": {
+            "const": "freeze_authority"
+          },
+          "key_id": {
+            "type": "string",
+            "pattern": "^PCEKEY-[A-F0-9]{32}$"
+          },
+          "algorithm": {
+            "const": "ed25519"
+          },
+          "signed_sha256": {
+            "type": "string",
+            "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+          },
+          "signature_b64": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]{86}==$"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "approved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reason_code": {
+            "const": "passed"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "reason_code": {
+            "not": {
+              "const": "passed"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

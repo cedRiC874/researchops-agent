@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-unseen-case-bundle-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "synthetic_only",
+    "candidate_freeze_receipt_sha256",
+    "seen_case_exclusion_manifest_sha256",
+    "leak_canary_b64",
+    "leak_canary_injected_into_every_request",
+    "cases",
+    "participant_derived_data_present",
+    "private_or_non_synthetic_data_present",
+    "direct_or_quasi_identifier_data_present"
+  ],
+  "properties": {
+    "schema_version": {"const": "completion-telemetry-unseen-case-bundle/1.0"},
+    "bundle_id": {"type": "string", "pattern": "^PCEBUNDLE-[A-F0-9]{32}$"},
+    "synthetic_only": {"const": true},
+    "candidate_freeze_receipt_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "seen_case_exclusion_manifest_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "leak_canary_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+    "leak_canary_injected_into_every_request": {"const": true},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_handle",
+          "task_schema_version",
+          "user_input",
+          "max_turns_per_case",
+          "tools",
+          "golden",
+          "scorer"
+        ],
+        "properties": {
+          "case_handle": {"type": "string", "pattern": "^PCECASE-[A-F0-9]{32}$"},
+          "task_schema_version": {"const": "completion-telemetry-synthetic-task/1.0"},
+          "user_input": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "max_turns_per_case": {"type": "integer", "minimum": 1, "maximum": 8},
+          "tools": {"const": []},
+          "golden": {"type": "null"},
+          "scorer": {"type": "null"}
+        }
+      }
+    },
+    "participant_derived_data_present": {"const": false},
+    "private_or_non_synthetic_data_present": {"const": false},
+    "direct_or_quasi_identifier_data_present": {"const": false}
+  },
+  "$defs": {
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/provider-completion-seen-case-exclusion-manifest-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "manifest_id",
+    "created_at_utc",
+    "candidate_freeze_receipt_sha256",
+    "source_inventory",
+    "source_inventory_commitment_sha256",
+    "exclusion_digest_set_count",
+    "exclusion_digest_set_commitment_sha256",
+    "source_inventory_complete_attested",
+    "software_proves_source_inventory_complete",
+    "task_or_prompt_plaintext_included",
+    "individual_task_digests_included",
+    "document_sha256",
+    "signatures"
+  ],
+  "properties": {
+    "schema_version": {"const": "provider-completion-seen-case-exclusion-manifest/1.0"},
+    "document_type": {"const": "completion_telemetry_seen_task_exclusion_manifest"},
+    "manifest_id": {"type": "string", "pattern": "^PCESEEN-[A-F0-9]{32}$"},
+    "created_at_utc": {"$ref": "#/$defs/timestamp"},
+    "candidate_freeze_receipt_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "source_inventory": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/source_record"}, {"properties": {"source_class": {"const": "candidate_repository_evals_and_task_manifests"}}}]},
+        {"allOf": [{"$ref": "#/$defs/source_record"}, {"properties": {"source_class": {"const": "candidate_repository_tests_and_synthetic_fixtures"}}}]},
+        {"allOf": [{"$ref": "#/$defs/source_record"}, {"properties": {"source_class": {"const": "candidate_repository_docs_and_published_evidence_examples"}}}]},
+        {"allOf": [{"$ref": "#/$defs/source_record"}, {"properties": {"source_class": {"const": "historical_provider_request_inputs_represented_by_project_supplied_digests"}}}]},
+        {"allOf": [{"$ref": "#/$defs/source_record"}, {"properties": {"source_class": {"const": "manual_development_review_and_prompt_tuning_inputs_represented_by_project_supplied_digests"}}}]},
+        {"allOf": [{"$ref": "#/$defs/source_record"}, {"properties": {"source_class": {"const": "public_article_and_demo_task_inputs_represented_by_project_supplied_digests"}}}]}
+      ],
+      "items": false
+    },
+    "source_inventory_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "exclusion_digest_set_count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+    "exclusion_digest_set_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+    "source_inventory_complete_attested": {"const": true},
+    "software_proves_source_inventory_complete": {"const": false},
+    "task_or_prompt_plaintext_included": {"const": false},
+    "individual_task_digests_included": {"const": false},
+    "document_sha256": {"$ref": "#/$defs/sha256"},
+    "signatures": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/signature"}, {"properties": {"role": {"const": "freeze_authority"}}}]},
+        {"allOf": [{"$ref": "#/$defs/signature"}, {"properties": {"role": {"const": "task_custodian"}}}]}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonzero_sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "key_id": {"type": "string", "pattern": "^PCEKEY-[A-F0-9]{32}$"},
+    "source_record": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_class", "source_snapshot_commitment_sha256", "task_digest_count"],
+        "properties": {
+          "source_class": {
+            "enum": [
+              "candidate_repository_evals_and_task_manifests",
+              "candidate_repository_tests_and_synthetic_fixtures",
+              "candidate_repository_docs_and_published_evidence_examples",
+              "historical_provider_request_inputs_represented_by_project_supplied_digests",
+              "manual_development_review_and_prompt_tuning_inputs_represented_by_project_supplied_digests",
+              "public_article_and_demo_task_inputs_represented_by_project_supplied_digests"
+            ]
+          },
+          "source_snapshot_commitment_sha256": {"$ref": "#/$defs/nonzero_sha256"},
+          "task_digest_count": {"type": "integer", "minimum": 0, "maximum": 1000000}
+        }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "key_id", "algorithm", "signed_sha256", "signature_b64"],
+      "properties": {
+        "role": {"enum": ["freeze_authority", "task_custodian"]},
+        "key_id": {"$ref": "#/$defs/key_id"},
+        "algorithm": {"const": "ed25519"},
+        "signed_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_b64": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+      }
+    }
+  }
+}

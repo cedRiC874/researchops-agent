@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "authorization_id_sha256", "validation_run_id", "plan_commitment_sha256", "execution_binding_sha256", "receipt", "audit_snapshot", "diagnostic_only", "receipt_counts_independently_verified", "runtime_authority_granted", "closure_claim_allowed", "retry_authorized", "manifest_commitment_sha256"],
+  "$defs": {
+    "sha": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^(?!0{64}$)[0-9a-f]{64}$"}
+  },
+  "properties": {
+    "schema_version": {"const": "provider-completion-first-live-failure-manifest/1.0"},
+    "authorization_id_sha256": {"$ref": "#/$defs/sha"},
+    "validation_run_id": {"type": "string", "minLength": 41, "maxLength": 41, "pattern": "^PCEVALID-[A-F0-9]{32}$"},
+    "plan_commitment_sha256": {"$ref": "#/$defs/sha"},
+    "execution_binding_sha256": {"$ref": "#/$defs/sha"},
+    "receipt": {
+      "type": "object", "additionalProperties": false, "required": ["name", "bytes", "sha256"],
+      "properties": {"name": {"const": "failure_receipt.json"}, "bytes": {"type": "integer", "minimum": 1, "maximum": 4096}, "sha256": {"$ref": "#/$defs/sha"}}
+    },
+    "audit_snapshot": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "status", "bytes", "sha256", "event_count", "chain_head_sha256"],
+      "properties": {
+        "name": {"const": "audit.sqlite3"},
+        "status": {"enum": ["verified_chain", "unavailable"]},
+        "bytes": {"anyOf": [{"type": "integer", "minimum": 1, "maximum": 8388608}, {"type": "null"}]},
+        "sha256": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]},
+        "event_count": {"anyOf": [{"type": "integer", "minimum": 1, "maximum": 6}, {"type": "null"}]},
+        "chain_head_sha256": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]}
+      }
+    },
+    "diagnostic_only": {"const": true},
+    "receipt_counts_independently_verified": {"const": false},
+    "runtime_authority_granted": {"const": false},
+    "closure_claim_allowed": {"const": false},
+    "retry_authorized": {"const": false},
+    "manifest_commitment_sha256": {"$ref": "#/$defs/sha"}
+  }
+}

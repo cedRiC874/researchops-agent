@@ -1,0 +1,33 @@
+{
+  "schema_version": "provider-completion-first-live-control-contract/1.0",
+  "first_live_timing_profile_sha256": "f104f5c4cc483a708313e6cdd984145ee8b231f8e4489d9ff52426ed4b9fdd2a",
+  "local_claim_contract_sha256": "10e6a6f50712b9f6b7bdf1bcf628f1745d2bfcf5723fd9f7d230ea682ee90695",
+  "authorization_binding_domain": "researchops-provider-completion-first-live-direct-authorization-v1",
+  "schemas": [
+    {
+      "name": "authorization_v1.schema.json",
+      "bytes": 3319,
+      "sha256": "984f2d9b65266ff01be885ca08d365bc175ac9e280dcd3e1bae547382740b7dc"
+    },
+    {
+      "name": "claim_intent_v1.schema.json",
+      "bytes": 1767,
+      "sha256": "a45b2f4d5a6840458b346073c873cb39020faaa6660ef0ed4c0326556bb787d7"
+    }
+  ],
+  "rules": [
+    "The authorization binding hashes the entire canonical authorization document with only authorization_binding_sha256 omitted.",
+    "The expected authorization binding is supplied independently by the explicit user authorization; calculating a matching hash is not consent.",
+    "Authorization binds the exact first-live plan, environment, authorization ID, pricing and fixed limits; old campaign grants and v3 first-live bindings are not accepted.",
+    "The authorization window is at least 330 seconds and at most 24 hours; supplied verification time must be within it.",
+    "Pricing retrieval and authorization share the declared snapshot UTC date, retrieval precedes authorization, and full cap reservation is compared to CNY 1 using exact rational arithmetic.",
+    "The claim intent is explicitly not a reservation and authorizes no Key/task use.",
+    "For first-live only, local claim request authorization_grant_sha256 is the canonical direct-authorization document hash, and consumption_entry_sha256 is the canonical local claim-intent hash. Neither means an external campaign ledger entry.",
+    "Local claim receipt must match the intent, environment, plan, execution commit and clock domain, and be claimed between intent time and authorization expiry.",
+    "No supplied receipt alone proves that the protected store accepted it; runtime/current-store and source admission remain separate gates.",
+    "Fresh current time, exact source, real local claim, enabled collector, publication and review/registry linkage are still required before any runtime authority or first-live success."
+  ],
+  "provider_calls_authorized": false,
+  "runtime_authority_granted": false,
+  "first_live_success_verified": false
+}

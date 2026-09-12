@@ -1,0 +1,307 @@
+{
+  "schema_version": "provider-completion-execution-component-recipe/1.0",
+  "contract_id": "provider-completion-execution-component-recipe-v1",
+  "status": "local_implementation_candidate_not_approved_for_admission",
+  "predecessors": {
+    "external_preregistration_design": {
+      "path": "evals/provider_completion_external_preregistration_v1/external_preregistration_design_contract_v1.json",
+      "bytes": 65751,
+      "sha256": "3b16e6d65ec7030fb1f271b57cbde369a55fbf4f966ad57cb73e591d5333d61d",
+      "semantic_commitment": "480a8511d35d295d8a99ba7561a19f742b189094dec589bbd8317899c1f833c8"
+    },
+    "closure_evidence": {
+      "path": "evals/provider_completion_external_preregistration_v1/closure_evidence_contract_v1.json",
+      "bytes": 39575,
+      "sha256": "2c904737b2776ac1df2358df86e320e6421c6eed17b48ab97d49f7512d37e439",
+      "semantic_commitment": "a96b39a1f4bafa3bcf512fd88a5e7b0ca3987ca2bc9804642a1d1259cbf8cad0"
+    },
+    "source_integrity_v5": {
+      "path": "evals/phase6_deepseek_depth60_plan_v5.json",
+      "bytes": 3120,
+      "sha256": "ff39dd5a1aa09b7bc92b27f9d800b5d51fbd2fd69c2a599b5bf0f25aed490aae",
+      "semantic_commitment": "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7"
+    }
+  },
+  "byte_protocol": {
+    "canonical_json": "utf8-sorted-keys-no-whitespace-no-bom-no-newline-reject-duplicates-nonfinite-v1",
+    "file_hash": "sha256-exact-raw-file-bytes",
+    "file_inventory_order": "ascending-repository-relative-path",
+    "file_inventory_row_fields": [
+      "path",
+      "bytes",
+      "sha256"
+    ],
+    "file_group_hash": "SHA256(UTF8(group.domain) || NUL || canonical_json(ordered file inventory rows))",
+    "object_commitment": "SHA256(UTF8(fixed domain) || NUL || canonical_json(object with commitment_sha256 omitted))",
+    "git_tree_required": true,
+    "historical_commit_not_current_worktree": true,
+    "execute_snapshot_code": false
+  },
+  "paths": {
+    "recipe": "evals/provider_completion_execution_binding_v1/execution_component_recipe_v1.json",
+    "runner_config": "evals/provider_completion_execution_binding_v1/runner_config_v1.json",
+    "implementation_manifest": "evals/provider_completion_execution_binding_v1/implementation_manifest_v1.json",
+    "source_integrity_v6": "evals/phase6_deepseek_depth60_plan_v6.json"
+  },
+  "domains": {
+    "runner_config": "researchops-provider-completion-execution-runner-config-v1",
+    "implementation_manifest": "researchops-provider-completion-execution-implementation-manifest-v1",
+    "source_integrity_v6": "researchops-phase6-deepseek-depth60-successor-plan-v6"
+  },
+  "file_groups": {
+    "source_bundle_sha256": {
+      "domain": "researchops-provider-completion-all-first-party-python-v1",
+      "prefixes": [
+        "src/"
+      ],
+      "suffix": ".py",
+      "files": [],
+      "exclude": []
+    },
+    "completion_telemetry_runtime_bundle_sha256": {
+      "domain": "researchops-provider-completion-execution-telemetry-runtime-v1",
+      "prefixes": [
+        "src/researchops_completion_telemetry/"
+      ],
+      "suffix": ".py",
+      "files": [],
+      "exclude": []
+    },
+    "closure_verifier_sha256": {
+      "domain": "researchops-provider-completion-execution-closure-verifier-v1",
+      "prefixes": [
+        "src/researchops_external_closure/"
+      ],
+      "suffix": ".py",
+      "files": [
+        "src/researchops/provider_completion_external_contract.py"
+      ],
+      "exclude": []
+    },
+    "sanitizer_sha256": {
+      "domain": "researchops-provider-completion-execution-sanitizer-v1",
+      "prefixes": [
+        "src/researchops_completion_telemetry/"
+      ],
+      "suffix": ".py",
+      "files": [
+        "src/researchops_external_closure/io.py",
+        "src/researchops_external_closure/schema_guard.py",
+        "src/researchops_external_closure/primitives.py",
+        "src/researchops_external_closure/errors.py"
+      ],
+      "exclude": []
+    },
+    "completion_telemetry_contract_bundle_sha256": {
+      "domain": "researchops-provider-completion-execution-protocol-data-v1",
+      "prefixes": [
+        "evals/provider_completion_telemetry_v1/",
+        "evals/provider_completion_telemetry_v2/",
+        "evals/provider_completion_first_live_validation_v1/",
+        "evals/provider_completion_external_preregistration_v1/",
+        "evals/provider_completion_execution_binding_v1/"
+      ],
+      "suffix": ".json",
+      "files": [
+        "evals/phase6_deepseek_depth60_plan_v5.json",
+        "evals/phase6_deepseek_depth60_plan.json",
+        "evals/phase6_deepseek_depth60_plan_v2.json",
+        "evals/phase6_deepseek_depth60_plan_v3.json",
+        "evals/phase6_deepseek_depth60_plan_v4.json",
+        "probe_out_v3.json"
+      ],
+      "exclude": [
+        "evals/provider_completion_execution_binding_v1/implementation_manifest_v1.json"
+      ]
+    }
+  },
+  "mandatory_files": [
+    "src/researchops/__init__.py",
+    "src/researchops/audit.py",
+    "src/researchops/model_providers.py",
+    "src/researchops/phase6_agent.py",
+    "src/researchops/phase6_runner.py",
+    "src/researchops/provider_completion_external_contract.py",
+    "src/researchops_completion_telemetry/sanitization.py",
+    "src/researchops_completion_telemetry/persisted_evidence.py",
+    "src/researchops_external_closure/evaluator.py",
+    "src/researchops_external_closure/final.py",
+    "src/researchops_external_closure/git_objects.py",
+    "src/researchops_external_closure/execution_components.py",
+    "requirements.lock",
+    "pyproject.toml",
+    "evals/provider_completion_execution_binding_v1/execution_component_recipe_v1.json",
+    "evals/provider_completion_execution_binding_v1/runner_config_v1.json",
+    "evals/provider_completion_telemetry_v2/provider_completion_surface_registry_v2.json",
+    "evals/provider_completion_telemetry_v1/provider_completion_mapping_v1.json",
+    "evals/provider_completion_telemetry_v1/schemas/provider_completion_record_v1.schema.json",
+    "src/researchops_external_closure/__init__.py",
+    "src/researchops_external_closure/artifact_inputs.py",
+    "src/researchops_external_closure/artifacts.py",
+    "src/researchops_external_closure/documents.py",
+    "src/researchops_external_closure/errors.py",
+    "src/researchops_external_closure/execution_binding.py",
+    "src/researchops_external_closure/io.py",
+    "src/researchops_external_closure/pre_receipt.py",
+    "src/researchops_external_closure/primitives.py",
+    "src/researchops_external_closure/schema_guard.py",
+    "src/researchops_external_closure/semantics.py",
+    "src/researchops_external_closure/types.py",
+    "src/researchops_completion_telemetry/__init__.py",
+    "src/researchops_completion_telemetry/capture.py",
+    "src/researchops_completion_telemetry/mapping.py",
+    "src/researchops_completion_telemetry/surface_mapping.py",
+    "evals/provider_completion_telemetry_v1/fixture_manifest.json",
+    "evals/provider_completion_telemetry_v2/fixture_manifest_v2.json"
+  ],
+  "raw_components": {
+    "dependency_lock_sha256": "requirements.lock",
+    "pyproject_sha256": "pyproject.toml"
+  },
+  "schema_binding_path": "evals/provider_completion_telemetry_v1/schemas/provider_completion_record_v1.schema.json",
+  "first_live_and_registry_proof": {
+    "defined_by_this_recipe": false,
+    "reviewed_success_is_not_generated": true,
+    "registry_promotion_authorized": false,
+    "registry_v2_runtime_admission_allowed": false,
+    "separate_versioned_evidence_review_registry_contract_required": true
+  },
+  "scope": {
+    "source_integrity_only": true,
+    "current_tree_drift_detection": true,
+    "online_execution_authorized": false,
+    "runtime_authority_granted": false,
+    "installed_environment_verified": false,
+    "first_live_review_verified": false,
+    "closure_claim_allowed": false,
+    "model_quality_claim_allowed": false,
+    "historical_result_revalidation": false
+  },
+  "runner_config_values": {
+    "schema_version": "provider-completion-execution-runner-config/1.0",
+    "purpose": "externally_preregistered_synthetic_completion_telemetry_closure",
+    "provider_id": "deepseek",
+    "model_id": "deepseek-v4-flash",
+    "api_origin": "https://api.deepseek.com",
+    "api_surface": "responses",
+    "transport_id": "openai_compatible_responses",
+    "adapter_version": "deepseek-responses-adapter/1.0",
+    "agent_runner_required": true,
+    "stream": false,
+    "tools": 0,
+    "concurrency": 1,
+    "agents_sdk_retries": 0,
+    "http_client_retries": 0,
+    "resume": false,
+    "fallback": false,
+    "task_and_budget_source": "separately_signed_external_runtime_plan",
+    "task_plaintext_persisted": false,
+    "provider_body_persisted": false,
+    "provider_key_persisted": false,
+    "trace_export_allowed": false,
+    "completion_schema_version": "provider-completion-record/1.0",
+    "denominator_algorithm": "transport-response-finalization-v1",
+    "closure_algorithm": "provider-completion-full-outer-closure-v1",
+    "grants_online_authority": false,
+    "grants_registry_promotion": false
+  },
+  "implementation_manifest_fields": [
+    "schema_version",
+    "status",
+    "recipe_sha256",
+    "component_hashes",
+    "file_inventory",
+    "file_groups",
+    "source_integrity_only",
+    "runtime_authority_granted",
+    "installed_environment_verified",
+    "admission_verified",
+    "commitment_sha256"
+  ],
+  "source_integrity_v6_fields": [
+    "schema_version",
+    "plan_id",
+    "status",
+    "recipe_sha256",
+    "predecessor",
+    "component_hashes",
+    "implementation_commitment_sha256",
+    "implementation_manifest_sha256",
+    "online_execution_authorized",
+    "network_calls",
+    "model_calls",
+    "historical_result_revalidation",
+    "plan_commitment_sha256"
+  ],
+  "mapping_projection": {
+    "algorithm": "v2-offline-surface-selection-canonical-json-sha256",
+    "registry_path": "evals/provider_completion_telemetry_v2/provider_completion_surface_registry_v2.json",
+    "predecessor_path": "evals/provider_completion_telemetry_v1/provider_completion_mapping_v1.json",
+    "runtime_authority_granted": false
+  },
+  "historical_plan_chain": [
+    {
+      "path": "evals/phase6_deepseek_depth60_plan.json",
+      "bytes": 5398,
+      "sha256": "f5d43283e3506663383359d24736bd3b82a910e45cc092954f94d86a80e6cd20",
+      "semantic_commitment": "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e",
+      "domain": "researchops-phase6-deepseek-depth60-plan-v1"
+    },
+    {
+      "path": "evals/phase6_deepseek_depth60_plan_v2.json",
+      "bytes": 2170,
+      "sha256": "fc4ca5cc2131efb36d82f1d739f65ad2a026e1c7534f0da9c873942a40c1002f",
+      "semantic_commitment": "3077a55e09f3f2137155a68d96a5bda60d8553cc9b5dd36ca83d33bbbc3dcf7e",
+      "domain": "researchops-phase6-deepseek-depth60-successor-plan-v2"
+    },
+    {
+      "path": "evals/phase6_deepseek_depth60_plan_v3.json",
+      "bytes": 2850,
+      "sha256": "5602f940a8627b9c785a1b785d757119a616050ebbc2e31e9dd26aacf448c05e",
+      "semantic_commitment": "979202e96a5304ad1ba73c54e55f0d38f80baedf8278e37ea8535bb5560ce6af",
+      "domain": "researchops-phase6-deepseek-depth60-successor-plan-v3"
+    },
+    {
+      "path": "evals/phase6_deepseek_depth60_plan_v4.json",
+      "bytes": 3087,
+      "sha256": "ae961e069afa9c842c294f7fb6951e0cf3a4ad86dfcdd16cb96a2c264c232956",
+      "semantic_commitment": "c36dc0dd0487aa350dc2bd636b45bb494381e0c732c80be7b410be4b9beda612",
+      "domain": "researchops-phase6-deepseek-depth60-successor-plan-v4"
+    },
+    {
+      "path": "evals/phase6_deepseek_depth60_plan_v5.json",
+      "bytes": 3120,
+      "sha256": "ff39dd5a1aa09b7bc92b27f9d800b5d51fbd2fd69c2a599b5bf0f25aed490aae",
+      "semantic_commitment": "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7",
+      "domain": "researchops-phase6-deepseek-depth60-successor-plan-v5"
+    }
+  ],
+  "frozen_fixture_packages": [
+    {
+      "manifest_path": "evals/provider_completion_telemetry_v1/fixture_manifest.json",
+      "bytes": 14342,
+      "sha256": "924d87c5d72f6c0108046f969d0d0816e03e0ae0988ebafe2a3f97f8c5551504",
+      "base": "evals/provider_completion_telemetry_v1/",
+      "fixture_base": "evals/provider_completion_telemetry_v1/fixtures/",
+      "bound_top_fields": [
+        "mapping",
+        "rule_coverage"
+      ]
+    },
+    {
+      "manifest_path": "evals/provider_completion_telemetry_v2/fixture_manifest_v2.json",
+      "bytes": 1750,
+      "sha256": "55c9e23981f01ab744aff75622b0c7b3f0443ca244af33f49faaf6b6fb76a3c9",
+      "base": "evals/provider_completion_telemetry_v2/",
+      "fixture_base": "evals/provider_completion_telemetry_v2/",
+      "bound_top_fields": [
+        "registry"
+      ]
+    }
+  ],
+  "frozen_probe_source": {
+    "path": "probe_out_v3.json",
+    "bytes": 9215,
+    "sha256": "cb3417b0f3c56eca7fd6d05dda68c4717315004ba0d6e5d6da408d52d990131d"
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/completion_first_live_timing_publication_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "timing_contract_sha256",
+    "plan_commitment_sha256",
+    "execution_binding_sha256",
+    "clock_domain_id",
+    "timing_evidence_file_sha256",
+    "bundle_manifest_file_sha256",
+    "sealing_started_ns",
+    "sealing_finished_ns",
+    "sealing_status",
+    "sealing_scope",
+    "online_execution_authorized",
+    "publication_commitment_sha256",
+    "first_live_profile_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-first-live-timing-publication/1.0"
+    },
+    "document_type": {
+      "const": "completion_first_live_timing_publication"
+    },
+    "timing_contract_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "plan_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "execution_binding_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "clock_domain_id": {
+      "type": "string",
+      "pattern": "^PCECLOCK-[A-F0-9]{32}$",
+      "maxLength": 41
+    },
+    "timing_evidence_file_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "bundle_manifest_file_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "sealing_started_ns": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "sealing_finished_ns": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sealing_status": {
+      "enum": [
+        "sealed",
+        "failed",
+        "timed_out",
+        "cancelled",
+        "unknown"
+      ]
+    },
+    "sealing_scope": {
+      "const": "bounded_artifact_set_before_publication_receipt"
+    },
+    "online_execution_authorized": {
+      "const": false
+    },
+    "publication_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "first_live_profile_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    }
+  }
+}
