@@ -1,0 +1,118 @@
+{
+  "schema_version": "provider-completion-first-live-implementation/5.0",
+  "implementation_id": "deepseek-responses-timed-first-live-implementation-v5",
+  "status": "offline_protocol_requires_runtime_implementation_and_review",
+  "commitment": {
+    "domain": "researchops-provider-completion-first-live-implementation-v5",
+    "algorithm": "SHA256(domain || NUL || strict canonical JSON of entire document); digest is not stored inside this document"
+  },
+  "fixed_bindings": [
+    {
+      "path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_contract_v1.json",
+      "bytes": 9991,
+      "sha256": "477addbc41987d11c6ac7ede3fa6f94d74322efe09c541ea20f3a7937eb96496"
+    },
+    {
+      "path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_implementation_v3.json",
+      "bytes": 3721,
+      "sha256": "6e11120ad2463ae4aaeed076b4e490e98e977fb21c8e71fce91e9bb4bc9118eb"
+    },
+    {
+      "path": "evals/provider_completion_first_live_timing_v1/contract_v1.json",
+      "bytes": 4482,
+      "sha256": "f104f5c4cc483a708313e6cdd984145ee8b231f8e4489d9ff52426ed4b9fdd2a"
+    },
+    {
+      "path": "evals/provider_completion_local_claim_v1/contract_v1.json",
+      "bytes": 2855,
+      "sha256": "10e6a6f50712b9f6b7bdf1bcf628f1745d2bfcf5723fd9f7d230ea682ee90695"
+    },
+    {
+      "path": "evals/provider_completion_first_live_control_v1/contract_v1.json",
+      "bytes": 2474,
+      "sha256": "ad7915042f33da62f608827489b921a31a87ebb601f26b0efcae3704cd224245"
+    },
+    {
+      "path": "evals/provider_completion_timed_ledger_v1/contract_v1.json",
+      "bytes": 2717,
+      "sha256": "5acc5b2d7d018202a5af42a736d178fa4e0cdc74b25a60a055d2883bc93b7002"
+    },
+    {
+      "path": "evals/provider_completion_first_live_audit_v1/contract_v1.json",
+      "bytes": 2190,
+      "sha256": "b0e8c8470cff76388285cf4e2bcb8eb7d680f66eda3869b3586bfdb5dcd1ff74"
+    },
+    {
+      "path": "evals/provider_completion_first_live_artifact_v1/contract_v1.json",
+      "bytes": 3188,
+      "sha256": "4e50cbfa2a92473f3ed56763fd4895dc5a2e1cf4871e31e364e64b11f0bda265"
+    },
+    {
+      "path": "evals/provider_completion_first_live_review_v2/contract_v2.json",
+      "bytes": 2060,
+      "sha256": "240dbe57b868eaebbda40a586728b0de66ad399070537b8886ce1566c06cde93"
+    },
+    {
+      "path": "evals/provider_completion_execution_binding_v4/execution_component_recipe_v4.json",
+      "bytes": 18216,
+      "sha256": "d07be82febc00009b03a63541c3a86d3dea81f9bd00983c157e41f28eeaded08"
+    },
+    {
+      "path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_implementation_v4.json",
+      "bytes": 4524,
+      "sha256": "25e849a057121c56e162b618c2c9b5be117b889df61387279ac423a423dbca52"
+    }
+  ],
+  "execution_profile": {
+    "source_profile": "first_live",
+    "source_plan_id": "phase6-deepseek-depth60-v11",
+    "source_plan_path": "evals/phase6_deepseek_depth60_plan_v11.json",
+    "source_manifest_path": "evals/provider_completion_execution_binding_v4/implementation_manifest_first_live_v3.json",
+    "provider_id": "deepseek",
+    "model_id": "deepseek-v4-flash",
+    "api_origin": "https://api.deepseek.com",
+    "api_surface": "responses",
+    "transport_id": "openai_compatible_responses",
+    "adapter_version": "deepseek-responses-adapter/1.0"
+  },
+  "requirements": {
+    "network_attempts_max": 2,
+    "model_requests_max": 2,
+    "output_token_caps": [
+      256,
+      16
+    ],
+    "input_tokens_per_request_max": 512,
+    "input_tokens_total_max": 1024,
+    "output_tokens_total_max": 272,
+    "concurrency": 1,
+    "retries": 0,
+    "resume": false,
+    "fallback": false,
+    "tools": 0,
+    "request_timeout_seconds": 120,
+    "request_phase_seconds": 300,
+    "artifact_sealing_seconds": 30,
+    "whole_process_seconds": 330,
+    "local_cost_stop_cny": "1.000000",
+    "design_inputs_unchanged": true,
+    "single_host_fixed_store": true,
+    "winning_claim_before_key_or_input_use": true,
+    "readable_claim_is_not_a_winning_execution_permit": true,
+    "fresh_time_and_current_source_recheck_required": true,
+    "timing_usage_and_record_bound_to_same_terminal": true,
+    "artifact_and_review_and_source_equivalence_required_for_campaign": true
+  },
+  "boundaries": {
+    "protocol_identity_is_not_source_manifest_identity": true,
+    "entrypoint_name_presence_is_not_behavior_proof": true,
+    "runnable_implementation_proved": false,
+    "actual_live_execution_proved": false,
+    "source_integrity_only": true,
+    "online_execution_authorized": false,
+    "runtime_admission_verified": false,
+    "registry_promotion_authorized": false,
+    "provider_registration_authorized": false,
+    "status_closure_authorized": false
+  }
+}

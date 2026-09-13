@@ -1,0 +1,113 @@
+{
+  "schema_version": "provider-completion-execution-component-recipe/3.0",
+  "contract_id": "provider-completion-timed-execution-component-recipe-v3",
+  "base_recipe": {
+    "path": "evals/provider_completion_execution_binding_v2/execution_component_recipe_v2.json",
+    "sha256": "a474542348d71d6becced84c327cfcca6353ffe33033be4426370c8ef8d58c6e",
+    "derivation": "v2-first-live-pure-engine-no-output-written"
+  },
+  "profiles": {
+    "first_live": {
+      "plan_id": "phase6-deepseek-depth60-v9",
+      "plan_schema_version": "9.0",
+      "plan_path": "evals/phase6_deepseek_depth60_plan_v9.json",
+      "manifest_path": "evals/provider_completion_execution_binding_v3/implementation_manifest_first_live_v2.json",
+      "plan_domain": "researchops-phase6-deepseek-depth60-successor-plan-v9",
+      "manifest_domain": "researchops-provider-completion-timed-first-live-source-manifest-v2"
+    },
+    "campaign": {
+      "plan_id": "phase6-deepseek-depth60-v10",
+      "plan_schema_version": "10.0",
+      "plan_path": "evals/phase6_deepseek_depth60_plan_v10.json",
+      "manifest_path": "evals/provider_completion_execution_binding_v3/implementation_manifest_campaign_v2.json",
+      "plan_domain": "researchops-phase6-deepseek-depth60-successor-plan-v10",
+      "manifest_domain": "researchops-provider-completion-timed-campaign-source-manifest-v2"
+    }
+  },
+  "contract_selection": {
+    "directory_prefix": "evals/provider_completion_",
+    "suffix": ".json",
+    "derive_from_complete_inventory": true,
+    "manifest_does_not_choose_coverage": true
+  },
+  "all_profiles_excluded_paths": [
+    "evals/provider_completion_execution_binding_v2/implementation_manifest_campaign_v1.json",
+    "evals/provider_completion_execution_binding_v3/implementation_manifest_first_live_v2.json",
+    "evals/provider_completion_execution_binding_v3/implementation_manifest_campaign_v2.json"
+  ],
+  "first_live_excluded_paths": [
+    "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.json",
+    "evals/provider_completion_runtime_registry_v3/registry_admission_bundle_v1.json"
+  ],
+  "campaign_required_paths": [
+    "evals/provider_completion_runtime_registry_v3/runtime_registry_v3.json",
+    "evals/provider_completion_runtime_registry_v3/registry_admission_bundle_v1.json",
+    "evals/phase6_deepseek_depth60_plan_v9.json",
+    "evals/provider_completion_execution_binding_v3/implementation_manifest_first_live_v2.json"
+  ],
+  "mandatory_paths": [
+    "evals/provider_completion_execution_scope_v1/contract_v1.json",
+    "evals/provider_completion_execution_scope_v1/preregistration_v3.schema.json",
+    "evals/provider_completion_first_live_artifact_v1/bundle_v1.schema.json",
+    "evals/provider_completion_first_live_artifact_v1/contract_v1.json",
+    "evals/provider_completion_first_live_artifact_v1/manifest_v1.schema.json",
+    "evals/provider_completion_first_live_audit_v1/contract_v1.json",
+    "evals/provider_completion_first_live_control_v1/authorization_v1.schema.json",
+    "evals/provider_completion_first_live_control_v1/claim_intent_v1.schema.json",
+    "evals/provider_completion_first_live_control_v1/contract_v1.json",
+    "evals/provider_completion_first_live_review_v2/contract_v2.json",
+    "evals/provider_completion_first_live_review_v2/review_v2.schema.json",
+    "evals/provider_completion_first_live_timing_v1/contract_v1.json",
+    "evals/provider_completion_first_live_timing_v1/schemas/completion_timing_evidence_v1.schema.json",
+    "evals/provider_completion_first_live_timing_v1/schemas/completion_timing_plan_v1.schema.json",
+    "evals/provider_completion_first_live_timing_v1/schemas/completion_timing_publication_v1.schema.json",
+    "evals/provider_completion_local_claim_v1/contract_v1.json",
+    "evals/provider_completion_pre_execution_v1/contract_v1.json",
+    "evals/provider_completion_pre_execution_v1/observation_v1.schema.json",
+    "evals/provider_completion_pre_execution_v1/preregistration_v2.schema.json",
+    "evals/provider_completion_timed_ledger_v1/contract_v1.json",
+    "evals/provider_completion_timing_artifacts_v1/contract_v1.json",
+    "evals/provider_completion_timing_artifacts_v1/manifest_v1.schema.json",
+    "evals/provider_completion_timing_v1/schemas/completion_timing_evidence_v1.schema.json",
+    "evals/provider_completion_timing_v1/schemas/completion_timing_plan_v1.schema.json",
+    "evals/provider_completion_timing_v1/schemas/completion_timing_publication_v1.schema.json",
+    "evals/provider_completion_timing_v1/schemas/completion_timing_segment_v1.schema.json",
+    "evals/provider_completion_timing_v1/schemas/completion_timing_terminal_projection_v1.schema.json",
+    "evals/provider_completion_timing_v1/timing_contract_v1.json",
+    "evals/provider_completion_execution_binding_v3/execution_component_recipe_v3.json",
+    "evals/phase6_deepseek_depth60_plan_v7.json",
+    "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json",
+    "src/researchops_external_closure/execution_components_v3.py",
+    "src/researchops_external_closure/execution_binding_v3.py"
+  ],
+  "frozen_predecessor_v7": {
+    "plan_path": "evals/phase6_deepseek_depth60_plan_v7.json",
+    "plan_bytes": 2147,
+    "plan_sha256": "396b2103399af1a68854f1f61abd5547f841a68edde78702fbba4df2910806c1",
+    "plan_commitment_sha256": "c1c25226ef9186432d64b297def584da2d875afb0f923014975f9c9b481fb362",
+    "manifest_path": "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json",
+    "manifest_bytes": 29402,
+    "manifest_sha256": "13457502cf2fe55ff9bbf071caf86b473812212f42acad4081001b2036b4f6a1",
+    "manifest_commitment_sha256": "9c9ecd320ab43ba23a2b8bf904e0c9aebf0ac5201c973fc4e367ea2b31071a18"
+  },
+  "extension_domain": "researchops-provider-completion-timed-contract-extensions-v3",
+  "limits": {
+    "selected_files": 256,
+    "file_bytes": 8388608,
+    "total_bytes": 33554432
+  },
+  "rules": [
+    "Preserve v6/v7/v8 artifacts and algorithms; never rewrite the historical c1 snapshot to match current source.",
+    "Derive the v2 first-live component base in memory only, not as a newly validated or published v7 snapshot.",
+    "Include every Python source through the inherited base engine, plus all provider_completion JSON under the declared prefix except the exact output/late-data exclusions.",
+    "Require the listed timing/control/audit/archive/review files even if a tree omits their entire directory; new matching contract files cannot be silently ignored.",
+    "Hash all selected exact bytes; rehash the frozen predecessor metadata and check its plan/manifest linkage without claiming historical runtime replay.",
+    "Campaign must reproduce and byte-match its exact first-live v9 snapshot before adding the two registry data files. Changed source/contracts/dependency/pyproject bytes fail.",
+    "Retain the original 256-file, 8 MiB/file and 32 MiB/total bounds. No network, writer, source-code execution, registry promotion or runtime admission is provided.",
+    "Actual worktree v9/v10 plans and manifests are not generated during batch development; synthetic test snapshots are not execution anchors."
+  ],
+  "source_integrity_only": true,
+  "runtime_admission_verified": false,
+  "online_execution_authorized": false,
+  "historical_result_revalidated": false
+}

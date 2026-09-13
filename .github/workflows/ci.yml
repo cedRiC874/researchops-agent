@@ -41,7 +41,10 @@ jobs:
 
   offline-evaluation:
     runs-on: windows-latest
-    timeout-minutes: 20
+    # The complete local integration run took 217 minutes (1,958 tests).
+    # Include setup/other gates with headroom; no tests are removed or filtered.
+    # Revisit with hosted-runner measurements, not an assumption of equal speed.
+    timeout-minutes: 300
     env:
       # Evidence IDs bind numerical results. Pin the lowest supported numerical
       # baseline shared by hosted runners so CPU dispatch cannot perturb the
@@ -56,6 +59,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          # Historical integrity replay must have the pinned raw objects.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -160,11 +166,36 @@ jobs:
             Write-Output "::error title=depth60_v5_plan_drift::Depth-60 v5 plan bytes must remain unchanged."
             exit 1
           }
-          $depth60Raw = (& python -m researchops.cli `
-            phase6-validate-deepseek-depth60 `
-            --plan $depth60V5Path | Out-String)
+          $historyRaw = (& python scripts/verify_pre_v6_integrity.py | Out-String)
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $depth60 = $depth60Raw | ConvertFrom-Json
+          $history = $historyRaw | ConvertFrom-Json
+          if ($history.status -ne "valid" -or
+              $history.historical_commit -ne "5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab" -or
+              $history.historical_tree -ne "30ecfd86ac00aecd8b67305a7c6ed2af88eeee10" -or
+              $history.legacy_validation_scope -ne "pinned_git_snapshot_only" -or
+              $history.current_validation_scope -ne "v11_first_live_source_integrity_only" -or
+              $history.current_legacy_rejections.depth60_v7 -ne "phase6_depth60_profile_component_drift" -or
+              $history.network_calls -ne 0 -or $history.model_calls -ne 0 -or
+              $history.provider_key_loaded -ne $false) {
+            Write-Output "::error title=historical_integrity_replay_invalid::Frozen contracts must verify against the pinned historical Git tree without Provider calls."
+            exit 1
+          }
+          $currentV11 = $history.current_v11
+          if ($currentV11.status -ne "valid" -or
+              $currentV11.plan_id -ne "phase6-deepseek-depth60-v11" -or
+              $currentV11.source_recipe_version -ne 4 -or
+              $currentV11.profile -ne "first_live" -or
+              $currentV11.source_integrity_only -ne $true -or
+              $currentV11.historical_result_revalidated -ne $false -or
+              $currentV11.plan_commitment_sha256 -ne "7ef11c4658967e47a56d92323e6ac118dfaef57ffd699b721bac1e25d0383b8d" -or
+              $currentV11.implementation_commitment_sha256 -ne "b4c384f5cd832f0bcbcfe1effbdf03da799aa4bd9b8f6910619ea575b487a24c" -or
+              $currentV11.online_execution_authorized -ne $false -or
+              $currentV11.runtime_admission_verified -ne $false -or
+              $currentV11.network_calls -ne 0 -or $currentV11.model_calls -ne 0) {
+            Write-Output "::error title=depth60_v11_contract_invalid::Current source must match the non-executable v11 commitment."
+            exit 1
+          }
+          $depth60 = $history.depth60_v5
           if ($depth60.status -ne "valid" -or
               $depth60.plan_commitment_sha256 -ne "8a5474db1e9ad59d501bf109d4a7ecbf616f40599763a20188581e336d379bd7" -or
               $depth60.source_bundle_algorithm -ne "v2" -or
@@ -172,22 +203,18 @@ jobs:
               $depth60.online_execution_authorized -ne $false -or
               $depth60.network_calls -ne 0 -or
               $depth60.model_calls -ne 0) {
-            Write-Output "::error title=depth60_v5_contract_invalid::Depth-60 v5 must remain valid, offline and non-executable."
+            Write-Output "::error title=depth60_v5_contract_invalid::Frozen Depth-60 v5 must verify against its historical snapshot and remain non-executable."
             exit 1
           }
-          $depth60ComponentsRaw = (& python -c "import json; from researchops.phase6_depth60 import validate_phase6_depth60_plan; r=validate_phase6_depth60_plan('.', 'evals/phase6_deepseek_depth60_plan_v5.json'); print(json.dumps(r['plan']['component_hashes']))" | Out-String)
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $depth60Components = $depth60ComponentsRaw | ConvertFrom-Json
+          $depth60Components = $depth60.plan.component_hashes
           if ($depth60Components.source_bundle_sha256 -ne "42ad232ad73792453ff6025d836cd3449d27974a633a1a59a019023d676c64a5" -or
               $depth60Components.completion_telemetry_runtime_bundle_sha256 -ne "606913e5570769e8b5aa430c621c5761d557e747c8b3f82eca67e20540b97acf" -or
               $depth60Components.completion_telemetry_contract_bundle_sha256 -ne "7c2bcfba1d7f6d2195ec389c7f98e1ef6e2ef400c6d7101292f6bbc77942bc15") {
             Write-Output "::error title=depth60_v5_component_drift::Depth-60 v5 source or telemetry component drifted."
             exit 1
           }
-          $firstLiveRaw = (& python -m researchops.cli `
-            deepseek-completion-first-live-validate | Out-String)
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $firstLive = $firstLiveRaw | ConvertFrom-Json
+          # This status describes the frozen 5f6f9cde tree, not current v11 code.
+          $firstLive = $history.first_live
           if ($firstLive.status -ne "offline_implemented_requires_fresh_authorization" -or
               $firstLive.contract_commitment_sha256 -ne "ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc" -or
               $firstLive.implementation_commitment_sha256 -ne "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10" -or
@@ -286,10 +313,7 @@ jobs:
             Write-Output "::error title=kimi_preflight_contract_invalid::Unconfirmed Kimi preflight must remain offline and non-authorizing."
             exit 1
           }
-          $kimiHandshakeRaw = (& python -m researchops.kimi_k3_handshake_cli `
-            validate | Out-String)
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $kimiHandshake = $kimiHandshakeRaw | ConvertFrom-Json
+          $kimiHandshake = $history.kimi
           if ($kimiHandshake.status -ne "valid" -or
               $kimiHandshake.plan_commitment_sha256 -ne "8979dfa8b8826afc6e9e44fadc64ed515b767a421ea122d5ffee5ac40c15e7cd" -or
               $kimiHandshake.network_attempts -ne 0 -or

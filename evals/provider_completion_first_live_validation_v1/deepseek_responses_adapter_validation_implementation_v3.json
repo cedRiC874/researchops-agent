@@ -1,0 +1,85 @@
+{
+  "schema_version": "provider-completion-first-live-implementation/3.0",
+  "implementation_id": "deepseek-responses-adapter-first-live-implementation-v3",
+  "status": "offline_contract_requires_implementation_and_review",
+  "predecessor_implementation": {
+    "path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_implementation_v2.json",
+    "bytes": 9273,
+    "sha256": "97667a65a8b88da9ce3ea21136c4060529408a83c8c862bbb98eb3e0c4d8bc9c",
+    "semantic_commitment": "187bb6b537f2bdffb4bf77581550ea0ca81d02fb52d44d110b22a450ae0dce10",
+    "immutable": true
+  },
+  "design": {
+    "path": "evals/provider_completion_first_live_validation_v1/deepseek_responses_adapter_validation_contract_v1.json",
+    "bytes": 9991,
+    "sha256": "477addbc41987d11c6ac7ede3fa6f94d74322efe09c541ea20f3a7937eb96496",
+    "semantic_commitment": "ddff10f30031faf77d6417dd695dd61dae4c6a45334efae7388ab4f2adc4a5bc",
+    "immutable": true
+  },
+  "commitment": {
+    "domain": "researchops-provider-completion-first-live-implementation-v3",
+    "algorithm": "SHA256(domain || NUL || strict canonical JSON of entire document); digest is not stored inside this document"
+  },
+  "execution_profile": {
+    "source_plan_id": "phase6-deepseek-depth60-v7",
+    "source_profile": "first_live",
+    "source_plan_path": "evals/phase6_deepseek_depth60_plan_v7.json",
+    "source_manifest_path": "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json",
+    "provider_id": "deepseek",
+    "model_id": "deepseek-v4-flash",
+    "origin": "https://api.deepseek.com",
+    "api_surface": "responses",
+    "transport_id": "openai_compatible_responses",
+    "authority_scope": "first_live_validation"
+  },
+  "required_entrypoints": {
+    "module_path": "src/researchops/deepseek_completion_first_live_successor.py",
+    "contract_validator": "validate_successor_contract",
+    "authorization_binding": "calculate_successor_authorization_binding",
+    "run_gate": "run_successor_validation"
+  },
+  "artifact_profile": {
+    "path": "evals/provider_completion_admission_link_v1/first_live_artifact_profile_v1.json",
+    "bytes": 5309,
+    "sha256": "573a3294662f28556585af225929e6b5a8f7cbae64b2e7eeb0429457a3ef7af0",
+    "validation_id": "deepseek-responses-adapter-first-live-validation-v1",
+    "consumption_schema_version": "deepseek-first-live-consumption/1.1",
+    "terminal_schema_version": "deepseek-first-live-terminal/1.1",
+    "authorization_binding_schema_version": "deepseek-first-live-authorization-binding/2.0"
+  },
+  "requirements": {
+    "predecessor_limits_and_single_use_rules_unchanged": true,
+    "network_attempts_max": 2,
+    "model_requests_max": 2,
+    "output_token_caps": [
+      256,
+      16
+    ],
+    "input_tokens_total_max": 1024,
+    "output_tokens_total_max": 272,
+    "concurrency": 1,
+    "retries": 0,
+    "resume": false,
+    "fallback": false,
+    "tools": 0,
+    "request_phase_seconds": 300,
+    "whole_process_seconds": 330,
+    "local_cost_stop_cny": "1.000000",
+    "external_authorization_binding_required": true,
+    "exact_execution_commit_required": true,
+    "one_time_consumption_before_key_load": true,
+    "current_source_revalidated_before_each_request": true,
+    "validation_scope_cannot_enter_campaign_runtime": true,
+    "pure_artifact_verifier_mints_no_authority": true
+  },
+  "boundary": {
+    "this_contract_proves_implementation_complete": false,
+    "this_contract_proves_first_live_success": false,
+    "online_execution_authorized": false,
+    "registry_promotion_authorized": false,
+    "provider_registration_authorized": false,
+    "status_closure_authorized": false,
+    "provider_calls": 0,
+    "key_loads": 0
+  }
+}

@@ -143,7 +143,10 @@ class Phase6Depth60TelemetryBundleTests(unittest.TestCase):
     def test_runtime_bundle_is_all_python_sorted_domain_separated_and_exact(self) -> None:
         names = completion_telemetry_runtime_files(ROOT)
         self.assertEqual(names, tuple(sorted(names)))
-        self.assertEqual(len(names), 5)
+        self.assertEqual(len(names), 6)
+        self.assertIn(
+            "src/researchops_completion_telemetry/persisted_evidence.py", names
+        )
         self.assertTrue(
             all(
                 name.startswith("src/researchops_completion_telemetry/")

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/completion_timing_terminal_projection_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_type",
+    "case_handle",
+    "attempt_index",
+    "response_index",
+    "clock_domain_id",
+    "timing_segment_sha256",
+    "completion_record_sha256",
+    "usage_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-timing-terminal-projection/1.0"
+    },
+    "event_type": {
+      "enum": [
+        "model_response_telemetry_recorded",
+        "provider_completion_mapping_unmapped",
+        "model_response_telemetry_rejected",
+        "model_request_http_error",
+        "model_request_no_response",
+        "model_request_cancelled",
+        "model_request_outcome_unknown"
+      ]
+    },
+    "case_handle": {
+      "type": "string",
+      "pattern": "^PCECASE-[A-F0-9]{32}$",
+      "maxLength": 40
+    },
+    "attempt_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 799
+    },
+    "response_index": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 799
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "clock_domain_id": {
+      "type": "string",
+      "pattern": "^PCECLOCK-[A-F0-9]{32}$",
+      "maxLength": 41
+    },
+    "timing_segment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "completion_record_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "usage_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

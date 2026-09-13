@@ -1,0 +1,108 @@
+{
+  "schema_version": "provider-completion-campaign-invocation-contract/1.0",
+  "status": "locally_frozen_offline_not_authorized",
+  "public_api": {
+    "module": "researchops_completion_timing.campaign_run",
+    "function": "run_timed_campaign",
+    "keyword_only_parameters": ["documents", "external_observation_bundle", "timing_plan_bytes", "admission_inputs", "task_package_path", "confirm_online"],
+    "confirm_online_default": false,
+    "only_exact_true_confirms": true,
+    "root_key_loader_transport_clock_claim_store_overrides_allowed": false,
+    "return_type": "canonical_utf8_json_bytes"
+  },
+  "cli": {
+    "module": "researchops_completion_timing.campaign_run",
+    "flags": ["--packet", "--confirm-online"],
+    "packet_schema_version": "provider-completion-campaign-invocation-input/1.0",
+    "packet_fields": ["schema_version", "documents", "external_observation_bundle", "timing_plan", "admission", "task_package_path"],
+    "document_fields": ["trust_manifest", "candidate_freeze_receipt", "candidate_frozen_ledger_entry", "seen_case_exclusion_manifest", "preregistration_envelope", "preregistration_frozen_ledger_entry", "authorization_grant", "consumption_receipt", "authorization_consumed_ledger_entry"],
+    "admission_fields": ["artifact_directory", "bundle_bytes", "review_bytes", "trust_bytes", "observation_bytes", "expected_review_document_sha256", "expected_trust_manifest_sha256", "expected_authorization_binding_sha256", "expected_candidate_freeze_receipt_sha256", "expected_candidate_frozen_at_utc", "expected_first_live_completed_at_utc", "verification_time_utc"],
+    "admission_utf8_document_fields": ["bundle_bytes", "review_bytes", "trust_bytes", "observation_bytes"],
+    "embedded_document_representation": "utf8_json_text_not_base64_or_parsed_object",
+    "untrusted_cli_values_echoed": false,
+    "exit_codes": {"completed": 0, "not_confirmed": 2, "failed": 4, "outcome_unknown": 5}
+  },
+  "limits": {"packet_bytes": 33554432, "public_document_bytes": 2000000, "public_document_bytes_total": 33554432, "timing_plan_bytes": 131072, "path_characters": 4096, "contract_bytes": 32768, "summary_bytes": 8192},
+  "execution_order": [
+    "without_exact_confirmation_return_not_confirmed_without_invocation_input_contract_task_key_or_store_reads",
+    "load_and_hash_check_this_contract_and_bound_public_input_sizes",
+    "verify_signed_prerequisites_current_source_environment_expiry_and_win_fixed_store_claim",
+    "read_private_task_package_once_through_existing_consumed_task_owner",
+    "derive_fixed_paths_from_verified_authorization_id_sha256_and_hold_work_database_and_ancestors",
+    "create_actual_campaign_factory_and_run_owned_key_phase_with_existing_per_send_gates",
+    "on_success_use_existing_seven_file_publisher_with_one_sealing_budget",
+    "write_pre_return_archive_verified_summary_exclusively_inside_same_sealing_budget",
+    "release_work_database_and_directory_handles_and_check_same_sealing_and_authorization_deadlines",
+    "only_then_return_completed_summary_to_api_or_stdout_without_rewriting_disk_snapshot"
+  ],
+  "fixed_paths": {
+    "parent": "output/campaign-v1",
+    "work_database": "output/campaign-v1/<authorization_id_sha256>.work/phase6_audit.sqlite3",
+    "archive": "output/campaign-v1/<authorization_id_sha256>",
+    "pre_return_summary": "output/campaign-v1/<authorization_id_sha256>.invocation.json",
+    "existing_work_archive_or_summary_forbids_resume": true
+  },
+  "failure_rules": [
+    "no_provider_retry_resume_fallback_or_claim_release",
+    "retain_existing_and_partial_files_without_overwrite_or_deletion",
+    "failure_stdout_is_local_diagnostic_not_a_new_partial_or_quarantine_archive_format",
+    "no_post_failure_success_summary_write_or_successor_regeneration",
+    "absent_factory_counts_are_null_not_inferred_zero",
+    "claim_consumed_is_null_when_preparation_failure_does_not_prove_consumption_or_nonconsumption",
+    "after_a_failed_final_close_or_deadline_check_do_not_return_completed_even_if_seven_files_exist",
+    "do_not_emit_failed_artifact_hashes_or_paths_as_success_evidence",
+    "exception_body_traceback_key_task_input_model_output_and_absolute_paths_are_not_diagnostics",
+    "a_pre_return_disk_snapshot_does_not_claim_its_own_write_or_final_workspace_close_succeeded",
+    "stdout_and_disk_persistence_are_not_guaranteed_after_process_death_or_io_failure",
+    "publisher_created_file_names_are_internal_diagnostics_not_external_closure_evidence"
+  ],
+  "cross_field_rules": [
+    "archive_relative_path_when_present_equals_fixed_parent_plus_authorization_id_sha256",
+    "only_pre_return_archive_verified_and_completed_may_have_archive_hash_or_path",
+    "verified_archive_requires_claim_consumed_true_phase_completed_true_nonzero_run_and_dispatch_counts",
+    "pre_return_archive_verified_has_final_workspace_close_observed_false_and_receipt_write_status_excluded_self_write",
+    "completed_has_final_workspace_close_observed_true_and_receipt_write_status_completed",
+    "not_confirmed_has_no_authorization_id_no_phase_or_archive_observation_null_counts_and_claim_consumed_false",
+    "failed_or_unknown_summaries_must_have_a_non_null_fixed_error_code",
+    "known_dispatch_count_cannot_be_less_than_known_completed_run_count_in_verified_archive_summaries"
+  ],
+  "summary_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["schema_version", "status", "observation_scope", "authorization_id_sha256", "claim_consumed", "phase_completed", "archive_status", "final_workspace_close_observed", "run_count", "native_dispatch_count", "archive_relative_path", "manifest_file_sha256", "receipt_write_status", "error_code", "retry_authorized", "closure_claim_allowed", "runtime_authority_granted", "provider_bill_cny", "provider_calls_independently_verified"],
+    "properties": {
+      "schema_version": {"const": "provider-completion-campaign-invocation/1.0"},
+      "status": {"enum": ["not_confirmed", "pre_return_archive_verified", "completed", "failed", "outcome_unknown"]},
+      "observation_scope": {"const": "local_invocation_only"},
+      "authorization_id_sha256": {"anyOf": [{"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$", "minLength": 64, "maxLength": 64}, {"type": "null"}]},
+      "claim_consumed": {"type": ["boolean", "null"]},
+      "phase_completed": {"type": ["boolean", "null"]},
+      "archive_status": {"enum": ["not_attempted", "verified", "incomplete", "unknown"]},
+      "final_workspace_close_observed": {"type": ["boolean", "null"]},
+      "run_count": {"anyOf": [{"type": "integer", "minimum": 0, "maximum": 100}, {"type": "null"}]},
+      "native_dispatch_count": {"anyOf": [{"type": "integer", "minimum": 0, "maximum": 800}, {"type": "null"}]},
+      "archive_relative_path": {"anyOf": [{"type": "string", "pattern": "^output/campaign-v1/(?!0{64}$)[0-9a-f]{64}$", "minLength": 83, "maxLength": 83}, {"type": "null"}]},
+      "manifest_file_sha256": {"anyOf": [{"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$", "minLength": 64, "maxLength": 64}, {"type": "null"}]},
+      "receipt_write_status": {"enum": ["not_attempted", "excluded_self_write", "completed", "incomplete", "unknown"]},
+      "error_code": {"enum": [null, "campaign_invocation_not_confirmed", "campaign_invocation_inputs_invalid", "campaign_invocation_admission_failed", "campaign_invocation_task_opening_failed", "campaign_invocation_workspace_failed", "campaign_invocation_phase_failed", "campaign_invocation_publication_failed", "campaign_invocation_finalization_failed", "campaign_invocation_unknown"]},
+      "retry_authorized": {"const": false},
+      "closure_claim_allowed": {"const": false},
+      "runtime_authority_granted": {"const": false},
+      "provider_bill_cny": {"type": "null"},
+      "provider_calls_independently_verified": {"const": false}
+    },
+    "allOf": [
+      {"if": {"properties": {"status": {"enum": ["pre_return_archive_verified", "completed"]}}}, "then": {"properties": {"authorization_id_sha256": {"type": "string"}, "claim_consumed": {"const": true}, "phase_completed": {"const": true}, "archive_status": {"const": "verified"}, "run_count": {"type": "integer", "minimum": 1}, "native_dispatch_count": {"type": "integer", "minimum": 1}, "archive_relative_path": {"type": "string"}, "manifest_file_sha256": {"type": "string"}, "error_code": {"type": "null"}}}, "else": {"properties": {"archive_status": {"enum": ["not_attempted", "incomplete", "unknown"]}, "archive_relative_path": {"type": "null"}, "manifest_file_sha256": {"type": "null"}, "error_code": {"type": "string"}}}},
+      {"if": {"properties": {"status": {"const": "pre_return_archive_verified"}}}, "then": {"properties": {"final_workspace_close_observed": {"const": false}, "receipt_write_status": {"const": "excluded_self_write"}}}},
+      {"if": {"properties": {"status": {"const": "completed"}}}, "then": {"properties": {"final_workspace_close_observed": {"const": true}, "receipt_write_status": {"const": "completed"}}}},
+      {"if": {"properties": {"status": {"const": "not_confirmed"}}}, "then": {"properties": {"authorization_id_sha256": {"type": "null"}, "claim_consumed": {"const": false}, "phase_completed": {"type": "null"}, "archive_status": {"const": "not_attempted"}, "final_workspace_close_observed": {"type": "null"}, "run_count": {"type": "null"}, "native_dispatch_count": {"type": "null"}, "receipt_write_status": {"const": "not_attempted"}, "error_code": {"const": "campaign_invocation_not_confirmed"}}}}
+    ]
+  },
+  "runtime_entry_implemented_by_this_contract": false,
+  "online_execution_authorized": false,
+  "provider_key_use_authorized": false,
+  "historical_backfill_authorized": false,
+  "provider_registration_authorized": false,
+  "closure_claim_allowed": false
+}

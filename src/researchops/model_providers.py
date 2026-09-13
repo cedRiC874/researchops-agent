@@ -290,9 +290,19 @@ class DeepSeekProvider:
                     "DeepSeek validation transport observer 无效。",
                 )
             client_options["event_hooks"] = {"request": [transport_observer]}
-        http_client = AsyncHTTPClient(
-            **client_options,
-        )
+        timed_transport = getattr(completion_telemetry_session, "_create_first_live_timed_transport", None)
+        if timed_transport is None:
+            timed_transport = getattr(completion_telemetry_session, '_create_campaign_timed_transport', None)
+        owned_timed_transport = None
+        if callable(timed_transport):
+            owned_timed_transport = timed_transport()
+            client_options["transport"] = owned_timed_transport
+        try:
+            http_client = AsyncHTTPClient(**client_options)
+        except BaseException:
+            if owned_timed_transport is not None:
+                await owned_timed_transport.aclose()
+            raise
         if callable(arm_transport_observer):
             try:
                 arm_transport_observer()
@@ -746,6 +756,12 @@ def _validate_completion_session(
                 and type(session) is _DeepSeekFirstLiveValidationLedgerSession
             )
         if not exact_session_type:
+            from researchops_completion_timing.first_live_runtime import _FirstLiveTimedSession
+            exact_session_type = provider_id == "deepseek" and type(session) is _FirstLiveTimedSession
+        if not exact_session_type:
+            from researchops_completion_timing.campaign_runtime import _CampaignTimedSession
+            exact_session_type = provider_id == 'deepseek' and type(session) is _CampaignTimedSession
+        if not exact_session_type:
             raise TypeError("live completion session must be an exact ledger bridge")
         session.assert_provider_telemetry_authority()
         valid = (
@@ -781,7 +797,7 @@ def _validate_capture_canary(
     if session is None:
         return
     try:
-        sanitize_completion_capture({}, sensitive_canaries=(api_key,))
+        sanitize_completion_capture({}, sensitive_canaries=(api_key,) + _completion_capture_canaries(session))
     except Exception:
         raise ProviderConfigurationError(
             "provider_completion_canary_invalid",
@@ -919,12 +935,26 @@ def _exception_http_status(error: BaseException) -> int | None:
     return nested if type(nested) is int else None
 
 
+def _completion_capture_canaries(session) -> tuple[str, ...]:
+    """Snapshot a bounded private session policy, never a caller verdict."""
+    try:
+        getter = getattr(session, '_completion_sensitive_canaries', None)
+        values = () if getter is None else getter()
+        if type(values) is not tuple or len(values) > 8 or any(type(value) is not str or not value for value in values):
+            raise ValueError('invalid canary configuration')
+        sanitize_completion_capture({}, sensitive_canaries=values)
+        return values
+    except Exception:
+        raise ProviderConfigurationError('provider_completion_canaries_invalid', 'Completion canary configuration invalid.') from None
+
+
 def _responses_capture(
     response: object,
     raw_wrapper: object,
     model_settings: object,
     *,
     api_key: str,
+    sensitive_canaries: tuple[str, ...] = (),
 ) -> SanitizedCompletionCapture:
     raw_capture: dict[str, Any] = {}
     for field_name in ("status", "incomplete_details", "usage"):
@@ -953,7 +983,7 @@ def _responses_capture(
         return sanitize_completion_capture(
             raw_capture,
             normalized_usage=normalized_usage,
-            sensitive_canaries=(api_key,),
+            sensitive_canaries=(api_key,) + sensitive_canaries,
         )
     finally:
         raw_capture.clear()
@@ -1198,6 +1228,7 @@ def _responses_model(
             network_started = False
             response_received = False
             try:
+                capture_canaries = _completion_capture_canaries(session)
                 create_kwargs = self._build_response_create_kwargs(
                     system_instructions=system_instructions,
                     input=input,
@@ -1222,6 +1253,7 @@ def _responses_model(
                     raw_wrapper,
                     model_settings,
                     api_key=api_key,
+                    sensitive_canaries=capture_canaries,
                 )
             except asyncio.CancelledError as exc:
                 cancelled = exc

@@ -35,3 +35,14 @@ docs/diagnostics/t6c-*-review*-v1.json -text
 docs/diagnostics/t6c-admission-boundaries-v1.json -text
 docs/diagnostics/t6c-pre-source-v4-20260908/files/probe_out_v3.json -text -diff
 docs/diagnostics/t6c-source-baseline-c1c25226-v1/files/probe_out_v3.json -text -diff
+
+# Preserve the exact launcher/verifier script bytes used by batch-v6.
+scripts/build_depth60_successor_plan_v6.py -text whitespace=cr-at-eol
+scripts/build_execution_profile_snapshot_v4.py -text whitespace=cr-at-eol
+scripts/build_execution_profile_snapshot.py -text whitespace=cr-at-eol
+scripts/inspect_t6c_admission_boundaries.py -text whitespace=cr-at-eol
+scripts/inspect_t6c_concurrency_admission.py -text whitespace=cr-at-eol
+scripts/inspect_t6c_decimal_context.py -text whitespace=cr-at-eol
+scripts/inspect_t6c_timeout_admission.py -text whitespace=cr-at-eol
+scripts/validate_completion_timing_contract.py -text whitespace=cr-at-eol
+scripts/verify_pre_v6_integrity.py -text whitespace=cr-at-eol

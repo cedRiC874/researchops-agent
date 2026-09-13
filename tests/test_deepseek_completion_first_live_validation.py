@@ -34,6 +34,7 @@ from researchops_completion_telemetry.sanitization import (
     CompletionTelemetryError,
     validate_runtime_denominator_artifact,
 )
+from tests.historical_integrity_support import historical_integrity_root
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -470,12 +471,13 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
         self.assertTrue(TrackingHttpClient.instances[0].closed)
 
     def test_confirmed_contract_commitment_and_bound_bytes_validate_offline(self) -> None:
-        value = first_live.validate_deepseek_first_live_contract(ROOT)
+        historical_root = historical_integrity_root()
+        value = first_live.validate_deepseek_first_live_contract(historical_root)
         self.assertEqual(
             value["contract_commitment"]["sha256"],
             first_live.CONTRACT_COMMITMENT_SHA256,
         )
-        status = first_live.deepseek_first_live_validation_status(ROOT)
+        status = first_live.deepseek_first_live_validation_status(historical_root)
         self.assertEqual(
             status["status"], "offline_implemented_requires_fresh_authorization"
         )
@@ -493,7 +495,7 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
         )
         self.assertFalse(status["online_execution_authorized"])
         self.assertEqual((status["network_calls"], status["model_calls"]), (0, 0))
-        implementation = first_live.validate_deepseek_first_live_implementation(ROOT)
+        implementation = first_live.validate_deepseek_first_live_implementation(historical_root)
         self.assertEqual(
             implementation["implementation_commitment"]["sha256"],
             first_live.IMPLEMENTATION_COMMITMENT_SHA256,
@@ -504,6 +506,7 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
         )
 
     def test_persisted_execution_identity_binds_git_plan_and_pricing_date(self) -> None:
+        historical_root = historical_integrity_root()
         plan_path = ROOT / first_live.SOURCE_INTEGRITY_PLAN_RELATIVE_PATH
         plan = json.loads(plan_path.read_text(encoding="utf-8"))
         consumption = {
@@ -518,7 +521,7 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
         @contextlib.contextmanager
         def committed_tree(root, commit):
             del root, commit
-            yield ROOT
+            yield historical_root
 
         with patch(
             "researchops.deepseek_completion_first_live_validation.subprocess.run",
@@ -536,6 +539,21 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
             caught.exception.code,
             "deepseek_first_live_execution_identity_invalid",
         )
+
+    def test_current_first_live_source_drift_is_not_hidden_by_historical_replay(self) -> None:
+        from researchops.phase6_depth60 import validate_phase6_depth60_plan
+        from researchops_external_closure.execution_current_v4 import verify_current_timed_profile
+
+        with self.assertRaises(first_live.DeepSeekFirstLiveValidationError) as caught:
+            first_live.deepseek_first_live_validation_status(ROOT)
+        self.assertEqual(caught.exception.code, "deepseek_first_live_source_integrity_invalid")
+        with self.assertRaises(Phase6RunError) as old:
+            validate_phase6_depth60_plan(ROOT, "evals/phase6_deepseek_depth60_plan_v7.json")
+        self.assertEqual(old.exception.code, "phase6_depth60_profile_component_drift")
+        current = verify_current_timed_profile(ROOT, profile="first_live")
+        self.assertTrue(current.source_integrity_only)
+        self.assertFalse(current.online_execution_authorized)
+        self.assertFalse(current.runtime_admission_verified)
 
     def test_git_archive_materializer_rejects_unsafe_members_and_disables_fetch(
         self,
@@ -713,8 +731,11 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
             ["researchops", "deepseek-completion-first-live-validate"],
         ):
             exit_code = cli_main()
-        self.assertEqual(exit_code, 0)
-        self.assertEqual(json.loads(output.getvalue())["network_calls"], 0)
+        self.assertEqual(exit_code, 4)
+        self.assertEqual(
+            json.loads(output.getvalue())["error_code"],
+            "deepseek_first_live_source_integrity_invalid",
+        )
 
     def test_authorization_binding_calculator_is_offline_and_matches_run_gate(
         self,
@@ -1459,15 +1480,15 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
     def test_transport_observer_write_failure_is_pre_send_no_response(self) -> None:
         now = _now()
         transport = _MockResponsesTransport([_response_body("completed", 256)])
-        original_append = AuditLedger.append_event
+        original_append = AuditLedger._append_event_tx
 
         def fail_transport_event(
             ledger,
+            connection,
             run_id,
             event_type,
             payload,
-            *,
-            actor_kind="system",
+            **kwargs,
         ):
             if event_type == "provider_transport_request_sent":
                 raise AuditError(
@@ -1476,10 +1497,11 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
                 )
             return original_append(
                 ledger,
+                connection,
                 run_id,
                 event_type,
                 payload,
-                actor_kind=actor_kind,
+                **kwargs,
             )
 
         with tempfile.TemporaryDirectory() as directory, patch(
@@ -1488,7 +1510,7 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
         ), patch(
             "researchops.model_providers._load_responses_transport",
             return_value=(openai.AsyncOpenAI, OpenAIResponsesModel, transport.client_factory),
-        ), patch.object(AuditLedger, "append_event", new=fail_transport_event):
+        ), patch.object(AuditLedger, "_append_event_tx", new=fail_transport_event):
             arguments = _run_arguments(now)
             arguments["authorization_id"] = "deepseek-first-live-pre-send-test"
             arguments["_artifact_root"] = Path(directory)

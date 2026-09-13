@@ -1,0 +1,57 @@
+"""Capability-minimal primitives for external closure verification."""
+
+from .errors import ExternalClosurePrimitiveError
+from .primitives import (
+    KEY_ID_DOMAIN,
+    LEDGER_ENTRY_DOMAIN,
+    LEDGER_HEAD_DOMAIN,
+    SIGNATURE_DOMAIN,
+    build_signature_message,
+    canonical_json_bytes,
+    compute_document_sha256,
+    compute_ledger_entry_sha256,
+    compute_ledger_resulting_head,
+    decode_strict_json_object,
+    derive_ed25519_key_id,
+    parse_utc_timestamp,
+    utc_interval_is_positive_and_at_most,
+    verify_document_sha256,
+    verify_ed25519_signature,
+    verify_ledger_hashes,
+)
+from .types import (
+    FinalClosureResult,
+    FinalDocumentBytes,
+    PreReceiptDocumentBytes,
+    PreReceiptRejected,
+    PreReceiptResult,
+    ReceiptProjectionReady,
+    UtcTimestamp,
+)
+
+__all__ = [
+    "ExternalClosurePrimitiveError",
+    "FinalClosureResult",
+    "FinalDocumentBytes",
+    "KEY_ID_DOMAIN",
+    "LEDGER_ENTRY_DOMAIN",
+    "LEDGER_HEAD_DOMAIN",
+    "PreReceiptDocumentBytes",
+    "PreReceiptRejected",
+    "PreReceiptResult",
+    "ReceiptProjectionReady",
+    "SIGNATURE_DOMAIN",
+    "UtcTimestamp",
+    "build_signature_message",
+    "canonical_json_bytes",
+    "compute_document_sha256",
+    "compute_ledger_entry_sha256",
+    "compute_ledger_resulting_head",
+    "decode_strict_json_object",
+    "derive_ed25519_key_id",
+    "parse_utc_timestamp",
+    "utc_interval_is_positive_and_at_most",
+    "verify_document_sha256",
+    "verify_ed25519_signature",
+    "verify_ledger_hashes",
+]

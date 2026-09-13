@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchops.local/schemas/completion_timed_bundle_manifest_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "campaign_id",
+    "artifact_contract_sha256",
+    "timing_contract_sha256",
+    "timed_ledger_contract_sha256",
+    "plan_commitment_sha256",
+    "execution_binding_sha256",
+    "files",
+    "manifest_self_hash_included",
+    "raw_provider_content_persisted",
+    "task_content_persisted",
+    "api_key_persisted",
+    "online_execution_authorized"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "provider-completion-timed-bundle-manifest/1.0"
+    },
+    "status": {
+      "const": "sealed_payloads"
+    },
+    "campaign_id": {
+      "type": "string",
+      "pattern": "^PCECAMP-[A-F0-9]{32}$"
+    },
+    "artifact_contract_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "timing_contract_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "timed_ledger_contract_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "plan_commitment_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "execution_binding_sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase6_audit.sqlite3",
+        "phase6_audit_index.json",
+        "phase6_completion_telemetry.json",
+        "completion_timing_plan.json",
+        "completion_timing_evidence.json"
+      ],
+      "properties": {
+        "phase6_audit.sqlite3": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000000
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        },
+        "phase6_audit_index.json": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000000
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        },
+        "phase6_completion_telemetry.json": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000000
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        },
+        "completion_timing_plan.json": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000000
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        },
+        "completion_timing_evidence.json": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000000
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        }
+      }
+    },
+    "manifest_self_hash_included": {
+      "const": false
+    },
+    "raw_provider_content_persisted": {
+      "const": false
+    },
+    "task_content_persisted": {
+      "const": false
+    },
+    "api_key_persisted": {
+      "const": false
+    },
+    "online_execution_authorized": {
+      "const": false
+    }
+  }
+}

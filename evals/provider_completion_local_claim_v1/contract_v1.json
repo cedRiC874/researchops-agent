@@ -1,0 +1,51 @@
+{
+  "schema_version": "provider-completion-local-claim-contract/1.0",
+  "scope": "designated_single_host_windows_user_environment",
+  "fixed_location": {
+    "resolver": "SHGetKnownFolderPath(FOLDERID_LocalAppData,current_user)",
+    "folder_id": "F1B32785-6FBA-4FCF-9D55-7B8E7F157091",
+    "suffix": [
+      "ResearchOpsAgent",
+      "completion-claims-v1"
+    ],
+    "environment_or_worktree_override_allowed": false
+  },
+  "authority_fields": [
+    "schema_version",
+    "execution_environment_id",
+    "location_sha256",
+    "contract_sha256"
+  ],
+  "request_fields": [
+    "schema_version",
+    "execution_environment_id",
+    "authorization_id_sha256",
+    "authorization_grant_sha256",
+    "consumption_entry_sha256",
+    "timing_plan_commitment_sha256",
+    "execution_commit",
+    "clock_domain_id"
+  ],
+  "max_document_bytes": 4096,
+  "claim_filename": "authorization_id_sha256 + .json",
+  "claim_subdirectory": "claims",
+  "authority_file": "authority.json",
+  "rules": [
+    "Provisioning is explicit and create-once; claim/status never provision or repair missing/corrupt state.",
+    "All worktrees under the same configured Windows user environment resolve one OS-known fixed location, independent of cwd, repository or LOCALAPPDATA environment overrides.",
+    "Provisioning creates an opaque random execution_environment_id; future signed execution scope must bind it. It is not a hostname or hardware attestation.",
+    "Authority privately binds the normalized store location hash; moved/copied state at another location fails closed.",
+    "Lock each existing directory component with Windows handles that omit FILE_SHARE_DELETE and open reparse points themselves; reject link/reparse components.",
+    "Claim creation is atomic create-exclusive; any existing entry, including empty, partial or malformed files, blocks replay without reading its contents.",
+    "Once a claim file is created, it is never removed or released on write/flush/close failure, timeout, success or outcome_unknown.",
+    "Receipt writes are bounded, flushed with fsync and closed; any uncertainty prevents continuation. No retry/resume/fallback is authorized.",
+    "No reset/delete/garbage-collection/alternate-path API exists.",
+    "The barrier requires an intact protected store. Rollback, administrative tampering, cloning and power-loss behavior are not independently proved.",
+    "Other users/hosts are outside this authorization scope. Store identity must be checked against signed scope before any Provider action.",
+    "Local reservation is not source/review/first-live admission or Provider authorization; public timed execution remains closed until full integration."
+  ],
+  "cross_host_execution_authorized": false,
+  "real_store_provisioning_performed": false,
+  "provider_calls_authorized": false,
+  "current_closure_claim_allowed": false
+}
