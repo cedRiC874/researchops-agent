@@ -1,6 +1,12 @@
 # ResearchOps Agent — Current Status
 
-> Publication snapshot: 2026-09-12 (Asia/Shanghai)
+> Publication-candidate snapshot: 2026-09-13 (Asia/Shanghai)
+> 本轮路径／测试夹具修复后的不筛选根目录回归：**2,020 tests / 0 failures / 0 errors / 16 skips；test exit 0 / wrapper exit 0**，绑定 `c8ded362551f544ecf52e49995854c4e81fdcd7b`，504 项输入（205 个测试文件）前后一致。本批次使用 1 轮新的本地全量回归；生产源码、冻结协议与 v11 承诺未变，没有生成正式 v12。
+> [脱敏修复摘要](docs/evidence/t5-ci-test-path-repair-v1/summary.json) 保留旧 CI 的 24 failures / 1 error、逐项归因和新回归测试自身的清理事故。首轮相关测试 108 项中有 19 项失败；清理修复后重测受影响后缀 60 项通过，不能把首轮改写为全绿。原始本机日志／receipt 不公开，本摘要不是原始执行 receipt。
+> [PR #41](https://github.com/cedRiC874/researchops-agent/pull/41) 已 regular merge 为 `82814dba94c62bc53e8c7612b57834921b6f070f`，其 main checks 已成功。PR #42 的新 head／最终 main CI 尚须独立核验；后续实时合并与 CI 结果以 [PR #42](https://github.com/cedRiC874/researchops-agent/pull/42) 及关联 Actions 为准，不能从这份本地快照推定。
+> 16 项跳过：10 项 canonical Python 3.12.13 replay、5 项本机 symlink 权限、1 项干净公开副本不包含的可选 SHA-matching 原始产物。未新增跳过条件、未删失败断言；跳过不是通过。Depth-60 仍为 20/60，旧归因不补写，T7／STATUS 缺陷保持 open；没有 Provider 调用、真实 Key 加载或真实 claim-store 写入。
+
+> Preserved publication snapshot: 2026-09-12 (Asia/Shanghai)
 > T6-C 本地完整离线回归 batch-v6：2,015 tests / 0 failures / 0 errors / 15 skips；test exit 0 / wrapper exit 0。当前发布候选保留已验收的源码、测试与合同字节；远端 CI 为 pending，尚未合并或发布为 Release。
 > PR-B 依赖尚未合并的 [PR-A #41](https://github.com/cedRiC874/researchops-agent/pull/41)。范围、固定承诺与本地验收记录的公开边界见 [T6-C 发布状态](docs/T6C_PUBLICATION_STATUS.md)。原始本机 receipt 与日志未随 PR 发表；本页摘要不提供该本机运行的公开独立复验证据。
 > 此次离线验收与 PR 工作流均不授权 Provider 调用、Key 加载、registry promotion 或未知任务运行。Depth-60 仍为 20/60，旧归因不补写，T7 保持 open。

@@ -1,0 +1,471 @@
+{
+  "schema_version": "researchops-t5-ci-test-repair-summary/1.0",
+  "scope": "offline engineering validation only; not Provider or model-quality evidence",
+  "snapshot_date": "2026-09-13",
+  "baseline": {
+    "commit": "3317774462dde520541f483cc89ac333f9ecee24",
+    "ci_runs": [
+      {
+        "run": 34701324020,
+        "job": 103573489217
+      },
+      {
+        "run": 34701320917,
+        "job": 103573481010
+      }
+    ],
+    "per_run": {
+      "tests": 2015,
+      "failures": 24,
+      "errors": 1,
+      "skips": 11,
+      "exit_code": 1
+    },
+    "original_ci_failures_retained": true
+  },
+  "attribution": {
+    "counts": {
+      "module_origin_spelling": 20,
+      "patched_root_spelling": 1,
+      "database_path_spelling": 1,
+      "unmatched_fault_injection": 2,
+      "historical_root_containment": 1
+    },
+    "method": "native Windows short-path reproduction plus pass-through exception observations; production decisions were not replaced",
+    "cases": [
+      {
+        "test": "tests.test_deepseek_completion_first_live_validation.DeepSeekCompletionFirstLiveValidationTests.test_persisted_execution_identity_binds_git_plan_and_pricing_date",
+        "ci_kind": "ERROR",
+        "cause": "historical_materialization_returns_alias_root_then_safe_fixed_file_resolves_only_file",
+        "proof": {
+          "original_run_additional_local_blocker": "Git dubious ownership; not counted as CI-root-cause reproduction",
+          "independent_reproduction": "historical-owned-baseline.json",
+          "inner_code": "deepseek_first_live_bound_path_invalid",
+          "outer_code": "deepseek_first_live_execution_identity_invalid",
+          "historical_commit": "5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab",
+          "historical_tree": "30ecfd86ac00aecd8b67305a7c6ed2af88eeee10",
+          "historical_hashes_changed": false
+        }
+      },
+      {
+        "test": "tests.test_campaign_producer_timed_closure.CampaignProducerClosureTests.test_unmodified_public_producer_archive_passes_actual_A_and_B",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_campaign_public_v5_full.CampaignV5PublicProcessTests.test_api_v5_with_real_source_claim_opening_runtime_and_archive",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_campaign_public_v5_full.CampaignV5PublicProcessTests.test_cli_v5_with_real_source_claim_opening_runtime_and_archive",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_campaign_process_start.ProcessBoundCampaignTests.test_actual_claimed_owner_runs_two_sdk_cases_with_budget_and_timed_ledger",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops_completion_timing",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_campaign_process_start.ProcessBoundCampaignTests.test_actual_claimed_process_opens_only_matching_private_package_without_key",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops_completion_timing",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_campaign_public_process.PublicCampaignProcessTests.test_packet_cli_with_actual_signed_source_claim_and_private_opening",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_campaign_public_process.PublicCampaignProcessTests.test_public_api_with_actual_signed_source_claim_and_private_opening",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_campaign_start.CampaignPostClaimFailureTests.test_post_claim_source_failure_keeps_the_real_marker_consumed",
+        "ci_kind": "FAIL",
+        "cause": "test_patches_ROOT_with_noncanonical_temp_path",
+        "proof": {
+          "production_error": "campaign_start_process_root_mismatch",
+          "post_claim_fault_was_not_reached": true
+        }
+      },
+      {
+        "test": "tests.test_completion_campaign_workspace.HeldCampaignPublicationTests.test_actual_runner_and_publication_keep_the_work_database_held",
+        "ci_kind": "FAIL",
+        "cause": "expected_work_database_uses_alias_but_AuditLedger_database_path_is_resolved",
+        "proof": {
+          "diagnostic_source": "CI and local baseline assertion plus unchanged AuditLedger/workspace code",
+          "compared_path_spellings_differ": true
+        }
+      },
+      {
+        "test": "tests.test_completion_first_live_runtime.FirstLiveRuntimeBoundaryTests.test_completed_factory_writes_and_verifies_the_actual_eight_file_archive",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_first_live_runtime.FirstLiveRuntimeBoundaryTests.test_http_error_records_once_and_never_retries_or_starts_second_request",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_first_live_runtime.FirstLiveRuntimeBoundaryTests.test_public_http_failure_stops_after_one_call_with_sanitized_receipt",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops_completion_timing",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_first_live_runtime.FirstLiveRuntimeBoundaryTests.test_public_invocation_runs_checked_factory_and_publishes_archive",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops_completion_timing",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_first_live_runtime.FirstLiveRuntimeBoundaryTests.test_public_key_load_failure_consumes_claim_but_sends_nothing",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops_completion_timing",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_first_live_runtime.FirstLiveRuntimeBoundaryTests.test_real_checked_process_factory_runs_only_two_frozen_mock_requests",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_completion_first_live_runtime.FirstLiveRuntimeBoundaryTests.test_source_change_after_first_send_blocks_second_provider_request",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_first_live_run_v5.FirstLiveV5PublicProcessTests.test_public_v5_http_error_stops_after_one_dispatch",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops_completion_timing",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_first_live_run_v5.FirstLiveV5PublicProcessTests.test_public_v5_key_loader_failure_never_dispatches",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops_completion_timing",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_first_live_run_v5.FirstLiveV5PublicProcessTests.test_public_v5_success_preserves_wire_format_and_publishes_eight_files",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops_completion_timing",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_first_live_runtime_v5.FirstLiveV5ProcessRuntimeTests.test_v5_http_failure_is_observed_once_and_never_retried",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_first_live_runtime_v5.FirstLiveV5ProcessRuntimeTests.test_v5_mock_responses_publish_verified_eight_file_archive",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_first_live_runtime_v5.FirstLiveV5ProcessRuntimeTests.test_v5_source_drift_stops_further_dispatch",
+        "ci_kind": "FAIL",
+        "cause": "fixture_import_spelling_differs_from_canonical_runtime_root",
+        "proof": {
+          "first_rejected_module": "researchops.contracts",
+          "native_path_spelling_differs": true,
+          "resolved_module_inside_runtime_root": true,
+          "production_error": "process_environment_foreign_project_module"
+        }
+      },
+      {
+        "test": "tests.test_source_snapshot_failure_receipts.SourceSnapshotFailureReceiptTests.test_v6_failure_receipt_names_the_partial_created_file",
+        "ci_kind": "FAIL",
+        "cause": "exclusive_open_fault_matcher_compares_different_path_spellings",
+        "proof": {
+          "exclusive_opens": 2,
+          "lexical_matches": 0,
+          "resolved_matches": 1,
+          "original_expected_exit": 2,
+          "observed_exit": 0
+        }
+      },
+      {
+        "test": "tests.test_source_snapshot_failure_receipts.SourceSnapshotFailureReceiptTests.test_v7_failure_receipt_names_the_partial_created_file",
+        "ci_kind": "FAIL",
+        "cause": "exclusive_open_fault_matcher_compares_different_path_spellings",
+        "proof": {
+          "exclusive_opens": 2,
+          "lexical_matches": 0,
+          "resolved_matches": 1,
+          "original_expected_exit": 2,
+          "observed_exit": 0
+        }
+      }
+    ]
+  },
+  "local_reproduction": {
+    "selected_tests": 25,
+    "failures": 24,
+    "errors": 1,
+    "skips": 0,
+    "exit_code": 1,
+    "source_and_tests_stable": true,
+    "historical_case_note": "The first local run additionally hit Git ownership protection; a separate owned-checkout one-case run reproduced the CI historical containment failure from unchanged historical Git bytes."
+  },
+  "test_repair_cleanup_incident": {
+    "initial_related_run": {
+      "tests": 108,
+      "failures": 19,
+      "errors": 0,
+      "skips": 0,
+      "exit_code": 1
+    },
+    "cause": "New regression borrowed an IsolatedAsyncioTestCase without its own runner; doCleanups swallowed runner assertions and leaked mocks to later cases.",
+    "original_25_failure_cases_passed_in_that_run": true,
+    "initial_related_run_is_not_green": true,
+    "two_case_before": {
+      "tests": 2,
+      "failures": 1,
+      "errors": 0,
+      "sockets_restored": false
+    },
+    "two_case_after": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "sockets_restored": true
+    },
+    "fix": "Execute borrowed synchronous cleanups with ExitStack and assert original network, source-check, transport and key-loader function identities are restored.",
+    "unchanged_prior_cases_retained": 48,
+    "revalidated_suffix": {
+      "tests": 60,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "exit_code": 0,
+      "source_and_tests_stable": true
+    },
+    "unique_related_case_coverage": 108,
+    "single_green_108_case_run_claimed": false,
+    "only_new_regression_file_changed_after_initial_related_run": true
+  },
+  "full_local_regression": {
+    "execution_commit": "c8ded362551f544ecf52e49995854c4e81fdcd7b",
+    "execution_tree": "5b851ee31fc16dc008516d4ebef26baead00312b",
+    "command_arguments": [
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-t",
+      ".",
+      "-v"
+    ],
+    "started_at_utc": "2026-09-12T21:55:39.904540+00:00",
+    "ended_at_utc": "2026-09-13T02:25:15.766243+00:00",
+    "tests": 2020,
+    "failures": 0,
+    "errors": 0,
+    "skips": 16,
+    "exit_code": 0,
+    "wrapper_exit_code": 0,
+    "unittest_seconds": 16160.296,
+    "input_count": 504,
+    "test_file_count": 205,
+    "input_manifest_sha256": "5e05c4e273124440902efe93a2ba207a6422e4bfb116e4846a51e69a6a910e74",
+    "source_and_test_bytes_stable": true,
+    "raw_log_summary_independently_compared": true,
+    "receipt_sha256": "c934e2bc72ad99c4cea46350c7fbe0c4f4eda7df6d9741351677cb99aed3a39e",
+    "log_sha256": "fb8dded3af9210eb3cc942e5116e6520544281a03f23820c95083944e5f719f6",
+    "log_bytes": 450840,
+    "skip_reasons": {
+      "canonical_python_3_12_13": 10,
+      "native_symlink_privilege": 5,
+      "omitted_optional_sha_matching_raw_artifact": 1
+    },
+    "new_local_full_runs_used": 1,
+    "maximum_authorized_new_local_full_runs": 2,
+    "private_raw_log_and_receipt_published": false,
+    "public_summary_is_not_original_execution_receipt": true
+  },
+  "services": [
+    {
+      "group": "pilot_offline",
+      "selected_paths": [
+        "services/pilot_staging/tests/test_pilot_flow.py",
+        "services/pilot_staging/tests/test_config_files.py",
+        "services/pilot_staging/tests/test_candidate_contract.py",
+        "services/pilot_staging/tests/test_summary_contract.py",
+        "services/pilot_staging/tests/test_completion_telemetry.py",
+        "services/pilot_staging/tests/test_supervised_scripts.py",
+        "services/pilot_staging/tests/test_ci_workflow.py"
+      ],
+      "exit_code": 0,
+      "reported_summary": null,
+      "reported_test_count": null,
+      "count_note": "Double-quiet pytest output omitted its numeric terminal summary; no count is inferred here.",
+      "log_sha256": "feeba5f931a42b3eb97423d3ff87df70d7bfb9546e66502aa75144c629a76414",
+      "provider_credentials_inherited": false,
+      "isolated_working_directory": true,
+      "local_docker_or_real_postgres_e2e_executed": false
+    },
+    {
+      "group": "production_contracts",
+      "selected_paths": [
+        "services/production_slice/tests"
+      ],
+      "exit_code": 0,
+      "reported_summary": null,
+      "reported_test_count": null,
+      "count_note": "Double-quiet pytest output omitted its numeric terminal summary; no count is inferred here.",
+      "log_sha256": "816ead0483a2d68a061695c59a168f18dab69d908a01bbad9e20e8ee1c7692c6",
+      "provider_credentials_inherited": false,
+      "isolated_working_directory": true,
+      "local_docker_or_real_postgres_e2e_executed": false
+    }
+  ],
+  "source_identity": {
+    "source_plan_commitment": "7ef11c4658967e47a56d92323e6ac118dfaef57ffd699b721bac1e25d0383b8d",
+    "implementation_commitment": "b4c384f5cd832f0bcbcfe1effbdf03da799aa4bd9b8f6910619ea575b487a24c",
+    "source_bundle_sha256": "0d4f915635fd89cb69a5bb8e29a334d21c995ccbeecdcfd0566dba8dbc2ee857",
+    "plan_file_sha256": "13892cb977af1366e25c4cee586ce2dd98bd2ed3acffd8b8c0c5b5beb739383f",
+    "manifest_file_sha256": "e10331a157f8ccf6a49f98b0049c5e2e67d2dbbea0b74d3fdfa022e797f3b2a9",
+    "pre_and_post_source_verifier_exit_code": 0,
+    "selected_source_profile_files": 274,
+    "production_source_and_frozen_contracts_changed": false,
+    "source_only_successor_regenerated": false,
+    "formal_campaign_v12_generated": false
+  },
+  "git_dependency": {
+    "pr41_merge_commit": "82814dba94c62bc53e8c7612b57834921b6f070f",
+    "pr41_main_run": 34712025726,
+    "pr41_main_jobs": [
+      103602385183,
+      103602385208,
+      103602385228
+    ],
+    "pr41_main_checks_success": true,
+    "new_pr42_ci_and_final_main_checks_established_by_this_summary": false
+  },
+  "boundaries": {
+    "provider_calls_performed_by_this_batch": false,
+    "real_provider_key_loaded_by_this_batch": false,
+    "real_claim_store_written_by_this_batch": false,
+    "local_authorization_material_published": false,
+    "historical_depth60_score": "20/60",
+    "historical_attribution_backfilled": false,
+    "provider_registration_authorized": false,
+    "model_quality_claim_allowed": false,
+    "status_defect": "open",
+    "t7_closed": false
+  }
+}
