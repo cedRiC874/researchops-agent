@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -19,9 +20,79 @@ spec.loader.exec_module(diagnostic)
 
 
 class AdmissionBoundaryDiagnosticTests(unittest.TestCase):
-    def test_original_diagnostic_replays_its_bound_historical_first_live_bytes(self):
-        report = diagnostic.inspect_boundaries(historical_first_live=True)
-        self.assertEqual(diagnostic.RECEIPT.read_bytes(), diagnostic.canonical(report) + b"\n")
+    def test_original_diagnostic_replays_all_bound_historical_inputs(self):
+        frozen = diagnostic.RECEIPT.read_bytes()
+        self.assertEqual(hashlib.sha256(frozen).hexdigest(),
+                         "cf6ffacf80a13dfe95dd8767172125933b51728a24191f0dc69924419a573976")
+        original_read = Path.read_bytes
+        current_inputs = {ROOT / path for path in
+                          (diagnostic.FIRST_LIVE, diagnostic.SURFACE, diagnostic.REGISTRY, diagnostic.PREDECESSOR)}
+
+        def refuse_current_inputs(path):
+            if path in current_inputs:
+                raise AssertionError("historical replay must not read current input bytes")
+            return original_read(path)
+
+        with patch.object(Path, "read_bytes", new=refuse_current_inputs):
+            report = diagnostic.inspect_boundaries(historical_inputs=True)
+        self.assertEqual(frozen, diagnostic.canonical(report) + b"\n")
+        self.assertEqual(diagnostic.RECEIPT.read_bytes(), frozen)
+
+    def test_legacy_first_live_only_mode_still_observes_current_other_inputs(self):
+        original_read = Path.read_bytes
+        surface_path = ROOT / diagnostic.SURFACE
+        changed_surface = original_read(surface_path) + b"\n# synthetic current input mutation\n"
+        observed = []
+
+        def changed_current_surface(path):
+            if path == surface_path:
+                observed.append(path)
+                return changed_surface
+            return original_read(path)
+
+        with patch.object(Path, "read_bytes", new=changed_current_surface):
+            report = diagnostic.inspect_boundaries(historical_first_live=True)
+            current = diagnostic.inspect_boundaries()
+        self.assertEqual(len(observed), 2)
+        expected_surface = {"path": diagnostic.SURFACE, "bytes": len(changed_surface),
+                            "sha256": hashlib.sha256(changed_surface).hexdigest()}
+        for value in (report, current):
+            self.assertEqual(next(item for item in value["inputs"] if item["path"] == diagnostic.SURFACE),
+                             expected_surface)
+        recorded = json.loads(diagnostic.RECEIPT.read_bytes())["inputs"]
+        self.assertEqual(report["inputs"][0], recorded[0])
+        self.assertEqual(current["inputs"][0]["sha256"],
+                         hashlib.sha256(original_read(ROOT / diagnostic.FIRST_LIVE)).hexdigest())
+
+    def test_missing_historical_objects_never_fall_back_to_current_inputs(self):
+        from researchops_external_closure import git_objects
+        with patch.object(git_objects, "read_git_object_snapshot",
+                          side_effect=RuntimeError("synthetic missing historical object")) as reader, \
+             patch.object(Path, "read_bytes", side_effect=AssertionError("current input fallback forbidden")) as local:
+            with self.assertRaisesRegex(RuntimeError, "synthetic missing historical object"):
+                diagnostic.inspect_boundaries(historical_inputs=True)
+        self.assertEqual(local.call_count, 0)
+        reader.assert_called_once_with(ROOT, diagnostic.HISTORICAL_COMMIT,
+            (diagnostic.FIRST_LIVE, diagnostic.REGISTRY, diagnostic.PREDECESSOR),
+            expected_tree_oid=diagnostic.HISTORICAL_TREE)
+
+    def test_history_modes_are_mutually_exclusive_before_io(self):
+        with patch.object(Path, "read_bytes", side_effect=AssertionError("no IO")) as reader:
+            with self.assertRaisesRegex(ValueError, "historical_modes_conflict"):
+                diagnostic.inspect_boundaries(historical_first_live=True, historical_inputs=True)
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                diagnostic.main(["--historical-first-live", "--historical-inputs"])
+        self.assertEqual(caught.exception.code, 2)
+        self.assertEqual(reader.call_count, 0)
+
+    def test_cli_verifies_the_unchanged_original_receipt_with_all_historical_inputs(self):
+        before = diagnostic.RECEIPT.read_bytes()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = diagnostic.main(["--historical-inputs", "--verify"])
+        self.assertEqual(code, 0, output.getvalue())
+        self.assertEqual(json.loads(output.getvalue()), json.loads(before))
+        self.assertEqual(diagnostic.RECEIPT.read_bytes(), before)
 
     def test_only_the_counterfactual_runtime_flag_changes_the_full_mapping_hash(self):
         report = diagnostic.inspect_boundaries()

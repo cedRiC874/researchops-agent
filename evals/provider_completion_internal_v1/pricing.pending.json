@@ -1,0 +1,12 @@
+{
+  "schema_version": "provider-completion-internal-pricing/1.0",
+  "status": "pending_current_official_evidence",
+  "provider_id": "deepseek",
+  "requested_model": "deepseek-v4-flash",
+  "input_price_per_million_cny": null,
+  "output_price_per_million_cny": null,
+  "cache_discount_assumed": false,
+  "provider_invoice_hard_cap": false,
+  "evidence_date_utc": null,
+  "official_evidence_sha256": null
+}

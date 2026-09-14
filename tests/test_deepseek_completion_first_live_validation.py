@@ -543,6 +543,8 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
     def test_current_first_live_source_drift_is_not_hidden_by_historical_replay(self) -> None:
         from researchops.phase6_depth60 import validate_phase6_depth60_plan
         from researchops_external_closure.execution_current_v4 import verify_current_timed_profile
+        from tests.internal_v11_historical_support import historical_v11_root
+        from researchops_internal_telemetry.source import verify_source
 
         with self.assertRaises(first_live.DeepSeekFirstLiveValidationError) as caught:
             first_live.deepseek_first_live_validation_status(ROOT)
@@ -550,10 +552,11 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
         with self.assertRaises(Phase6RunError) as old:
             validate_phase6_depth60_plan(ROOT, "evals/phase6_deepseek_depth60_plan_v7.json")
         self.assertEqual(old.exception.code, "phase6_depth60_profile_component_drift")
-        current = verify_current_timed_profile(ROOT, profile="first_live")
+        current = verify_current_timed_profile(historical_v11_root(), profile="first_live")
         self.assertTrue(current.source_integrity_only)
         self.assertFalse(current.online_execution_authorized)
         self.assertFalse(current.runtime_admission_verified)
+        self.assertEqual(verify_source(ROOT)["algorithm"], "internal-all-source-and-policy-v1")
 
     def test_git_archive_materializer_rejects_unsafe_members_and_disables_fetch(
         self,

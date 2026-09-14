@@ -32,6 +32,14 @@ SURFACE = "src/researchops_completion_telemetry/surface_mapping.py"
 REGISTRY = "evals/provider_completion_telemetry_v2/provider_completion_surface_registry_v2.json"
 PREDECESSOR = "evals/provider_completion_telemetry_v1/provider_completion_mapping_v1.json"
 KEY = ("deepseek", "responses", "openai_compatible_responses")
+# The receipt is a mixed input snapshot, not a claim about one execution tree.
+# Each selected blob was checked against its recorded byte count and SHA-256.
+# Its FIRST_LIVE/registry/predecessor bytes match the older fixed tree; SURFACE
+# matches the pre-Internal tree. Never substitute current files if Git is absent.
+HISTORICAL_COMMIT = "5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab"
+HISTORICAL_TREE = "30ecfd86ac00aecd8b67305a7c6ed2af88eeee10"
+SURFACE_COMMIT = "c945d168ee084f82ab690a2f118912bf28956c27"
+SURFACE_TREE = "0ee6bae3a2c56ef1d8c6c9193d9030f1a8573553"
 
 
 def canonical(value: object) -> bytes:
@@ -56,16 +64,26 @@ def changed_paths(left: object, right: object, prefix: str = "") -> list[str]:
     return [] if type(left) is type(right) and left == right else [prefix]
 
 
-def inspect_boundaries(*, historical_first_live: bool = False) -> dict:
+def inspect_boundaries(*, historical_first_live: bool = False, historical_inputs: bool = False) -> dict:
     # Only fixed, public source/contract inputs are read. In particular, never
     # import the first-live module or call its artifact verifier/factory.
     paths = (FIRST_LIVE, SURFACE, REGISTRY, PREDECESSOR)
-    raw = {path: (ROOT / path).read_bytes() for path in paths if not historical_first_live or path != FIRST_LIVE}
-    if historical_first_live:
+    if historical_first_live and historical_inputs:
+        raise ValueError("historical_modes_conflict")
+    snapshots = []
+    if historical_inputs:
+        snapshots = [
+            (HISTORICAL_COMMIT, HISTORICAL_TREE, (FIRST_LIVE, REGISTRY, PREDECESSOR)),
+            (SURFACE_COMMIT, SURFACE_TREE, (SURFACE,)),
+        ]
+    elif historical_first_live:
+        snapshots = [(HISTORICAL_COMMIT, HISTORICAL_TREE, (FIRST_LIVE,))]
+    pinned = {path for _commit, _tree, selected in snapshots for path in selected}
+    raw = {path: (ROOT / path).read_bytes() for path in paths if path not in pinned}
+    for commit, tree, selected in snapshots:
         from researchops_external_closure.git_objects import read_git_object_snapshot
-        snapshot = read_git_object_snapshot(ROOT, "5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab", (FIRST_LIVE,),
-            expected_tree_oid="30ecfd86ac00aecd8b67305a7c6ed2af88eeee10")
-        raw[FIRST_LIVE] = snapshot.blobs[0].payload
+        snapshot = read_git_object_snapshot(ROOT, commit, selected, expected_tree_oid=tree)
+        raw.update({blob.path: blob.payload for blob in snapshot.blobs})
     registry = json.loads(raw[REGISTRY])
     predecessor = json.loads(raw[PREDECESSOR])
     base = _offline_mapping_projection_from_documents(registry, predecessor, key=KEY)
@@ -151,11 +169,15 @@ def main(arguments: list[str] | None = None) -> int:
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--verify", action="store_true")
     parser.add_argument("--receipt", type=Path, default=RECEIPT)
-    parser.add_argument("--historical-first-live", action="store_true",
-                        help="Replay the original first-live source from fixed Git; other inputs must still match their recorded bytes.")
+    history = parser.add_mutually_exclusive_group()
+    history.add_argument("--historical-first-live", action="store_true",
+                         help="Replay the original first-live source from fixed Git; other inputs must still match their recorded bytes.")
+    history.add_argument("--historical-inputs", action="store_true",
+                         help="Replay all four original input byte snapshots from their fixed Git sources; never fall back to current files.")
     options = parser.parse_args(arguments)
     try:
-        result = inspect_boundaries(historical_first_live=options.historical_first_live)
+        result = inspect_boundaries(historical_first_live=options.historical_first_live,
+                                    historical_inputs=options.historical_inputs)
         raw = canonical(result) + b"\n"
         if options.write:
             options.receipt.parent.mkdir(parents=True, exist_ok=True)
