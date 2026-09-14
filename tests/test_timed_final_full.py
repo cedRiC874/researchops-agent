@@ -1,6 +1,10 @@
 """Actual A/B signed source/artifact flow on synthetic data, not live evidence."""
 import base64
+import functools
+import inspect
 import json
+import re
+import types
 import unittest
 from unittest.mock import patch
 
@@ -11,13 +15,92 @@ from tests.test_timed_evaluator_full import TimedEvaluatorFullFixture
 from tests import test_external_closure_evaluator as legacy_fixture
 
 
+_DIAGNOSTIC_TYPES = frozenset({
+    'ExternalClosurePrimitiveError', 'TimingContractError', 'AssertionError',
+    'ValueError', 'TypeError', 'KeyError', 'RuntimeError', 'OSError',
+    'FileNotFoundError', 'PermissionError', 'TimeoutError', 'TimeoutExpired',
+    'CalledProcessError', 'UnicodeError', 'UnicodeDecodeError', 'JSONDecodeError',
+    'InvalidSignature', 'SystemExit', 'KeyboardInterrupt',
+})
+_DIAGNOSTIC_CODE = re.compile(
+    r'(?:external_closure|closure|timing|timed|execution|first_live|source|registry|admission)_[a-z0-9_]{1,110}\Z')
+
+
+def _safe_admission_error(error):
+    """Only bounded structured metadata, never messages, args, paths or properties."""
+    result = dict(exception_type='unmapped', exception_code=None, code_status='not_stored')
+    try:
+        kind = type(error).__name__
+        if kind in _DIAGNOSTIC_TYPES:
+            result['exception_type'] = kind
+        stored = vars(error)
+        if 'code' in stored:
+            code = stored['code']
+        else:
+            # Repository errors can store code in __slots__. Do not invoke an
+            # arbitrary property or descriptor to obtain diagnostic metadata.
+            descriptor = inspect.getattr_static(error, 'code', None)
+            if type(descriptor) is not types.MemberDescriptorType:
+                return result
+            try:
+                code = descriptor.__get__(error, type(error))
+            except AttributeError:
+                return result
+        if code is None:
+            result['code_status'] = 'null'
+        elif (type(code) is str and _DIAGNOSTIC_CODE.fullmatch(code)
+              and all(len(part) <= 32 for part in code.split('_'))
+              and not {'sk', 'bearer'}.intersection(code.split('_'))):
+            result.update(exception_code=code, code_status='retained')
+        else:
+            result['code_status'] = 'redacted'
+    except BaseException:
+        # Diagnostic introspection must not mask or replace the original error.
+        result['code_status'] = 'metadata_unavailable'
+    return result
+
+
+def _observe_admission(actual, observations):
+    """Forward the real call/result/error unchanged; cap failure-message metadata."""
+    count = 0
+
+    @functools.wraps(actual)
+    def observed(*args, **kwargs):
+        nonlocal count
+        count += 1
+        row = None
+        if count <= 4:
+            row = dict(call=count, phase='initial_A' if count == 1 else 'B_rerun_A' if count == 2 else 'additional',
+                outcome='entered')
+            observations.append(row)
+        elif count == 5:
+            observations.append(dict(observation_truncated=True, max_recorded_calls=4))
+        try:
+            value = actual(*args, **kwargs)
+        except BaseException as error:
+            if row is not None:
+                row.update(outcome='exception', **_safe_admission_error(error))
+            raise
+        else:
+            if row is not None:
+                row['outcome'] = 'returned'
+            return value
+
+    return observed
+
+
 class TimedFinalFullTests(unittest.TestCase):
     def test_real_A_B_with_new_signatures_final_witness_and_exact_A_rerun(self):
         fixture = TimedEvaluatorFullFixture(); self.addCleanup(fixture.close)
         root = fixture.repository.root
+        admission_observations = []
+        self.enterContext(patch.object(evaluator, '_verify_admission',
+            new=_observe_admission(evaluator._verify_admission, admission_observations)))
         projected = evaluator.evaluate_timed_closure_bundle(root, fixture.full_documents, **fixture.full_arguments)
-        self.assertIs(type(projected), evaluator.TimedReceiptProjectionReady, getattr(projected, 'error_code', None))
-        self.assertTrue(projected.pre_anchor_closure_eligible, projected.evidence_error_code)
+        self.assertIs(type(projected), evaluator.TimedReceiptProjectionReady,
+            (getattr(projected, 'error_code', None), admission_observations))
+        self.assertTrue(projected.pre_anchor_closure_eligible,
+            (projected.evidence_error_code, admission_observations))
         profile, schemas = wire.load_contract(root)
         def sign(kind, value):
             role = 'task_custodian' if kind == 'receipt' else 'ledger_witness'
@@ -53,7 +136,8 @@ class TimedFinalFullTests(unittest.TestCase):
                 final_observation=observation, **fixture.full_arguments)
         self.assertEqual(len(reruns), 1)
         self.assertEqual(result.status, 'closed_evidence_verified',
-            (result.error_code, [(type(value).__name__, getattr(value, 'error_code', None), getattr(value, 'evidence_error_code', None)) for value in reruns]))
+            (result.error_code, [(type(value).__name__, getattr(value, 'error_code', None), getattr(value, 'evidence_error_code', None)) for value in reruns],
+             admission_observations))
         self.assertEqual(reruns[0].unsigned_receipt_canonical_json, projected.unsigned_receipt_canonical_json)
         self.assertTrue(result.evidence_valid); self.assertTrue(result.closure_claim_allowed)
         self.assertFalse(result.runtime_authority_granted)
