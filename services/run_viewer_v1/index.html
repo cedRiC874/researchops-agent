@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ResearchOps · 只读运行详情</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到运行详情</a>
+  <header class="topbar"><div class="brand"><span class="brand-mark">R</span> ResearchOps <span class="version">RUN VIEWER / V1</span></div><span class="readonly">只读 · 本地预览</span></header>
+  <div class="workspace">
+    <aside class="sidebar" aria-label="公开记录选择">
+      <p class="eyebrow">EVIDENCE EXPLORER</p><h2>运行记录</h2>
+      <label for="source-filter">数据来源</label>
+      <select id="source-filter"><option value="all">全部来源</option><option value="historical">公开历史记录</option><option value="synthetic">合成展示 fixture</option></select>
+      <nav id="run-list" aria-label="选择运行"></nav>
+      <div class="sidebar-note"><strong>从结果追溯证据</strong><p>查看执行到了哪里、哪些信息有记录，以及哪些仍然未知。</p><p>所有内容均为固定快照。没有实时连接或在线执行。</p></div>
+    </aside>
+    <main id="main" tabindex="-1">
+      <p id="load-error" role="alert" hidden></p>
+      <div id="loading" role="status">正在读取公开记录…</div>
+      <article id="run-detail" hidden>
+        <div class="heading-row"><div><p class="eyebrow">RUN DETAILS</p><div id="source-badges" class="badges"></div><h1 id="run-title"></h1><p id="description" class="description"></p></div><span class="snapshot">固定快照<br>非实时运行</span></div>
+        <section class="summary panel" aria-label="运行摘要"><dl id="summary-grid" class="summary-grid"></dl><details id="provenance"><summary>来源、版本与公开边界</summary><div id="source-detail"></div></details></section>
+        <section aria-label="四层独立状态" id="statuses" class="status-grid"></section>
+        <div class="content-grid">
+          <section class="panel timeline-panel"><div class="section-heading"><h2>执行时间线</h2><span class="section-index">01</span></div><p id="timeline-note" class="muted"></p>
+            <div class="filters"><label>事件类型<select id="event-type"><option value="all">全部事件</option><option value="request">请求</option><option value="tool">工具调用</option><option value="response">响应</option><option value="pause">暂停</option><option value="terminal">终态</option></select></label><label>筛选记录<input id="event-query" type="search" placeholder="标识符或关键词" maxlength="120"></label></div>
+            <ol id="events" class="timeline"></ol><p id="timeline-empty" class="empty" hidden></p>
+            <div id="event-pager" class="pager"><button id="event-prev" type="button">上一页</button><span id="event-page" aria-live="polite"></span><button id="event-next" type="button">下一页</button></div>
+          </section>
+          <section class="panel usage-panel"><div class="section-heading"><h2>用量与耗时</h2><span class="section-index">02</span></div><p class="muted">数值与口径一起呈现；未知不计为零。</p><dl id="metrics" class="metric-list"></dl></section>
+          <section class="panel evidence-panel"><div class="section-heading"><h2>结果与证据</h2><span class="section-index">03</span></div><p class="muted">仅展示安全聚合内容。展开查看标识符及来源。</p><div id="results"></div></section>
+          <section class="panel issues-panel"><div class="section-heading"><h2>问题与未执行项</h2><span class="section-index">04</span></div><div id="issues"></div><div class="pager"><button id="issue-prev" type="button">上一页</button><span id="issue-page" aria-live="polite"></span><button id="issue-next" type="button">下一页</button></div><div class="next-step"><h3>未执行项</h3><p id="not-executed"></p><h3>下一步说明</h3><p id="next-step"></p></div></section>
+        </div>
+        <footer><p id="claim-boundary"></p><p>本地只读展示，不具备生产鉴权。未提供 ≠ 未发生；归档检查通过 ≠ 外部验收通过。</p></footer>
+      </article>
+    </main>
+  </div>
+  <div id="copy-status" class="copy-status" role="status" aria-live="polite"></div>
+</body>
+</html>

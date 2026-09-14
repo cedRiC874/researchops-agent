@@ -1,0 +1,16 @@
+{
+  "name": "researchops-run-viewer-v1-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Test-only dependencies for the local fixed-snapshot viewer; no runtime dependency or online entrypoint.",
+  "engines": {
+    "node": "24.19.0"
+  },
+  "packageManager": "npm@11.17.0",
+  "scripts": {
+    "test:ci": "node --test --test-reporter=tap tests/viewer.test.mjs tests/browser-check.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "schema_version": "phase6-deepseek-depth60-public-summary/1.0",
+  "public_evidence_id": "8805d914-9974-4eeb-8fb4-0b081a5215d1",
+  "documented_at_utc": "2026-09-01T06:06:18.383Z",
+  "repository_anchor": {
+    "commit": "66f8c52dbe211adc8db9b9d3097f70bebff5f7ce",
+    "tree": "3be2ba493592afe06b8f25d161168489f8dc6c2b"
+  },
+  "plan": {
+    "plan_id": "phase6-deepseek-depth60-v1",
+    "commitment_sha256": "8019ef294b5028ab4e44c006f01e02bddb5a3b67b1ed88b84945bf37e75c216e",
+    "source_bundle_sha256": "914acbe89f4d99240aa653ecfe07fc0a2c129d08aa6abee9eb401e5f9d7a8d84",
+    "provider": "deepseek",
+    "model_alias": "deepseek-v4-flash",
+    "model_alias_mutable": true,
+    "transport": "openai_compatible_responses",
+    "runner_version": "1.9.0",
+    "split": "development",
+    "holdout_selected": 0
+  },
+  "outcome": {
+    "status": "completed",
+    "planned": 60,
+    "attempted": 60,
+    "completed": 60,
+    "passed": 20,
+    "failed_attempted": 40,
+    "not_started": 0,
+    "success_rate": 0.3333333333333333,
+    "runtime_failures": 0,
+    "harness_errors": 0
+  },
+  "cohorts": {
+    "historical_development": {
+      "tasks": 16,
+      "passed": 16
+    },
+    "new_frozen_extension": {
+      "tasks": 44,
+      "passed": 4
+    },
+    "structured_assertion_tasks": {
+      "tasks": 31,
+      "passed": 2
+    }
+  },
+  "quality_metrics": {
+    "tool_selection_accuracy": 0.9833333333333333,
+    "argument_task_accuracy": 0.9833333333333333,
+    "evidence_task_accuracy": 0.8888888888888888,
+    "evidence_grounding_accuracy": 0.9629629629629629,
+    "numeric_claim_task_accuracy": 0.8947368421052632,
+    "guardrail_accuracy": 0.3333333333333333,
+    "clarification_refusal_accuracy": 0.23076923076923078,
+    "completion_integrity_accuracy": 0.9666666666666667,
+    "safety_accuracy": 1.0,
+    "usage_integrity_accuracy": 1.0,
+    "approval_control_failure_rate": 0.0,
+    "approval_bypass_rate": 0.0
+  },
+  "failure_reason_counts": {
+    "required_phrases": 40,
+    "evidence": 3,
+    "forbidden_assertions": 3,
+    "completion_integrity": 2,
+    "forbidden_phrases": 2,
+    "numeric_claims": 2,
+    "outcome": 2,
+    "arguments": 1,
+    "evidence_grounding": 1,
+    "tool_sequence": 1,
+    "tool_status": 1
+  },
+  "completion_failure_counts": {
+    "provider_output_incomplete": 2
+  },
+  "usage": {
+    "status": "complete",
+    "coverage": 1.0,
+    "model_requests": 103,
+    "input_tokens": 235943,
+    "output_tokens": 54396,
+    "total_tokens": 290339
+  },
+  "cost": {
+    "currency": "CNY",
+    "estimate_method": "peak_hours_all_input_cache_miss",
+    "estimated_cost": "1.197393",
+    "local_observed_cost_stop": "6.000000",
+    "actual_provider_bill": null,
+    "provider_billing_hard_cap": false
+  },
+  "latency_ms": {
+    "count": 60,
+    "p50_nearest_rank": 7516.660599998431,
+    "p95_nearest_rank": 16766.231300000072,
+    "max": 21094.10160000334
+  },
+  "integrity": {
+    "unique_result_task_ids": 60,
+    "holdout_result_count": 0,
+    "audit_run_count": 60,
+    "all_audit_chains_valid": true,
+    "artifact_hashes_valid": true,
+    "consume_terminal_binding_valid": true,
+    "ephemeral_input_snapshot_removed": true
+  },
+  "claim_boundary": {
+    "result_attribution": "deepseek_plus_frozen_control_plane",
+    "model_quality_claim_allowed": false,
+    "private_holdout_claim_allowed": false,
+    "unknown_distribution_generalization_claim_allowed": false,
+    "production_sla_claim_allowed": false,
+    "cross_provider_claim_allowed": false,
+    "prompt_scorer_tool_or_task_tuning_from_result_allowed": false
+  },
+  "publication_omissions": {
+    "per_task_model_outputs": true,
+    "phase6_results_jsonl": true,
+    "audit_sqlite": true,
+    "authorization_identifier_or_hash": true,
+    "authorization_derived_bindings": true,
+    "api_key_or_request_headers": true,
+    "raw_provider_payload": true,
+    "private_or_non_synthetic_data": true
+  }
+}

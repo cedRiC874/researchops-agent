@@ -1,0 +1,57 @@
+name: run-viewer-v1
+
+on:
+  push:
+    paths:
+      - "services/run_viewer_v1/**"
+      - ".github/workflows/run-viewer-v1.yml"
+      - "docs/evidence/phase6-deepseek-depth60-v1/public_summary.json"
+  pull_request:
+    paths:
+      - "services/run_viewer_v1/**"
+      - ".github/workflows/run-viewer-v1.yml"
+      - "docs/evidence/phase6-deepseek-depth60-v1/public_summary.json"
+
+permissions:
+  contents: read
+
+jobs:
+  node-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: services/run_viewer_v1
+    env:
+      CI: "true"
+      # Never select a host-installed browser or external Playwright in CI.
+      PLAYWRIGHT_MODULE: ""
+      RUN_VIEWER_BROWSER: ""
+      RUN_VIEWER_SCREENSHOT_DIR: ""
+    steps:
+      - name: Check out fixed-history-capable repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+      - name: Install test-only locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify versions and required historical Git object
+        run: |
+          node -e "const a=require('node:assert/strict');a.equal(process.version,'v24.19.0');a.equal(require('playwright/package.json').version,'1.62.1')"
+          git cat-file -e 551b9e252670be871ff75b0638b033b07d3c6f08:docs/evidence/phase6-deepseek-depth60-v1/public_summary.json
+      - name: Install matching Chromium and OS libraries
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/run-viewer-v1-browsers
+        run: node node_modules/playwright/cli.js install --with-deps chromium
+      - name: Run complete local-service and browser suite
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/run-viewer-v1-browsers
+        run: |
+          env -u DEEPSEEK_API_KEY -u OPENAI_API_KEY -u ANTHROPIC_API_KEY -u MOONSHOT_API_KEY -u ANTHROPIC_AUTH_TOKEN \
+            npm run test:ci

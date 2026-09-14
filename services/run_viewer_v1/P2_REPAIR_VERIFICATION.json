@@ -1,0 +1,136 @@
+{
+  "schema_version": "run-viewer-local-test-receipt/1.0",
+  "scope": "bounded P2 repair; local related suites only; not full regression or frozen source commitment",
+  "baseline_commit": "551b9e252670be871ff75b0638b033b07d3c6f08",
+  "command": [
+    "node",
+    "--test",
+    "--test-reporter=tap",
+    "services/run_viewer_v1/tests/viewer.test.mjs",
+    "services/run_viewer_v1/tests/browser-check.mjs"
+  ],
+  "node_version": "v24.19.0",
+  "started_at_utc": "2026-09-14T11:04:32.051Z",
+  "ended_at_utc": "2026-09-14T11:04:41.490Z",
+  "tests": 23,
+  "pass": 23,
+  "fail": 0,
+  "skips": 0,
+  "cancelled": 0,
+  "todo": 0,
+  "exit_code": 0,
+  "signal": null,
+  "spawn_error": null,
+  "injection_evidence": [
+    "P2 catalog injection hit=1; served app.mjs bytes matched; no historical detail request",
+    "P2 clipboard success/other-record: calls=2; settled=1,0; obsolete text/timer mutations=0; served app.mjs bytes matched",
+    "P2 clipboard success/round-trip: calls=1; settled=0; obsolete text/timer mutations=0; served app.mjs bytes matched",
+    "P2 clipboard success/newer-copy: calls=2; settled=1,0; obsolete text/timer mutations=0; served app.mjs bytes matched",
+    "P2 clipboard failure/other-record: calls=2; settled=1,0; obsolete text/timer mutations=0; served app.mjs bytes matched",
+    "P2 clipboard failure/round-trip: calls=1; settled=0; obsolete text/timer mutations=0; served app.mjs bytes matched",
+    "P2 clipboard failure/newer-copy: calls=2; settled=1,0; obsolete text/timer mutations=0; served app.mjs bytes matched"
+  ],
+  "before": [
+    {
+      "path": "services/run_viewer_v1/app.mjs",
+      "bytes": 9660,
+      "sha256": "e1f3ca1439030dc3d129760e2db84b8b4cf1f31b3e2d343633013238b6838f41"
+    },
+    {
+      "path": "services/run_viewer_v1/catalog.mjs",
+      "bytes": 10866,
+      "sha256": "a7f3f0b4e4b659dbd6cf0b469f28ce3949526019c7e3d4247b7c3839e8cacef0"
+    },
+    {
+      "path": "services/run_viewer_v1/index.html",
+      "bytes": 4412,
+      "sha256": "f635c86c29271f18a1775859af5c4e4188ccd073c0c159376238370964214042"
+    },
+    {
+      "path": "services/run_viewer_v1/server.mjs",
+      "bytes": 3431,
+      "sha256": "a33e62062b0b82aa752b1e9d4b0bdc7542ac41ff258b569f6003ccc9a7a69da6"
+    },
+    {
+      "path": "services/run_viewer_v1/style.css",
+      "bytes": 10292,
+      "sha256": "3400c90e57f7982d3e95cb535e08778b6a619ae84eda35167d76d3b86df8c240"
+    },
+    {
+      "path": "services/run_viewer_v1/view-model.mjs",
+      "bytes": 1892,
+      "sha256": "fd900c631d94c8a0ec5dbc1e565b9fb0fe380166513fe9431fddf1dbb974ce5e"
+    },
+    {
+      "path": "services/run_viewer_v1/data/depth60.public.json",
+      "bytes": 3885,
+      "sha256": "b0a549aac1f42b7a389fcffca91172299897979ed8d2b677b55d941c80a4bb9e"
+    },
+    {
+      "path": "services/run_viewer_v1/tests/viewer.test.mjs",
+      "bytes": 6459,
+      "sha256": "b220e1f9c4b2640af1553a53a681954b828b50cd95ab2355e7af54fc1cb2a004"
+    },
+    {
+      "path": "services/run_viewer_v1/tests/browser-check.mjs",
+      "bytes": 16106,
+      "sha256": "7cfe00e0e5d5dd9e0bc0f74b16cdce9ace43822b3f823da232903fe8778a02dc"
+    }
+  ],
+  "after": [
+    {
+      "path": "services/run_viewer_v1/app.mjs",
+      "bytes": 9660,
+      "sha256": "e1f3ca1439030dc3d129760e2db84b8b4cf1f31b3e2d343633013238b6838f41"
+    },
+    {
+      "path": "services/run_viewer_v1/catalog.mjs",
+      "bytes": 10866,
+      "sha256": "a7f3f0b4e4b659dbd6cf0b469f28ce3949526019c7e3d4247b7c3839e8cacef0"
+    },
+    {
+      "path": "services/run_viewer_v1/index.html",
+      "bytes": 4412,
+      "sha256": "f635c86c29271f18a1775859af5c4e4188ccd073c0c159376238370964214042"
+    },
+    {
+      "path": "services/run_viewer_v1/server.mjs",
+      "bytes": 3431,
+      "sha256": "a33e62062b0b82aa752b1e9d4b0bdc7542ac41ff258b569f6003ccc9a7a69da6"
+    },
+    {
+      "path": "services/run_viewer_v1/style.css",
+      "bytes": 10292,
+      "sha256": "3400c90e57f7982d3e95cb535e08778b6a619ae84eda35167d76d3b86df8c240"
+    },
+    {
+      "path": "services/run_viewer_v1/view-model.mjs",
+      "bytes": 1892,
+      "sha256": "fd900c631d94c8a0ec5dbc1e565b9fb0fe380166513fe9431fddf1dbb974ce5e"
+    },
+    {
+      "path": "services/run_viewer_v1/data/depth60.public.json",
+      "bytes": 3885,
+      "sha256": "b0a549aac1f42b7a389fcffca91172299897979ed8d2b677b55d941c80a4bb9e"
+    },
+    {
+      "path": "services/run_viewer_v1/tests/viewer.test.mjs",
+      "bytes": 6459,
+      "sha256": "b220e1f9c4b2640af1553a53a681954b828b50cd95ab2355e7af54fc1cb2a004"
+    },
+    {
+      "path": "services/run_viewer_v1/tests/browser-check.mjs",
+      "bytes": 16106,
+      "sha256": "7cfe00e0e5d5dd9e0bc0f74b16cdce9ace43822b3f823da232903fe8778a02dc"
+    }
+  ],
+  "implementation_and_tests_stable": true,
+  "hash_scope_excludes": [
+    "README.md",
+    "FIELD_MAPPING.md",
+    "VERIFICATION.md",
+    "P2_REPAIR_VERIFICATION.json"
+  ],
+  "stdout_sha256": "71679db12f38546150ce5183a86779a413eb36bc3e0ca658eccb7a97e445154d",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
