@@ -293,6 +293,8 @@ class DeepSeekProvider:
         timed_transport = getattr(completion_telemetry_session, "_create_first_live_timed_transport", None)
         if timed_transport is None:
             timed_transport = getattr(completion_telemetry_session, '_create_campaign_timed_transport', None)
+        if timed_transport is None:
+            timed_transport = getattr(completion_telemetry_session, '_create_internal_timed_transport', None)
         owned_timed_transport = None
         if callable(timed_transport):
             owned_timed_transport = timed_transport()
@@ -761,6 +763,9 @@ def _validate_completion_session(
         if not exact_session_type:
             from researchops_completion_timing.campaign_runtime import _CampaignTimedSession
             exact_session_type = provider_id == 'deepseek' and type(session) is _CampaignTimedSession
+        if not exact_session_type:
+            from researchops_internal_telemetry.runtime import _InternalSession
+            exact_session_type = provider_id == 'deepseek' and type(session) is _InternalSession
         if not exact_session_type:
             raise TypeError("live completion session must be an exact ledger bridge")
         session.assert_provider_telemetry_authority()

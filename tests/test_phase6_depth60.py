@@ -184,28 +184,33 @@ class Phase6Depth60PlanTests(unittest.TestCase):
     def test_offline_ci_binds_history_and_zero_call_successor_validation(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         # Historical bytes still bind their fixed tree. Current-source drift is
-        # checked by v4/v11, not hidden by rewriting historical plan hashes.
+        # checked by Internal v1; historical v11 still replays its original Git bytes.
         self.assertIn("python scripts/verify_pre_v6_integrity.py", workflow)
         self.assertIn("$depth60 = $history.depth60_v5", workflow)
-        self.assertIn("$currentV11 = $history.current_v11", workflow)
+        self.assertIn("$historicalV11 = $history.historical_v11", workflow)
+        self.assertIn("$currentInternal = $history.current_internal", workflow)
+        self.assertIn("02ef0f6b776e896f09704608867bdf1d91a7bd6fc09444c57bee6cad0d4cb17c", workflow)
+        self.assertIn("671a625a1092db071dfa01bc43bed29114d3fcef46a1d54a2ac1483eba0ab0d8", workflow)
+        self.assertIn("$currentInternal.online_execution_authorized -ne $false", workflow)
+        self.assertIn("$currentInternal.runtime_admission_verified -ne $false", workflow)
         self.assertIn(
             '$history.legacy_validation_scope -ne "pinned_git_snapshot_only"',
             workflow,
         )
         self.assertIn(
-            '$history.current_validation_scope -ne "v11_first_live_source_integrity_only"',
+            '$history.current_validation_scope -ne "internal_v1_source_integrity_only"',
             workflow,
         )
         self.assertIn(
             "7ef11c4658967e47a56d92323e6ac118dfaef57ffd699b721bac1e25d0383b8d",
             workflow,
         )
-        self.assertIn("$currentV11.source_recipe_version -ne 4", workflow)
+        self.assertIn("$historicalV11.source_recipe_version -ne 4", workflow)
         self.assertIn('$history.current_legacy_rejections.depth60_v7 -ne "phase6_depth60_profile_component_drift"', workflow)
-        self.assertIn("$currentV11.online_execution_authorized -ne $false", workflow)
-        self.assertIn("$currentV11.runtime_admission_verified -ne $false", workflow)
-        self.assertIn("$currentV11.network_calls -ne 0", workflow)
-        self.assertIn("$currentV11.model_calls -ne 0", workflow)
+        self.assertIn("$historicalV11.online_execution_authorized -ne $false", workflow)
+        self.assertIn("$historicalV11.runtime_admission_verified -ne $false", workflow)
+        self.assertIn("$historicalV11.network_calls -ne 0", workflow)
+        self.assertIn("$historicalV11.model_calls -ne 0", workflow)
         self.assertIn("evals/phase6_deepseek_depth60_plan_v2.json", workflow)
         self.assertIn("evals/phase6_deepseek_depth60_plan_v3.json", workflow)
         self.assertIn("evals/phase6_deepseek_depth60_plan_v4.json", workflow)
