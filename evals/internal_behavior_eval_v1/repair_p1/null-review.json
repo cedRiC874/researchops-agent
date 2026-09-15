@@ -1,0 +1,807 @@
+{
+  "status": "pending_contract_decision",
+  "classification": "implementation_characterization_not_acceptance_standard",
+  "core_sha256_before_repair": "99d0338296a5474edb08531adbff260aad397e58729d49dfec3cc3b7871506f1",
+  "finding": "Observed final_output=null semantics are not defined. Existing implementation treats it as empty output. No text-capture-specific field distinguishes unavailable text from confirmed empty text.",
+  "existing_distinctions": {
+    "observation_null": "entire observation missing",
+    "execution_state_not_executed": "confirmed not executed",
+    "completion_unknown": "completion unknown, not text capture availability",
+    "events_complete": "event coverage only",
+    "side_effects_complete": "side effect coverage only"
+  },
+  "decision_required": "Define observed final_output=null and the explicit representation of text not captured; do not infer from gold, empty strings, or completion flags.",
+  "fixture_null_occurrences": [
+    {
+      "group": "g11_delivery",
+      "case": "not_executed",
+      "path": [
+        "observation",
+        "final_output"
+      ],
+      "execution_state": "not_executed"
+    },
+    {
+      "group": "g11_delivery",
+      "case": "observation_missing",
+      "path": [
+        "observation"
+      ],
+      "value": null
+    }
+  ],
+  "probes": [
+    {
+      "label": "observed_null_complete",
+      "input": {
+        "contract": {
+          "schema_version": "internal-behavior-eval-v1.0",
+          "task_id": "g01_numeric_tolerance-correct",
+          "source_kind": "synthetic_fixture",
+          "required_dimensions": [
+            "facts",
+            "evidence",
+            "behavior",
+            "delivery"
+          ],
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg",
+              "atol": "0.01",
+              "rtol": "0",
+              "required": true
+            }
+          ],
+          "behavior": {
+            "mode": "execute",
+            "detail": "none",
+            "calls": [
+              {
+                "tool": "measure",
+                "arguments": {
+                  "sample": "A"
+                },
+                "status": "succeeded"
+              }
+            ]
+          },
+          "expression": {
+            "kind": "text",
+            "consumer": ""
+          },
+          "delivery": {
+            "required_artifacts": []
+          }
+        },
+        "observation": {
+          "task_id": "g01_numeric_tolerance-correct",
+          "run_id": "run1",
+          "execution_state": "observed",
+          "final_output": null,
+          "completion": "complete",
+          "events": [
+            {
+              "call_id": "c1",
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded",
+              "produced_artifacts": [
+                "R1"
+              ]
+            }
+          ],
+          "events_complete": true,
+          "approval_interruptions": [],
+          "side_effects": [],
+          "side_effects_complete": true,
+          "delivered_artifacts": []
+        },
+        "allowed_evidence": [
+          {
+            "artifact_id": "R1",
+            "run_id": "run1",
+            "call_id": "c1",
+            "facts": [
+              {
+                "subject": "A",
+                "metric": "mass",
+                "value": "12.40",
+                "unit": "mg"
+              }
+            ]
+          }
+        ]
+      },
+      "observed_report": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "g01_numeric_tolerance-correct",
+        "source_kind": "synthetic_fixture",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "dimensions": {
+          "facts": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "answer_unavailable",
+                "location": "/observation/final_output",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "evidence": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "answer_unavailable",
+                "location": "/observation/final_output",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "behavior": {
+            "status": "pass",
+            "checks": [
+              {
+                "status": "pass",
+                "code": "requirements_satisfied",
+                "location": "/contract/behavior",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          },
+          "expression": {
+            "status": "not_applicable",
+            "checks": [
+              {
+                "status": "not_applicable",
+                "code": "no_obligation",
+                "location": "/contract/expression",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          },
+          "delivery": {
+            "status": "fail",
+            "checks": [
+              {
+                "status": "fail",
+                "code": "empty_output",
+                "location": "/observation/final_output",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          }
+        },
+        "task_verdict": "fail",
+        "manual_review_required": true
+      }
+    },
+    {
+      "label": "observed_null_unknown",
+      "input": {
+        "contract": {
+          "schema_version": "internal-behavior-eval-v1.0",
+          "task_id": "g01_numeric_tolerance-correct",
+          "source_kind": "synthetic_fixture",
+          "required_dimensions": [
+            "facts",
+            "evidence",
+            "behavior",
+            "delivery"
+          ],
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg",
+              "atol": "0.01",
+              "rtol": "0",
+              "required": true
+            }
+          ],
+          "behavior": {
+            "mode": "execute",
+            "detail": "none",
+            "calls": [
+              {
+                "tool": "measure",
+                "arguments": {
+                  "sample": "A"
+                },
+                "status": "succeeded"
+              }
+            ]
+          },
+          "expression": {
+            "kind": "text",
+            "consumer": ""
+          },
+          "delivery": {
+            "required_artifacts": []
+          }
+        },
+        "observation": {
+          "task_id": "g01_numeric_tolerance-correct",
+          "run_id": "run1",
+          "execution_state": "observed",
+          "final_output": null,
+          "completion": "unknown",
+          "events": [
+            {
+              "call_id": "c1",
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded",
+              "produced_artifacts": [
+                "R1"
+              ]
+            }
+          ],
+          "events_complete": true,
+          "approval_interruptions": [],
+          "side_effects": [],
+          "side_effects_complete": true,
+          "delivered_artifacts": []
+        },
+        "allowed_evidence": [
+          {
+            "artifact_id": "R1",
+            "run_id": "run1",
+            "call_id": "c1",
+            "facts": [
+              {
+                "subject": "A",
+                "metric": "mass",
+                "value": "12.40",
+                "unit": "mg"
+              }
+            ]
+          }
+        ]
+      },
+      "observed_report": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "g01_numeric_tolerance-correct",
+        "source_kind": "synthetic_fixture",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "dimensions": {
+          "facts": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "answer_unavailable",
+                "location": "/observation/final_output",
+                "related_locations": []
+              },
+              {
+                "status": "unknown",
+                "code": "answer_scope_incomplete",
+                "location": "/observation/completion",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "evidence": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "answer_unavailable",
+                "location": "/observation/final_output",
+                "related_locations": []
+              },
+              {
+                "status": "unknown",
+                "code": "answer_scope_incomplete",
+                "location": "/observation/completion",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "behavior": {
+            "status": "pass",
+            "checks": [
+              {
+                "status": "pass",
+                "code": "requirements_satisfied",
+                "location": "/contract/behavior",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          },
+          "expression": {
+            "status": "not_applicable",
+            "checks": [
+              {
+                "status": "not_applicable",
+                "code": "no_obligation",
+                "location": "/contract/expression",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          },
+          "delivery": {
+            "status": "fail",
+            "checks": [
+              {
+                "status": "fail",
+                "code": "empty_output",
+                "location": "/observation/final_output",
+                "related_locations": []
+              },
+              {
+                "status": "unknown",
+                "code": "unknown",
+                "location": "/observation/completion",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          }
+        },
+        "task_verdict": "fail",
+        "manual_review_required": true
+      }
+    },
+    {
+      "label": "observed_empty_complete",
+      "input": {
+        "contract": {
+          "schema_version": "internal-behavior-eval-v1.0",
+          "task_id": "g01_numeric_tolerance-correct",
+          "source_kind": "synthetic_fixture",
+          "required_dimensions": [
+            "facts",
+            "evidence",
+            "behavior",
+            "delivery"
+          ],
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg",
+              "atol": "0.01",
+              "rtol": "0",
+              "required": true
+            }
+          ],
+          "behavior": {
+            "mode": "execute",
+            "detail": "none",
+            "calls": [
+              {
+                "tool": "measure",
+                "arguments": {
+                  "sample": "A"
+                },
+                "status": "succeeded"
+              }
+            ]
+          },
+          "expression": {
+            "kind": "text",
+            "consumer": ""
+          },
+          "delivery": {
+            "required_artifacts": []
+          }
+        },
+        "observation": {
+          "task_id": "g01_numeric_tolerance-correct",
+          "run_id": "run1",
+          "execution_state": "observed",
+          "final_output": "",
+          "completion": "complete",
+          "events": [
+            {
+              "call_id": "c1",
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded",
+              "produced_artifacts": [
+                "R1"
+              ]
+            }
+          ],
+          "events_complete": true,
+          "approval_interruptions": [],
+          "side_effects": [],
+          "side_effects_complete": true,
+          "delivered_artifacts": []
+        },
+        "allowed_evidence": [
+          {
+            "artifact_id": "R1",
+            "run_id": "run1",
+            "call_id": "c1",
+            "facts": [
+              {
+                "subject": "A",
+                "metric": "mass",
+                "value": "12.40",
+                "unit": "mg"
+              }
+            ]
+          }
+        ]
+      },
+      "observed_report": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "g01_numeric_tolerance-correct",
+        "source_kind": "synthetic_fixture",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "dimensions": {
+          "facts": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "answer_unavailable",
+                "location": "/observation/final_output",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "evidence": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "answer_unavailable",
+                "location": "/observation/final_output",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "behavior": {
+            "status": "pass",
+            "checks": [
+              {
+                "status": "pass",
+                "code": "requirements_satisfied",
+                "location": "/contract/behavior",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          },
+          "expression": {
+            "status": "not_applicable",
+            "checks": [
+              {
+                "status": "not_applicable",
+                "code": "no_obligation",
+                "location": "/contract/expression",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          },
+          "delivery": {
+            "status": "fail",
+            "checks": [
+              {
+                "status": "fail",
+                "code": "empty_output",
+                "location": "/observation/final_output",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          }
+        },
+        "task_verdict": "fail",
+        "manual_review_required": true
+      }
+    },
+    {
+      "label": "not_executed",
+      "input": {
+        "contract": {
+          "schema_version": "internal-behavior-eval-v1.0",
+          "task_id": "g11_delivery-not_executed",
+          "source_kind": "synthetic_fixture",
+          "required_dimensions": [
+            "facts",
+            "evidence",
+            "behavior",
+            "delivery"
+          ],
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg",
+              "atol": "0.01",
+              "rtol": "0",
+              "required": true
+            }
+          ],
+          "behavior": {
+            "mode": "execute",
+            "detail": "none",
+            "calls": [
+              {
+                "tool": "measure",
+                "arguments": {
+                  "sample": "A"
+                },
+                "status": "succeeded"
+              }
+            ]
+          },
+          "expression": {
+            "kind": "text",
+            "consumer": ""
+          },
+          "delivery": {
+            "required_artifacts": []
+          }
+        },
+        "observation": {
+          "task_id": "g11_delivery-not_executed",
+          "run_id": "run1",
+          "execution_state": "not_executed",
+          "final_output": null,
+          "completion": "unknown",
+          "events": [],
+          "events_complete": false,
+          "approval_interruptions": [],
+          "side_effects": [],
+          "side_effects_complete": false,
+          "delivered_artifacts": []
+        },
+        "allowed_evidence": [
+          {
+            "artifact_id": "R1",
+            "run_id": "run1",
+            "call_id": "c1",
+            "facts": [
+              {
+                "subject": "A",
+                "metric": "mass",
+                "value": "12.40",
+                "unit": "mg"
+              }
+            ]
+          }
+        ]
+      },
+      "observed_report": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "g11_delivery-not_executed",
+        "source_kind": "synthetic_fixture",
+        "run_id": "run1",
+        "execution_state": "not_executed",
+        "dimensions": {
+          "facts": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "not_executed",
+                "location": "/observation",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "evidence": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "not_executed",
+                "location": "/observation",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "behavior": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "not_executed",
+                "location": "/observation",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "expression": {
+            "status": "not_applicable",
+            "checks": [
+              {
+                "status": "not_applicable",
+                "code": "no_obligation",
+                "location": "/contract/expression",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          },
+          "delivery": {
+            "status": "fail",
+            "checks": [
+              {
+                "status": "fail",
+                "code": "not_executed",
+                "location": "/observation",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          }
+        },
+        "task_verdict": "fail",
+        "manual_review_required": true
+      }
+    },
+    {
+      "label": "observation_missing",
+      "input": {
+        "contract": {
+          "schema_version": "internal-behavior-eval-v1.0",
+          "task_id": "g11_delivery-observation_missing",
+          "source_kind": "synthetic_fixture",
+          "required_dimensions": [
+            "facts",
+            "evidence",
+            "behavior",
+            "delivery"
+          ],
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg",
+              "atol": "0.01",
+              "rtol": "0",
+              "required": true
+            }
+          ],
+          "behavior": {
+            "mode": "execute",
+            "detail": "none",
+            "calls": [
+              {
+                "tool": "measure",
+                "arguments": {
+                  "sample": "A"
+                },
+                "status": "succeeded"
+              }
+            ]
+          },
+          "expression": {
+            "kind": "text",
+            "consumer": ""
+          },
+          "delivery": {
+            "required_artifacts": []
+          }
+        },
+        "observation": null,
+        "allowed_evidence": [
+          {
+            "artifact_id": "R1",
+            "run_id": "run1",
+            "call_id": "c1",
+            "facts": [
+              {
+                "subject": "A",
+                "metric": "mass",
+                "value": "12.40",
+                "unit": "mg"
+              }
+            ]
+          }
+        ]
+      },
+      "observed_report": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "g11_delivery-observation_missing",
+        "source_kind": "synthetic_fixture",
+        "run_id": null,
+        "execution_state": "observation_missing",
+        "dimensions": {
+          "facts": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "observation_missing",
+                "location": "/observation",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "evidence": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "observation_missing",
+                "location": "/observation",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "behavior": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "observation_missing",
+                "location": "/observation",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          },
+          "expression": {
+            "status": "not_applicable",
+            "checks": [
+              {
+                "status": "not_applicable",
+                "code": "no_obligation",
+                "location": "/contract/expression",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": false
+          },
+          "delivery": {
+            "status": "unknown",
+            "checks": [
+              {
+                "status": "unknown",
+                "code": "observation_missing",
+                "location": "/observation",
+                "related_locations": []
+              }
+            ],
+            "manual_review_required": true
+          }
+        },
+        "task_verdict": "unknown",
+        "manual_review_required": true
+      }
+    }
+  ]
+}

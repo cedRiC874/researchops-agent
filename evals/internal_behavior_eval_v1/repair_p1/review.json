@@ -1,0 +1,123 @@
+{
+  "scope": "P1 repair diff and retained evidence review",
+  "changed_prior_files": [
+    "evals/internal_behavior_eval_v1/README.md",
+    "src/researchops_behavior_eval_v1/core.py"
+  ],
+  "new_files": [
+    "evals/internal_behavior_eval_v1/repair_p1/HANDOFF.md",
+    "evals/internal_behavior_eval_v1/repair_p1/null-review.json",
+    "evals/internal_behavior_eval_v1/repair_p1/pre-repair-files.json",
+    "evals/internal_behavior_eval_v1/repair_p1/pre-repair-snapshot.zip",
+    "evals/internal_behavior_eval_v1/repair_p1/review.json",
+    "evals/internal_behavior_eval_v1/repair_p1/validation-full.json",
+    "evals/internal_behavior_eval_v1/repair_p1/validation-green.json",
+    "evals/internal_behavior_eval_v1/repair_p1/validation-red.json",
+    "evals/internal_behavior_eval_v1/repair_p1/verify.py",
+    "tests/test_behavior_eval_v1_tolerance.py"
+  ],
+  "total_delivery_files": 23,
+  "retained_prior_files": [
+    "evals/internal_behavior_eval_v1/CONTRACT.md",
+    "evals/internal_behavior_eval_v1/HANDOFF.md",
+    "evals/internal_behavior_eval_v1/example-plan.json",
+    "evals/internal_behavior_eval_v1/example-report.json",
+    "evals/internal_behavior_eval_v1/scorer_cases.json",
+    "evals/internal_behavior_eval_v1/validation-delivery.json",
+    "evals/internal_behavior_eval_v1/validation-final.json",
+    "evals/internal_behavior_eval_v1/validation-initial.json",
+    "src/researchops_behavior_eval_v1/__init__.py",
+    "src/researchops_behavior_eval_v1/__main__.py",
+    "tests/test_behavior_eval_v1.py"
+  ],
+  "retained_prior_files_byte_identical": true,
+  "final_validation_matches_current_bytes": true,
+  "bound_file_count": 7,
+  "only_core_changed_between_red_and_green": true,
+  "null_behavior_unchanged": true,
+  "null_semantics": "pending_contract_decision",
+  "old_example_report_unchanged_and_reproducible": true,
+  "p1_actual_report": {
+    "schema_version": "internal-behavior-eval-v1.0",
+    "task_id": "tolerance-reported_p1",
+    "source_kind": "synthetic_fixture",
+    "run_id": "run1",
+    "execution_state": "observed",
+    "dimensions": {
+      "facts": {
+        "status": "pass",
+        "checks": [
+          {
+            "status": "pass",
+            "code": "requirements_satisfied",
+            "location": "/contract/facts",
+            "related_locations": []
+          }
+        ],
+        "manual_review_required": false
+      },
+      "evidence": {
+        "status": "fail",
+        "checks": [
+          {
+            "status": "fail",
+            "code": "evidence_content_mismatch",
+            "location": "/observation/final_output#/line/1",
+            "related_locations": [
+              "/allowed_evidence/0/facts"
+            ]
+          }
+        ],
+        "manual_review_required": false
+      },
+      "behavior": {
+        "status": "pass",
+        "checks": [
+          {
+            "status": "pass",
+            "code": "requirements_satisfied",
+            "location": "/contract/behavior",
+            "related_locations": []
+          }
+        ],
+        "manual_review_required": false
+      },
+      "expression": {
+        "status": "not_applicable",
+        "checks": [
+          {
+            "status": "not_applicable",
+            "code": "no_obligation",
+            "location": "/contract/expression",
+            "related_locations": []
+          }
+        ],
+        "manual_review_required": false
+      },
+      "delivery": {
+        "status": "pass",
+        "checks": [
+          {
+            "status": "pass",
+            "code": "requirements_satisfied",
+            "location": "/contract/delivery",
+            "related_locations": []
+          }
+        ],
+        "manual_review_required": false
+      }
+    },
+    "task_verdict": "fail",
+    "manual_review_required": false
+  },
+  "new_text_files_whitespace_errors": 0,
+  "tracked_baseline_changes": [],
+  "resolved_blockers": [
+    "cross_unit_absolute_tolerance_P1"
+  ],
+  "pending_blockers": [
+    "observed_final_output_null_semantics"
+  ],
+  "review_exit_code": 0,
+  "artifact_note": "No report is included in validation input hashes; this review does not hash itself. Not a source manifest or successor."
+}

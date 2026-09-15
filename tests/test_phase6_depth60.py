@@ -184,13 +184,18 @@ class Phase6Depth60PlanTests(unittest.TestCase):
     def test_offline_ci_binds_history_and_zero_call_successor_validation(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         # Historical bytes still bind their fixed tree. Current-source drift is
-        # checked by Internal v1; historical v11 still replays its original Git bytes.
+        # checked by offline Internal v2; v1/v11 retain their historical Git identities.
         self.assertIn("python scripts/verify_pre_v6_integrity.py", workflow)
         self.assertIn("$depth60 = $history.depth60_v5", workflow)
         self.assertIn("$historicalV11 = $history.historical_v11", workflow)
         self.assertIn("$currentInternal = $history.current_internal", workflow)
         self.assertIn("02ef0f6b776e896f09704608867bdf1d91a7bd6fc09444c57bee6cad0d4cb17c", workflow)
         self.assertIn("671a625a1092db071dfa01bc43bed29114d3fcef46a1d54a2ac1483eba0ab0d8", workflow)
+        self.assertIn("0157e921793e0afe5cd897456535c324ccede9b203eb6792375f1d9b7d67e66d", workflow)
+        self.assertIn("072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e", workflow)
+        self.assertIn('$history.current_legacy_rejections.internal_online_v1 -ne "internal_source_drift"', workflow)
+        self.assertIn('$currentInternal.algorithm -ne "internal-current-tree-offline-source-v2"', workflow)
+        self.assertIn("$currentInternal.historical_result_revalidated -ne $false", workflow)
         self.assertIn("$currentInternal.online_execution_authorized -ne $false", workflow)
         self.assertIn("$currentInternal.runtime_admission_verified -ne $false", workflow)
         self.assertIn(
@@ -198,7 +203,7 @@ class Phase6Depth60PlanTests(unittest.TestCase):
             workflow,
         )
         self.assertIn(
-            '$history.current_validation_scope -ne "internal_v1_source_integrity_only"',
+            '$history.current_validation_scope -ne "internal_v2_offline_source_integrity_only"',
             workflow,
         )
         self.assertIn(

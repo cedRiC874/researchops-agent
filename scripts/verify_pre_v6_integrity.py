@@ -22,7 +22,8 @@ from researchops.kimi_k3_handshake import validate_kimi_k3_handshake
 from researchops_external_closure.execution_current_v4 import verify_current_timed_profile
 from tests.historical_integrity_support import HISTORICAL_COMMIT, HISTORICAL_TREE, historical_integrity_root
 from tests.internal_v11_historical_support import historical_v11_root, COMMIT as V11_COMMIT, TREE as V11_TREE
-from researchops_internal_telemetry.source import verify_source, MANIFEST
+from researchops_internal_telemetry.source import verify_source as verify_online_v1_source
+from researchops_internal_telemetry.source_integrity_v2 import verify_source, MANIFEST
 
 
 def main() -> int:
@@ -48,7 +49,8 @@ def main() -> int:
             source_commitment_sha256=internal["commitment_sha256"],
             manifest_sha256=hashlib.sha256((ROOT/MANIFEST).read_bytes()).hexdigest(),
             verified_file_count=len(internal["files"]),source_integrity_only=True,
-            online_execution_authorized=False,runtime_admission_verified=False,network_calls=0,model_calls=0)
+            online_execution_authorized=False,runtime_admission_verified=False,
+            historical_result_revalidated=False,network_calls=0,model_calls=0)
         frozen_v7 = {
             "evals/phase6_deepseek_depth60_plan_v7.json": "396b2103399af1a68854f1f61abd5547f841a68edde78702fbba4df2910806c1",
             "evals/provider_completion_execution_binding_v2/implementation_manifest_first_live_v1.json": "13457502cf2fe55ff9bbf071caf86b473812212f42acad4081001b2036b4f6a1",
@@ -63,6 +65,7 @@ def main() -> int:
             "first_live": "deepseek_first_live_source_integrity_invalid",
             "kimi": "kimi_k3_handshake_plan_drift",
             "depth60_v11": "execution_v4_component_drift",
+            "internal_online_v1": "internal_source_drift",
         }
         observed = {}
         checks = {
@@ -72,6 +75,7 @@ def main() -> int:
             "first_live": lambda: deepseek_first_live_validation_status(ROOT),
             "kimi": lambda: validate_kimi_k3_handshake(ROOT),
             "depth60_v11": lambda: verify_current_timed_profile(ROOT, profile="first_live"),
+            "internal_online_v1": lambda: verify_online_v1_source(ROOT),
         }
         for name, check in checks.items():
             try:
@@ -87,7 +91,7 @@ def main() -> int:
             "historical_commit": HISTORICAL_COMMIT,
             "historical_tree": HISTORICAL_TREE,
             "legacy_validation_scope": "pinned_git_snapshot_only",
-            "current_validation_scope": "internal_v1_source_integrity_only",
+            "current_validation_scope": "internal_v2_offline_source_integrity_only",
             "depth60_v5": depth60,
             "first_live": first_live,
             "kimi": kimi,
@@ -95,6 +99,7 @@ def main() -> int:
             "historical_v11_tree": V11_TREE,
             "historical_v11": historical_v11,
             "current_internal": current,
+            "historical_internal_v1": internal["lineage"],
             "historical_v7_file_sha256": frozen_v7,
             "current_legacy_rejections": observed,
             "network_calls": 0,

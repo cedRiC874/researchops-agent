@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Offline Internal current-tree source integrity v2; not runtime authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "algorithm", "recipe_sha256", "lineage", "files", "source_integrity_only", "online_execution_authorized", "runtime_admission_verified", "historical_result_revalidated", "commitment_sha256"],
+  "properties": {
+    "schema_version": {"const": "internal-current-tree-source/2.0"},
+    "algorithm": {"const": "internal-current-tree-offline-source-v2"},
+    "recipe_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commitment_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_integrity_only": {"type": "boolean", "const": true},
+    "online_execution_authorized": {"type": "boolean", "const": false},
+    "runtime_admission_verified": {"type": "boolean", "const": false},
+    "historical_result_revalidated": {"type": "boolean", "const": false},
+    "lineage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "manifest_path", "manifest_sha256", "source_commitment_sha256", "verified_git_blob_count", "historical_result_revalidated"],
+      "properties": {
+        "commit": {"const": "551b9e252670be871ff75b0638b033b07d3c6f08"},
+        "tree": {"const": "fa18ea712732425a0ed035439a97b93ee08e78ce"},
+        "manifest_path": {"const": "evals/provider_completion_internal_v1/source_manifest_v1.json"},
+        "manifest_sha256": {"const": "671a625a1092db071dfa01bc43bed29114d3fcef46a1d54a2ac1483eba0ab0d8"},
+        "source_commitment_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "verified_git_blob_count": {"type": "integer", "minimum": 1, "maximum": 8192},
+        "historical_result_revalidated": {"type": "boolean", "const": false}
+      }
+    },
+    "files": {
+      "type": "array", "minItems": 1, "maxItems": 8192,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["path", "bytes", "sha256"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1, "maxLength": 512},
+          "bytes": {"type": "integer", "minimum": 0, "maximum": 8388608},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    }
+  }
+}

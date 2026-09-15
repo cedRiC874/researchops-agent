@@ -1,0 +1,36 @@
+{
+  "original_development_absolute_path_recorded": false,
+  "originals_modified": false,
+  "replaces_existing_public_provenance": false,
+  "reports": [
+    {
+      "derivative_bytes": 5908,
+      "derivative_relative_path": "HANDOFF.public-redacted-v1.md",
+      "derivative_sha256": "4a98d2cd90049f7390871cf836c86eb62d36619f780d7b67a0780290e0b0fe72",
+      "original_bytes": 5982,
+      "original_relative_path": "HANDOFF.md",
+      "original_sha256": "fefc11cbfda63da39ba53b50215e822e27d19a85d9e113e8239cde10467fcacd",
+      "transformation": "Only exact development-root and Windows user-profile prefix replacement; all other characters retained."
+    },
+    {
+      "derivative_bytes": 6574,
+      "derivative_relative_path": "repair_p1/HANDOFF.public-redacted-v1.md",
+      "derivative_sha256": "e0ccfae4fa71c054705bd5bff0d4640e937df04d3df844b5fc4a042985d47015",
+      "original_bytes": 6577,
+      "original_relative_path": "repair_p1/HANDOFF.md",
+      "original_sha256": "1f9d06fb2b6de0f51a5d640f8ab850743ae1b8888d8aa5c32ee6c1972f4c7235",
+      "transformation": "Only exact development-root and Windows user-profile prefix replacement; all other characters retained."
+    },
+    {
+      "derivative_bytes": 6451,
+      "derivative_relative_path": "text_observation_v1_1/HANDOFF.public-redacted-v1.md",
+      "derivative_sha256": "5e0a8d8ddf8b50f630b092ac28a94bf04b14d3274597afb2fde906a2b2796d92",
+      "original_bytes": 6525,
+      "original_relative_path": "text_observation_v1_1/HANDOFF.md",
+      "original_sha256": "9b11dfd87cb49f370bcce15fea4a8d1c8321cd736f6de4247217921401bb795e",
+      "transformation": "Only exact development-root and Windows user-profile prefix replacement; all other characters retained."
+    }
+  ],
+  "schema_version": "behavior-evaluator-handoff-public-derivation/1.0",
+  "source_kind": "historical_handoff_redaction_not_new_validation"
+}
