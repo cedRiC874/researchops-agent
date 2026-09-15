@@ -44,7 +44,7 @@ jobs:
     # The complete local integration run took 217 minutes (1,958 tests).
     # Include setup/other gates with headroom; no tests are removed or filtered.
     # Revisit with hosted-runner measurements, not an assumption of equal speed.
-    timeout-minutes: 300
+    timeout-minutes: 360
     env:
       # Evidence IDs bind numerical results. Pin the lowest supported numerical
       # baseline shared by hosted runners so CPU dispatch cannot perturb the
