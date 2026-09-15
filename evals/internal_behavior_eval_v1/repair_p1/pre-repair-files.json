@@ -1,0 +1,18 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "evals/internal_behavior_eval_v1/CONTRACT.md": "8291dcd873401f3e6ff7a98e40a8db926853f148adc29aecae3dcbf8c3d0d596",
+    "evals/internal_behavior_eval_v1/example-plan.json": "cf4074231804acdf97206c7778a31ec3de8fb636ee443a8ba4cc8de521d805b0",
+    "evals/internal_behavior_eval_v1/example-report.json": "92e8e360fb2c0c7d08d80bb3e8cc238ee0d6c4bdc2df81de7ed5bf2b594f4a26",
+    "evals/internal_behavior_eval_v1/HANDOFF.md": "fefc11cbfda63da39ba53b50215e822e27d19a85d9e113e8239cde10467fcacd",
+    "evals/internal_behavior_eval_v1/README.md": "95c55b92ad003e1b278a71148b3aa694756fea1e1d70d8ca653dea78ff58e1ab",
+    "evals/internal_behavior_eval_v1/scorer_cases.json": "b990480b75d633614e966271c28d4971dd82f29418772500ce227d0fff90a0c0",
+    "evals/internal_behavior_eval_v1/validation-delivery.json": "75ca3b87dc07df5bae373ce23eb77ca87c073b586451c646077e708e32d1fa07",
+    "evals/internal_behavior_eval_v1/validation-final.json": "75ca3b87dc07df5bae373ce23eb77ca87c073b586451c646077e708e32d1fa07",
+    "evals/internal_behavior_eval_v1/validation-initial.json": "b3e39d92d5bb42cf6563ff10d5d6a85e17b60a80f8af0bb29b4623ca8348e774",
+    "src/researchops_behavior_eval_v1/__init__.py": "6247a5ade3b1f94ff3f5a0ef977790979547a7e16259fe56a80f2cdda2d74ba6",
+    "src/researchops_behavior_eval_v1/__main__.py": "5a2db83e72b2f84d7c6f13d0382687c94223e0c9fe48c4d7408114bd89bc2fdb",
+    "src/researchops_behavior_eval_v1/core.py": "99d0338296a5474edb08531adbff260aad397e58729d49dfec3cc3b7871506f1",
+    "tests/test_behavior_eval_v1.py": "0234e178ff73d7517c03f2bcf7c18d13573f72d18a8f9d0292598f5ee172b43f"
+  }
+}

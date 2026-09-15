@@ -1,0 +1,836 @@
+{
+  "schema_version": "internal-behavior-eval-v1.0",
+  "source_kind": "synthetic_fixture",
+  "tasks": [
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-null",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "text",
+          "consumer": ""
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-null",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": null,
+        "completion": "complete",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-empty",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "text",
+          "consumer": ""
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-empty",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": "",
+        "completion": "complete",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-blank",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "text",
+          "consumer": ""
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-blank",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": " \t\n",
+        "completion": "complete",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-correct",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "text",
+          "consumer": ""
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-correct",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": "The mass of A is 12.40 mg [R1].",
+        "completion": "complete",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-timeout",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "text",
+          "consumer": ""
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-timeout",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": null,
+        "completion": "timeout",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-truncated",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "text",
+          "consumer": ""
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-truncated",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": null,
+        "completion": "truncated",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-not-executed",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "text",
+          "consumer": ""
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-not-executed",
+        "run_id": "run1",
+        "execution_state": "not_executed",
+        "final_output": null,
+        "completion": "unknown",
+        "events": [],
+        "events_complete": false,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": false,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-json-unobserved",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "expression",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "json",
+          "consumer": "synthetic_export_consumer"
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-json-unobserved",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": null,
+        "completion": "complete",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-empty-answer",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "expression",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "json",
+          "consumer": "synthetic_export_consumer"
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-empty-answer",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": "{\"answer\":\"\"}",
+        "completion": "complete",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contract": {
+        "schema_version": "internal-behavior-eval-v1.0",
+        "task_id": "text-demo-wrong",
+        "source_kind": "synthetic_fixture",
+        "required_dimensions": [
+          "facts",
+          "evidence",
+          "behavior",
+          "delivery"
+        ],
+        "facts": [
+          {
+            "subject": "A",
+            "metric": "mass",
+            "value": "12.40",
+            "unit": "mg",
+            "atol": "0.01",
+            "rtol": "0",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "mode": "execute",
+          "detail": "none",
+          "calls": [
+            {
+              "tool": "measure",
+              "arguments": {
+                "sample": "A"
+              },
+              "status": "succeeded"
+            }
+          ]
+        },
+        "expression": {
+          "kind": "text",
+          "consumer": ""
+        },
+        "delivery": {
+          "required_artifacts": []
+        }
+      },
+      "observation": {
+        "task_id": "text-demo-wrong",
+        "run_id": "run1",
+        "execution_state": "observed",
+        "final_output": "The mass of A is 99 mg [R1].",
+        "completion": "complete",
+        "events": [
+          {
+            "call_id": "c1",
+            "tool": "measure",
+            "arguments": {
+              "sample": "A"
+            },
+            "status": "succeeded",
+            "produced_artifacts": [
+              "R1"
+            ]
+          }
+        ],
+        "events_complete": true,
+        "approval_interruptions": [],
+        "side_effects": [],
+        "side_effects_complete": true,
+        "delivered_artifacts": []
+      },
+      "allowed_evidence": [
+        {
+          "artifact_id": "R1",
+          "run_id": "run1",
+          "call_id": "c1",
+          "facts": [
+            {
+              "subject": "A",
+              "metric": "mass",
+              "value": "12.40",
+              "unit": "mg"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

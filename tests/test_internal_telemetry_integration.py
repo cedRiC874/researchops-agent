@@ -8,8 +8,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from researchops_internal_telemetry import contract as c, source
+from researchops_internal_telemetry import admission, task_origin
 
 
 @unittest.skipUnless(os.name=="nt","the approved fixed-store runtime is Windows-only")
@@ -22,6 +24,10 @@ class InternalIntegrationTests(unittest.TestCase):
         for name in source.source_files():
             target=cls.root/name;target.parent.mkdir(parents=True,exist_ok=True)
             shutil.copyfile(c.ROOT/name,target)
+        # Refresh only this test-owned clone. Its compared eval documents may
+        # include newer offline packages; the historical repository files stay fixed.
+        cls.copied_origin_bytes=(cls.root/task_origin.ORIGIN_PATH).read_bytes()
+        (cls.root/task_origin.ORIGIN_PATH).write_bytes(c.raw(task_origin.build_origin_record(cls.root)))
         (cls.root/source.MANIFEST).write_bytes(c.raw(source.build_manifest(cls.root)))
         cls.environment={name:os.environ[name] for name in ("PATH","SystemRoot","WINDIR","COMSPEC","TEMP","TMP") if name in os.environ}
         cls.environment.update(PYTHONPATH=str(cls.root/"src"),PYTHONDONTWRITEBYTECODE="1",PYTHONUTF8="1",
@@ -32,6 +38,51 @@ class InternalIntegrationTests(unittest.TestCase):
             result=subprocess.run(["git","-C",str(cls.root),*args],env=cls.environment,capture_output=True,timeout=60)
             if result.returncode:raise RuntimeError("synthetic Git fixture failed: "+result.stderr.decode(errors="replace"))
         cls.known=cls.base/"known";cls.known.mkdir()
+
+    def fixture_freeze(self):
+        pricing=dict(schema_version="provider-completion-internal-pricing/1.0",status="user_reviewed_official_snapshot",
+            provider_id="deepseek",requested_model="deepseek-v4-flash",input_price_per_million_cny="2.000000",
+            output_price_per_million_cny="8.000000",cache_discount_assumed=False,provider_invoice_hard_cap=False,
+            evidence_date_utc=c.now().isoformat().replace("+00:00","Z"),official_evidence_sha256="1"*64)
+        return admission.build_freeze(root=self.root,
+            execution_commit=source.git(self.root,"rev-parse","HEAD").decode().strip(),pricing=pricing,
+            review_record=dict(kind="internal_review",preparer="synthetic_test",reviewer="synthetic_test",
+                same_person=True,developer_known=True,
+                old_task_exclusion_record_sha256=c.digest((self.root/task_origin.ORIGIN_PATH).read_bytes())))
+
+    def test_fixture_origin_and_manifest_match_without_changing_history(self):
+        current=(self.root/task_origin.ORIGIN_PATH).read_bytes()
+        self.assertEqual(c.decode(current),task_origin.build_origin_record(self.root))
+        self.assertNotEqual(current,self.copied_origin_bytes)
+        self.assertEqual((c.ROOT/task_origin.ORIGIN_PATH).read_bytes(),self.copied_origin_bytes)
+        manifest=source.verify_source(self.root)
+        row=next(item for item in manifest['files'] if item['path']==task_origin.ORIGIN_PATH)
+        self.assertEqual(row['sha256'],c.digest(current))
+
+    def test_fixture_freeze_checks_real_source_without_store_or_runtime(self):
+        from researchops_completion_timing import local_claim
+        with patch.object(source,'verify_source',wraps=source.verify_source) as verify, \
+                patch.object(local_claim,'_windows_local_app_data',side_effect=AssertionError('no real store lookup')) as store:
+            freeze=self.fixture_freeze()
+        verify.assert_called_once_with(self.root)
+        store.assert_not_called()
+        self.assertFalse(freeze['external_validation_completed'])
+        self.assertFalse(freeze['status_closure_allowed'])
+        self.assertEqual(freeze['review_record']['old_task_exclusion_record_sha256'],
+                         c.digest((self.root/task_origin.ORIGIN_PATH).read_bytes()))
+
+    def test_stale_fixture_origin_is_rejected_before_source_verification(self):
+        path=self.root/task_origin.ORIGIN_PATH
+        current=path.read_bytes()
+        try:
+            path.write_bytes(self.copied_origin_bytes)
+            with patch.object(source,'verify_source',wraps=source.verify_source) as verify:
+                with self.assertRaisesRegex(c.InternalError,'^internal_task_origin_mismatch$'):
+                    self.fixture_freeze()
+            verify.assert_not_called()
+        finally:
+            path.write_bytes(current)
+        self.assertEqual((c.ROOT/task_origin.ORIGIN_PATH).read_bytes(),self.copied_origin_bytes)
 
     def probe(self,mode):
         result=subprocess.run([sys.executable,"-B",str(c.ROOT/"tests/internal_telemetry_probe.py"),mode,str(self.known)],

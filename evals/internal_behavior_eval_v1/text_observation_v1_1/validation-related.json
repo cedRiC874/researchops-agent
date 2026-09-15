@@ -1,0 +1,48 @@
+{
+  "scope": "related",
+  "source_kind": "synthetic_fixture",
+  "started_at_utc": "2026-09-14T11:17:47.945567+00:00",
+  "tests": 5,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "exit_code": 0,
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "binding": {
+    "algorithm": "sha256",
+    "before": {
+      "evals/internal_behavior_eval_v1/CONTRACT.md": "9c623cc4ddc5448f7ea7a41c013d64769b2c482e21c199c611acf25156275259",
+      "evals/internal_behavior_eval_v1/README.md": "936d45d6a20433469098b404f9bc05e3862e8fc5d9d49d3a299aae1ec2bee08e",
+      "evals/internal_behavior_eval_v1/scorer_cases.json": "b990480b75d633614e966271c28d4971dd82f29418772500ce227d0fff90a0c0",
+      "evals/internal_behavior_eval_v1/text_observation_v1_1/example-plan.json": "d083ed36385699cdc7ebaad558fb4890802fff9569acaa1c5a8b782e43c23f08",
+      "evals/internal_behavior_eval_v1/text_observation_v1_1/REVISION.md": "cdd8d3cb95b859a5a3738dc24e5f2b63bdfb81516e7f20d99eceff8cd184fc15",
+      "evals/internal_behavior_eval_v1/text_observation_v1_1/verify.py": "51e14aadf8190a5d4a163d42e19793ac93a69a39e889be885c78914e3c619fe8",
+      "src/researchops_behavior_eval_v1/__init__.py": "6247a5ade3b1f94ff3f5a0ef977790979547a7e16259fe56a80f2cdda2d74ba6",
+      "src/researchops_behavior_eval_v1/__main__.py": "5a2db83e72b2f84d7c6f13d0382687c94223e0c9fe48c4d7408114bd89bc2fdb",
+      "src/researchops_behavior_eval_v1/core.py": "200364da09f37e391e44539c5a7526ad11cd90f8be7f58b02ba7e28446a0d9bf",
+      "tests/test_behavior_eval_v1.py": "b95a128fa69e392b670a481398ebd931f5d6d33498f954baa567f7acd51f3830",
+      "tests/test_behavior_eval_v1_text_observation.py": "23d7c53c9eccfbcb145f33046a4f79aae082ba79c7d44ea005bdf6223640c7ea",
+      "tests/test_behavior_eval_v1_tolerance.py": "ef5f824f07773de4d4e76e199c6f737cdb6abb4662c55ce9a8dcdf5a62a71b10"
+    },
+    "after": {
+      "evals/internal_behavior_eval_v1/CONTRACT.md": "9c623cc4ddc5448f7ea7a41c013d64769b2c482e21c199c611acf25156275259",
+      "evals/internal_behavior_eval_v1/README.md": "936d45d6a20433469098b404f9bc05e3862e8fc5d9d49d3a299aae1ec2bee08e",
+      "evals/internal_behavior_eval_v1/scorer_cases.json": "b990480b75d633614e966271c28d4971dd82f29418772500ce227d0fff90a0c0",
+      "evals/internal_behavior_eval_v1/text_observation_v1_1/example-plan.json": "d083ed36385699cdc7ebaad558fb4890802fff9569acaa1c5a8b782e43c23f08",
+      "evals/internal_behavior_eval_v1/text_observation_v1_1/REVISION.md": "cdd8d3cb95b859a5a3738dc24e5f2b63bdfb81516e7f20d99eceff8cd184fc15",
+      "evals/internal_behavior_eval_v1/text_observation_v1_1/verify.py": "51e14aadf8190a5d4a163d42e19793ac93a69a39e889be885c78914e3c619fe8",
+      "src/researchops_behavior_eval_v1/__init__.py": "6247a5ade3b1f94ff3f5a0ef977790979547a7e16259fe56a80f2cdda2d74ba6",
+      "src/researchops_behavior_eval_v1/__main__.py": "5a2db83e72b2f84d7c6f13d0382687c94223e0c9fe48c4d7408114bd89bc2fdb",
+      "src/researchops_behavior_eval_v1/core.py": "200364da09f37e391e44539c5a7526ad11cd90f8be7f58b02ba7e28446a0d9bf",
+      "tests/test_behavior_eval_v1.py": "b95a128fa69e392b670a481398ebd931f5d6d33498f954baa567f7acd51f3830",
+      "tests/test_behavior_eval_v1_text_observation.py": "23d7c53c9eccfbcb145f33046a4f79aae082ba79c7d44ea005bdf6223640c7ea",
+      "tests/test_behavior_eval_v1_tolerance.py": "ef5f824f07773de4d4e76e199c6f737cdb6abb4662c55ce9a8dcdf5a62a71b10"
+    },
+    "unchanged": true,
+    "reports_included": false
+  },
+  "failure_details": [],
+  "error_details": [],
+  "skip_details": [],
+  "test_log": "test_json_empty_answer_is_delivery_failure (test_behavior_eval_v1.InvariantTests.test_json_empty_answer_is_delivery_failure) ... ok\ntest_core_no_io_or_runtime_dependency (test_behavior_eval_v1.InvariantTests.test_core_no_io_or_runtime_dependency) ... ok\ntest_deterministic_no_mutation_no_aliasing (test_behavior_eval_v1.InvariantTests.test_deterministic_no_mutation_no_aliasing) ... ok\ntest_optional_extra_is_checked (test_behavior_eval_v1.InvariantTests.test_optional_extra_is_checked) ... ok\ntest_parser_does_not_read_gold (test_behavior_eval_v1.InvariantTests.test_parser_does_not_read_gold) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.017s\n\nOK\n"
+}

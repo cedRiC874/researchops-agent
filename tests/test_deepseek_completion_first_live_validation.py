@@ -544,7 +544,9 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
         from researchops.phase6_depth60 import validate_phase6_depth60_plan
         from researchops_external_closure.execution_current_v4 import verify_current_timed_profile
         from tests.internal_v11_historical_support import historical_v11_root
-        from researchops_internal_telemetry.source import verify_source
+        from researchops_internal_telemetry.source import verify_source as verify_online_source
+        from researchops_internal_telemetry.source_integrity_v2 import verify_source
+        from researchops_internal_telemetry.contract import InternalError
 
         with self.assertRaises(first_live.DeepSeekFirstLiveValidationError) as caught:
             first_live.deepseek_first_live_validation_status(ROOT)
@@ -556,7 +558,9 @@ class DeepSeekCompletionFirstLiveValidationTests(unittest.TestCase):
         self.assertTrue(current.source_integrity_only)
         self.assertFalse(current.online_execution_authorized)
         self.assertFalse(current.runtime_admission_verified)
-        self.assertEqual(verify_source(ROOT)["algorithm"], "internal-all-source-and-policy-v1")
+        with self.assertRaisesRegex(InternalError, "^internal_source_drift$"):
+            verify_online_source(ROOT)
+        self.assertEqual(verify_source(ROOT)["algorithm"], "internal-current-tree-offline-source-v2")
 
     def test_git_archive_materializer_rejects_unsafe_members_and_disables_fetch(
         self,

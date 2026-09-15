@@ -1,0 +1,29 @@
+{
+  "schema_version": "internal-current-tree-source-recipe/2.0",
+  "algorithm": "internal-current-tree-offline-source-v2",
+  "scan_roots": ["src", "evals"],
+  "suffixes": [".py", ".json", ".jsonl", ".txt", ".yaml", ".yml", ".toml"],
+  "explicit_files": [
+    "pyproject.toml",
+    "requirements.lock",
+    "requirements.linux.lock",
+    "probe_out_v3.json",
+    "scripts/build_internal_source_integrity_v2.py",
+    "scripts/build_behavior_publication_v1.py",
+    "evals/provider_completion_internal_source_v2/source_manifest_v2.schema.json",
+    "src/researchops_internal_telemetry/source_integrity_v2.py",
+    "evals/internal_behavior_eval_v1/CONTRACT.md",
+    "evals/internal_behavior_eval_v1/text_observation_v1_1/REVISION.md"
+  ],
+  "excluded_file": "evals/provider_completion_internal_source_v2/source_manifest_v2.json",
+  "ignored_directory_name": "__pycache__",
+  "limits": {"directories": 4096, "entries": 16384, "files": 8192, "file_bytes": 8388608, "total_bytes": 67108864, "path_characters": 512},
+  "historical_commit": "551b9e252670be871ff75b0638b033b07d3c6f08",
+  "historical_tree": "fa18ea712732425a0ed035439a97b93ee08e78ce",
+  "historical_manifest": "evals/provider_completion_internal_v1/source_manifest_v1.json",
+  "historical_manifest_sha256": "671a625a1092db071dfa01bc43bed29114d3fcef46a1d54a2ac1483eba0ab0d8",
+  "source_integrity_only": true,
+  "online_execution_authorized": false,
+  "runtime_admission_verified": false,
+  "historical_result_revalidated": false
+}

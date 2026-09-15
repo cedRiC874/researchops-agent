@@ -1,0 +1,495 @@
+{
+  "schema_version": "internal-behavior-eval-v1.0",
+  "source_kind": "synthetic_fixture",
+  "claim_boundary": "evaluator_test_examples_only",
+  "counts": {
+    "planned": 6,
+    "pass": 2,
+    "fail": 2,
+    "unknown": 2,
+    "observed": 4,
+    "not_executed": 1,
+    "observation_missing": 1
+  },
+  "confirmed_pass_fraction": {
+    "numerator": 2,
+    "denominator": 6
+  },
+  "dimension_counts": {
+    "facts": {
+      "pass": 2,
+      "fail": 0,
+      "unknown": 3,
+      "not_applicable": 1,
+      "denominator": 5
+    },
+    "evidence": {
+      "pass": 1,
+      "fail": 1,
+      "unknown": 3,
+      "not_applicable": 1,
+      "denominator": 5
+    },
+    "behavior": {
+      "pass": 3,
+      "fail": 0,
+      "unknown": 3,
+      "not_applicable": 0,
+      "denominator": 6
+    },
+    "expression": {
+      "pass": 0,
+      "fail": 0,
+      "unknown": 0,
+      "not_applicable": 6,
+      "denominator": 0
+    },
+    "delivery": {
+      "pass": 4,
+      "fail": 1,
+      "unknown": 1,
+      "not_applicable": 0,
+      "denominator": 6
+    }
+  },
+  "tasks": [
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "task_id": "g01_numeric_tolerance-correct",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "task_id": "g06_citation-nonexistent",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "fail",
+              "code": "evidence_not_allowed",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "task_id": "g05_lexical_escape-escape",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "unparsed_content",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            },
+            {
+              "status": "unknown",
+              "code": "required_fact_missing",
+              "location": "/contract/facts/0",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "unparsed_content",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            },
+            {
+              "status": "unknown",
+              "code": "claim_unavailable",
+              "location": "/contract/facts/0",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "unparsed_content",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "unknown",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "task_id": "g11_delivery-not_executed",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "not_executed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "not_executed",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "not_executed",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "not_executed",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "fail",
+              "code": "not_executed",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "task_id": "g11_delivery-observation_missing",
+      "source_kind": "synthetic_fixture",
+      "run_id": null,
+      "execution_state": "observation_missing",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "observation_missing",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "observation_missing",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "observation_missing",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "observation_missing",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        }
+      },
+      "task_verdict": "unknown",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "task_id": "g08_stop_behavior-clarify_zh",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    }
+  ]
+}

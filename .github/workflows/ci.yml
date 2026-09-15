@@ -44,7 +44,7 @@ jobs:
     # The complete local integration run took 217 minutes (1,958 tests).
     # Include setup/other gates with headroom; no tests are removed or filtered.
     # Revisit with hosted-runner measurements, not an assumption of equal speed.
-    timeout-minutes: 300
+    timeout-minutes: 360
     env:
       # Evidence IDs bind numerical results. Pin the lowest supported numerical
       # baseline shared by hosted runners so CPU dispatch cannot perturb the
@@ -173,7 +173,7 @@ jobs:
               $history.historical_commit -ne "5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab" -or
               $history.historical_tree -ne "30ecfd86ac00aecd8b67305a7c6ed2af88eeee10" -or
               $history.legacy_validation_scope -ne "pinned_git_snapshot_only" -or
-              $history.current_validation_scope -ne "internal_v1_source_integrity_only" -or
+              $history.current_validation_scope -ne "internal_v2_offline_source_integrity_only" -or
               $history.current_legacy_rejections.depth60_v7 -ne "phase6_depth60_profile_component_drift" -or
               $history.network_calls -ne 0 -or $history.model_calls -ne 0 -or
               $history.provider_key_loaded -ne $false) {
@@ -186,12 +186,24 @@ jobs:
             throw "Historical v11 identity or current-tree rejection mismatch."
           }
           $currentInternal = $history.current_internal
+          $historicalInternal = $history.historical_internal_v1
+          if ($historicalInternal.commit -ne "551b9e252670be871ff75b0638b033b07d3c6f08" -or
+              $historicalInternal.tree -ne "fa18ea712732425a0ed035439a97b93ee08e78ce" -or
+              $historicalInternal.source_commitment_sha256 -ne "02ef0f6b776e896f09704608867bdf1d91a7bd6fc09444c57bee6cad0d4cb17c" -or
+              $historicalInternal.manifest_sha256 -ne "671a625a1092db071dfa01bc43bed29114d3fcef46a1d54a2ac1483eba0ab0d8" -or
+              $historicalInternal.verified_git_blob_count -ne 361 -or
+              $historicalInternal.historical_result_revalidated -ne $false -or
+              $history.current_legacy_rejections.internal_online_v1 -ne "internal_source_drift") {
+            throw "Historical Internal v1 identity or strict online-source rejection mismatch."
+          }
           if ($currentInternal.status -ne "valid" -or
-              $currentInternal.source_commitment_sha256 -ne "02ef0f6b776e896f09704608867bdf1d91a7bd6fc09444c57bee6cad0d4cb17c" -or
-              $currentInternal.manifest_sha256 -ne "671a625a1092db071dfa01bc43bed29114d3fcef46a1d54a2ac1483eba0ab0d8" -or
+              $currentInternal.algorithm -ne "internal-current-tree-offline-source-v2" -or
+              $currentInternal.source_commitment_sha256 -ne "0157e921793e0afe5cd897456535c324ccede9b203eb6792375f1d9b7d67e66d" -or
+              $currentInternal.manifest_sha256 -ne "072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e" -or
               $currentInternal.source_integrity_only -ne $true -or
               $currentInternal.online_execution_authorized -ne $false -or
               $currentInternal.runtime_admission_verified -ne $false -or
+              $currentInternal.historical_result_revalidated -ne $false -or
               $currentInternal.network_calls -ne 0 -or $currentInternal.model_calls -ne 0) {
             throw "Current Internal source-only commitment mismatch."
           }

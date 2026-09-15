@@ -1,0 +1,816 @@
+{
+  "schema_version": "internal-behavior-eval-v1.0",
+  "measurement_revision": "internal-behavior-eval-v1.1",
+  "source_kind": "synthetic_fixture",
+  "claim_boundary": "evaluator_test_examples_only",
+  "counts": {
+    "planned": 10,
+    "pass": 1,
+    "fail": 7,
+    "unknown": 2,
+    "observed": 9,
+    "not_executed": 1,
+    "observation_missing": 0
+  },
+  "confirmed_pass_fraction": {
+    "numerator": 1,
+    "denominator": 10
+  },
+  "dimension_counts": {
+    "facts": {
+      "pass": 1,
+      "fail": 1,
+      "unknown": 8,
+      "not_applicable": 0,
+      "denominator": 10
+    },
+    "evidence": {
+      "pass": 1,
+      "fail": 1,
+      "unknown": 8,
+      "not_applicable": 0,
+      "denominator": 10
+    },
+    "behavior": {
+      "pass": 9,
+      "fail": 0,
+      "unknown": 1,
+      "not_applicable": 0,
+      "denominator": 10
+    },
+    "expression": {
+      "pass": 1,
+      "fail": 0,
+      "unknown": 1,
+      "not_applicable": 8,
+      "denominator": 2
+    },
+    "delivery": {
+      "pass": 2,
+      "fail": 6,
+      "unknown": 2,
+      "not_applicable": 0,
+      "denominator": 10
+    }
+  },
+  "tasks": [
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-null",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "final_output_unobserved",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        }
+      },
+      "task_verdict": "unknown",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-empty",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "fail",
+              "code": "empty_output",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-blank",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "fail",
+              "code": "whitespace_output",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-correct",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-timeout",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            },
+            {
+              "status": "unknown",
+              "code": "answer_scope_incomplete",
+              "location": "/observation/completion",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            },
+            {
+              "status": "unknown",
+              "code": "answer_scope_incomplete",
+              "location": "/observation/completion",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "final_output_unobserved",
+              "location": "/observation/final_output",
+              "related_locations": []
+            },
+            {
+              "status": "fail",
+              "code": "timeout",
+              "location": "/observation/completion",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-truncated",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            },
+            {
+              "status": "unknown",
+              "code": "answer_scope_incomplete",
+              "location": "/observation/completion",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            },
+            {
+              "status": "unknown",
+              "code": "answer_scope_incomplete",
+              "location": "/observation/completion",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "final_output_unobserved",
+              "location": "/observation/final_output",
+              "related_locations": []
+            },
+            {
+              "status": "fail",
+              "code": "truncated",
+              "location": "/observation/completion",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-not-executed",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "not_executed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "not_executed",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "not_executed",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "not_executed",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "fail",
+              "code": "not_executed",
+              "location": "/observation",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-json-unobserved",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "expression_unobserved",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "delivery": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "final_output_unobserved",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        }
+      },
+      "task_verdict": "unknown",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-empty-answer",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "answer_unavailable",
+              "location": "/observation/final_output",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "fail",
+              "code": "empty_answer",
+              "location": "/observation/final_output#/answer",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "text-demo-wrong",
+      "source_kind": "synthetic_fixture",
+      "run_id": "run1",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "fail",
+              "code": "value_mismatch",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "fail",
+              "code": "evidence_content_mismatch",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": [
+                "/allowed_evidence/0/facts"
+              ]
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": false
+    }
+  ]
+}
