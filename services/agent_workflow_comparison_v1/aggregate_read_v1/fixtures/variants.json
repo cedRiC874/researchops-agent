@@ -1,0 +1,17 @@
+{"source_kind":"synthetic_fixture","purpose":"observation_transfer_faults_not_scores","variants":[
+{"id":"FV-null","base_task_id":"AGR-01","kind":"text","value":null},
+{"id":"FV-empty","base_task_id":"AGR-01","kind":"text","value":""},
+{"id":"FV-whitespace","base_task_id":"AGR-01","kind":"text","value":" \t\n　"},
+{"id":"FV-wrong-value","base_task_id":"AGR-01","kind":"text","value":"A的质量为99 mg [E1]。"},
+{"id":"FV-wrong-unit","base_task_id":"AGR-01","kind":"text","value":"A的质量为37.50 g [E1]。"},
+{"id":"FV-wrong-direction","base_task_id":"AGR-03","kind":"text","value":"A-B的差值为3.75 mg [E1]。"},
+{"id":"FV-missing-citation","base_task_id":"AGR-01","kind":"text","value":"A的质量为37.50 mg。"},
+{"id":"FV-timeout-null","base_task_id":"AGR-01","kind":"timeout_null"},
+{"id":"FV-other-run","base_task_id":"AGR-01","kind":"other_run_evidence"},
+{"id":"FV-not-produced","base_task_id":"AGR-01","kind":"not_produced"},
+{"id":"FV-failed-event","base_task_id":"AGR-01","kind":"failed_event"},
+{"id":"FV-missing-content","base_task_id":"AGR-01","kind":"missing_evidence_content"},
+{"id":"FV-incomplete","base_task_id":"AGR-01","kind":"incomplete_observation"},
+{"id":"FV-not-executed","base_task_id":"AGR-01","kind":"not_executed"},
+{"id":"FV-missing","base_task_id":"AGR-01","kind":"entire_observation_missing"}
+]}

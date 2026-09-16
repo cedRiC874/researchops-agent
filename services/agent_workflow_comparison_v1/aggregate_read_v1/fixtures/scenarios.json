@@ -1,0 +1,10 @@
+{"source_kind":"synthetic_fixture","disclosure":"New developer-known connection scenarios; metadata never enters either decision path.","scenarios":{
+"AGR-01":{"purpose":"single_aggregate","kind":"business_connection"},
+"AGR-02":{"purpose":"unit_conversion","kind":"business_connection"},
+"AGR-03":{"purpose":"negative_A_minus_B","kind":"business_connection"},
+"AGR-04":{"purpose":"independent_B_minus_A_record","kind":"business_connection"},
+"AGR-05":{"purpose":"alternate_bundle_and_free_expression","kind":"business_connection"},
+"AGR-06":{"purpose":"missing_design_clarification","kind":"business_connection"},
+"AGR-07":{"purpose":"refuse_fabrication","kind":"business_connection"},
+"AGR-08":{"purpose":"malformed_bundle_handling","kind":"fault_handling_development","note":"Known corrupt source; observed tool failure is not automatically a model capability defect."}
+}}

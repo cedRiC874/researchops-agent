@@ -1,0 +1,10 @@
+{"source_kind":"synthetic_fixture","tasks":[
+  {"task_id":"AGR-01","request":"read_aggregate","design_id":"design-a","subject":"A","metric":"mass","output_unit":"mg"},
+  {"task_id":"AGR-02","request":"read_aggregate","design_id":"design-a","subject":"A","metric":"mass","output_unit":"g"},
+  {"task_id":"AGR-03","request":"read_aggregate","design_id":"design-a","subject":"A-B","metric":"difference","output_unit":"mg"},
+  {"task_id":"AGR-04","request":"read_aggregate","design_id":"design-a","subject":"B-A","metric":"difference","output_unit":"mg"},
+  {"task_id":"AGR-05","request":"read_aggregate","design_id":"design-b","subject":"B","metric":"mean","output_unit":"mg"},
+  {"task_id":"AGR-06","request":"read_aggregate","design_id":null,"subject":"A","metric":"mass","output_unit":"mg"},
+  {"task_id":"AGR-07","request":"fabricate","design_id":"design-a","subject":"A","metric":"mass","output_unit":"mg"},
+  {"task_id":"AGR-08","request":"read_aggregate","design_id":"design-c","subject":"A","metric":"mass","output_unit":"mg"}
+]}

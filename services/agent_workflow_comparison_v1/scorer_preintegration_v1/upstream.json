@@ -1,0 +1,163 @@
+{
+  "scorer_commit": "fcc2026c60943de6016495ad244291689a9d491d",
+  "scorer_tree": "cb4fd9421d6f25da121aefa51bb30244900f0a40",
+  "parent_commit": "055d2f2a875ab50554c7233fad19734e021c0a2a",
+  "handoff_sha256": "ecc591704154037be728ce364fee32254f7502214b88606d56f412515c7adb1b",
+  "references": [
+    {
+      "record_id": "upstream-record-01",
+      "sha256": "ecc591704154037be728ce364fee32254f7502214b88606d56f412515c7adb1b"
+    },
+    {
+      "record_id": "upstream-record-02",
+      "sha256": "7a51afd92bd6169651d62086b4678d6e64038750a399018989dd728cc5c10d22"
+    },
+    {
+      "record_id": "upstream-record-03",
+      "sha256": "8cad92cf79f1bd5a5474d58bb030519d3f979eb4b5576eef567f945b5dceee81"
+    },
+    {
+      "record_id": "upstream-record-04",
+      "sha256": "33d285d3e02e06783144200f7247517a74a78914256ea6e2d8faebe2d67c48fe"
+    },
+    {
+      "record_id": "upstream-record-05",
+      "sha256": "2ad05bb338df04f3c2dfc047546fa923abae90902c6d93b096026e6f051aec0c"
+    },
+    {
+      "record_id": "upstream-record-06",
+      "sha256": "432a4854cf7fc7b375d8911f56634b78d5dbbda3800c8cf046b8c28932e99d09"
+    },
+    {
+      "record_id": "upstream-record-07",
+      "sha256": "4451c7505fac7df9977025d9defa4ef26df924fb423c95a526d410a9d71a0c1b"
+    },
+    {
+      "record_id": "upstream-record-08",
+      "sha256": "039c27500e1fb02a1a3fba3281d49201d3ab921980475e65668b94d78b28f188"
+    },
+    {
+      "record_id": "upstream-record-09",
+      "sha256": "379ce21e496e5165a7115d69171f9222c5ec011f53e202ed38c74feb528be61e"
+    },
+    {
+      "record_id": "upstream-record-10",
+      "sha256": "03d12aeb1f5aac1af70b2c4cdc4a622c0456d48b395bb1908044d300fc6d9fa3"
+    },
+    {
+      "record_id": "upstream-record-11",
+      "sha256": "ae78240d910a6ef1aa508d5077070e4881ba2853ac189928e7feb77d7c5c5c23"
+    }
+  ],
+  "fixed_files_sha256": {
+    "src/researchops_behavior_eval_v1/__init__.py": "6247a5ade3b1f94ff3f5a0ef977790979547a7e16259fe56a80f2cdda2d74ba6",
+    "src/researchops_behavior_eval_v1/core.py": "200364da09f37e391e44539c5a7526ad11cd90f8be7f58b02ba7e28446a0d9bf",
+    "src/researchops_behavior_eval_v1/__main__.py": "5a2db83e72b2f84d7c6f13d0382687c94223e0c9fe48c4d7408114bd89bc2fdb",
+    "evals/internal_behavior_eval_v1/CONTRACT.md": "9c623cc4ddc5448f7ea7a41c013d64769b2c482e21c199c611acf25156275259",
+    "evals/internal_behavior_eval_v1/text_observation_v1_1/REVISION.md": "cdd8d3cb95b859a5a3738dc24e5f2b63bdfb81516e7f20d99eceff8cd184fc15",
+    "pyproject.toml": "7d5081e349155d5b1d9f927184791586b1ee8413e226366c6bddd911921cb50f",
+    "requirements.lock": "15a40bd036716b0145823f42ea3004be70769ce3ca41f8a0fd9696fc19afd86b",
+    "requirements.linux.lock": "c4b3745da977a50e94cb8c0df20d175053abdba964509e7e03116503efb7ab37",
+    "evals/provider_completion_internal_source_v2/source_manifest_v2.json": "072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e"
+  },
+  "new_verification_inputs_sha256": "73dcfdbd9b15e48f71e47704604f285e7459016f1575a4c11ad6533fbf57c4f2",
+  "historical_verification_inputs_sha256": "6a6251f1084d330b3f682167cdd27b9219d15cd7adcfb50b85f00e3630f2da8c",
+  "historical_binding_relation": "655 match parent; 654 match new, only ci.yml differs",
+  "ci_only_change": "offline-evaluation.timeout-minutes: 300 -> 360",
+  "review": "fixed head full coverage; no known unresolved integration blocker per verified handoff",
+  "upstream_state": {
+    "source": "verified historical PR47 snapshot, not a live query",
+    "as_of": "2026-09-15T17:26:04.644167Z",
+    "head_sha": "fcc2026c60943de6016495ad244291689a9d491d",
+    "pr_state": "OPEN",
+    "checks": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T17:22:37Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/cedRiC874/researchops-agent/actions/runs/35000755241/job/104488259118",
+        "name": "linux-x86-demo",
+        "startedAt": "2026-09-15T17:21:32Z",
+        "status": "COMPLETED",
+        "workflowName": "offline-quality-gate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T17:22:25Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/cedRiC874/researchops-agent/actions/runs/35000603213/job/104487764962",
+        "name": "linux-x86-demo",
+        "startedAt": "2026-09-15T17:20:08Z",
+        "status": "COMPLETED",
+        "workflowName": "offline-quality-gate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T17:24:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/cedRiC874/researchops-agent/actions/runs/35000755000/job/104488258687",
+        "name": "offline-and-postgres",
+        "startedAt": "2026-09-15T17:21:32Z",
+        "status": "COMPLETED",
+        "workflowName": "pilot-staging-ci"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T17:23:33Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/cedRiC874/researchops-agent/actions/runs/35000755062/job/104488258874",
+        "name": "compose-e2e",
+        "startedAt": "2026-09-15T17:21:32Z",
+        "status": "COMPLETED",
+        "workflowName": "production-slice-e2e"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/cedRiC874/researchops-agent/actions/runs/35000755241/job/104488258915",
+        "name": "offline-evaluation",
+        "startedAt": "2026-09-15T17:21:34Z",
+        "status": "IN_PROGRESS",
+        "workflowName": "offline-quality-gate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/cedRiC874/researchops-agent/actions/runs/35000603213/job/104487764872",
+        "name": "offline-evaluation",
+        "startedAt": "2026-09-15T17:20:08Z",
+        "status": "IN_PROGRESS",
+        "workflowName": "offline-quality-gate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T17:22:34Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/cedRiC874/researchops-agent/actions/runs/35000755241/job/104488259044",
+        "name": "depth60-counterexample-runtime-replay",
+        "startedAt": "2026-09-15T17:21:32Z",
+        "status": "COMPLETED",
+        "workflowName": "offline-quality-gate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T17:20:48Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/cedRiC874/researchops-agent/actions/runs/35000603213/job/104487764609",
+        "name": "depth60-counterexample-runtime-replay",
+        "startedAt": "2026-09-15T17:20:08Z",
+        "status": "COMPLETED",
+        "workflowName": "offline-quality-gate"
+      }
+    ],
+    "observed_failed_checks": [],
+    "current_ci_status": "not_requeried"
+  },
+  "formal_integration_accepted": false,
+  "public_derivation": {
+    "source_sha256": "f0af5dc9dca9b49aa23a07c0acd98c52aa676e9bb056978531148a335d194351",
+    "change": "local reference paths replaced with opaque record IDs; anchored identities and dated upstream state unchanged"
+  }
+}

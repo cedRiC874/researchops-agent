@@ -1,0 +1,193 @@
+name: item6-offline-preintegration
+
+on:
+  pull_request:
+    paths:
+      - "services/agent_workflow_comparison_v1/**"
+      - ".github/workflows/item6-offline-preintegration.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/agent_workflow_comparison_v1/**"
+      - ".github/workflows/item6-offline-preintegration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixed-candidate-offline:
+    runs-on: windows-2022
+    # Initial outer budget, including dependency installation; not a measured SLA.
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      SCORER_COMMIT: fcc2026c60943de6016495ad244291689a9d491d
+      ITEM6_RUNTIME_MANIFEST_SHA256: f4f859e3cd264e7144ada8ffad7404fdfcbaa1ef72e7a52e0000f26045bb299e
+      ITEM6_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ITEM6_WORKFLOW_REF: ${{ github.workflow_ref }}
+      ITEM6_WORKFLOW_SHA: ${{ github.workflow_sha }}
+      ITEM6_BOOTSTRAP_PYTHON: python
+    steps:
+      - name: Check out exact source head without persistent credentials or trust changes
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          set-safe-directory: false
+          clean: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+
+      - name: Prepare fixed scorer and bind source plus workflow
+        id: prepare
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          Set-Location -LiteralPath $env:GITHUB_WORKSPACE
+          $sourceHead = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceHead -ne $env:ITEM6_SOURCE_SHA) { throw 'source_head_mismatch' }
+          $manifest = Join-Path $env:GITHUB_WORKSPACE 'services/agent_workflow_comparison_v1/scorer_preintegration_v1/publication-files.json'
+          if ((Get-FileHash -Algorithm SHA256 -LiteralPath $manifest).Hash.ToLowerInvariant() -ne $env:ITEM6_RUNTIME_MANIFEST_SHA256) { throw 'reviewed_runtime_manifest_mismatch' }
+          & git cat-file -e "$($env:SCORER_COMMIT)^{commit}"
+          if ($LASTEXITCODE -ne 0) {
+            & git fetch --no-tags origin $env:SCORER_COMMIT
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $runtime = Join-Path $env:RUNNER_TEMP "item6-fixed-$($env:GITHUB_RUN_ID)-$($env:GITHUB_RUN_ATTEMPT)"
+          $prepared = (& $env:ITEM6_BOOTSTRAP_PYTHON -B -X utf8 services/agent_workflow_comparison_v1/scorer_preintegration_v1/prepare_ci.py --source-root $env:GITHUB_WORKSPACE --destination $runtime | Out-String)
+          if ($LASTEXITCODE -ne 0) { Write-Output $prepared; exit $LASTEXITCODE }
+          $preparation = $prepared | ConvertFrom-Json
+          if ($preparation.status -ne 'created') { throw 'existing_execution_requires_review_do_not_restart' }
+          if ($env:GITHUB_ACTIONS -eq 'true' -and $preparation.tested_source_has_uncommitted_changes) { throw 'hosted_source_must_be_clean' }
+          $reports = Join-Path $runtime 'services/agent_workflow_comparison_v1/scorer_preintegration_v1/outputs'
+          $context = if ($env:GITHUB_ACTIONS -eq 'true') { 'github_actions_job' } else { 'local_shell_rehearsal' }
+          if ($env:GITHUB_ACTIONS -eq 'true' -and $env:ITEM6_WORKFLOW_SHA -notmatch '^[0-9a-f]{40}$') { throw 'workflow_definition_identity_missing' }
+          $binding = @{
+            execution_context = $context
+            workflow_source_commit = $sourceHead
+            source_checkout_workflow_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath '.github/workflows/item6-offline-preintegration.yml').Hash.ToLowerInvariant()
+            workflow_definition_commit = $env:ITEM6_WORKFLOW_SHA
+            workflow_definition_ref = $env:ITEM6_WORKFLOW_REF
+            scorer_commit = $env:SCORER_COMMIT
+            runtime_manifest_sha256 = $env:ITEM6_RUNTIME_MANIFEST_SHA256
+            tested_source_set_sha256 = $preparation.tested_source_set_sha256
+            run_id = $env:GITHUB_RUN_ID
+            run_attempt = $env:GITHUB_RUN_ATTEMPT
+            formal_integration_accepted = $false
+          }
+          $bindingPath = Join-Path $reports 'ci-binding.json'
+          if (Test-Path -LiteralPath $bindingPath) { throw 'binding_output_already_exists' }
+          $binding | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $bindingPath -Encoding utf8
+          "ITEM6_RUNTIME_ROOT=$runtime" | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ITEM6_REPORT_DIR=$reports" | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
+          "report_dir=$reports" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Install fixed dependencies in a fresh job environment
+        id: install
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $venv = Join-Path $env:RUNNER_TEMP "item6-venv-$($env:GITHUB_RUN_ID)-$($env:GITHUB_RUN_ATTEMPT)"
+          if (Test-Path -LiteralPath $venv) { throw 'venv_destination_already_exists' }
+          & $env:ITEM6_BOOTSTRAP_PYTHON -m venv $venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $venv 'Scripts/python.exe'
+          & $python -m pip install -r (Join-Path $env:ITEM6_RUNTIME_ROOT 'requirements.lock')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "ITEM6_PYTHON=$python" | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Run the complete related joint suite
+        id: tests
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          Set-Location -LiteralPath $env:ITEM6_RUNTIME_ROOT
+          $receipt = Join-Path $env:ITEM6_REPORT_DIR 'test-process.json'
+          if (Test-Path -LiteralPath $receipt) { throw 'process_receipt_already_exists' }
+          & $env:ITEM6_PYTHON -B -X utf8 services/agent_workflow_comparison_v1/scorer_preintegration_v1/verify.py --scope joint --report (Join-Path $env:ITEM6_REPORT_DIR 'validation-ci.json')
+          $code = $LASTEXITCODE
+          @{ kind = 'joint_test_process'; actual_exit_code = $code } | ConvertTo-Json | Set-Content -LiteralPath $receipt -Encoding utf8
+          exit $code
+
+      - name: Run the actual offline scoring CLI
+        id: cli
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          Set-Location -LiteralPath $env:ITEM6_RUNTIME_ROOT
+          $receipt = Join-Path $env:ITEM6_REPORT_DIR 'cli-process.json'
+          if (Test-Path -LiteralPath $receipt) { throw 'process_receipt_already_exists' }
+          & $env:ITEM6_PYTHON -B -X utf8 services/agent_workflow_comparison_v1/scorer_preintegration_v1/run.py --output (Join-Path $env:ITEM6_REPORT_DIR 'result-ci.json')
+          $code = $LASTEXITCODE
+          @{ kind = 'offline_cli_process'; actual_exit_code = $code } | ConvertTo-Json | Set-Content -LiteralPath $receipt -Encoding utf8
+          exit $code
+
+      - name: Verify artifacts, identities and unchanged inputs
+        id: summarize
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $check = @'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ['ITEM6_RUNTIME_ROOT']).resolve()
+          reports = Path(os.environ['ITEM6_REPORT_DIR'])
+          def read(name): return json.loads((reports / name).read_text(encoding='utf-8-sig'))
+          validation, result, binding, prepared = (read(n) for n in ('validation-ci.json', 'result-ci.json', 'ci-binding.json', 'preparation.json'))
+          assert read('test-process.json')['actual_exit_code'] == validation['actual_exit_code'] == 0
+          assert read('cli-process.json')['actual_exit_code'] == 0
+          assert (validation['tests'], validation['failures'], validation['errors'], validation['skips']) == (59, 0, 0, 0)
+          assert validation['inputs_unchanged'] and validation['sha256_before'] == validation['sha256_after']
+          for name, expected in validation['sha256_after'].items():
+              path = (root / name).resolve()
+              assert path.is_relative_to(root) and hashlib.sha256(path.read_bytes()).hexdigest() == expected
+          assert prepared['scorer_commit'] == binding['scorer_commit'] == os.environ['SCORER_COMMIT']
+          assert prepared['tested_source_commit'] == binding['workflow_source_commit'] == os.environ['ITEM6_SOURCE_SHA']
+          assert prepared['tested_source_set_sha256'] == binding['tested_source_set_sha256']
+          assert prepared['historical_origin_check'] == 'not_performed_in_this_context'
+          assert validation['preservation']['historical_origin_check'] == 'not_performed_in_this_context'
+          assert validation['preservation']['carried_files_unchanged']
+          assert result['blockers'] == []
+          counts = {}
+          for path, item in result['business'].items():
+              call = item['scorer_call']
+              assert call['actual_scorer_connected'] and call['actual_call_attempted'] and not call['formal_integration_accepted']
+              assert call['scorer_commit'] == os.environ['SCORER_COMMIT']
+              assert call['raw_report']['counts']['planned'] == len(item['input_plan']['tasks']) == 8
+              counts[path] = call['raw_report']['counts']
+          assert set(counts) == {'fixed_workflow', 'agent'}
+          assert len(result['fault_validation']) == 24
+          assert sum(c['scorer_call']['raw_report'] is not None for c in result['fault_validation']) == 20
+          assert sum(c['scorer_call']['error'] is not None for c in result['fault_validation']) == 4
+          summary = dict(binding, tests=59, failures=0, errors=0, skips=0, test_actual_exit_code=0, cli_actual_exit_code=0, business_counts=counts, unknown_summary=result['unknown_summary'], inputs_stable=True, formal_integration_accepted=False)
+          with (reports / 'ci-summary.json').open('x', encoding='utf-8') as handle: json.dump(summary, handle, ensure_ascii=False, indent=2)
+          print(json.dumps(summary, ensure_ascii=False))
+          '@
+          & $env:ITEM6_PYTHON -B -X utf8 -c $check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain this attempt's success or failure evidence
+        if: ${{ always() && steps.prepare.outputs.report_dir != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: item6-offline-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 14
+          if-no-files-found: warn
+          overwrite: false
+          path: |
+            ${{ steps.prepare.outputs.report_dir }}/preparation.json
+            ${{ steps.prepare.outputs.report_dir }}/ci-binding.json
+            ${{ steps.prepare.outputs.report_dir }}/test-process.json
+            ${{ steps.prepare.outputs.report_dir }}/validation-ci.json
+            ${{ steps.prepare.outputs.report_dir }}/cli-process.json
+            ${{ steps.prepare.outputs.report_dir }}/result-ci.json
+            ${{ steps.prepare.outputs.report_dir }}/ci-summary.json
