@@ -1,0 +1,367 @@
+{
+  "archives": [
+    {
+      "members": [
+        {
+          "bytes": 4047,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/CONTRACT.md",
+          "sha256": "8291dcd873401f3e6ff7a98e40a8db926853f148adc29aecae3dcbf8c3d0d596"
+        },
+        {
+          "bytes": 10376,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/example-plan.json",
+          "sha256": "cf4074231804acdf97206c7778a31ec3de8fb636ee443a8ba4cc8de521d805b0"
+        },
+        {
+          "bytes": 13402,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/example-report.json",
+          "sha256": "92e8e360fb2c0c7d08d80bb3e8cc238ee0d6c4bdc2df81de7ed5bf2b594f4a26"
+        },
+        {
+          "bytes": 5982,
+          "contains_private_absolute_path": true,
+          "path": "evals/internal_behavior_eval_v1/HANDOFF.md",
+          "sha256": "fefc11cbfda63da39ba53b50215e822e27d19a85d9e113e8239cde10467fcacd"
+        },
+        {
+          "bytes": 11915,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/README.md",
+          "sha256": "95c55b92ad003e1b278a71148b3aa694756fea1e1d70d8ca653dea78ff58e1ab"
+        },
+        {
+          "bytes": 38073,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/scorer_cases.json",
+          "sha256": "b990480b75d633614e966271c28d4971dd82f29418772500ce227d0fff90a0c0"
+        },
+        {
+          "bytes": 330,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/validation-delivery.json",
+          "sha256": "75ca3b87dc07df5bae373ce23eb77ca87c073b586451c646077e708e32d1fa07"
+        },
+        {
+          "bytes": 330,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/validation-final.json",
+          "sha256": "75ca3b87dc07df5bae373ce23eb77ca87c073b586451c646077e708e32d1fa07"
+        },
+        {
+          "bytes": 330,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/validation-initial.json",
+          "sha256": "b3e39d92d5bb42cf6563ff10d5d6a85e17b60a80f8af0bb29b4623ca8348e774"
+        },
+        {
+          "bytes": 220,
+          "contains_private_absolute_path": false,
+          "path": "src/researchops_behavior_eval_v1/__init__.py",
+          "sha256": "6247a5ade3b1f94ff3f5a0ef977790979547a7e16259fe56a80f2cdda2d74ba6"
+        },
+        {
+          "bytes": 1423,
+          "contains_private_absolute_path": false,
+          "path": "src/researchops_behavior_eval_v1/__main__.py",
+          "sha256": "5a2db83e72b2f84d7c6f13d0382687c94223e0c9fe48c4d7408114bd89bc2fdb"
+        },
+        {
+          "bytes": 26068,
+          "contains_private_absolute_path": false,
+          "path": "src/researchops_behavior_eval_v1/core.py",
+          "sha256": "99d0338296a5474edb08531adbff260aad397e58729d49dfec3cc3b7871506f1"
+        },
+        {
+          "bytes": 16817,
+          "contains_private_absolute_path": false,
+          "path": "tests/test_behavior_eval_v1.py",
+          "sha256": "0234e178ff73d7517c03f2bcf7c18d13573f72d18a8f9d0292598f5ee172b43f"
+        }
+      ],
+      "original_bytes": 33399,
+      "original_relative_path": "repair_p1/pre-repair-snapshot.zip",
+      "original_sha256": "711e7da1d306fc2936616ef6c2e1ee5b8381d15b185134c4af838bc83bd406c9",
+      "originals_retained_locally": true,
+      "public_archive_created": false
+    },
+    {
+      "members": [
+        {
+          "bytes": 4047,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/CONTRACT.md",
+          "sha256": "8291dcd873401f3e6ff7a98e40a8db926853f148adc29aecae3dcbf8c3d0d596"
+        },
+        {
+          "bytes": 10376,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/example-plan.json",
+          "sha256": "cf4074231804acdf97206c7778a31ec3de8fb636ee443a8ba4cc8de521d805b0"
+        },
+        {
+          "bytes": 13402,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/example-report.json",
+          "sha256": "92e8e360fb2c0c7d08d80bb3e8cc238ee0d6c4bdc2df81de7ed5bf2b594f4a26"
+        },
+        {
+          "bytes": 5982,
+          "contains_private_absolute_path": true,
+          "path": "evals/internal_behavior_eval_v1/HANDOFF.md",
+          "sha256": "fefc11cbfda63da39ba53b50215e822e27d19a85d9e113e8239cde10467fcacd"
+        },
+        {
+          "bytes": 13364,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/README.md",
+          "sha256": "b37d50bc12fb31d30495ef5922005be7ce3a0aec100eeef44794e580e49345db"
+        },
+        {
+          "bytes": 6577,
+          "contains_private_absolute_path": true,
+          "path": "evals/internal_behavior_eval_v1/repair_p1/HANDOFF.md",
+          "sha256": "1f9d06fb2b6de0f51a5d640f8ab850743ae1b8888d8aa5c32ee6c1972f4c7235"
+        },
+        {
+          "bytes": 22948,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/repair_p1/null-review.json",
+          "sha256": "f5983b2030d88ce91d3a902bdf8fa52bc18739e7e393f382b55b0027ed783661"
+        },
+        {
+          "bytes": 1630,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/repair_p1/pre-repair-files.json",
+          "sha256": "11e33052b38c430439f0f40fa595f5a1958b5fb9ac221a9d4656c874e0c5c984"
+        },
+        {
+          "bytes": 33399,
+          "contains_private_absolute_path": true,
+          "nested_members": [
+            {
+              "bytes": 4047,
+              "contains_private_absolute_path": false,
+              "path": "evals/internal_behavior_eval_v1/CONTRACT.md",
+              "sha256": "8291dcd873401f3e6ff7a98e40a8db926853f148adc29aecae3dcbf8c3d0d596"
+            },
+            {
+              "bytes": 10376,
+              "contains_private_absolute_path": false,
+              "path": "evals/internal_behavior_eval_v1/example-plan.json",
+              "sha256": "cf4074231804acdf97206c7778a31ec3de8fb636ee443a8ba4cc8de521d805b0"
+            },
+            {
+              "bytes": 13402,
+              "contains_private_absolute_path": false,
+              "path": "evals/internal_behavior_eval_v1/example-report.json",
+              "sha256": "92e8e360fb2c0c7d08d80bb3e8cc238ee0d6c4bdc2df81de7ed5bf2b594f4a26"
+            },
+            {
+              "bytes": 5982,
+              "contains_private_absolute_path": true,
+              "path": "evals/internal_behavior_eval_v1/HANDOFF.md",
+              "sha256": "fefc11cbfda63da39ba53b50215e822e27d19a85d9e113e8239cde10467fcacd"
+            },
+            {
+              "bytes": 11915,
+              "contains_private_absolute_path": false,
+              "path": "evals/internal_behavior_eval_v1/README.md",
+              "sha256": "95c55b92ad003e1b278a71148b3aa694756fea1e1d70d8ca653dea78ff58e1ab"
+            },
+            {
+              "bytes": 38073,
+              "contains_private_absolute_path": false,
+              "path": "evals/internal_behavior_eval_v1/scorer_cases.json",
+              "sha256": "b990480b75d633614e966271c28d4971dd82f29418772500ce227d0fff90a0c0"
+            },
+            {
+              "bytes": 330,
+              "contains_private_absolute_path": false,
+              "path": "evals/internal_behavior_eval_v1/validation-delivery.json",
+              "sha256": "75ca3b87dc07df5bae373ce23eb77ca87c073b586451c646077e708e32d1fa07"
+            },
+            {
+              "bytes": 330,
+              "contains_private_absolute_path": false,
+              "path": "evals/internal_behavior_eval_v1/validation-final.json",
+              "sha256": "75ca3b87dc07df5bae373ce23eb77ca87c073b586451c646077e708e32d1fa07"
+            },
+            {
+              "bytes": 330,
+              "contains_private_absolute_path": false,
+              "path": "evals/internal_behavior_eval_v1/validation-initial.json",
+              "sha256": "b3e39d92d5bb42cf6563ff10d5d6a85e17b60a80f8af0bb29b4623ca8348e774"
+            },
+            {
+              "bytes": 220,
+              "contains_private_absolute_path": false,
+              "path": "src/researchops_behavior_eval_v1/__init__.py",
+              "sha256": "6247a5ade3b1f94ff3f5a0ef977790979547a7e16259fe56a80f2cdda2d74ba6"
+            },
+            {
+              "bytes": 1423,
+              "contains_private_absolute_path": false,
+              "path": "src/researchops_behavior_eval_v1/__main__.py",
+              "sha256": "5a2db83e72b2f84d7c6f13d0382687c94223e0c9fe48c4d7408114bd89bc2fdb"
+            },
+            {
+              "bytes": 26068,
+              "contains_private_absolute_path": false,
+              "path": "src/researchops_behavior_eval_v1/core.py",
+              "sha256": "99d0338296a5474edb08531adbff260aad397e58729d49dfec3cc3b7871506f1"
+            },
+            {
+              "bytes": 16817,
+              "contains_private_absolute_path": false,
+              "path": "tests/test_behavior_eval_v1.py",
+              "sha256": "0234e178ff73d7517c03f2bcf7c18d13573f72d18a8f9d0292598f5ee172b43f"
+            }
+          ],
+          "path": "evals/internal_behavior_eval_v1/repair_p1/pre-repair-snapshot.zip",
+          "sha256": "711e7da1d306fc2936616ef6c2e1ee5b8381d15b185134c4af838bc83bd406c9"
+        },
+        {
+          "bytes": 4152,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/repair_p1/review.json",
+          "sha256": "3d66db8cc1b17c49f3e2c4e763f4a73e5ca8741f41af7e8c2274989e446939c1"
+        },
+        {
+          "bytes": 17373,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/repair_p1/validation-full.json",
+          "sha256": "fcda3bfc46438f94b89d76e0bf3ada16e8d0c3ba1418662859d63eb3131f7037"
+        },
+        {
+          "bytes": 6188,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/repair_p1/validation-green.json",
+          "sha256": "bfdcb9dadfc48e5dfdd37662a25a3697d97a149f5cb450a3e66bbbb23f9927dd"
+        },
+        {
+          "bytes": 15738,
+          "contains_private_absolute_path": true,
+          "path": "evals/internal_behavior_eval_v1/repair_p1/validation-red.json",
+          "sha256": "24402fa638838da89b723496cf796efe1a96f88fcce0f04da3e90df1405cb48c"
+        },
+        {
+          "bytes": 2832,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/repair_p1/verify.py",
+          "sha256": "efac5a9875c6c05693a8a3bb42af23a5eae8675205d85a5eafa85418caab4964"
+        },
+        {
+          "bytes": 38073,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/scorer_cases.json",
+          "sha256": "b990480b75d633614e966271c28d4971dd82f29418772500ce227d0fff90a0c0"
+        },
+        {
+          "bytes": 330,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/validation-delivery.json",
+          "sha256": "75ca3b87dc07df5bae373ce23eb77ca87c073b586451c646077e708e32d1fa07"
+        },
+        {
+          "bytes": 330,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/validation-final.json",
+          "sha256": "75ca3b87dc07df5bae373ce23eb77ca87c073b586451c646077e708e32d1fa07"
+        },
+        {
+          "bytes": 330,
+          "contains_private_absolute_path": false,
+          "path": "evals/internal_behavior_eval_v1/validation-initial.json",
+          "sha256": "b3e39d92d5bb42cf6563ff10d5d6a85e17b60a80f8af0bb29b4623ca8348e774"
+        },
+        {
+          "bytes": 220,
+          "contains_private_absolute_path": false,
+          "path": "src/researchops_behavior_eval_v1/__init__.py",
+          "sha256": "6247a5ade3b1f94ff3f5a0ef977790979547a7e16259fe56a80f2cdda2d74ba6"
+        },
+        {
+          "bytes": 1423,
+          "contains_private_absolute_path": false,
+          "path": "src/researchops_behavior_eval_v1/__main__.py",
+          "sha256": "5a2db83e72b2f84d7c6f13d0382687c94223e0c9fe48c4d7408114bd89bc2fdb"
+        },
+        {
+          "bytes": 26410,
+          "contains_private_absolute_path": false,
+          "path": "src/researchops_behavior_eval_v1/core.py",
+          "sha256": "11143c76e50f80b6f4f49cbd07939dd8bb2fe043faa91efc2257c6059450fbbc"
+        },
+        {
+          "bytes": 16817,
+          "contains_private_absolute_path": false,
+          "path": "tests/test_behavior_eval_v1.py",
+          "sha256": "0234e178ff73d7517c03f2bcf7c18d13573f72d18a8f9d0292598f5ee172b43f"
+        },
+        {
+          "bytes": 6245,
+          "contains_private_absolute_path": false,
+          "path": "tests/test_behavior_eval_v1_tolerance.py",
+          "sha256": "ef5f824f07773de4d4e76e199c6f737cdb6abb4662c55ce9a8dcdf5a62a71b10"
+        }
+      ],
+      "original_bytes": 85299,
+      "original_relative_path": "text_observation_v1_1/pre-revision-snapshot.zip",
+      "original_sha256": "8c57deb7e4b927d17c1a6797a22919cdc6d18462250f9db099153e51a10defae",
+      "originals_retained_locally": true,
+      "public_archive_created": false
+    }
+  ],
+  "limitations": [
+    "Redaction changes report bytes; retained bindings describe historical files only.",
+    "A digest does not disclose an original file or verify unseen private contents."
+  ],
+  "original_development_files_modified": false,
+  "original_local_absolute_path_recorded": false,
+  "reports": [
+    {
+      "derivative_bytes": 14968,
+      "derivative_relative_path": "repair_p1/validation-red.public-redacted-v1.json",
+      "derivative_sha256": "34d513698f9cb7f33d4d47c7b1982995a4b70a9f1369613f9f19f61452f17fcf",
+      "historical_byte_binding_is_not_current_integration_validation": true,
+      "original_bytes": 15738,
+      "original_relative_path": "repair_p1/validation-red.json",
+      "original_sha256": "24402fa638838da89b723496cf796efe1a96f88fcce0f04da3e90df1405cb48c",
+      "outcome_preserved": {
+        "errors": 0,
+        "exit_code": 1,
+        "failures": 5,
+        "skips": 0,
+        "tests": 24
+      }
+    },
+    {
+      "derivative_bytes": 48478,
+      "derivative_relative_path": "text_observation_v1_1/validation-before-implementation.public-redacted-v1.json",
+      "derivative_sha256": "c9c590573fae4bdb8ce9c0f7e2ec75b97e76b1937f82947cf98276fb6236044b",
+      "historical_byte_binding_is_not_current_integration_validation": true,
+      "original_bytes": 55716,
+      "original_relative_path": "text_observation_v1_1/validation-before-implementation.json",
+      "original_sha256": "f39f41e3ffce017f6b714b72b2df7a39b71980eb601845faf1183b03ff9a06eb",
+      "outcome_preserved": {
+        "errors": 17,
+        "exit_code": 1,
+        "failures": 7,
+        "skips": 0,
+        "tests": 26
+      }
+    }
+  ],
+  "rules": [
+    "Replace the exact development root with {DEVELOPMENT_ROOT} in decoded string values.",
+    "Replace Windows user-profile prefixes with {LOCAL_USER} in decoded string values.",
+    "Preserve JSON keys, numbers, booleans, null, list order and all other text.",
+    "Emit deterministic UTF-8 JSON; hashes are new derivative hashes, never original byte identity.",
+    "Do not publish or extract either original ZIP; publish only relative member metadata and digests."
+  ],
+  "schema_version": "behavior-evaluator-public-derivation/1.0",
+  "source_kind": "historical_validation_redaction_not_new_test_execution"
+}

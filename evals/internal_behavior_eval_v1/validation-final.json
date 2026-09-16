@@ -1,0 +1,13 @@
+{
+  "scope": "internal_behavior_eval_v1_offline_tests_only",
+  "source_kind": "synthetic_fixture",
+  "tests": 79,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "exit_code": 0,
+  "failure_details": [],
+  "error_details": [],
+  "skip_details": [],
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]"
+}
