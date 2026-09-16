@@ -36,12 +36,39 @@ class BehaviorRegressionDriverTests(unittest.TestCase):
 
     def test_exclusive_start_marker_is_not_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            # Match the real driver's resolved ROOT; TEMP may use a path alias.
+            root = Path(directory).resolve(strict=True)
             with driver.reserve_report(root, driver.DIRECTORY + "/started.json") as stream:
                 stream.write("original")
             with self.assertRaises(FileExistsError):
                 driver.reserve_report(root, driver.DIRECTORY + "/started.json")
             self.assertEqual((root / driver.DIRECTORY / "started.json").read_text(), "original")
+
+    def test_start_marker_fixture_resolves_equivalent_directory_spelling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve(strict=True)
+            (root / "nested").mkdir()
+            # A portable real-directory alias, not a mock of Path or the writer.
+            alias = root / "nested" / ".."
+            self.assertTrue(alias.samefile(root))
+            self.assertNotEqual(alias.absolute(), root)
+            with patch.object(tempfile, "TemporaryDirectory",
+                              return_value=contextlib.nullcontext(str(alias))) as fixture:
+                self.test_exclusive_start_marker_is_not_overwritten()
+            fixture.assert_called_once_with()
+            self.assertEqual((root / driver.DIRECTORY / "started.json").read_bytes(), b"original")
+
+    def test_writer_still_rejects_noncanonical_root_without_creating_marker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve(strict=True)
+            (root / "nested").mkdir()
+            alias = root / "nested" / ".."
+            self.assertTrue(alias.samefile(root))
+            self.assertNotEqual(alias.absolute(), root)
+            with self.assertRaisesRegex(ValueError, "report_physical_path_mismatch"):
+                with driver.reserve_report(alias, driver.DIRECTORY + "/started.json"):
+                    pass
+            self.assertFalse((root / driver.DIRECTORY / "started.json").exists())
 
     def test_driver_output_cannot_escape_to_source_directory(self):
         with tempfile.TemporaryDirectory() as directory:
