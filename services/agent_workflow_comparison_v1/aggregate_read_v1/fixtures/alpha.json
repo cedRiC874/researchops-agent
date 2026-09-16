@@ -1,0 +1,1 @@
+{"source_kind":"synthetic_fixture","bundle_id":"alpha","source_record_id":"synthetic-source-alpha-001","facts":[{"subject":"A","metric":"mass","value":"37.50","unit":"mg"},{"subject":"A","metric":"mean","value":"11.25","unit":"mg"},{"subject":"A-B","metric":"difference","value":"-3.75","unit":"mg"},{"subject":"B-A","metric":"difference","value":"3.75","unit":"mg"}]}

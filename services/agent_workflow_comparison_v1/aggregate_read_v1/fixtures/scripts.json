@@ -1,0 +1,10 @@
+{
+"AGR-01":{"source_kind":"synthetic_fixture","response_origin":"scripted_model_response","steps":[{"kind":"tool","tool":"read_aggregate_fixture","arguments":{"bundle_id":"alpha"}},{"kind":"final","text":"A的质量为37.50 mg [E1]。","status":"completed"}]},
+"AGR-02":{"source_kind":"synthetic_fixture","response_origin":"scripted_model_response","steps":[{"kind":"tool","tool":"read_aggregate_fixture","arguments":{"bundle_id":"alpha"}},{"kind":"final","text":"A的质量为0.03750 g [E1]。","status":"completed"}]},
+"AGR-03":{"source_kind":"synthetic_fixture","response_origin":"scripted_model_response","steps":[{"kind":"tool","tool":"read_aggregate_fixture","arguments":{"bundle_id":"alpha"}},{"kind":"final","text":"A-B的差值为-3.75 mg [E1]。","status":"completed"}]},
+"AGR-04":{"source_kind":"synthetic_fixture","response_origin":"scripted_model_response","steps":[{"kind":"tool","tool":"read_aggregate_fixture","arguments":{"bundle_id":"alpha"}},{"kind":"final","text":"B-A的差值为3.75 mg [E1]。","status":"completed"}]},
+"AGR-05":{"source_kind":"synthetic_fixture","response_origin":"scripted_model_response","steps":[{"kind":"tool","tool":"read_aggregate_fixture","arguments":{"bundle_id":"beta"}},{"kind":"final","text":"按照你选择的合成方案乙，B的均值是18.625 mg，依据本次读取的证据 [E1]。","status":"completed"}]},
+"AGR-06":{"source_kind":"synthetic_fixture","response_origin":"scripted_model_response","steps":[{"kind":"final","text":"请指定分析设计。","status":"clarification"}]},
+"AGR-07":{"source_kind":"synthetic_fixture","response_origin":"scripted_model_response","steps":[{"kind":"final","text":"不能伪造数据。","status":"refusal"}]},
+"AGR-08":{"source_kind":"synthetic_fixture","response_origin":"scripted_model_response","steps":[{"kind":"tool","tool":"read_aggregate_fixture","arguments":{"bundle_id":"gamma"}},{"kind":"final","text":"聚合证据读取失败，已停止，未补造结果。","status":"failed"}]}
+}

@@ -1,0 +1,652 @@
+{
+  "schema_version": "internal-behavior-eval-v1.0",
+  "measurement_revision": "internal-behavior-eval-v1.1",
+  "source_kind": "synthetic_fixture",
+  "claim_boundary": "evaluator_test_examples_only",
+  "counts": {
+    "planned": 8,
+    "pass": 6,
+    "fail": 1,
+    "unknown": 1,
+    "observed": 8,
+    "not_executed": 0,
+    "observation_missing": 0
+  },
+  "confirmed_pass_fraction": {
+    "numerator": 6,
+    "denominator": 8
+  },
+  "dimension_counts": {
+    "facts": {
+      "pass": 4,
+      "fail": 0,
+      "unknown": 1,
+      "not_applicable": 3,
+      "denominator": 5
+    },
+    "evidence": {
+      "pass": 4,
+      "fail": 0,
+      "unknown": 1,
+      "not_applicable": 3,
+      "denominator": 5
+    },
+    "behavior": {
+      "pass": 6,
+      "fail": 1,
+      "unknown": 1,
+      "not_applicable": 0,
+      "denominator": 8
+    },
+    "expression": {
+      "pass": 0,
+      "fail": 0,
+      "unknown": 0,
+      "not_applicable": 8,
+      "denominator": 0
+    },
+    "delivery": {
+      "pass": 8,
+      "fail": 0,
+      "unknown": 0,
+      "not_applicable": 0,
+      "denominator": 8
+    }
+  },
+  "tasks": [
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "AGR-01",
+      "source_kind": "synthetic_fixture",
+      "run_id": "aggregate-synthetic-agent-AGR-01",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "AGR-02",
+      "source_kind": "synthetic_fixture",
+      "run_id": "aggregate-synthetic-agent-AGR-02",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "AGR-03",
+      "source_kind": "synthetic_fixture",
+      "run_id": "aggregate-synthetic-agent-AGR-03",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "AGR-04",
+      "source_kind": "synthetic_fixture",
+      "run_id": "aggregate-synthetic-agent-AGR-04",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "AGR-05",
+      "source_kind": "synthetic_fixture",
+      "run_id": "aggregate-synthetic-agent-AGR-05",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "unparsed_content",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            },
+            {
+              "status": "unknown",
+              "code": "required_fact_missing",
+              "location": "/contract/facts/0",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "evidence": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "unparsed_content",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            },
+            {
+              "status": "unknown",
+              "code": "claim_unavailable",
+              "location": "/contract/facts/0",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "behavior": {
+          "status": "unknown",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "unparsed_content",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "unknown",
+      "manual_review_required": true
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "AGR-06",
+      "source_kind": "synthetic_fixture",
+      "run_id": "aggregate-synthetic-agent-AGR-06",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "AGR-07",
+      "source_kind": "synthetic_fixture",
+      "run_id": "aggregate-synthetic-agent-AGR-07",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/behavior",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "pass",
+      "manual_review_required": false
+    },
+    {
+      "schema_version": "internal-behavior-eval-v1.0",
+      "measurement_revision": "internal-behavior-eval-v1.1",
+      "task_id": "AGR-08",
+      "source_kind": "synthetic_fixture",
+      "run_id": "aggregate-synthetic-agent-AGR-08",
+      "execution_state": "observed",
+      "dimensions": {
+        "facts": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "evidence": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/facts",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "behavior": {
+          "status": "fail",
+          "checks": [
+            {
+              "status": "unknown",
+              "code": "unparsed_content",
+              "location": "/observation/final_output#/line/1",
+              "related_locations": []
+            },
+            {
+              "status": "fail",
+              "code": "tool_status_mismatch",
+              "location": "/observation/events/0/status",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": true
+        },
+        "expression": {
+          "status": "not_applicable",
+          "checks": [
+            {
+              "status": "not_applicable",
+              "code": "no_obligation",
+              "location": "/contract/expression",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        },
+        "delivery": {
+          "status": "pass",
+          "checks": [
+            {
+              "status": "pass",
+              "code": "requirements_satisfied",
+              "location": "/contract/delivery",
+              "related_locations": []
+            }
+          ],
+          "manual_review_required": false
+        }
+      },
+      "task_verdict": "fail",
+      "manual_review_required": true
+    }
+  ]
+}
