@@ -1,0 +1,29 @@
+{
+  "version": "item6-controlled-offline-candidate-v1",
+  "execution_base": "dfb568d26f0745e397f6cc06dc020ad1ee870de2",
+  "execution_commit": null,
+  "scorer_commit": "fcc2026c60943de6016495ad244291689a9d491d",
+  "provider": null,
+  "model_id": null,
+  "mode": "offline_mock_only",
+  "online_authorized": false,
+  "approved_at_utc": null,
+  "budget_status": "offline_engineering_limits_only_online_budget_unapproved",
+  "limits": {
+    "requests_per_task": 3,
+    "model_requests": 48,
+    "input_per_request": 6000,
+    "output_per_request": 1000,
+    "input_total": 288000,
+    "output_total": 48000,
+    "request_bytes": 32768,
+    "tools_per_task": 2,
+    "tool_total": 64,
+    "request_seconds": 30,
+    "tool_seconds": 5,
+    "task_seconds": 120,
+    "batch_seconds": 2700,
+    "synthetic_cost_limit": "10"
+  },
+  "retention_days_proposed": 90
+}

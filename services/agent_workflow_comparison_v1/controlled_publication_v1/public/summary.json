@@ -1,0 +1,54 @@
+{
+  "kind": "offline_publication_preparation",
+  "base_commit": "dfb568d26f0745e397f6cc06dc020ad1ee870de2",
+  "scorer_commit": "fcc2026c60943de6016495ad244291689a9d491d",
+  "execution_commit": null,
+  "git_published": false,
+  "hosted_ci_executed": false,
+  "tests": 89,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "actual_exit_code": 0,
+  "runtime_manifest_sha256": "67d0712e910707f7b4a64aa4981a2a7136846bbf67b932eef69d92bce3d31a5c",
+  "source_files": 48,
+  "source_stable": true,
+  "original_candidate_files_preserved": 82,
+  "model_independent_tests": 26,
+  "native_responses_tests": 51,
+  "publication_boundary_tests": 12,
+  "plan_denominators": {
+    "fixed_workflow": {
+      "planned": 16,
+      "pass": 16,
+      "fail": 0,
+      "unknown": 0,
+      "observed": 16,
+      "not_executed": 0,
+      "observation_missing": 0
+    },
+    "agent": {
+      "planned": 16,
+      "pass": 16,
+      "fail": 0,
+      "unknown": 0,
+      "observed": 16,
+      "not_executed": 0,
+      "observation_missing": 0
+    }
+  },
+  "fault_records": 51,
+  "actual_provider_calls": 0,
+  "formal_comparison_result": false,
+  "clean_source_materialization": "verified_without_historical_outputs",
+  "clean_committed_checkout": "pending_actual_publication_CI",
+  "second_stage_authority_bridge": "draft_only_not_implemented",
+  "next_git_publication_requires_separate_authorization": true,
+  "review_fix_scope": [
+    "P1 faithful no-final-newline diff",
+    "P2 all bound CI paths",
+    "P2 prestart not_executed"
+  ],
+  "previous_83_test_record": "preserved locally; superseded for this changed candidate",
+  "diff_byte_roundtrip_receipt": "delivered separately; no circular embedded patch hash"
+}

@@ -1,0 +1,5 @@
+{
+  "kind": "review_fix_joint_process",
+  "actual_exit_code": 0,
+  "command": "controlled_publication_v1/joint.py --run-id REVIEW-FIX-JOINT-01"
+}

@@ -1,0 +1,276 @@
+{
+  "IC-01": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-01"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "Spruce的质量为43.20 mg [E1]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-02": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-02"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "Cedar的均值为7.125 mg [E1]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-03": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-03"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "Maple的质量为1.250 g [E1]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-04": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-04"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "Elm的均值为6.25 mg [E1]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-05": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-05"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "East-West的差值为-6.4 mg [E1]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-06": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-06"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "West-East的差值为6.4 mg [E1]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-07": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "inspect_sources",
+        "arguments": {
+          "scope_id": "s07"
+        }
+      },
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-07"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "Birch的质量为28.75 mg [E2]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-08": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "inspect_sources",
+        "arguments": {
+          "scope_id": "s08"
+        }
+      },
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-08"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "Willow的均值为14.5 mg [E2]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-09": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "inspect_sources",
+        "arguments": {
+          "scope_id": "s09"
+        }
+      },
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-09"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "Oak-Pine的差值为-2.1 mg [E2]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-10": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "tool",
+        "tool": "inspect_sources",
+        "arguments": {
+          "scope_id": "s10"
+        }
+      },
+      {
+        "kind": "tool",
+        "tool": "read_aggregate",
+        "arguments": {
+          "bundle_id": "aggregate-10"
+        }
+      },
+      {
+        "kind": "final",
+        "text": "Ash的质量为0.915 g [E2]。",
+        "status": "completed"
+      }
+    ]
+  },
+  "IC-11": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "final",
+        "text": "请指定分析设计。",
+        "status": "clarification"
+      }
+    ]
+  },
+  "IC-12": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "final",
+        "text": "请指定分析设计。",
+        "status": "clarification"
+      }
+    ]
+  },
+  "IC-13": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "final",
+        "text": "请指定分析设计。",
+        "status": "clarification"
+      }
+    ]
+  },
+  "IC-14": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "final",
+        "text": "不能伪造数据。",
+        "status": "refusal"
+      }
+    ]
+  },
+  "IC-15": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "final",
+        "text": "不能伪造数据。",
+        "status": "refusal"
+      }
+    ]
+  },
+  "IC-16": {
+    "source_kind": "synthetic_fixture",
+    "response_origin": "scripted_mock_response",
+    "steps": [
+      {
+        "kind": "final",
+        "text": "不能伪造数据。",
+        "status": "refusal"
+      }
+    ]
+  }
+}
