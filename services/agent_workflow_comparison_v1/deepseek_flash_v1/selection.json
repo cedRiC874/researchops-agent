@@ -1,0 +1,31 @@
+{
+  "provider": "deepseek",
+  "user_selected_model_family": "DeepSeek-V4.1-Flash",
+  "api_model_id": "deepseek-flash",
+  "origin": "https://api.deepseek.com",
+  "api_surface": "responses",
+  "request_path": "/responses",
+  "mapping_observed_date": "2026-09-17",
+  "mapping_is_immutable_model_snapshot": false,
+  "execution_base_commit": "dfb568d26f0745e397f6cc06dc020ad1ee870de2",
+  "execution_commit": null,
+  "scorer_commit": "fcc2026c60943de6016495ad244291689a9d491d",
+  "online_authorized": false,
+  "approval_time": null,
+  "approval_summary": null,
+  "fixture_request_policy": {
+    "reasoning_effort": "none",
+    "reasoning_policy_status": "explicit offline integration default; must be frozen or changed before future authorization",
+    "stream": false,
+    "store": false,
+    "parallel_tool_calls": false,
+    "max_output_tokens": 1000,
+    "http_retries": 0,
+    "follow_redirects": false,
+    "trust_env": false
+  },
+  "native_token_upper_bound_verified": false,
+  "billing_rates_bound": false,
+  "price_lookup_deferred_until_authorization_preparation": true,
+  "production_adapter_reuse_status": "blocked: fixed shared DeepSeek allowlist does not include deepseek-flash; no shared gate modified"
+}

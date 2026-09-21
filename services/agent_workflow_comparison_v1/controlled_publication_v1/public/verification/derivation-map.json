@@ -1,0 +1,37 @@
+{
+  "artifacts": [
+    {
+      "original_artifact": "validation.json",
+      "original_sha256": "f962380dc23dfb758771d4168be31be62d0907cefafb67357559b346acb87d2e",
+      "derived_artifact": "validation.json",
+      "derived_sha256": "f962380dc23dfb758771d4168be31be62d0907cefafb67357559b346acb87d2e",
+      "projection": "local paths and fixture privacy sentinels redacted; final_output immutable",
+      "original_available_in_public_package": false
+    },
+    {
+      "original_artifact": "observations.json",
+      "original_sha256": "9f76a2172c1825c08e007d9da13b46cf1893ce9444b013f6559aad3e651dbe11",
+      "derived_artifact": "observations.json",
+      "derived_sha256": "9f76a2172c1825c08e007d9da13b46cf1893ce9444b013f6559aad3e651dbe11",
+      "projection": "local paths and fixture privacy sentinels redacted; final_output immutable",
+      "original_available_in_public_package": false
+    },
+    {
+      "original_artifact": "fault-validation.json",
+      "original_sha256": "484af87d8758afce345d4d4ce7a359b6179f1c2013241d8ad426fc0d36ef8687",
+      "derived_artifact": "fault-validation.json",
+      "derived_sha256": "484af87d8758afce345d4d4ce7a359b6179f1c2013241d8ad426fc0d36ef8687",
+      "projection": "local paths and fixture privacy sentinels redacted; final_output immutable",
+      "original_available_in_public_package": false
+    },
+    {
+      "original_artifact": "process-result.json",
+      "original_sha256": "a308e331ca955e621f9bd652d7e1980de07188e1dfff8e6627f7a864289d5418",
+      "derived_artifact": "process-result.json",
+      "derived_sha256": "5034043523007c487e8d4b4058f4524d3115ace4866092cd93306a2a88f6d4d5",
+      "projection": "UTF-8 LF JSON; actual exit code preserved",
+      "original_available_in_public_package": false
+    }
+  ],
+  "formal_comparison_result": false
+}

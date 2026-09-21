@@ -1,0 +1,13 @@
+{
+  "accessed_date": "2026-09-17",
+  "retrieval_kind": "read-only official documentation, no API requests",
+  "sources": [
+    {"url":"https://api-docs.deepseek.com/","supports":"Official model ID deepseek-flash currently maps to V4.1 Flash; old v4 flash IDs are temporary compatibility aliases; official origin."},
+    {"url":"https://api-docs.deepseek.com/updates/","supports":"2026-09-10 V4.1 Flash release and model ID mapping. Do not infer immutable backend weights from this alias."},
+    {"url":"https://api-docs.deepseek.com/api/create-response/","supports":"Stateless Responses requests with full history, function calls/results, reasoning.effort none, inclusive max_output_tokens, response statuses and usage fields."},
+    {"url":"https://api-docs.deepseek.com/guides/thinking_mode/","supports":"Thinking enabled by default; explicitly choose none for this offline integration default. No reasoning text persisted."},
+    {"url":"https://api-docs.deepseek.com/quick_start/token_usage/","supports":"Character/token ratios are approximate; returned usage is authoritative. Linked demo tokenizer not verified for V4.1 full serialized tool prompts."}
+  ],
+  "not_retrieved": [{"url":"https://api-docs.deepseek.com/guides/responses_api/","reason":"documentation fetch timeout; detailed compatibility-table behavior not asserted"}],
+  "not_claimed": ["API availability", "immutable model revision", "real usage or latency", "billing prices", "native tokenizer bound"]
+}

@@ -1,0 +1,92 @@
+name: item6-controlled-comparison-offline
+
+on:
+  pull_request:
+    paths:
+      - "services/agent_workflow_comparison_v1/controlled_comparison_v1/**"
+      - "services/agent_workflow_comparison_v1/deepseek_flash_v1/**"
+      - "services/agent_workflow_comparison_v1/controlled_publication_v1/**"
+      - ".github/workflows/item6-controlled-comparison.yml"
+      - "src/researchops_behavior_eval_v1/**"
+      - "requirements.lock"
+      - "requirements.linux.lock"
+      - "pyproject.toml"
+      - "evals/internal_behavior_eval_v1/CONTRACT.md"
+      - "evals/internal_behavior_eval_v1/text_observation_v1_1/REVISION.md"
+      - "services/agent_workflow_comparison_v1/__init__.py"
+      - "services/agent_workflow_comparison_v1/aggregate_read_v1/__init__.py"
+      - "services/agent_workflow_comparison_v1/core.py"
+      - "services/agent_workflow_comparison_v1/aggregate_read_v1/core.py"
+  push:
+    branches: [main]
+    paths:
+      - "services/agent_workflow_comparison_v1/controlled_comparison_v1/**"
+      - "services/agent_workflow_comparison_v1/deepseek_flash_v1/**"
+      - "services/agent_workflow_comparison_v1/controlled_publication_v1/**"
+      - ".github/workflows/item6-controlled-comparison.yml"
+      - "src/researchops_behavior_eval_v1/**"
+      - "requirements.lock"
+      - "requirements.linux.lock"
+      - "pyproject.toml"
+      - "evals/internal_behavior_eval_v1/CONTRACT.md"
+      - "evals/internal_behavior_eval_v1/text_observation_v1_1/REVISION.md"
+      - "services/agent_workflow_comparison_v1/__init__.py"
+      - "services/agent_workflow_comparison_v1/aggregate_read_v1/__init__.py"
+      - "services/agent_workflow_comparison_v1/core.py"
+      - "services/agent_workflow_comparison_v1/aggregate_read_v1/core.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-joint:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      ITEM6_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      ITEM6_RUN_ID: CI-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          set-safe-directory: false
+          clean: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+      - name: Install existing locked dependencies into isolated environment
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $actualHead = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualHead -ne $env:ITEM6_EXPECTED_HEAD) { throw 'source_head_mismatch' }
+          python -m venv "$env:RUNNER_TEMP/item6-controlled-venv"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = "$env:RUNNER_TEMP/item6-controlled-venv/Scripts/python.exe"
+          & $python -m pip install -r requirements.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "ITEM6_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Run exact committed offline joint suite once
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & $env:ITEM6_PYTHON -B -X utf8 services/agent_workflow_comparison_v1/controlled_publication_v1/joint.py --run-id $env:ITEM6_RUN_ID --require-committed
+          $testExit = $LASTEXITCODE
+          $public = "services/agent_workflow_comparison_v1/controlled_publication_v1/outputs/$env:ITEM6_RUN_ID/public"
+          if (Test-Path -LiteralPath $public) {
+            @{kind='joint_process'; actual_exit_code=$testExit; expected_head=$env:ITEM6_EXPECTED_HEAD} | ConvertTo-Json | Out-File -LiteralPath "$public/process-result.json" -Encoding utf8 -NoClobber
+          }
+          exit $testExit
+      - name: Keep public derived evidence for this attempt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: item6-controlled-${{ github.run_id }}-${{ github.run_attempt }}
+          path: services/agent_workflow_comparison_v1/controlled_publication_v1/outputs/${{ env.ITEM6_RUN_ID }}/public/
+          retention-days: 14
+          if-no-files-found: warn
+          overwrite: false

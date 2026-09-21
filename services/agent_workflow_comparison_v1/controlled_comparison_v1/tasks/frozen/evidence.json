@@ -1,0 +1,293 @@
+{
+  "source_kind": "synthetic",
+  "catalog": {
+    "s01": [
+      {
+        "bundle_id": "aggregate-01",
+        "design_id": "d01",
+        "version": "current",
+        "subject": "Spruce",
+        "metric": "mass",
+        "available": true
+      }
+    ],
+    "s02": [
+      {
+        "bundle_id": "aggregate-02",
+        "design_id": "d02",
+        "version": "current",
+        "subject": "Cedar",
+        "metric": "mean",
+        "available": true
+      }
+    ],
+    "s03": [
+      {
+        "bundle_id": "aggregate-03",
+        "design_id": "d03",
+        "version": "current",
+        "subject": "Maple",
+        "metric": "mass",
+        "available": true
+      }
+    ],
+    "s04": [
+      {
+        "bundle_id": "aggregate-04",
+        "design_id": "d04",
+        "version": "current",
+        "subject": "Elm",
+        "metric": "mean",
+        "available": true
+      }
+    ],
+    "s05": [
+      {
+        "bundle_id": "aggregate-05",
+        "design_id": "d05",
+        "version": "current",
+        "subject": "East-West",
+        "metric": "difference",
+        "available": true
+      }
+    ],
+    "s06": [
+      {
+        "bundle_id": "aggregate-06",
+        "design_id": "d06",
+        "version": "current",
+        "subject": "West-East",
+        "metric": "difference",
+        "available": true
+      }
+    ],
+    "s07": [
+      {
+        "bundle_id": "aggregate-07-archive",
+        "design_id": "d07",
+        "version": "archive",
+        "subject": "Birch",
+        "metric": "mass",
+        "available": true
+      },
+      {
+        "bundle_id": "aggregate-07",
+        "design_id": "d07",
+        "version": "v2",
+        "subject": "Birch",
+        "metric": "mass",
+        "available": true
+      }
+    ],
+    "s08": [
+      {
+        "bundle_id": "aggregate-08-archive",
+        "design_id": "d08",
+        "version": "archive",
+        "subject": "Willow",
+        "metric": "mean",
+        "available": true
+      },
+      {
+        "bundle_id": "aggregate-08",
+        "design_id": "d08",
+        "version": "current",
+        "subject": "Willow",
+        "metric": "mean",
+        "available": true
+      }
+    ],
+    "s09": [
+      {
+        "bundle_id": "aggregate-09-archive",
+        "design_id": "d09",
+        "version": "archive",
+        "subject": "Oak-Pine",
+        "metric": "difference",
+        "available": true
+      },
+      {
+        "bundle_id": "aggregate-09",
+        "design_id": "d09",
+        "version": "current",
+        "subject": "Oak-Pine",
+        "metric": "difference",
+        "available": true
+      }
+    ],
+    "s10": [
+      {
+        "bundle_id": "aggregate-10-archive",
+        "design_id": "d10",
+        "version": "archive",
+        "subject": "Ash",
+        "metric": "mass",
+        "available": true
+      },
+      {
+        "bundle_id": "aggregate-10",
+        "design_id": "d10",
+        "version": "v3",
+        "subject": "Ash",
+        "metric": "mass",
+        "available": true
+      }
+    ]
+  },
+  "bundles": {
+    "aggregate-01": {
+      "facts": [
+        {
+          "subject": "Spruce",
+          "metric": "mass",
+          "value": "43.20",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-02": {
+      "facts": [
+        {
+          "subject": "Cedar",
+          "metric": "mean",
+          "value": "7.125",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-03": {
+      "facts": [
+        {
+          "subject": "Maple",
+          "metric": "mass",
+          "value": "1250",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-04": {
+      "facts": [
+        {
+          "subject": "Elm",
+          "metric": "mean",
+          "value": "0.00625",
+          "unit": "g"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-05": {
+      "facts": [
+        {
+          "subject": "East-West",
+          "metric": "difference",
+          "value": "-6.4",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-06": {
+      "facts": [
+        {
+          "subject": "West-East",
+          "metric": "difference",
+          "value": "6.4",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-07": {
+      "facts": [
+        {
+          "subject": "Birch",
+          "metric": "mass",
+          "value": "28.75",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-07-archive": {
+      "facts": [
+        {
+          "subject": "Birch",
+          "metric": "mass",
+          "value": "999",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-08": {
+      "facts": [
+        {
+          "subject": "Willow",
+          "metric": "mean",
+          "value": "0.0145",
+          "unit": "g"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-08-archive": {
+      "facts": [
+        {
+          "subject": "Willow",
+          "metric": "mean",
+          "value": "999",
+          "unit": "g"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-09": {
+      "facts": [
+        {
+          "subject": "Oak-Pine",
+          "metric": "difference",
+          "value": "-0.0021",
+          "unit": "g"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-09-archive": {
+      "facts": [
+        {
+          "subject": "Oak-Pine",
+          "metric": "difference",
+          "value": "999",
+          "unit": "g"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-10": {
+      "facts": [
+        {
+          "subject": "Ash",
+          "metric": "mass",
+          "value": "915",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    },
+    "aggregate-10-archive": {
+      "facts": [
+        {
+          "subject": "Ash",
+          "metric": "mass",
+          "value": "999",
+          "unit": "mg"
+        }
+      ],
+      "source_kind": "synthetic"
+    }
+  }
+}
