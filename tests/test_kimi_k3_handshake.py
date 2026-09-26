@@ -158,7 +158,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         from researchops_external_closure.execution_current_v4 import verify_current_timed_profile
         from tests.internal_v11_historical_support import historical_v11_root
         from researchops_internal_telemetry.source import verify_source as verify_online_source
-        from researchops_internal_telemetry.source_integrity_v2 import verify_source
+        from researchops_internal_telemetry.source_integrity_v3 import verify_source
         from researchops_internal_telemetry.contract import InternalError
         with self.assertRaises(handshake_module.KimiK3HandshakeError) as caught:
             validate_kimi_k3_handshake(ROOT)
@@ -169,7 +169,7 @@ class KimiK3HandshakeTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(current.runtime_admission_verified)
         with self.assertRaisesRegex(InternalError, "^internal_source_drift$"):
             verify_online_source(ROOT)
-        self.assertEqual(verify_source(ROOT)["algorithm"], "internal-current-tree-offline-source-v2")
+        self.assertEqual(verify_source(ROOT)["algorithm"], "internal-current-tree-offline-source-v3")
 
     def test_offline_ci_binds_zero_call_handshake_validation(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

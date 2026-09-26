@@ -254,7 +254,14 @@ class DeepSeekProvider:
         timeout_seconds: float = 120.0,
         completion_telemetry_session: CompletionTelemetrySession | None = None,
     ) -> AsyncIterator[ProviderModel]:
-        normalized_model = self.validate_model(model_id)
+        item6_session = type(completion_telemetry_session).__module__ == "researchops_item6_experiment_v1.session"
+        if item6_session:
+            from researchops_item6_experiment_v1.session import ExperimentSession
+            if type(completion_telemetry_session) is not ExperimentSession:
+                raise ProviderConfigurationError("provider_completion_session_binding_mismatch", "Exact Item6 session required.")
+            normalized_model = completion_telemetry_session.assert_model_scope(model_id)
+        else:
+            normalized_model = self.validate_model(model_id)
         normalized_key = _require_api_key(api_key, self.api_key_env)
         normalized_timeout = _validate_timeout(timeout_seconds)
         _validate_completion_session(
@@ -295,6 +302,8 @@ class DeepSeekProvider:
             timed_transport = getattr(completion_telemetry_session, '_create_campaign_timed_transport', None)
         if timed_transport is None:
             timed_transport = getattr(completion_telemetry_session, '_create_internal_timed_transport', None)
+        if item6_session:
+            timed_transport = completion_telemetry_session._create_item6_timed_transport
         owned_timed_transport = None
         if callable(timed_transport):
             owned_timed_transport = timed_transport()
@@ -766,6 +775,9 @@ def _validate_completion_session(
         if not exact_session_type:
             from researchops_internal_telemetry.runtime import _InternalSession
             exact_session_type = provider_id == 'deepseek' and type(session) is _InternalSession
+        if not exact_session_type and type(session).__module__ == "researchops_item6_experiment_v1.session":
+            from researchops_item6_experiment_v1.session import ExperimentSession
+            exact_session_type = provider_id == "deepseek" and type(session) is ExperimentSession
         if not exact_session_type:
             raise TypeError("live completion session must be an exact ledger bridge")
         session.assert_provider_telemetry_authority()

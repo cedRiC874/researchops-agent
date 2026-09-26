@@ -237,8 +237,12 @@ class OfflineSourceV2Tests(unittest.TestCase):
 
 
 class CurrentOfflineSourceV2Tests(unittest.TestCase):
-    def test_current_manifest_matches_generated_anchor_without_runtime_authority(self):
-        current = v2.verify_source(ROOT, expected="0157e921793e0afe5cd897456535c324ccede9b203eb6792375f1d9b7d67e66d")
+    def test_historical_manifest_matches_preserved_anchor_without_runtime_authority(self):
+        from tests.internal_source_v2_historical_support import historical_v2_root
+        with historical_v2_root() as historical:
+            current = v2.verify_source(historical, expected="0157e921793e0afe5cd897456535c324ccede9b203eb6792375f1d9b7d67e66d")
+        with self.assertRaisesRegex(v2.SourceIntegrityV2Error, "source_drift"):
+            v2.verify_source(ROOT)
         self.assertEqual(v2.digest((ROOT / v2.MANIFEST).read_bytes()), "072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e")
         self.assertEqual(current["algorithm"], v2.ALGORITHM)
         self.assertIs(current["source_integrity_only"], True)

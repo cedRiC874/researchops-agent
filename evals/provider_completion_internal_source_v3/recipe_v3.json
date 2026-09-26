@@ -1,0 +1,60 @@
+{
+  "schema_version": "internal-current-tree-source-recipe/3.0",
+  "algorithm": "internal-current-tree-offline-source-v3",
+  "scan_roots": [
+    "src",
+    "evals"
+  ],
+  "suffixes": [
+    ".py",
+    ".json",
+    ".jsonl",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".toml"
+  ],
+  "explicit_files": [
+    "evals/provider_completion_internal_source_v3/recipe_v3.json",
+    "evals/provider_completion_internal_source_v3/source_manifest_v3.schema.json",
+    "src/researchops_internal_telemetry/source_integrity_v3.py",
+    "scripts/build_internal_source_integrity_v3.py",
+    "scripts/verify_pre_v6_integrity.py",
+    "evals/item6_experiment_bridge_v1/CONTRACT.md",
+    "services/agent_workflow_comparison_v1/controlled_publication_v1/runtime-manifest.json",
+    "tests/internal_source_v2_historical_support.py",
+    "tests/test_internal_source_integrity_v3.py",
+    "tests/item6_experiment_fixture.py",
+    "tests/test_item6_experiment_authority.py",
+    "tests/test_item6_experiment_session.py",
+    "tests/test_item6_experiment_budget.py",
+    "tests/test_item6_experiment_artifacts.py",
+    "tests/test_item6_experiment_integration.py",
+    "tests/test_internal_source_integrity_v2.py",
+    "tests/test_deepseek_completion_first_live_validation.py",
+    "tests/test_kimi_k3_handshake.py",
+    "tests/test_phase6_depth60.py"
+  ],
+  "service_manifest": "services/agent_workflow_comparison_v1/controlled_publication_v1/runtime-manifest.json",
+  "excluded_file": "evals/provider_completion_internal_source_v3/source_manifest_v3.json",
+  "separately_git_bound_workflows": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/item6-experiment-bridge-offline.yml"
+  ],
+  "historical_commit": "5605396e165fc5140eba54340d5a9c93f67540dc",
+  "historical_tree": "60a29c8407e55de8ea9b5700fc478f37044d1a49",
+  "historical_manifest": "evals/provider_completion_internal_source_v2/source_manifest_v2.json",
+  "historical_manifest_sha256": "072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e",
+  "limits": {
+    "directories": 4096,
+    "entries": 16384,
+    "files": 8192,
+    "file_bytes": 8388608,
+    "total_bytes": 67108864,
+    "path_characters": 512
+  },
+  "source_integrity_only": true,
+  "online_execution_authorized": false,
+  "runtime_admission_verified": false,
+  "historical_result_revalidated": false
+}

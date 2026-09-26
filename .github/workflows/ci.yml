@@ -173,7 +173,7 @@ jobs:
               $history.historical_commit -ne "5f6f9cde2f5e7092ddfbd20bed63c3baad0ea1ab" -or
               $history.historical_tree -ne "30ecfd86ac00aecd8b67305a7c6ed2af88eeee10" -or
               $history.legacy_validation_scope -ne "pinned_git_snapshot_only" -or
-              $history.current_validation_scope -ne "internal_v2_offline_source_integrity_only" -or
+              $history.current_validation_scope -ne "internal_v3_offline_source_integrity_only" -or
               $history.current_legacy_rejections.depth60_v7 -ne "phase6_depth60_profile_component_drift" -or
               $history.network_calls -ne 0 -or $history.model_calls -ne 0 -or
               $history.provider_key_loaded -ne $false) {
@@ -184,6 +184,14 @@ jobs:
               $history.historical_v11_tree -ne "0ee6bae3a2c56ef1d8c6c9193d9030f1a8573553" -or
               $history.current_legacy_rejections.depth60_v11 -ne "execution_v4_component_drift") {
             throw "Historical v11 identity or current-tree rejection mismatch."
+          }
+          $historicalV2 = $history.historical_internal_v2
+          if ($historicalV2.commit -ne "5605396e165fc5140eba54340d5a9c93f67540dc" -or
+              $historicalV2.tree -ne "60a29c8407e55de8ea9b5700fc478f37044d1a49" -or
+              $historicalV2.source_commitment_sha256 -ne "0157e921793e0afe5cd897456535c324ccede9b203eb6792375f1d9b7d67e66d" -or
+              $historicalV2.manifest_sha256 -ne "072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e" -or
+              $historicalV2.historical_result_revalidated -ne $false) {
+            throw "Historical Internal v2 bytes or lineage mismatch."
           }
           $currentInternal = $history.current_internal
           $historicalInternal = $history.historical_internal_v1
@@ -197,9 +205,9 @@ jobs:
             throw "Historical Internal v1 identity or strict online-source rejection mismatch."
           }
           if ($currentInternal.status -ne "valid" -or
-              $currentInternal.algorithm -ne "internal-current-tree-offline-source-v2" -or
-              $currentInternal.source_commitment_sha256 -ne "0157e921793e0afe5cd897456535c324ccede9b203eb6792375f1d9b7d67e66d" -or
-              $currentInternal.manifest_sha256 -ne "072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e" -or
+              $currentInternal.algorithm -ne "internal-current-tree-offline-source-v3" -or
+              $currentInternal.source_commitment_sha256 -ne "757e0341478b569797bc379fd6d6c23d6dd98983fa2b37124693e3046a24574e" -or
+              $currentInternal.manifest_sha256 -ne "e41d47b6b39839869a88deebe250a07036150062ea2e9171a3bb86d8609a1886" -or
               $currentInternal.source_integrity_only -ne $true -or
               $currentInternal.online_execution_authorized -ne $false -or
               $currentInternal.runtime_admission_verified -ne $false -or
@@ -557,11 +565,171 @@ jobs:
           python -m pip install -r /tmp/researchops-linux.lock
           python -m pip check
 
-      - name: Verify current-tree rejection and replay the pinned counterexample
+      - name: Verify canonical runtime and actual checkout before S10
+        shell: bash
         env:
           PYTHONPATH: src
+          PYTHONIOENCODING: utf-8
+          S10_OUTPUT: artifacts/ci_s10
+          S10_EXPECTED_COMMIT: ${{ github.sha }}
+          S10_TRIGGER_SHA: ${{ github.sha }}
+          S10_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          S10_EVENT_NAME: ${{ github.event_name }}
+          S10_ONLY: "false"
+          S10_EXECUTION_WORKFLOW: .github/workflows/ci.yml
         run: |
-          # The published artifact binds historical source bytes. The test first
-          # requires the default current-tree verifier to reject source drift,
-          # then replays the frozen derivation under an explicit test-only binding.
-          python -m unittest tests.test_phase6_depth60_95pct_counterexample -v
+          set -euo pipefail
+          test ! -e "$S10_OUTPUT"
+          mkdir -p "$S10_OUTPUT"
+          python - <<'S10_RUNTIME_PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import sys
+          import unicodedata
+          
+          OUTPUT = Path(os.environ['S10_OUTPUT'])
+          INPUTS = (
+              '.github/workflows/ci.yml', '.github/workflows/s10-canonical-only.yml', 'requirements.lock',
+              'tests/test_phase6_depth60_95pct_counterexample.py',
+              'scripts/verify_phase6_depth60_95pct_counterexample.py',
+              'docs/evidence/phase6-deepseek-depth60-interpretation-audit-v1/95_percent_lexical_counterexample.json',
+          )
+          
+          def git(*args):
+              return subprocess.check_output(['git', *args], timeout=15, text=True).strip()
+          
+          def runtime_accepted(row):
+              return (row['python_patch'] == '3.12.13' and row['unicode_database'] == '15.0.0'
+                      and re.fullmatch('[0-9a-f]{40}', row['expected_commit']) is not None
+                      and row['checkout_commit'] == row['expected_commit']
+                      and re.fullmatch('[0-9a-f]{40}', row['checkout_tree']) is not None
+                      and row['tracked_changes'] == ''
+                      and row['execution_workflow'] in ('.github/workflows/ci.yml', '.github/workflows/s10-canonical-only.yml')
+                      and type(row['s10_only']) is bool
+                      and row['s10_only'] == (row['execution_workflow'] == '.github/workflows/s10-canonical-only.yml'))
+          
+          row = dict(schema='S10-runtime/2', tests_started=False, sys_version=sys.version,
+              python_patch='.'.join(map(str, sys.version_info[:3])), unicode_database=unicodedata.unidata_version,
+              expected_commit=os.environ['S10_EXPECTED_COMMIT'], checkout_commit=git('rev-parse', 'HEAD'),
+              checkout_tree=git('rev-parse', 'HEAD^{tree}'), tracked_changes=git('status', '--porcelain', '--untracked-files=no'),
+              trigger_sha=os.environ['S10_TRIGGER_SHA'], event_name=os.environ['S10_EVENT_NAME'],
+              pr_head_sha=os.environ['S10_PR_HEAD'],
+              s10_only=os.environ['S10_ONLY'] == 'true',
+              execution_workflow=os.environ['S10_EXECUTION_WORKFLOW'],
+              inputs={p: hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in INPUTS})
+          row['accepted'] = runtime_accepted(row)
+          with (OUTPUT/'runtime.json').open('x', encoding='utf-8') as stream:
+              json.dump(row, stream, ensure_ascii=True, indent=2)
+          print(json.dumps(row, ensure_ascii=True))
+          if not row['accepted']:
+              raise SystemExit('S10_runtime_or_checkout_mismatch; tests not started')
+          S10_RUNTIME_PY
+
+      - name: Replay the complete counterexample module once and seal S10 evidence
+        shell: bash
+        env:
+          PYTHONPATH: src
+          PYTHONIOENCODING: utf-8
+          S10_OUTPUT: artifacts/ci_s10
+        run: |
+          set -euo pipefail
+          set +e
+          python -m unittest tests.test_phase6_depth60_95pct_counterexample -v > "$S10_OUTPUT/unittest.log" 2>&1
+          s10_exit=$?
+          set -e
+          set -C
+          printf '%s\n' "$s10_exit" > "$S10_OUTPUT/process-exit.txt"
+          cat "$S10_OUTPUT/unittest.log"
+          python - <<'S10_RECEIPT_PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          
+          PREFIX = 'tests.test_phase6_depth60_95pct_counterexample.'
+          S10 = tuple(PREFIX + 'Phase6Depth6095PercentCounterexampleTests.' + name for name in (
+              'test_emit_is_canonical_and_verify_compares_every_value',
+              'test_exact_five_locked_tasks_and_complete_traces_are_exercised',
+              'test_fresh_process_import_and_build_use_no_provider_or_model_runtime',
+              'test_generator_has_zero_network_model_environment_or_key_access',
+              'test_generator_is_deterministic_and_retracts_the_false_claims',
+              'test_natural_and_letter_prefixed_witnesses_use_the_actual_scorer',
+              'test_published_artifact_rejects_current_source_and_verifies_historical_binding',
+              'test_runtime_drift_fails_before_scorer_replay',
+              'test_same_patch_different_build_string_replays_deterministically',
+              'test_source_bytes_hashes_and_ast_lines_are_bound',
+          ))
+          ROUTING = PREFIX + 'CounterexampleRuntimeRoutingTests.test_ci_routes_counterexample_replay_to_the_canonical_runtime'
+          EXPECTED = (ROUTING, *S10)
+          
+          def summarize(log, exit_code):
+              records = []
+              for line in log.splitlines():
+                  match = re.fullmatch(r'(\S+) \(([^\r\n]+)\) \.\.\. (.+)', line)
+                  if match:
+                      records.append(dict(display=match[1], id=match[2], outcome=match[3]))
+              summaries = re.findall(r'^Ran (\d+) tests? in [^\r\n]+$', log, re.M)
+              tests_run = int(summaries[0]) if len(summaries) == 1 else None
+              ids = [r['id'] for r in records]
+              exact = (ids == list(EXPECTED) and len(set(ids)) == 11
+                       and all(r['display'] == r['id'].rsplit('.', 1)[1] for r in records))
+              all_ok = exact and all(r['outcome'] == 'ok' for r in records)
+              summary_ok = len(re.findall(r'^OK$', log, re.M)) == 1
+              detailed_summary = re.search(r'^(?:FAILED|OK) \(([^\r\n]+)\)$', log, re.M)
+              metrics = {k: None for k in ('failures', 'errors', 'skips', 'expected_failures', 'unexpected_successes')}
+              if summary_ok and all_ok and tests_run == 11 and exit_code == 0:
+                  metrics = {k: 0 for k in metrics}
+              elif detailed_summary is not None:
+                  parts = {k.strip():v for k,v in re.findall(r'([a-z ]+)=(\d+)', detailed_summary[1])}
+                  if parts and set(parts) <= {'failures','errors','skipped','expected failures','unexpected successes'}:
+                      for key, label in (('failures','failures'),('errors','errors'),('skips','skipped'),
+                                         ('expected_failures','expected failures'),('unexpected_successes','unexpected successes')):
+                          metrics[key] = int(parts.get(label, '0'))
+              # Class-level skips may have exit 0; do not turn that into ten passes.
+              passed_ids = {r['id'] for r in records if r['outcome'] == 'ok'}
+              skipped_ids = {r['id'] for r in records if r['outcome'].startswith('skipped')}
+              return dict(planned_s10=10, planned_routing=1, planned_total=11,
+                  tests=tests_run, actual_test_process_exit_code=exit_code, records=records,
+                  s10_passed=sum(i in passed_ids for i in S10), routing_passed=int(ROUTING in passed_ids),
+                  observed_skipped_ids=sorted(skipped_ids), missing_expected_ids=[i for i in EXPECTED if i not in ids],
+                  exact_order_and_unique_ids=exact, all_tests_passed_without_skips=bool(exit_code == 0 and tests_run == 11 and all_ok and summary_ok),
+                  **metrics)
+          
+          OUTPUT = Path(os.environ['S10_OUTPUT'])
+          raw = (OUTPUT/'unittest.log').read_bytes()
+          if len(raw) > 16777216:
+              raise SystemExit('S10_log_size_limit')
+          exit_text = (OUTPUT/'process-exit.txt').read_text(encoding='ascii').strip()
+          if re.fullmatch('[0-9]{1,3}', exit_text) is None:
+              raise SystemExit('S10_process_exit_missing')
+          row = summarize(raw.decode('utf-8').replace('\r\n', '\n'), int(exit_text))
+          runtime = json.loads((OUTPUT/'runtime.json').read_text(encoding='utf-8'))
+          after = {p: hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in runtime['inputs']}
+          actual_head = subprocess.check_output(['git','rev-parse','HEAD'], timeout=15, text=True).strip()
+          dirty = subprocess.check_output(['git','status','--porcelain','--untracked-files=no'], timeout=15, text=True).strip()
+          stable = after == runtime['inputs'] and actual_head == runtime['checkout_commit'] and dirty == ''
+          row.update(schema='S10-canonical-CI/2', runtime=runtime, inputs_after=after, inputs_stable=stable,
+              unittest_log_sha256=hashlib.sha256(raw).hexdigest(), root_full=False,
+              status='passed' if runtime['accepted'] and stable and row['all_tests_passed_without_skips'] else 'failed')
+          with (OUTPUT/'result.json').open('x', encoding='utf-8') as stream:
+              json.dump(row, stream, ensure_ascii=True, indent=2)
+          print(json.dumps({k:v for k,v in row.items() if k not in ('records','runtime','inputs_after')}, ensure_ascii=True))
+          if row['status'] != 'passed':
+              raise SystemExit(1)
+          S10_RECEIPT_PY
+          exit "$s10_exit"
+
+      - name: Preserve S10 evidence on success or failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: s10-root-canonical-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci_s10
+          if-no-files-found: error
+          retention-days: 14

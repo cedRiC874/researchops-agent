@@ -1,0 +1,93 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "candidate",
+    "observation"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "item6-experiment-approval/1.0"
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "mode",
+        "authorization_id",
+        "freeze_sha256",
+        "environment_id",
+        "not_before_utc",
+        "expires_at_utc"
+      ],
+      "properties": {
+        "scope": {
+          "const": "item6_controlled_experiment_v1"
+        },
+        "mode": {
+          "enum": [
+            "offline_test",
+            "live"
+          ]
+        },
+        "authorization_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{12,100}$"
+        },
+        "freeze_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "environment_id": {
+          "type": "string",
+          "pattern": "^PCEENV-[A-F0-9]{32}$"
+        },
+        "not_before_utc": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "expires_at_utc": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "approved_digest",
+        "observed_at_utc",
+        "message_reference"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "synthetic_approval_fixture",
+            "explicit_user_confirmation"
+          ]
+        },
+        "approved_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "observed_at_utc": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "message_reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

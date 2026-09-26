@@ -254,7 +254,8 @@ class ExternalClosureGitObjectsTests(unittest.TestCase):
                 snapshot = self.snapshot()
         self.assertEqual(snapshot.blobs[0].payload, self.content)
         self.assertEqual(set(reads), set(git_objects._ENV_KEYS))
-        self.assertEqual(len(observed), 9)
+        # Commit, tree and selected blob: exactly one process each.
+        self.assertEqual(len(observed), 3)
         for command, kwargs in observed:
             environment = kwargs["env"]
             self.assertFalse(kwargs["shell"])
@@ -264,7 +265,8 @@ class ExternalClosureGitObjectsTests(unittest.TestCase):
             self.assertEqual(environment["GIT_TERMINAL_PROMPT"], "0")
             self.assertEqual(environment["GIT_OPTIONAL_LOCKS"], "0")
             self.assertEqual(environment["GIT_ALLOW_PROTOCOL"], "")
-            self.assertEqual(command[-3], "cat-file")
+            self.assertEqual(command[-2:], ["cat-file", "--batch"])
+            self.assertEqual(kwargs["stdin"], subprocess.PIPE)
             self.assertTrue(set(environment).isdisjoint(synthetic))
         self.assertFalse((self.root / "must-not-exist.trace").exists())
         self.assertFalse((self.root / "must-not-exist.trace2").exists())
@@ -297,19 +299,42 @@ class ExternalClosureGitObjectsTests(unittest.TestCase):
         self.assert_code("object_hash_invalid", self.snapshot)
 
     def test_object_growth_between_size_probe_and_read_is_bounded(self) -> None:
+        # Preserve the original output_limit property at the new header/body
+        # boundary. The real Git stdout header selects the fault target; only
+        # that body's returned bytes are synthetically grown (not a Git race).
         real_popen = subprocess.Popen
+        injections = []
+        fixture = self
+
+        class GrowingStdout:
+            def __init__(self, real):
+                self.real = real
+                self.target = False
+
+            def __getattr__(self, name):
+                return getattr(self.real, name)
+
+            def readline(self, limit):
+                header = self.real.readline(limit)
+                self.target = header.startswith(fixture.blob.encode("ascii") + b" blob ")
+                return header
+
+            def read(self, limit):
+                value = self.real.read(limit)
+                if self.target:
+                    injections.append(limit)
+                    return (fixture.content * 1000)[:limit]
+                return value
 
         def growing_object_popen(command, **kwargs):
-            if command[-3:] == ["cat-file", "blob", self.blob]:
-                grown = self.content * 1000
-                self.repo.loose_object(self.blob).chmod(0o600)
-                self.repo.loose_object(self.blob).write_bytes(
-                    zlib.compress(b"blob " + str(len(grown)).encode("ascii") + b"\0" + grown),
-                )
-            return real_popen(command, **kwargs)
+            process = real_popen(command, **kwargs)
+            if command[-2:] == ["cat-file", "--batch"]:
+                process.stdout = GrowingStdout(process.stdout)
+            return process
 
         with patch.object(git_objects.subprocess, "Popen", side_effect=growing_object_popen):
             self.assert_code("output_limit", self.snapshot)
+        self.assertEqual(injections, [len(self.content) + 2])
 
     def test_unsafe_tree_modes_are_rejected_even_when_unselected(self) -> None:
         for mode in ("120000", "160000", "100664", "040000"):
@@ -404,10 +429,19 @@ class ExternalClosureGitObjectsTests(unittest.TestCase):
         syntax = ast.parse(MODULE.read_text(encoding="utf-8"))
         attributes = {node.attr for node in ast.walk(syntax) if isinstance(node, ast.Attribute)}
         self.assertFalse(attributes.intersection({
-            "write", "write_bytes", "write_text", "mkdir", "unlink", "remove", "rename",
+            "write_bytes", "write_text", "mkdir", "unlink", "remove", "rename",
             "replace", "chmod", "touch", "mkdtemp", "TemporaryDirectory", "run", "check_output",
             "check_call", "system", "exec", "eval", "import_module", "exec_module",
         }))
+        # The sole allowed write is the fixed 41-byte OID to the Git stdin pipe,
+        # not a file write or an arbitrary injected stream.
+        writes = [node for node in ast.walk(syntax) if isinstance(node, ast.Attribute) and node.attr == "write"]
+        self.assertEqual(len(writes), 1)
+        receiver = writes[0].value
+        self.assertIsInstance(receiver, ast.Attribute)
+        self.assertEqual(receiver.attr, "stdin")
+        self.assertIsInstance(receiver.value, ast.Name)
+        self.assertEqual(receiver.value.id, "process")
         imports = {
             alias.name.split(".")[0]
             for node in ast.walk(syntax) if isinstance(node, ast.Import)

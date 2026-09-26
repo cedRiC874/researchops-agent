@@ -1,42 +1,51 @@
-"""Synthetic source-profile fixtures; no current-tree manifests are written."""
+"""Pinned historical v2 replay plus synthetic campaign data, not current coverage.
+
+The pre-bridge main snapshot supplies both the complete inventory and raw blobs.
+No historical Python is executed. Current source coverage belongs to internal v3.
+The pinned objects must be available locally (CI already fetches full history).
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 
 from researchops_external_closure import execution_components as base
 from researchops_external_closure import execution_components_v2 as v2
 from researchops_external_closure.admission_bundle_bytes import admission_bundle_commitment
 from researchops_external_closure.admission_contract import CONTRACT_SHA256, load_admission_link_contract
-from tests.test_external_closure_execution_components import component_fixture_files
+from researchops_external_closure.git_objects import read_git_object_snapshot
 
 
 ROOT=Path(__file__).resolve().parents[1]
+HISTORICAL_COMMIT="5605396e165fc5140eba54340d5a9c93f67540dc"
+HISTORICAL_TREE="60a29c8407e55de8ea9b5700fc478f37044d1a49"
 
 
 def h(label):
     return hashlib.sha256(label.encode()).hexdigest()
 
 
+@lru_cache(maxsize=1)
+def _historical_first_live_snapshot():
+    metadata=read_git_object_snapshot(ROOT,HISTORICAL_COMMIT,
+        (base.RECIPE_PATH,v2.RECIPE_PATH),expected_tree_oid=HISTORICAL_TREE)
+    paths=tuple(sorted(entry.path for entry in metadata.entries if entry.mode in {"100644","100755"}))
+    recipes={blob.path:blob.payload for blob in metadata.blobs}
+    selected=v2.select_profile_paths(paths,recipes[v2.RECIPE_PATH],recipes[base.RECIPE_PATH],profile="first_live")
+    snapshot=read_git_object_snapshot(ROOT,HISTORICAL_COMMIT,selected,expected_tree_oid=HISTORICAL_TREE)
+    if snapshot.entries!=metadata.entries:
+        raise ValueError("historical_v2_inventory_drift")
+    # Cache only immutable values; each caller gets its own mutable fixture map.
+    return tuple((blob.path,blob.payload) for blob in snapshot.blobs),paths
+
+
 def first_live_source_files():
-    files,paths=component_fixture_files()
-    files=dict(files); paths=set(paths)
-    recipe_bytes=(ROOT/v2.RECIPE_PATH).read_bytes()
-    recipe=json.loads(recipe_bytes)
-    paths.update(recipe["extensions"]["mandatory_paths"])
-    for prefix in recipe["extensions"]["contract_json_roots"]:
-        paths.update(path.relative_to(ROOT).as_posix() for path in (ROOT/prefix).rglob("*.json"))
-    # Copy the actual successor source. No synthetic runner stub is inserted.
-    controller="src/researchops/deepseek_completion_first_live_successor.py"
-    paths.add(controller)
-    files[controller]=(ROOT/controller).read_bytes()
-    selected=v2.select_profile_paths(tuple(paths),recipe_bytes,files[base.RECIPE_PATH],profile="first_live")
-    for name in selected:
-        if name not in files:
-            files[name]=(ROOT/name).read_bytes()
-    return {name:files[name] for name in selected},tuple(sorted(paths))
+    """Replay the fixed historical source; never substitute current worktree files."""
+    items,paths=_historical_first_live_snapshot()
+    return dict(items),paths
 
 
 def registry_documents(subject,evidence_commitment,review_hash,evidence_commit="3"*40,evidence_tree="4"*40):

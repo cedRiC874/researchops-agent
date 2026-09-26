@@ -23,7 +23,9 @@ from researchops_external_closure.execution_current_v4 import verify_current_tim
 from tests.historical_integrity_support import HISTORICAL_COMMIT, HISTORICAL_TREE, historical_integrity_root
 from tests.internal_v11_historical_support import historical_v11_root, COMMIT as V11_COMMIT, TREE as V11_TREE
 from researchops_internal_telemetry.source import verify_source as verify_online_v1_source
-from researchops_internal_telemetry.source_integrity_v2 import verify_source, MANIFEST
+from researchops_internal_telemetry.source_integrity_v3 import verify_source, MANIFEST
+from researchops_internal_telemetry import source_integrity_v2
+from tests.internal_source_v2_historical_support import historical_v2_root
 
 
 def main() -> int:
@@ -44,6 +46,8 @@ def main() -> int:
             runtime_admission_verified=checked.runtime_admission_verified,
             historical_result_revalidated=checked.historical_result_revalidated,
             network_calls=0, model_calls=0)
+        with historical_v2_root() as historical_v2:
+            checked_v2 = source_integrity_v2.verify_source(historical_v2)
         internal = verify_source(ROOT)
         current = dict(status="valid", algorithm=internal["algorithm"],
             source_commitment_sha256=internal["commitment_sha256"],
@@ -91,7 +95,7 @@ def main() -> int:
             "historical_commit": HISTORICAL_COMMIT,
             "historical_tree": HISTORICAL_TREE,
             "legacy_validation_scope": "pinned_git_snapshot_only",
-            "current_validation_scope": "internal_v2_offline_source_integrity_only",
+            "current_validation_scope": "internal_v3_offline_source_integrity_only",
             "depth60_v5": depth60,
             "first_live": first_live,
             "kimi": kimi,
@@ -99,7 +103,8 @@ def main() -> int:
             "historical_v11_tree": V11_TREE,
             "historical_v11": historical_v11,
             "current_internal": current,
-            "historical_internal_v1": internal["lineage"],
+            "historical_internal_v1": checked_v2["lineage"],
+            "historical_internal_v2": internal["lineage"],
             "historical_v7_file_sha256": frozen_v7,
             "current_legacy_rejections": observed,
             "network_calls": 0,
