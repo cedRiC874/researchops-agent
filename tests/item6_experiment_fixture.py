@@ -418,13 +418,28 @@ async def exercise(mode):
             def damaged_write(path, data):
                 if path.parent.name != "claims": return original_write(path, data)
                 target = {"claim_write": "write", "claim_fsync": "fsync", "claim_close": "close"}[mode]
-                original_operation = getattr(local_claim.os, target)
+                real_os = local_claim.os
+                original_operation = getattr(real_os, target)
+                observation = dict(target=target, call_count=0, claim_parent_matched=True,
+                    module_os_isolated=False, module_os_restored=False, process_os_unchanged=False)
+                post_checks["claim_fault"] = observation
                 def fail_operation(*args):
-                    hits.append(mode)
+                    observation["call_count"] += 1
+                    if mode not in hits: hits.append(mode)
                     if mode == "claim_close": original_operation(*args)
                     elif mode == "claim_write": original_operation(args[0], args[1][:8])
                     raise OSError("synthetic claim operation failure")
-                with patch.object(local_claim.os, target, side_effect=fail_operation): return original_write(path, data)
+                class FaultOS:
+                    def __getattr__(self, name): return getattr(real_os, name)
+                fault_os = FaultOS()
+                setattr(fault_os, target, fail_operation)
+                try:
+                    with patch.object(local_claim, "os", fault_os):
+                        observation["module_os_isolated"] = local_claim.os is fault_os and os is real_os
+                        return original_write(path, data)
+                finally:
+                    observation["module_os_restored"] = local_claim.os is real_os
+                    observation["process_os_unchanged"] = getattr(os, target) is original_operation
             extra.enter_context(patch.object(local_claim, "_write_once", side_effect=damaged_write))
         if mode in {"audit_start", "audit_intent"}:
             if mode == "audit_start":

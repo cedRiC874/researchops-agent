@@ -66,6 +66,16 @@ class AuthorityTests(unittest.TestCase):
                 self.assertEqual(result["claim_files"], 1)
                 self.assertEqual(result["calls"], [])
                 self.assertIn(mode, result["hits"])
+                fault = result["post_checks"]["claim_fault"]
+                self.assertEqual(
+                    fault["target"],
+                    {"claim_write": "write", "claim_fsync": "fsync", "claim_close": "close"}[mode],
+                )
+                self.assertGreaterEqual(fault["call_count"], 1)
+                self.assertTrue(fault["claim_parent_matched"])
+                self.assertTrue(fault["module_os_isolated"])
+                self.assertTrue(fault["module_os_restored"])
+                self.assertTrue(fault["process_os_unchanged"])
 
     def test_source_changes_and_expiry_after_io_stop_dispatch(self):
         for mode, calls in (("source_drift", 1), ("expiry_after_source", 0)):
