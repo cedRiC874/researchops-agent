@@ -10,6 +10,7 @@ import logging
 import os
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -75,8 +76,40 @@ def command(args, root):
 def allocate(prefix):
     # Retain fixture sources/stores after failures; never delete a claim to retry.
     path = Path(tempfile.mkdtemp(prefix=prefix))
+    if prefix == "item6-test-store-":
+        original = path
+        try:
+            path = canonical_test_store_path(original)
+        except BaseException:
+            _temporary.append(original)
+            raise
     _temporary.append(path)
     return path
+
+
+def canonical_test_store_path(path):
+    """Canonicalize only a new fixture store; never repair the production locator."""
+    def regular_directory(candidate, metadata):
+        return (stat.S_ISDIR(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode)
+                and not getattr(metadata, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                and not candidate.is_symlink() and not candidate.is_junction())
+
+    if type(path) is not type(Path()) or not path.is_absolute() or not path.name.startswith("item6-test-store-"):
+        raise ValueError("fixture_store_path_invalid")
+    before = path.lstat()
+    if not regular_directory(path, before): raise ValueError("fixture_store_link_or_kind")
+    temp = Path(tempfile.gettempdir()).resolve(strict=True)
+    if path.parent.resolve(strict=True) != temp: raise ValueError("fixture_store_parent")
+    canonical = path.resolve(strict=True)
+    if canonical.parent != temp or not canonical.name.startswith("item6-test-store-"):
+        raise ValueError("fixture_store_canonical_parent")
+    after, original_after = canonical.lstat(), path.lstat()
+    identities = [(entry.st_dev, entry.st_ino) for entry in (before, after, original_after)]
+    if not (before.st_ino and identities[0] == identities[1] == identities[2]
+            and regular_directory(canonical, after) and regular_directory(path, original_after)
+            and path.samefile(canonical) and canonical.resolve(strict=True) == canonical):
+        raise ValueError("fixture_store_identity_changed")
+    return canonical
 
 
 @functools.lru_cache(maxsize=1)

@@ -547,3 +547,157 @@ class StoreDiagnosticsTests(unittest.TestCase):
         self.assertFalse(row["stdout_recorded"])
         self.assertFalse(row["stderr_recorded"])
         scan_public_artifact_bytes((json.dumps(row).encode(),))
+
+
+class StorePathNormalizationTests(unittest.TestCase):
+    """Own empty temporary directories only; never provision or open a real store."""
+
+    def test_canonical_store_is_same_directory_and_passes_original_location_gate(self):
+        from pathlib import Path
+        import tempfile
+        from unittest.mock import patch
+        from researchops_completion_timing import local_claim
+        from researchops_item6_experiment_v1 import authority
+        with tempfile.TemporaryDirectory(prefix="item6-test-store-") as directory:
+            raw = Path(directory)
+            canonical = f.canonical_test_store_path(raw)
+            self.assertTrue(raw.samefile(canonical))
+            self.assertEqual(canonical.parent, Path(tempfile.gettempdir()).resolve())
+            self.assertEqual(canonical, canonical.resolve())
+            with patch.object(local_claim, "_windows_local_app_data", return_value=canonical):
+                self.assertEqual(authority._test_location(), canonical)
+
+    def test_noncanonical_same_directory_is_normalized_not_different_directory(self):
+        from pathlib import Path
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="item6-test-store-") as directory:
+            canonical = Path(directory).resolve()
+            # Existing child/.. provides a real alias without symlink privileges or an OS short-name assumption.
+            inside = canonical / "alias-component"
+            inside.mkdir()
+            alias = inside / ".." / ".." / canonical.name
+            self.assertNotEqual(alias, canonical)
+            self.assertTrue(alias.samefile(canonical))
+            self.assertEqual(f.canonical_test_store_path(alias), canonical)
+
+    def test_only_exact_store_prefix_changes_allocation(self):
+        from pathlib import Path
+        from unittest.mock import patch
+        raw, normalized = Path("C:/synthetic/item6-test-store-original"), Path("C:/synthetic/item6-test-store-canonical")
+        with patch.object(f, "_temporary", []), patch.object(f.tempfile, "mkdtemp", return_value=str(raw)), patch.object(f, "canonical_test_store_path", return_value=normalized) as normalize:
+            for prefix in ("i6-seed-", "i6-case-", "i6-race-", "item6-test-store-other-"):
+                self.assertEqual(f.allocate(prefix), raw)
+            normalize.assert_not_called()
+            self.assertEqual(f.allocate("item6-test-store-"), normalized)
+            normalize.assert_called_once_with(raw)
+            self.assertEqual(f._temporary[-1], normalized)
+
+    def test_rejected_allocation_is_retained_and_not_retried(self):
+        from pathlib import Path
+        from unittest.mock import patch
+        path = Path("C:/synthetic/item6-test-store-retained")
+        rejection = ValueError("fixture_store_parent")
+        with patch.object(f, "_temporary", []), patch.object(f.tempfile, "mkdtemp", return_value=str(path)) as create, patch.object(f, "canonical_test_store_path", side_effect=rejection):
+            with self.assertRaises(ValueError) as captured:
+                f.allocate("item6-test-store-")
+            self.assertIs(captured.exception, rejection)
+            self.assertEqual(f._temporary, [path])
+            create.assert_called_once_with(prefix="item6-test-store-")
+
+    def test_non_store_name_relative_and_wrong_type_are_rejected(self):
+        from pathlib import Path
+        for value in ("item6-test-store-text", Path("item6-test-store-relative"), Path("C:/synthetic/not-store")):
+            with self.subTest(kind=type(value).__name__), self.assertRaisesRegex(ValueError, "fixture_store_path_invalid"):
+                f.canonical_test_store_path(value)
+
+    def test_nested_or_wrong_temp_parent_is_rejected(self):
+        from pathlib import Path
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="item6-test-store-") as directory:
+            root = Path(directory).resolve()
+            nested = root / "item6-test-store-nested"
+            nested.mkdir()
+            with self.assertRaisesRegex(ValueError, "fixture_store_parent"):
+                f.canonical_test_store_path(nested)
+            with patch.object(f.tempfile, "gettempdir", return_value=str(root)), self.assertRaisesRegex(ValueError, "fixture_store_parent"):
+                f.canonical_test_store_path(root)
+
+    def test_regular_file_and_missing_directory_are_rejected(self):
+        from pathlib import Path
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="item6-normalization-test-") as directory:
+            root = Path(directory)
+            file = root / "item6-test-store-file"
+            file.write_bytes(b"synthetic")
+            with self.assertRaisesRegex(ValueError, "fixture_store_link_or_kind"):
+                f.canonical_test_store_path(file)
+            with self.assertRaises(FileNotFoundError):
+                f.canonical_test_store_path(root / "item6-test-store-missing")
+
+    def test_symlink_and_junction_indications_reject_before_resolve(self):
+        from pathlib import Path
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="item6-test-store-") as directory:
+            path = Path(directory)
+            for method in ("is_symlink", "is_junction"):
+                with self.subTest(method=method), patch.object(type(path), method, return_value=True), patch.object(type(path), "resolve") as resolve:
+                    with self.assertRaisesRegex(ValueError, "fixture_store_link_or_kind"):
+                        f.canonical_test_store_path(path)
+                    resolve.assert_not_called()
+
+    def test_reparse_metadata_rejects_before_resolve(self):
+        from pathlib import Path
+        from types import SimpleNamespace
+        import stat
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="item6-test-store-") as directory:
+            path = Path(directory)
+            metadata = SimpleNamespace(st_mode=stat.S_IFDIR, st_file_attributes=stat.FILE_ATTRIBUTE_REPARSE_POINT)
+            with patch.object(type(path), "lstat", return_value=metadata), patch.object(type(path), "resolve") as resolve:
+                with self.assertRaisesRegex(ValueError, "fixture_store_link_or_kind"):
+                    f.canonical_test_store_path(path)
+                resolve.assert_not_called()
+
+    def test_identity_change_and_unknown_inode_are_rejected(self):
+        from pathlib import Path
+        from types import SimpleNamespace
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="item6-test-store-") as directory:
+            path = Path(directory).resolve()
+            actual = path.lstat()
+            def metadata(device, inode):
+                return SimpleNamespace(st_mode=actual.st_mode, st_file_attributes=0, st_dev=device, st_ino=inode)
+            identity = (actual.st_dev, actual.st_ino)
+            changed_inode = (actual.st_dev, actual.st_ino + 1)
+            changed_device = (actual.st_dev + 1, actual.st_ino)
+            for values in ((identity, changed_inode, identity), (identity, identity, changed_inode),
+                           (identity, changed_device, identity), ((actual.st_dev, 0),) * 3):
+                with self.subTest(identity=values), patch.object(type(path), "is_symlink", return_value=False), patch.object(type(path), "is_junction", return_value=False), patch.object(type(path), "lstat", side_effect=[metadata(*value) for value in values]):
+                    with self.assertRaisesRegex(ValueError, "fixture_store_identity_changed"):
+                        f.canonical_test_store_path(path)
+
+    def test_canonical_resolution_cannot_escape_temporary_parent(self):
+        from pathlib import Path
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="item6-test-store-") as directory:
+            path = Path(directory).resolve()
+            original_resolve = type(path).resolve
+            def changed(candidate, *args, **kwargs):
+                if candidate == path: return path / "item6-test-store-nested"
+                return original_resolve(candidate, *args, **kwargs)
+            with patch.object(type(path), "resolve", new=changed), self.assertRaisesRegex(ValueError, "fixture_store_canonical_parent"):
+                f.canonical_test_store_path(path)
+
+    def test_samefile_disagreement_is_rejected(self):
+        from pathlib import Path
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="item6-test-store-") as directory:
+            path = Path(directory).resolve()
+            with patch.object(type(path), "samefile", return_value=False), self.assertRaisesRegex(ValueError, "fixture_store_identity_changed"):
+                f.canonical_test_store_path(path)
