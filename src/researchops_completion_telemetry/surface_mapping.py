@@ -553,6 +553,9 @@ def _thaw_json(value: object) -> Any:
     return value
 
 
+_ITEM6_MINTS = {}
+
+
 class VerifiedRuntimeCompletionBinding:
     """Opaque live-write authority derived only from a runtime-enabled selection."""
 
@@ -568,6 +571,8 @@ class VerifiedRuntimeCompletionBinding:
         "_output_counter_comparability",
         "_output_counter_path",
         "_authority_scope",
+        "_item6_owner",
+        "_item6_mode",
         "_mapping",
         "_authority_token",
         "_locked",
@@ -589,20 +594,29 @@ class VerifiedRuntimeCompletionBinding:
         cls,
         token: object,
         selection: VerifiedSurfaceSelection,
+        *,
+        _item6_mint: object = None,
     ) -> VerifiedRuntimeCompletionBinding:
         if token is not _RUNTIME_BINDING_TOKEN:
             raise TypeError("invalid runtime binding construction token")
         if (
             type(selection) is not VerifiedSurfaceSelection
             or getattr(selection, "_authority_token", None) is not _SELECTION_TOKEN
-            or selection.purpose not in {"runtime_binding", "first_live_validation", "internal_telemetry_validation"}
+            or selection.purpose not in {"runtime_binding", "first_live_validation", "internal_telemetry_validation", "item6_controlled_experiment_v1"}
             or selection.runtime_binding_allowed is not True
         ):
             raise _error(
                 "surface_runtime_authority_missing",
                 "offline selection cannot authorize a live completion record",
             )
+        item6_owner = _ITEM6_MINTS.pop(_item6_mint, None) if _item6_mint is not None else None
+        if selection.purpose == "item6_controlled_experiment_v1" and item6_owner is None:
+            raise _error("surface_runtime_authority_missing", "Fresh Item6 owner required.")
+        if selection.purpose != "item6_controlled_experiment_v1" and _item6_mint is not None:
+            raise _error("surface_runtime_authority_missing", "Item6 grant cannot enter another scope.")
         instance = object.__new__(cls)
+        object.__setattr__(instance, "_item6_owner", item6_owner)
+        object.__setattr__(instance, "_item6_mode", None if item6_owner is None else item6_owner.mode)
         for name in (
             "telemetry_schema_sha256",
             "adapter_version",
@@ -628,6 +642,8 @@ class VerifiedRuntimeCompletionBinding:
         )
         object.__setattr__(instance, "_authority_token", _RUNTIME_BINDING_TOKEN)
         object.__setattr__(instance, "_locked", True)
+        if item6_owner is not None:
+            item6_owner._bind_mapping(instance)
         return instance
 
     @property
@@ -687,7 +703,7 @@ class VerifiedRuntimeCompletionBinding:
             type(self) is not VerifiedRuntimeCompletionBinding
             or getattr(self, "_authority_token", None) is not _RUNTIME_BINDING_TOKEN
             or getattr(self, "_authority_scope", None)
-            not in {"campaign_runtime", "first_live_validation", "internal_telemetry_validation"}
+            not in {"campaign_runtime", "first_live_validation", "internal_telemetry_validation", "item6_controlled_experiment_v1"}
             or (
                 expected_scope is not None
                 and self._authority_scope != expected_scope
@@ -697,6 +713,12 @@ class VerifiedRuntimeCompletionBinding:
                 "surface_runtime_authority_missing",
                 "runtime completion binding authority is invalid",
             )
+
+        if self._authority_scope == "item6_controlled_experiment_v1":
+            from researchops_item6_experiment_v1.authority import Owner
+            if type(self._item6_owner) is not Owner:
+                raise _error("surface_runtime_authority_missing", "Item6 owner identity missing.")
+            self._item6_owner._assert_mapping(self, self._item6_mode)
 
     def runtime_snapshot(self) -> dict[str, str]:
         self.assert_runtime_authority()
@@ -3137,3 +3159,24 @@ __all__ = [
     "load_verified_surface_registry",
     "select_surface_mapping",
 ]
+
+
+def create_item6_experiment_binding(owner):
+    """Checked experiment-only grant; never promote caller receipts or offline selections."""
+    from researchops_item6_experiment_v1.authority import Owner
+    from researchops_item6_experiment_v1.contract import ROOT, SCOPE
+    if type(owner) is not Owner:
+        raise _error("surface_runtime_authority_missing", "Fresh Item6 owner required.")
+    owner._consume_mapping()
+    offline = load_and_select_surface_mapping(ROOT, "deepseek", "responses", "openai_compatible_responses", purpose="offline_validation")
+    selection = VerifiedSurfaceSelection._create(_SELECTION_TOKEN, purpose=SCOPE,
+        telemetry_schema_sha256=offline.telemetry_schema_sha256, mapping=offline.mapping_snapshot(),
+        entry=dict(adapter_version=offline.adapter_version, mapping_version=offline.mapping_version,
+                   output_counter_comparability=offline.output_counter_comparability,
+                   output_counter_path=offline.output_counter_path, runtime_binding_allowed=True))
+    ticket = object()
+    _ITEM6_MINTS[ticket] = owner
+    try:
+        return VerifiedRuntimeCompletionBinding._create(_RUNTIME_BINDING_TOKEN, selection, _item6_mint=ticket)
+    finally:
+        _ITEM6_MINTS.pop(ticket, None)

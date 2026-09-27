@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Offline current-tree source integrity v3; no runtime authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "algorithm",
+    "recipe_sha256",
+    "lineage",
+    "files",
+    "source_integrity_only",
+    "online_execution_authorized",
+    "runtime_admission_verified",
+    "historical_result_revalidated",
+    "commitment_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "internal-current-tree-source/3.0"
+    },
+    "algorithm": {
+      "const": "internal-current-tree-offline-source-v3"
+    },
+    "recipe_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commitment_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_integrity_only": {
+      "type": "boolean",
+      "const": true
+    },
+    "online_execution_authorized": {
+      "type": "boolean",
+      "const": false
+    },
+    "runtime_admission_verified": {
+      "type": "boolean",
+      "const": false
+    },
+    "historical_result_revalidated": {
+      "type": "boolean",
+      "const": false
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "tree",
+        "manifest_path",
+        "manifest_sha256",
+        "source_commitment_sha256",
+        "verified_git_blob_count",
+        "historical_result_revalidated"
+      ],
+      "properties": {
+        "commit": {
+          "const": "5605396e165fc5140eba54340d5a9c93f67540dc"
+        },
+        "tree": {
+          "const": "60a29c8407e55de8ea9b5700fc478f37044d1a49"
+        },
+        "manifest_path": {
+          "const": "evals/provider_completion_internal_source_v2/source_manifest_v2.json"
+        },
+        "manifest_sha256": {
+          "const": "072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e"
+        },
+        "source_commitment_sha256": {
+          "const": "0157e921793e0afe5cd897456535c324ccede9b203eb6792375f1d9b7d67e66d"
+        },
+        "verified_git_blob_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "historical_result_revalidated": {
+          "type": "boolean",
+          "const": false
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8192,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "bytes",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8388608
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

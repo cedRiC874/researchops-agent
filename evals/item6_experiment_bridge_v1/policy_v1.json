@@ -1,0 +1,79 @@
+{
+  "schema_version": "item6-experiment-policy/1.0",
+  "model": "deepseek-flash",
+  "origin": "https://api.deepseek.com",
+  "request_bytes": 32768,
+  "response_bytes": 100000,
+  "business_field_bytes": 131072,
+  "archive_bytes": 8388608,
+  "limits": {
+    "requests_per_task": 3,
+    "model_requests": 48,
+    "input_per_request": 6000,
+    "output_per_request": 1000,
+    "input_total": 288000,
+    "output_total": 48000,
+    "request_bytes": 32768,
+    "tools_per_task": 2,
+    "tool_total": 64,
+    "request_seconds": 30,
+    "tool_seconds": 5,
+    "task_seconds": 120,
+    "batch_seconds": 2700
+  },
+  "tools": [
+    {
+      "type": "function",
+      "name": "inspect_sources",
+      "description": "Read metadata in the authorized synthetic scope.",
+      "strict": true,
+      "parameters": {
+        "type": "object",
+        "title": "inspect_sources_args",
+        "properties": {
+          "scope_id": {
+            "type": "string",
+            "title": "Scope Id"
+          }
+        },
+        "required": [
+          "scope_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "type": "function",
+      "name": "read_aggregate",
+      "description": "Read the requested authorized aggregate result.",
+      "strict": true,
+      "parameters": {
+        "type": "object",
+        "title": "read_aggregate_args",
+        "properties": {
+          "bundle_id": {
+            "type": "string",
+            "title": "Bundle Id"
+          }
+        },
+        "required": [
+          "bundle_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "instruction_sha256": "9dd3b2fb721a60d22c29640a1a25e00ca6825f83c3b809cd4d0d7acdd2cd1f11",
+  "reasoning_effort": "none",
+  "http_retries": 0,
+  "sdk_retries": 0,
+  "follow_redirects": false,
+  "trust_env": false,
+  "online_authorized": false,
+  "live_budget_default": null,
+  "runtime_freeze_directory": "output/item6-experiment-bridge-v1",
+  "workflows_separately_git_bound": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/item6-experiment-bridge-offline.yml"
+  ]
+}

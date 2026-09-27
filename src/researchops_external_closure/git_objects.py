@@ -163,17 +163,49 @@ class _Reader:
         self.deadline = time.monotonic() + _SNAPSHOT_SECONDS
         self.cache: dict[str, tuple[str, bytes]] = {}
         self.total_bytes = 0
+        self.stopped = False
 
-    def command(self, arguments: tuple[str, ...], *, max_bytes: int) -> bytes:
-        if (
-            len(arguments) != 3
-            or arguments[0] != "cat-file"
-            or arguments[1] not in ("-t", "-s", "commit", "tree", "blob")
-            or _OID.fullmatch(arguments[2]) is None
-        ):
+    def _release(self, process, timer, *, stdin_close_attempted=False, stdin_close_failed=False) -> bool:
+        """Bounded cleanup; any uncertainty poisons this reader, never retries."""
+        deadline = time.monotonic() + _COMMAND_SECONDS
+        clean = not stdin_close_failed
+        if timer is not None:
+            try:
+                timer.cancel()
+                timer.join(timeout=max(0.001, deadline - time.monotonic()))
+                clean = not timer.is_alive() and clean
+            except (OSError, RuntimeError):
+                clean = False
+        if process is not None:
+            try:
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=max(0.001, deadline - time.monotonic()))
+            except (OSError, ValueError, subprocess.TimeoutExpired):
+                clean = False
+            for stream in (process.stdin, process.stdout):
+                if stream is not None:
+                    try:
+                        # Do not retry a stdin close that already failed or
+                        # returned an uncertain state in the request phase.
+                        if stream is not process.stdin or not stdin_close_attempted:
+                            stream.close()
+                        if not stream.closed:
+                            clean = False
+                    except (OSError, ValueError):
+                        clean = False
+        return clean
+
+    def command(self, oid: str, expected_type: str) -> bytes:
+        # One exact OID, one process, one bounded header/payload exchange.
+        if self.stopped:
+            _fail("reader_stopped")
+        if _OID.fullmatch(oid) is None or expected_type not in ("commit", "tree", "blob"):
+            self.stopped = True
             _fail("command_invalid")
-        remaining = self.deadline - time.monotonic()
-        if remaining <= 0:
+        deadline = min(self.deadline, time.monotonic() + _COMMAND_SECONDS)
+        if deadline <= time.monotonic():
+            self.stopped = True
             _fail("timeout")
         command = [
             self.executable,
@@ -184,86 +216,131 @@ class _Reader:
             "-c", "core.fsmonitor=false",
             "-c", "core.hooksPath=" + os.devnull,
             "-c", "core.attributesFile=" + os.devnull,
-            *arguments,
+            "cat-file", "--batch",
         ]
+        process = timer = None
+        expired = threading.Event()
+        completed = False
+        stdin_close_attempted = stdin_close_failed = False
+
+        def remaining():
+            value = deadline - time.monotonic()
+            if expired.is_set() or value <= 0:
+                _fail("timeout")
+            return value
+
         try:
-            with subprocess.Popen(
-                command,
-                shell=False,
-                cwd=self.repository,
-                env=self.environment,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-            ) as process:
-                expired = threading.Event()
+            process = subprocess.Popen(
+                command, shell=False, cwd=self.repository, env=self.environment,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            )
+            # Process creation cannot be interrupted portably; charge its elapsed
+            # time and reject before sending if the deadline has already elapsed.
+            interval = remaining()
 
-                def expire() -> None:
-                    expired.set()
-                    try:
-                        process.kill()
-                    except OSError:
-                        pass
-
-                timer = threading.Timer(min(_COMMAND_SECONDS, remaining), expire)
-                timer.daemon = True
-                timer.start()
+            def expire():
+                expired.set()
                 try:
-                    if process.stdout is None:
-                        _fail("read_failed")
-                    # Bounded even if the object database changes after -s.
-                    payload = process.stdout.read(max_bytes + 1)
-                    if len(payload) > max_bytes:
-                        process.kill()
-                    process.wait(timeout=_COMMAND_SECONDS)
-                finally:
-                    timer.cancel()
-                    if process.poll() is None:
-                        process.kill()
-                        process.wait(timeout=_COMMAND_SECONDS)
-                if expired.is_set():
-                    _fail("timeout")
-                if len(payload) > max_bytes:
-                    _fail("output_limit")
-                if process.returncode != 0:
-                    _fail("object_unavailable")
-                return payload
+                    process.kill()
+                except OSError:
+                    pass
+
+            timer = threading.Timer(interval, expire)
+            timer.daemon = True
+            timer.start()
+            if process.stdin is None or process.stdout is None:
+                _fail("read_failed")
+            remaining()
+            request = oid.encode("ascii") + b"\n"
+            if process.stdin.write(request) != len(request):
+                _fail("read_failed")
+            stdin_close_attempted = True
+            try:
+                process.stdin.close()  # EOF: no second OID is accepted.
+            except BaseException:
+                stdin_close_failed = True
+                raise
+            header = process.stdout.readline(129)
+            remaining()
+            if header == oid.encode("ascii") + b" missing\n":
+                _fail("object_unavailable")
+            match = re.fullmatch(
+                rb"([0-9a-f]{40}) (commit|tree|blob|tag) (0|[1-9][0-9]{0,19})\n", header,
+            )
+            if len(header) > 128 or match is None:
+                _fail("batch_header_invalid")
+            returned_oid, kind, size_bytes = match.groups()
+            if returned_oid.decode("ascii") != oid:
+                _fail("object_hash_invalid")
+            if kind != expected_type.encode("ascii"):
+                _fail("object_type_invalid")
+            size = int(size_bytes)
+            if size > _MAX_OBJECT_BYTES:
+                _fail("object_size_limit")
+            if self.total_bytes + size > _MAX_TOTAL_BYTES:
+                _fail("total_size_limit")
+            # Exact payload, one delimiter, at most one excess byte; never
+            # communicate() or an unbounded read even for hostile output.
+            framed = process.stdout.read(size + 2)
+            remaining()
+            if len(framed) > size + 1:
+                _fail("output_limit")
+            if len(framed) != size + 1:
+                _fail("object_size_invalid")
+            if framed[-1:] != b"\n":
+                _fail("batch_framing_invalid")
+            process.wait(timeout=remaining())
+            if process.returncode != 0:
+                _fail("object_unavailable")
+            payload = framed[:-1]
+            object_header = kind + b" " + size_bytes + b"\0"
+            if hashlib.sha1(object_header + payload).hexdigest() != oid:
+                _fail("object_hash_invalid")
+            remaining()
+            completed = True
+            return payload
         except ExternalClosurePrimitiveError:
+            self.stopped = True
             raise
         except subprocess.TimeoutExpired:
+            self.stopped = True
             _fail("timeout")
         except (OSError, ValueError):
+            self.stopped = True
+            if expired.is_set() or time.monotonic() >= deadline:
+                _fail("timeout")
             _fail("read_failed")
+        except BaseException:
+            self.stopped = True
+            raise
+        finally:
+            if not self._release(process, timer, stdin_close_attempted=stdin_close_attempted,
+                                 stdin_close_failed=stdin_close_failed):
+                self.stopped = True
+                _fail("cleanup_failed")
+            if completed and (expired.is_set() or time.monotonic() >= deadline):
+                self.stopped = True
+                _fail("timeout")
 
     def read(self, oid: str, expected_type: str) -> bytes:
+        if self.stopped:
+            _fail("reader_stopped")
+        if time.monotonic() >= self.deadline:
+            self.stopped = True
+            _fail("timeout")
         if oid in self.cache:
             actual_type, payload = self.cache[oid]
             if actual_type != expected_type:
+                self.stopped = True
                 _fail("object_type_invalid")
             return payload
         if len(self.cache) >= _MAX_OBJECTS:
+            self.stopped = True
             _fail("object_count_limit")
-        kind = self.command(("cat-file", "-t", oid), max_bytes=16)
-        if kind != expected_type.encode("ascii") + b"\n":
-            _fail("object_type_invalid")
-        size_bytes = self.command(("cat-file", "-s", oid), max_bytes=32)
-        if re.fullmatch(rb"(?:0|[1-9][0-9]*)\n", size_bytes) is None:
-            _fail("object_size_invalid")
-        size = int(size_bytes)
-        if size > _MAX_OBJECT_BYTES:
-            _fail("object_size_limit")
-        if self.total_bytes + size > _MAX_TOTAL_BYTES:
-            _fail("total_size_limit")
-        payload = self.command(("cat-file", expected_type, oid), max_bytes=size)
-        if len(payload) != size:
-            _fail("object_size_invalid")
-        header = expected_type.encode("ascii") + b" " + str(size).encode("ascii") + b"\0"
-        if hashlib.sha1(header + payload).hexdigest() != oid:
-            _fail("object_hash_invalid")
+        payload = self.command(oid, expected_type)
         self.cache[oid] = (expected_type, payload)
-        self.total_bytes += size
+        self.total_bytes += len(payload)
         return payload
-
 
 def _tree_entries(payload: bytes) -> tuple[tuple[str, str, str], ...]:
     entries: list[tuple[str, str, str]] = []

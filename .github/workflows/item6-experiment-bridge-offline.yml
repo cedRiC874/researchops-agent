@@ -1,0 +1,167 @@
+name: item6-experiment-bridge-offline
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "evals/**"
+      - "services/agent_workflow_comparison_v1/**"
+      - "tests/**"
+      - "scripts/**"
+      - "requirements.lock"
+      - "requirements.linux.lock"
+      - "pyproject.toml"
+      - "probe_out_v3.json"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/item6-controlled-comparison.yml"
+      - ".github/workflows/item6-experiment-bridge-offline.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "evals/**"
+      - "services/agent_workflow_comparison_v1/**"
+      - "tests/**"
+      - "scripts/**"
+      - "requirements.lock"
+      - "requirements.linux.lock"
+      - "pyproject.toml"
+      - "probe_out_v3.json"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/item6-controlled-comparison.yml"
+      - ".github/workflows/item6-experiment-bridge-offline.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bridge-offline:
+    runs-on: windows-2022
+    # Outer test budget includes many isolated real source/store processes, not a runtime SLA.
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        env:
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          set-safe-directory: false
+          clean: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+      - name: Install locked dependencies
+        run: |
+          python -m pip install -r requirements.lock
+          exit $LASTEXITCODE
+      - name: Verify actual checkout before deriving fixtures
+        env:
+          ITEM6_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/src;$env:GITHUB_WORKSPACE"
+          @'
+          """Exact checkout gate, embedded unchanged in the proposed narrow workflow."""
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import time
+          
+          
+          def require_exact_git_blob(blob, oid):
+              # This is raw-byte validation, not a CRLF/LF normalization allowance.
+              actual=hashlib.sha1(b'blob '+str(len(blob)).encode()+b'\0'+blob).hexdigest()
+              if actual!=oid:raise ValueError('git_blob')
+          
+          
+          def main():
+              record=dict(status='failed',stage='bootstrap',expected_head=None,actual_head=None,tree=None,git_reads=[],
+                          source_integrity_only=True,online_execution_authorized=False,tests_executed=False)
+              destination=None
+              def digest(data):return hashlib.sha256(data).hexdigest()
+              def git(root,*args):
+                  env={k:os.environ[k] for k in ('PATH','SystemRoot','WINDIR','TEMP','TMP','COMSPEC','PATHEXT') if k in os.environ}
+                  env.update(GIT_CONFIG_GLOBAL=os.devnull,GIT_CONFIG_NOSYSTEM='1',GIT_TERMINAL_PROMPT='0',GIT_NO_LAZY_FETCH='1')
+                  start=time.monotonic();code=None;outcome='start_failed';stderr=None
+                  try:
+                      result=subprocess.run(['git','--no-optional-locks',*args],cwd=root,env=env,capture_output=True,timeout=120)
+                      code=result.returncode;stderr=result.stderr;outcome='returned'
+                      if code!=0:raise RuntimeError('git_nonzero')
+                      return result.stdout
+                  except subprocess.TimeoutExpired:
+                      outcome='timed_out';raise RuntimeError('git_timeout') from None
+                  finally:
+                      # No command content, exception body, stderr text or environment values.
+                      record['git_reads'].append(dict(operation=args[0],outcome=outcome,actual_exit_code=code,
+                          elapsed_seconds=time.monotonic()-start,stderr_bytes=None if stderr is None else len(stderr),
+                          stderr_sha256=None if stderr is None else digest(stderr)))
+              try:
+                  root=Path(os.environ['GITHUB_WORKSPACE']).absolute()
+                  expected=os.environ['ITEM6_EXPECTED_HEAD'];rid=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
+                  if re.fullmatch(r'[0-9a-f]{40}',expected) is None or not rid.isdigit() or not attempt.isdigit():raise ValueError('identity')
+                  folder=root/'output/item6-checkout-source'/('CI-'+rid+'-'+attempt)
+                  folder.mkdir(parents=True,exist_ok=False);destination=folder/'checkout-source.json'
+                  if Path.cwd()!=root:raise ValueError('cwd')
+                  record.update(stage='identity',expected_head=expected)
+                  actual=git(root,'rev-parse','HEAD').decode().strip();tree=git(root,'rev-parse','HEAD^{tree}').decode().strip()
+                  record.update(actual_head=actual,tree=tree)
+                  if actual!=expected or git(root,'status','--porcelain','--untracked-files=normal').strip():raise ValueError('checkout_identity')
+                  record['stage']='git_bytes';count=0
+                  for item in git(root,'ls-tree','-r','-z',actual).split(b'\0'):
+                      if not item:continue
+                      meta,name=item.split(b'\t',1);mode,kind,oid=meta.split();path=root/name.decode('utf-8')
+                      if mode not in (b'100644',b'100755') or kind!=b'blob' or not path.is_file() or path.is_symlink() or path.is_junction():raise ValueError('git_file')
+                      blob=path.read_bytes()
+                      require_exact_git_blob(blob,oid.decode())
+                      count+=1
+                  record['tracked_files_verified']=count
+                  record['stage']='source'
+                  sys.path.insert(0,str(root/'src'))
+                  from researchops_internal_telemetry import source_integrity_v3 as source
+                  if Path(source.__file__).resolve()!=root/'src/researchops_internal_telemetry/source_integrity_v3.py':raise ValueError('source_import')
+                  manifest=source.verify_source(root,expected='56d87b3e4aa022defd94bcbe6fd247308ed110a3d4da6b748e8d7f0b82351ddb')
+                  manifest_sha=digest((root/source.MANIFEST).read_bytes())
+                  if manifest_sha!='845eacf0f9b050ab4a033c5363b083d62000806a7db1c28a57afa980d54de0d4':raise ValueError('manifest_sha')
+                  record.update(status='valid',stage='complete',source_commitment_sha256=manifest['commitment_sha256'],
+                                manifest_sha256=manifest_sha,source_file_count=len(manifest['files']))
+                  code=0
+              except BaseException:
+                  code=1
+              record['intended_exit_code']=code
+              try:
+                  if destination is not None:
+                      with destination.open('xb') as f:
+                          data=(json.dumps(record,sort_keys=True)+'\n').encode();f.write(data);f.flush();os.fsync(f.fileno())
+                  sys.stdout.write(json.dumps(record)+'\n');sys.stdout.flush()
+              except BaseException:return 2
+              return code
+          
+          
+          if __name__=='__main__':sys.exit(main())
+          '@ | python -B -X utf8 -
+          exit $LASTEXITCODE
+      - name: Run only bridge and affected checks
+        run: |
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/src;$env:GITHUB_WORKSPACE"
+          python -B -X utf8 -m tests.item6_experiment_fixture suite "CI-${{ github.run_id }}-${{ github.run_attempt }}"
+          exit $LASTEXITCODE
+      - name: Retain this isolated attempt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: item6-bridge-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/item6-bridge-validation/CI-${{ github.run_id }}-${{ github.run_attempt }}/public/
+            output/item6-checkout-source/CI-${{ github.run_id }}-${{ github.run_attempt }}/
+          overwrite: false
+          if-no-files-found: warn

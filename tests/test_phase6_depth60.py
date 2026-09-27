@@ -194,7 +194,7 @@ class Phase6Depth60PlanTests(unittest.TestCase):
         self.assertIn("0157e921793e0afe5cd897456535c324ccede9b203eb6792375f1d9b7d67e66d", workflow)
         self.assertIn("072c1a542427e3282bb3072b7db662dfda43fd0a1e8f062a6a1dd9e545f7750e", workflow)
         self.assertIn('$history.current_legacy_rejections.internal_online_v1 -ne "internal_source_drift"', workflow)
-        self.assertIn('$currentInternal.algorithm -ne "internal-current-tree-offline-source-v2"', workflow)
+        self.assertIn('$currentInternal.algorithm -ne "internal-current-tree-offline-source-v3"', workflow)
         self.assertIn("$currentInternal.historical_result_revalidated -ne $false", workflow)
         self.assertIn("$currentInternal.online_execution_authorized -ne $false", workflow)
         self.assertIn("$currentInternal.runtime_admission_verified -ne $false", workflow)
@@ -203,7 +203,7 @@ class Phase6Depth60PlanTests(unittest.TestCase):
             workflow,
         )
         self.assertIn(
-            '$history.current_validation_scope -ne "internal_v2_offline_source_integrity_only"',
+            '$history.current_validation_scope -ne "internal_v3_offline_source_integrity_only"',
             workflow,
         )
         self.assertIn(
