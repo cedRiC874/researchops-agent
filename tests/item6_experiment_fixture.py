@@ -24,6 +24,19 @@ BASE = "5605396e165fc5140eba54340d5a9c93f67540dc"
 PYTHON = sys.executable
 _temporary = []
 RESULTS = []
+CLAIM_MODES = {"claim_write": "write", "claim_fsync": "fsync", "claim_close": "close"}
+CLAIM_ERROR_CODES = frozenset((
+    "local_claim_write_unknown", "local_claim_close_unknown", "local_claim_failed",
+    "local_claim_already_exists", "local_claim_file_invalid", "local_claim_store_invalid",
+    "local_claim_store_changed", "local_claim_environment_mismatch", "local_claim_request_invalid",
+    "local_claim_contract_invalid", "local_claim_receipt_unverifiable",
+    "item6_approval_window", "item6_source_manifest_drift", "item6_entry_mode_mismatch",
+    "item6_prepared_required", "item6_output_exists", "item6_execution_failed", "item6_offline_store_isolation",
+))
+STORE_CHECKS = ("exact_path_type", "absolute", "parent_matches_temp", "name_prefix",
+                "resolved_identity", "not_symlink", "not_junction")
+DIAGNOSTIC_ERROR_TYPES = {OSError: "OSError", PermissionError: "PermissionError",
+    FileNotFoundError: "FileNotFoundError", RuntimeError: "RuntimeError", ValueError: "ValueError"}
 NEW_TESTS = (
     "tests.test_item6_experiment_authority", "tests.test_item6_experiment_session",
     "tests.test_item6_experiment_budget", "tests.test_item6_experiment_artifacts",
@@ -100,6 +113,17 @@ def run_case(mode="normal"):
     value = json.loads(rows[-1]); value["process_exit_code"] = result.returncode
     value["fixture_root"] = str(root)
     value["stderr"] = result.stderr
+    if "store_isolation_diagnostic" in value:
+        value["store_isolation_diagnostic"] = project_store_observation(value["store_isolation_diagnostic"])
+        emit_safe_diagnostic("ITEM6_STORE_DIAGNOSTIC", value["store_isolation_diagnostic"])
+    if mode in CLAIM_MODES:
+        diagnostic = claim_diagnostic(mode, value)
+        from researchops_external_closure.io import scan_public_artifact_bytes
+        encoded_diagnostic = json.dumps(diagnostic, ensure_ascii=True, sort_keys=True)
+        scan_public_artifact_bytes((encoded_diagnostic.encode(),))
+        value["claim_fault_diagnostic"] = diagnostic
+        # Emitted before any original assertion; never includes stdout/stderr or exception text.
+        print("ITEM6_CLAIM_DIAGNOSTIC " + encoded_diagnostic, flush=True)
     RESULTS.append(value)
     directory = ROOT / "output/item6-bridge-validation/probes"
     directory.mkdir(parents=True, exist_ok=True)
@@ -108,6 +132,221 @@ def run_case(mode="normal"):
         encoded = json.dumps({"diagnostic_copy_redacted": True, "payload": json.loads(encoded.replace("offline-fixture-key-item6", "<synthetic-key-redacted>"))}, ensure_ascii=False, indent=2)
     (directory / (mode + "-" + uuid.uuid4().hex + ".json")).write_text(encoded, encoding="utf-8")
     return value
+
+
+def claim_error_observation(error):
+    """Exact trusted exception classes, literal codes only; never stringify errors."""
+    from researchops_completion_timing.local_claim import LocalClaimError
+    from researchops_item6_experiment_v1.contract import ExperimentError
+    trusted = {LocalClaimError: "LocalClaimError", ExperimentError: "ExperimentError"}
+    error_type = type(error)
+    name = trusted.get(error_type)
+    code = getattr(error, "code", None) if error_type in trusted else None
+    retained = type(code) is str and code in CLAIM_ERROR_CODES
+    return dict(exception_type=name, code=code if retained else None,
+                code_status="allowlisted" if retained else "not_allowlisted")
+
+
+def project_store_observation(value):
+    source = value.get("checks") if type(value) is dict else None
+    source = source if type(source) is dict else {}
+    checks = {}
+    for name in STORE_CHECKS:
+        row = source.get(name)
+        row = row if type(row) is dict else {}
+        status, observed, error = row.get("status"), row.get("value"), row.get("error_type")
+        if type(status) is str and status == "observed" and type(observed) is bool:
+            checks[name] = dict(status="observed", value=observed, error_type=None)
+        elif type(status) is str and status == "error" and observed is None and type(error) is str and error in (*DIAGNOSTIC_ERROR_TYPES.values(), "other"):
+            checks[name] = dict(status="error", value=None, error_type=error)
+        else:
+            checks[name] = dict(status="not_observed", value=None, error_type=None)
+    return dict(schema="item6-store-isolation-observation/1", checks=checks,
+        observation_scope="pre_admission_snapshot_not_gate_result", authority_granted=False,
+        path_values_recorded=False, exception_text_recorded=False)
+
+
+def observe_test_location(path):
+    """Observe the seven predicates without replacing, calling or overriding the gate."""
+    checks = {name: dict(status="not_observed", value=None, error_type=None) for name in STORE_CHECKS}
+    exact = type(path) is type(Path())
+    checks["exact_path_type"] = dict(status="observed", value=exact, error_type=None)
+    if exact:
+        operations = {
+            "absolute": path.is_absolute,
+            "parent_matches_temp": lambda: path.parent.resolve() == Path(tempfile.gettempdir()).resolve(),
+            "name_prefix": lambda: path.name.startswith("item6-test-store-"),
+            "resolved_identity": lambda: path.resolve() == path,
+            "not_symlink": lambda: not path.is_symlink(),
+            "not_junction": lambda: not path.is_junction(),
+        }
+        for name, operation in operations.items():
+            try:
+                observed = operation()
+                if type(observed) is bool:
+                    checks[name] = dict(status="observed", value=observed, error_type=None)
+            except Exception as error:
+                checks[name] = dict(status="error", value=None, error_type=DIAGNOSTIC_ERROR_TYPES.get(type(error), "other"))
+    return project_store_observation(dict(checks=checks))
+
+
+def emit_safe_diagnostic(marker, value):
+    from researchops_external_closure.io import scan_public_artifact_bytes
+    if marker not in {"ITEM6_STORE_DIAGNOSTIC", "ITEM6_CLAIM_RACE_DIAGNOSTIC"}:
+        raise ValueError("diagnostic_marker")
+    encoded = json.dumps(value, ensure_ascii=True, sort_keys=True)
+    if len(encoded.encode()) > 16384: raise ValueError("diagnostic_size")
+    scan_public_artifact_bytes((encoded.encode(),))
+    print(marker + " " + encoded, flush=True)
+
+
+def record_test_location(path):
+    value = observe_test_location(path)
+    emit_safe_diagnostic("ITEM6_STORE_DIAGNOSTIC", value)
+    RESULTS.append(dict(kind="store_isolation_diagnostic", diagnostic=value))
+    return value
+
+
+def write_race_diagnostic(directory, index, stage, value):
+    if index not in ("0", "1") or stage not in {"location", "failure"}:
+        raise ValueError("race_diagnostic_identity")
+    from researchops_external_closure.io import scan_public_artifact_bytes
+    data = (json.dumps(value, ensure_ascii=True, sort_keys=True) + "\n").encode()
+    if len(data) > 4096: raise ValueError("race_diagnostic_size")
+    scan_public_artifact_bytes((data,))
+    with (directory / ("diagnostic-" + index + "-" + stage + ".json")).open("xb") as stream:
+        stream.write(data); stream.flush(); os.fsync(stream.fileno())
+
+
+def claim_child_with_diagnostics(command_name, known, directory, index):
+    # No returned receipt/code is replaced; the original child exception is re-raised.
+    if command_name != "claim-only": raise ValueError("race_diagnostic_command")
+    write_race_diagnostic(directory, index, "location", observe_test_location(known))
+    try:
+        return claim_fixture_child(command_name, known, directory, index)
+    except BaseException as error:
+        try:
+            write_race_diagnostic(directory, index, "failure", claim_error_observation(error))
+        except Exception as evidence_error:
+            raise error from evidence_error
+        raise
+
+
+def race_children_diagnostic(processes, directory):
+    from researchops_external_closure.io import read_regular_file_no_follow
+    if len(processes) != 2: raise ValueError("race_process_count")
+    rows = []
+    for index, process in enumerate(processes):
+        try:
+            code = process.poll()
+            status = "observed" if type(code) is int and -(2**31) <= code <= 2**32-1 else "still_running" if code is None else "invalid"
+        except Exception:
+            code, status = None, "observation_error"
+        row = dict(index=index, actual_exit_code=code if status == "observed" else None, exit_status=status,
+                   location=None, location_status="missing", failure_code=None, failure_code_status="missing")
+        for stage in ("location", "failure"):
+            try:
+                payload = json.loads(read_regular_file_no_follow(directory / ("diagnostic-"+str(index)+"-"+stage+".json"), max_bytes=4096))
+                if type(payload) is not dict: raise ValueError("race_diagnostic_shape")
+                if stage == "location":
+                    row.update(location=project_store_observation(payload), location_status="observed")
+                else:
+                    trusted = payload.get("exception_type") in ("LocalClaimError", "ExperimentError")
+                    code_value = payload.get("code")
+                    allowed = trusted and type(code_value) is str and code_value in CLAIM_ERROR_CODES and payload.get("code_status") == "allowlisted"
+                    row.update(failure_code=code_value if allowed else None, failure_code_status="allowlisted" if allowed else "not_allowlisted")
+            except FileNotFoundError:
+                pass
+            except Exception:
+                row["location_status" if stage == "location" else "failure_code_status"] = "unavailable"
+        rows.append(row)
+    return dict(schema="item6-race-early-exit-diagnostic/1", children=rows,
+                stdout_recorded=False, stderr_recorded=False, exception_text_recorded=False,
+                cleanup_proved=False, processes_modified=False)
+
+
+def record_race_early_exit(processes, directory):
+    diagnostic = race_children_diagnostic(processes, directory)
+    emit_safe_diagnostic("ITEM6_CLAIM_RACE_DIAGNOSTIC", diagnostic)
+    RESULTS.append(dict(kind="claim_race_early_exit", diagnostic=diagnostic))
+
+
+def claim_diagnostic(mode, value):
+    """Bounded pure projection of existing observations, not replacement assertions."""
+    if type(mode) is not str or mode not in CLAIM_MODES or type(value) is not dict:
+        raise ValueError("claim_diagnostic_input")
+
+    def field(mapping, key, kind, choices=()):
+        if type(mapping) is not dict or key not in mapping:
+            return dict(status="missing", value=None)
+        item = mapping[key]
+        if item is None:
+            return dict(status="null", value=None)
+        valid = ((kind == "bool" and type(item) is bool)
+                 or (kind == "int" and type(item) is int and -(2**31) <= item <= 2**32-1)
+                 or (kind == "enum" and type(item) is str and item in choices))
+        return dict(status="observed" if valid else "redacted_invalid", value=item if valid else None)
+
+    def length(key):
+        if key not in value: return dict(status="missing", value=None)
+        items = value[key]
+        if items is None: return dict(status="null", value=None)
+        valid = type(items) is list and len(items) <= 4096
+        return dict(status="observed" if valid else "redacted_invalid", value=len(items) if valid else None)
+
+    post = value.get("post_checks")
+    fault = post.get("claim_fault") if type(post) is dict else None
+    observations = {
+        "process_exit_code": field(value, "process_exit_code", "int"),
+        "claim_may_exist": field(value, "claim_may_exist", "bool"),
+        "claim_files": field(value, "claim_files", "int"),
+        "calls_count": length("calls"),
+        "target": field(fault, "target", "enum", tuple(CLAIM_MODES.values())),
+        "call_count": field(fault, "call_count", "int"),
+    }
+    hits = value.get("hits")
+    hit_valid = type(hits) is list and len(hits) <= 4096
+    observations["mode_in_hits"] = dict(status="observed" if hit_valid else "missing" if "hits" not in value else "null" if hits is None else "redacted_invalid",
+        value=any(type(item) is str and item == mode for item in hits) if hit_valid else None)
+    for key in ("claim_parent_matched", "module_os_isolated", "module_os_restored", "process_os_unchanged"):
+        observations[key] = field(fault, key, "bool")
+    expectations = {"process_exit_code": 2, "claim_may_exist": True, "claim_files": 1, "calls_count": 0,
+                    "mode_in_hits": True, "target": CLAIM_MODES[mode], "call_count": 1,
+                    "claim_parent_matched": True, "module_os_isolated": True, "module_os_restored": True,
+                    "process_os_unchanged": True}
+    checks = {}
+    for key, expected in expectations.items():
+        observed = observations[key]
+        comparison = "at_least" if key == "call_count" else "equals"
+        matches = (observed["value"] >= expected if key == "call_count" else observed["value"] == expected) if observed["status"] == "observed" else None
+        checks[key] = dict(expected=expected, comparison=comparison, actual=observed, matches=matches)
+    error = value.get("claim_error_observation")
+    error = error if type(error) is dict else {}
+    return dict(schema="item6-claim-assertion-diagnostic/1", mode=mode, checks=checks,
+        result_error=field(value, "error", "enum", CLAIM_ERROR_CODES),
+        exception_type=field(error, "exception_type", "enum", ("LocalClaimError", "ExperimentError")),
+        exception_code=field(error, "code", "enum", CLAIM_ERROR_CODES),
+        exception_code_status=field(error, "code_status", "enum", ("allowlisted", "not_allowlisted")),
+        exception_text_recorded=False, exception_args_recorded=False, stderr_recorded=False,
+        observation_scope="before_original_assertions", diagnostic_only=True)
+
+
+def claim_diagnostics_for_report(results):
+    # Reproject original records; do not trust a nested diagnostic supplied by a fixture.
+    selected = [row for row in results if type(row) is dict and type(row.get("mode")) is str and row["mode"] in CLAIM_MODES]
+    if len(selected) > 3: raise ValueError("claim_diagnostic_count")
+    return [claim_diagnostic(row["mode"], row) for row in selected]
+
+
+def public_validation_report(report, result):
+    from services.agent_workflow_comparison_v1.controlled_publication_v1.public_artifacts import project
+    from researchops_external_closure.io import scan_public_artifact_bytes
+    derived = project(report)
+    try: scan_public_artifact_bytes((json.dumps(derived, ensure_ascii=False).encode(),))
+    except Exception:
+        derived["log"] = "Raw diagnostic log retained locally; not exported because of privacy-pattern detection."
+        derived["failure_test_ids"] = [str(test) for test, _ in result.failures + result.errors]
+    return derived
 
 
 @functools.lru_cache(maxsize=3)
@@ -159,7 +398,9 @@ def concurrent_claims():
     deadline = time.monotonic() + 180
     while not all((config / ("ready-" + str(index))).exists() for index in range(2)):
         if time.monotonic() > deadline: raise AssertionError("claim race readiness timeout")
-        if any(process.poll() is not None for process in processes): raise AssertionError("claim race child exited before barrier")
+        if any(process.poll() is not None for process in processes):
+            record_race_early_exit(processes, config)
+            raise AssertionError("claim race child exited before barrier")
         time.sleep(0.05)
     (config / "go").write_text("go", encoding="utf-8")
     results = []
@@ -214,8 +455,6 @@ def claim_fixture_child(command_name, known, directory, index=None):
 def suite_child(run_id, names):
     """Executed in an actual synthetic committed checkout, never a mock source verifier."""
     from researchops_internal_telemetry import source_integrity_v3 as source
-    from services.agent_workflow_comparison_v1.controlled_publication_v1.public_artifacts import project
-    from researchops_external_closure.io import scan_public_artifact_bytes
     before = source.verify_source(ROOT)
     directory = ROOT / "output/item6-bridge-validation" / run_id
     directory.mkdir(parents=True, exist_ok=False)
@@ -245,14 +484,16 @@ def suite_child(run_id, names):
         source_commitment_sha256=before["commitment_sha256"], provider_calls=0, real_store_touched=False,
         formal_comparison_result=False, log=stream.getvalue())
     report.update(planned_tests=planned_tests, test_plan_complete=result.testsRun == planned_tests, failfast=True)
-    (directory / "validation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    derived = project(report)
-    try: scan_public_artifact_bytes((json.dumps(derived, ensure_ascii=False).encode(),))
-    except Exception:
-        derived["log"] = "Raw diagnostic log retained locally; not exported because of privacy-pattern detection."
-        derived["failure_test_ids"] = [str(test) for test, _ in result.failures + result.errors]
-    (public / "validation.json").write_text(json.dumps(derived, ensure_ascii=False, indent=2), encoding="utf-8")
     fixture_results = getattr(sys.modules.get("tests.item6_experiment_fixture"), "RESULTS", RESULTS)
+    report["claim_fault_diagnostics"] = claim_diagnostics_for_report(fixture_results)
+    store_diagnostics = [project_store_observation(row.get("diagnostic") if row.get("kind") == "store_isolation_diagnostic" else row["store_isolation_diagnostic"])
+        for row in fixture_results if type(row) is dict and (row.get("kind") == "store_isolation_diagnostic" or "store_isolation_diagnostic" in row)]
+    race_diagnostics = [row["diagnostic"] for row in fixture_results if type(row) is dict and row.get("kind") == "claim_race_early_exit"]
+    if len(store_diagnostics) > 256 or len(race_diagnostics) > 1: raise ValueError("store_diagnostic_count")
+    report.update(store_isolation_diagnostics=store_diagnostics, claim_race_diagnostics=race_diagnostics)
+    (directory / "validation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    derived = public_validation_report(report, result)
+    (public / "validation.json").write_text(json.dumps(derived, ensure_ascii=False, indent=2), encoding="utf-8")
     (directory / "fixture-results.json").write_text(json.dumps(fixture_results, ensure_ascii=False, indent=2).replace("offline-fixture-key-item6", "<synthetic-key-redacted>"), encoding="utf-8")
     print(json.dumps({k:report[k] for k in ("tests", "failures", "errors", "skips", "intended_exit_code", "inputs_stable")}), flush=True)
     return code
@@ -532,6 +773,7 @@ async def exercise(mode):
                     return original_check(self, stage)
                 extra.enter_context(patch.object(finalization.FinalizationDeadline, "check", new=terminal_then_expire))
         failed_archive = None
+        store_diagnostic = observe_test_location(known)
         try:
             if mode == "offline_to_live":
                 hits.append(mode); result = await runner.run_live(**kwargs)
@@ -553,6 +795,8 @@ async def exercise(mode):
                     else: raise AssertionError("duplicate accepted")
         except BaseException as exc:
             error = c.safe_error(exc)
+            if mode in CLAIM_MODES:
+                post_checks["claim_error_observation"] = claim_error_observation(exc)
             claim_may_exist = bool(getattr(exc, "claim_may_exist", False))
             admission_observations = getattr(exc, "admission_observations", None)
             partial_observations = getattr(exc, "partial_observations", None)
@@ -565,6 +809,9 @@ async def exercise(mode):
             admission_observations=admission_observations, partial_observations=partial_observations, primary_stop_reason=primary_stop_reason,
             real_store_touched=False, provider_calls=0, network_attempts=len(real_network_attempts),
             synthetic_approval=True, synthetic_commit=True)
+        if mode in CLAIM_MODES:
+            value["claim_error_observation"] = post_checks.get("claim_error_observation")
+        value["store_isolation_diagnostic"] = store_diagnostic
         if result is not None:
             if "archive_kind" in result:
                 assert result["archive_kind"] == "unfinished_failure"
@@ -584,7 +831,8 @@ async def exercise(mode):
 
 if __name__ == "__main__":
     if sys.argv[1] in {"prepare-claim-fixture", "claim-only"}:
-        raise SystemExit(claim_fixture_child(sys.argv[1],Path(sys.argv[2]),Path(sys.argv[3]),sys.argv[4] if len(sys.argv)>4 else None))
+        child = claim_child_with_diagnostics if sys.argv[1] == "claim-only" else claim_fixture_child
+        raise SystemExit(child(sys.argv[1],Path(sys.argv[2]),Path(sys.argv[3]),sys.argv[4] if len(sys.argv)>4 else None))
     elif sys.argv[1] == "suite":
         raise SystemExit(suite_parent(sys.argv[2]))
     elif sys.argv[1] == "suite-remaining":
