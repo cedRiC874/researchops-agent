@@ -15,6 +15,7 @@ from researchops.deepseek_completion_first_live_validation import _environment_i
 from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import INSTRUCTION, fixed_path
 from . import contract as c
 from . import case_isolation as isolation
+from . import privacy_diagnostics as privacy
 from .authority import validate_experiment, _claim_experiment
 from .session import ExperimentFactory
 from .observations import Case, safe_business, score_business, write_archive
@@ -48,7 +49,8 @@ class _ObservedModel(Model):
                 arguments = c.decode(item.arguments.encode(), 8192)
                 field = "scope_id" if item.name == "inspect_sources" else "bundle_id"
                 c.require(set(arguments) == {field} and type(arguments[field]) is str, "model_arguments")
-                safe_business(arguments, key=case.factory.canary)
+                safe_business(arguments, key=case.factory.canary,
+                    diagnostic=lambda rule, error: privacy.record_model_failure(case, rule, error, location="sdk_tool_args"))
                 case.record["native_call_ids"].append(item.call_id)
                 case.plan(item.name, arguments, "actual_adapter_response")
                 calls.append(item)
@@ -57,7 +59,9 @@ class _ObservedModel(Model):
                 c.require(item.role == "assistant" and item.status == "completed", "message_state")
                 for part in item.content:
                     c.require(part.type == "output_text" and type(part.text) is str, "text_part")
-                    safe_business(part.text, key=case.factory.canary); texts.append(part.text)
+                    safe_business(part.text, key=case.factory.canary,
+                        diagnostic=lambda rule, error: privacy.record_model_failure(case, rule, error, location="sdk_text"))
+                    texts.append(part.text)
             else: raise c.ExperimentError("output_item")
         # item6-response-actions/1.1: one tool may carry one companion message.
         # Bound messages as well as text parts: the SDK selects the last message,

@@ -16,14 +16,25 @@ from researchops_external_closure.artifact_inputs import _read_database_rows
 from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import public_task, refusal, needs_design, INSTRUCTION
 from . import contract as c
 from . import case_isolation as isolation
+from . import privacy_diagnostics as privacy
 
 
-def safe_business(value, *, key=None):
+def safe_business(value, *, key=None, diagnostic=None):
     data = c.raw(value)
     c.require(len(data) <= c.policy()["business_field_bytes"], "business_size")
-    c.scan_public_artifact_bytes((data,), sensitive_canaries=(() if key is None else (key.encode(),)))
+    from researchops_external_closure.errors import ExternalClosurePrimitiveError
+    try:
+        c.scan_public_artifact_bytes((data,), sensitive_canaries=(() if key is None else (key.encode(),)))
+    except ExternalClosurePrimitiveError as error:
+        if type(error) is ExternalClosurePrimitiveError and error.code == "external_closure_sensitive_content_detected":
+            privacy.notify(diagnostic, "P00", error)
+        raise
     text = data.decode()
-    c.require(not re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|[A-Za-z]:[\\/]|/(?:Users|home)/|Traceback|Authorization|reasoning_text", text, re.I), "business_privacy")
+    rule = privacy.business_rule(text)
+    if rule is not None:
+        error = c.ExperimentError("business_privacy")
+        privacy.notify(diagnostic, rule, error)
+        raise error
 
 
 def safe_directory(path):
@@ -55,7 +66,8 @@ class Case:
             side_effect_scope="two frozen read-only tools", delivered_artifacts=[],
             human_help={"during_run": [], "observations_complete": True}, native_call_ids=[],
             formal_experiment_result=False,
-            case_lifecycle=dict(started_event_hash=None, closed_event_hash=None), case_rejection=None)
+            case_lifecycle=dict(started_event_hash=None, closed_event_hash=None), case_rejection=None,
+            privacy_diagnostic=None)
 
     def check_deadline(self):
         c.require(time.monotonic() - self.started < self.factory.freeze["budget"]["task_seconds"], "task_deadline")
@@ -243,7 +255,8 @@ def verify_archive(directory, *, expected_seal_sha256, expected_finalization_sha
                 runtime_authority_granted=False, formal_comparison_result=False,
                 collection_status=doc["collection_status"], collection_summary=doc["collection_summary"],
                 all_business_passed=doc["all_business_passed"],
-                unacknowledged_case_events=isolation.unacknowledged_events(doc))
+                unacknowledged_case_events=isolation.unacknowledged_events(doc),
+                unacknowledged_privacy_events=privacy.unacknowledged_events(doc))
 
 
 def _verify_document(directory, doc, db):
@@ -379,4 +392,5 @@ def _verify_document(directory, doc, db):
     c.require(replay_budget.snapshot() == doc["budget"], "budget_readback")
     c.require(doc["scores"] == score_business(freeze, doc["business"]), "score_readback")
     isolation.verify_document(doc, events)
+    privacy.verify_document(doc, events)
     return freeze, events

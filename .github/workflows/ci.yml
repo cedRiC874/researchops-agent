@@ -206,8 +206,8 @@ jobs:
           }
           if ($currentInternal.status -ne "valid" -or
               $currentInternal.algorithm -ne "internal-current-tree-offline-source-v3" -or
-              $currentInternal.source_commitment_sha256 -ne "c58a9e4081bbcfa049171642b34ce8af577ca9c5e99f53ced2758c84b23c9f21" -or
-              $currentInternal.manifest_sha256 -ne "84f411da01f85c23b89b77a00047aad22a7185509127fe8a60011b24c7cc5d66" -or
+              $currentInternal.source_commitment_sha256 -ne "59b14dd9d7b0a3f8f576fedfc31ef3ab2263e3a717c7b5027420b7c41c2a8e7a" -or
+              $currentInternal.manifest_sha256 -ne "e5a809b4945e5db8b05e527d6c4150a5fd0f6af65d83545787c0e84530d4d0d8" -or
               $currentInternal.source_integrity_only -ne $true -or
               $currentInternal.online_execution_authorized -ne $false -or
               $currentInternal.runtime_admission_verified -ne $false -or

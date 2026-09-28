@@ -74,7 +74,7 @@ class RefusalPolicyTests(unittest.TestCase):
         policy=c.case_rejection_policy()
         self.assertEqual(c.REJECTION_REVISION, 'item6-case-rejection-isolation/1.1')
         self.assertEqual((c.FREEZE_VERSION,c.ARTIFACT_VERSION,c.ARCHIVE_VERSION),
-            ('item6-experiment-freeze/1.2','item6-experiment-artifact/1.3','item6-experiment-archive/1.3'))
+            ('item6-experiment-freeze/1.2','item6-experiment-artifact/1.4','item6-experiment-archive/1.4'))
         self.assertEqual(policy['eligible_reasons'], ['missing_design','conflicting_design','policy_refusal'])
         self.assertTrue(policy['forbid_refusal_tool_execution'] and policy['require_zero_prior_tools'])
         self.assertFalse(policy['same_case_retry'])

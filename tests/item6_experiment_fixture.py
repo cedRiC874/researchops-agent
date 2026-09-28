@@ -42,6 +42,7 @@ STORE_CHECKS = ("exact_path_type", "absolute", "parent_matches_temp", "name_pref
 DIAGNOSTIC_ERROR_TYPES = {OSError: "OSError", PermissionError: "PermissionError",
     FileNotFoundError: "FileNotFoundError", RuntimeError: "RuntimeError", ValueError: "ValueError"}
 NEW_TESTS = (
+    "tests.test_item6_privacy_diagnostics",
     "tests.test_item6_refusal_isolation",
     "tests.test_item6_case_isolation",
     "tests.test_item6_experiment_authority", "tests.test_item6_experiment_session",
@@ -54,6 +55,7 @@ RELATED_TESTS = (
     "tests.test_deepseek_completion_first_live_validation", "tests.test_kimi_k3_handshake",
     "tests.test_phase6_depth60")
 OVERLAY = (
+    "tests/test_item6_privacy_diagnostics.py",
     "tests/test_item6_refusal_isolation.py",
     "tests/test_item6_case_isolation.py",
     "src/researchops/model_providers.py", "src/researchops_completion_telemetry/surface_mapping.py",
@@ -807,6 +809,19 @@ async def exercise(mode, *, observe_lock=False):
         if mode in faults and tid == "IC-01": hits.append(mode)
         if mode in text_variants and tid == "IC-01": hits.append(mode)
         response = await responders[tid].handle(request)
+        if mode.startswith("privacy_diag_") and tid == "IC-01":
+            target = 2 if mode == "privacy_diag_second" else 1
+            if responders[tid].count == target:
+                data = response.json()
+                if mode == "privacy_diag_args":
+                    data["output"] = [{"type": "function_call", "id": "fc_privacy", "call_id": "call_privacy",
+                        "name": "inspect_sources", "arguments": json.dumps({"scope_id": "Authorization"}), "status": "completed"}]
+                else:
+                    text = "sk-SyntheticFixtureOnly123456" if mode == "privacy_diag_public" else "Authorization"
+                    data["output"] = [{"type": "message", "id": "msg_privacy", "role": "assistant", "status": "completed",
+                        "content": [{"type": "output_text", "text": text}]}]
+                hits.append(mode + "_response_injected")
+                response = httpx2.Response(200, json=data)
         refusal_mode = mode.startswith("refusal_isolation_")
         isolation_target = ((refusal_mode and tid in {"IC-14", "IC-15", "IC-16"}) or (mode.startswith("isolation_") and
             (tid in {"IC-11", "IC-13"} if mode in {"isolation_design", "isolation_cross_case_error"}
@@ -928,6 +943,18 @@ async def exercise(mode, *, observe_lock=False):
                 return original_read(self, tool, arguments)
             extra.enter_context(patch.object(observations.Case, "_read_tool", new=counted_read))
         audit_points = {"reject": case_isolation.REJECT, "close": case_isolation.CLOSE, "seal": case_isolation.SEALED}
+        if mode in {"privacy_diag_io_before", "privacy_diag_io_after"}:
+            from researchops_item6_experiment_v1 import privacy_diagnostics
+            privacy_append = session.AuditLedger.append_event
+            def fail_privacy_append(self, run_id, event_type, payload, **kw):
+                if event_type == privacy_diagnostics.EVENT:
+                    hits.append(mode + "_append_hit")
+                    if mode.endswith("after"):
+                        privacy_append(self, run_id, event_type, payload, **kw)
+                        hits.append("privacy_diagnostic_committed_before_error")
+                    raise OSError("synthetic diagnostic write failure")
+                return privacy_append(self, run_id, event_type, payload, **kw)
+            extra.enter_context(patch.object(session.AuditLedger, "append_event", new=fail_privacy_append))
         if mode == "refusal_isolation_seal_failure":
             original_append = session.AuditLedger.append_event
             def fail_refusal_seal(self, run_id, event_type, payload, **kw):
