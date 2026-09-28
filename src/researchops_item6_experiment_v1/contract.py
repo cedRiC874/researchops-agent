@@ -13,11 +13,11 @@ from researchops_external_closure.io import read_regular_file_no_follow, scan_pu
 
 ROOT = Path(__file__).resolve().parents[2]
 DIRECTORY = "evals/item6_experiment_bridge_v1"
-REJECTION_REVISION = "item6-case-rejection-isolation/1.0"
-REJECTION_POLICY_PATH = DIRECTORY + "/case_rejection_policy_v1.json"
-FREEZE_VERSION = "item6-experiment-freeze/1.1"
-ARTIFACT_VERSION = "item6-experiment-artifact/1.2"
-ARCHIVE_VERSION = "item6-experiment-archive/1.2"
+REJECTION_REVISION = "item6-case-rejection-isolation/1.1"
+REJECTION_POLICY_PATH = DIRECTORY + "/case_rejection_policy_v1_1.json"
+FREEZE_VERSION = "item6-experiment-freeze/1.2"
+ARTIFACT_VERSION = "item6-experiment-artifact/1.3"
+ARCHIVE_VERSION = "item6-experiment-archive/1.3"
 SCOPE = "item6_controlled_experiment_v1"
 BASE = source.HISTORICAL_COMMIT
 SCORER = "fcc2026c60943de6016495ad244291689a9d491d"
@@ -84,9 +84,9 @@ def case_rejection_policy():
     """A fixed, source-bound policy; matching codes alone grant no capability."""
     value = decode(read(REJECTION_POLICY_PATH, 8192))
     expected = dict(schema_version=REJECTION_REVISION, eligible_path="agent",
-        eligible_reasons=["missing_design", "conflicting_design"],
+        eligible_reasons=["missing_design", "conflicting_design", "policy_refusal"],
         eligible_code="item6_tool_before_design_or_refusal", max_rejections_per_case=1,
-        max_rejections=16, require_zero_prior_tools=True, forbid_refusal_requests=True,
+        max_rejections=16, require_zero_prior_tools=True, forbid_refusal_tool_execution=True,
         same_case_retry=False, continue_only_after_closed_case_and_sealed_audit=True,
         exit_codes=dict(complete=0, complete_with_case_rejections=3, stopped=2))
     # Canonical byte comparison distinguishes bool from int (True == 1 in Python).
@@ -108,7 +108,7 @@ def model_handles(mode, tasks_sha256, task_ids):
 
 def schema(value, name):
     from jsonschema import Draft202012Validator, validators
-    names = {"freeze": "freeze_v1_1.schema.json", "artifact": "artifact_v1_2.schema.json",
+    names = {"freeze": "freeze_v1_2.schema.json", "artifact": "artifact_v1_3.schema.json",
              "approval": "approval.schema.json"}
     require(type(name) is str and name in names, "schema_name")
     document = decode(read(DIRECTORY + "/" + names[name]))

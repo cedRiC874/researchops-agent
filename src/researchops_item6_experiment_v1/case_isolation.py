@@ -88,7 +88,8 @@ def started(case):
 def reason(task, tool, arguments, evidence):
     """Pure frozen-metadata checks. Never invokes a tool or returns tool data."""
     from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import refusal
-    if refusal(task) or len(task["design_requests"]) == 1:
+    refused = refusal(task)
+    if not refused and len(task["design_requests"]) == 1:
         return None
     catalog = evidence["catalog"].get(task["scope_id"], [])
     if tool == "inspect_sources":
@@ -100,7 +101,12 @@ def reason(task, tool, arguments, evidence):
                    and task["bundle_id"] in {row["bundle_id"] for row in catalog})
     else:
         allowed = False
-    return ("missing_design" if not task["design_requests"] else "conflicting_design") if allowed else None
+    if not allowed:
+        return None
+    # Original tool refusal has already happened. This classifies a failed,
+    # zero-execution case; it never authorizes the rejected tool or fabricates
+    # a refusal answer. The same pure predicate is recomputed during readback.
+    return "policy_refusal" if refused else ("missing_design" if not task["design_requests"] else "conflicting_design")
 
 
 def _zero_tools(record, budget):
@@ -181,7 +187,7 @@ def register_rejection(case, error, tool, arguments):
     c.require(not any(e["event_type"] in {"item6_tool_started_v1", "item6_tool_finished_v1"}
                       and e["safe_payload"].get("case_run_id") == case.record["run_id"]
                       for e in exported["events"]), "isolation_audit_tool_executed")
-    item = dict(schema_version="item6-case-rejection/1.0", code=CODE, reason_kind=kind, plan_index=plan_index,
+    item = dict(schema_version="item6-case-rejection/1.1", code=CODE, reason_kind=kind, plan_index=plan_index,
         tool=tool, arguments_sha256=c.digest(c.raw(arguments)),
         native_call_id_sha256=c.digest(case.record["native_call_ids"][plan_index].encode()), response_links=links)
     base = common(case.factory.freeze, case.factory.owner.run_id, case.record)
@@ -436,7 +442,7 @@ def verify_document(doc, events):
                   and rejection["native_call_id_sha256"] == c.digest(row["native_call_ids"][index].encode()), "isolation_plan")
         why = reason(row["task_input"], plan["tool"], plan["arguments"], evidence)
         c.require(why is not None and why == rejection["reason_kind"] and rejection["code"] == CODE
-                  and rejection["schema_version"] == "item6-case-rejection/1.0"
+                  and rejection["schema_version"] == "item6-case-rejection/1.1"
                   and (not rejection_ack or any(f.get("code") == CODE for f in row["known_failures"])), "isolation_reason")
         links = response_links(events, doc["segments"], doc["budget"], base["model_case_id"])
         c.require(rejection["response_links"] == links, "isolation_response_links")

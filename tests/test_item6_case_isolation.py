@@ -18,8 +18,8 @@ class IsolationUnitTests(unittest.TestCase):
             task = self.tasks[tid]
             self.assertEqual(isolation.reason(task, "inspect_sources", {"scope_id": task["scope_id"]}, self.evidence), reason)
 
-    def test_refusal_and_valid_design_are_excluded(self):
-        for tid in ("IC-01", "IC-14"):
+    def test_valid_design_without_refusal_is_excluded(self):
+        for tid in ("IC-01", "IC-02"):
             task = self.tasks[tid]
             self.assertIsNone(isolation.reason(task, "inspect_sources", {"scope_id": task["scope_id"]}, self.evidence))
 
@@ -176,8 +176,8 @@ class IsolationIntegrationTests(unittest.TestCase):
         self.assertNotIn("target_tool_read_" + last, result["hits"])
         return result
 
-    def test_refusal_scope_and_catalog_are_still_batch_stops(self):
-        for mode in ("isolation_refusal", "isolation_scope", "isolation_catalog"):
+    def test_invalid_scope_and_catalog_are_still_batch_stops(self):
+        for mode in ("isolation_scope", "isolation_catalog"):
             with self.subTest(mode=mode):
                 result = self.assert_stopped(mode)
                 tid = result["calls"][-1]["task_id"]

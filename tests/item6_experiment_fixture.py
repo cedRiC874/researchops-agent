@@ -42,6 +42,7 @@ STORE_CHECKS = ("exact_path_type", "absolute", "parent_matches_temp", "name_pref
 DIAGNOSTIC_ERROR_TYPES = {OSError: "OSError", PermissionError: "PermissionError",
     FileNotFoundError: "FileNotFoundError", RuntimeError: "RuntimeError", ValueError: "ValueError"}
 NEW_TESTS = (
+    "tests.test_item6_refusal_isolation",
     "tests.test_item6_case_isolation",
     "tests.test_item6_experiment_authority", "tests.test_item6_experiment_session",
     "tests.test_item6_experiment_budget", "tests.test_item6_experiment_artifacts",
@@ -53,6 +54,7 @@ RELATED_TESTS = (
     "tests.test_deepseek_completion_first_live_validation", "tests.test_kimi_k3_handshake",
     "tests.test_phase6_depth60")
 OVERLAY = (
+    "tests/test_item6_refusal_isolation.py",
     "tests/test_item6_case_isolation.py",
     "src/researchops/model_providers.py", "src/researchops_completion_telemetry/surface_mapping.py",
     "src/researchops_external_closure/git_objects.py",
@@ -805,15 +807,17 @@ async def exercise(mode, *, observe_lock=False):
         if mode in faults and tid == "IC-01": hits.append(mode)
         if mode in text_variants and tid == "IC-01": hits.append(mode)
         response = await responders[tid].handle(request)
-        isolation_target = (mode.startswith("isolation_") and
+        refusal_mode = mode.startswith("refusal_isolation_")
+        isolation_target = ((refusal_mode and tid in {"IC-14", "IC-15", "IC-16"}) or (mode.startswith("isolation_") and
             (tid in {"IC-11", "IC-13"} if mode in {"isolation_design", "isolation_cross_case_error"}
-             else tid == ("IC-14" if mode == "isolation_refusal" else "IC-11")))
+             else tid == ("IC-14" if mode == "isolation_refusal" else "IC-11"))))
         if isolation_target:
             assert responders[tid].count == 1
             data = response.json()
             tool, arguments = "inspect_sources", {"scope_id": task["scope_id"]}
             if mode == "isolation_scope": arguments = {"scope_id": "outside-frozen-scope"}
             if mode == "isolation_catalog": tool, arguments = "read_aggregate", {"bundle_id": "aggregate-01"}
+            if mode == "refusal_isolation_scope": arguments = {"scope_id": "outside-frozen-scope"}
             data["output"] = [{"type": "function_call", "id": "fc_isolation_" + tid, "call_id": "call_isolation_" + tid,
                                "name": tool, "arguments": json.dumps(arguments), "status": "completed"}]
             hits.append("isolation_response_" + tid)
@@ -899,10 +903,14 @@ async def exercise(mode, *, observe_lock=False):
         factories = []
         post_checks = {}
         extra = ExitStack()
-        if mode in {"old_freeze", "isolation_policy_drift"}:
+        if mode in {"old_freeze", "previous_isolation_freeze", "isolation_policy_drift"}:
             if mode == "old_freeze":
                 freeze["schema_version"] = "item6-experiment-freeze/1.0"
                 freeze.pop("case_rejection_policy_revision"); freeze.pop("case_rejection_policy_sha256")
+            elif mode == "previous_isolation_freeze":
+                freeze["schema_version"] = "item6-experiment-freeze/1.1"
+                freeze["case_rejection_policy_revision"] = "item6-case-rejection-isolation/1.0"
+                freeze["case_rejection_policy_sha256"] = c.digest(c.read(c.DIRECTORY + "/case_rejection_policy_v1.json"))
             else: freeze["case_rejection_policy_sha256"] = "1" * 64
             # Keep the synthetic approval coherent, so rejection is attributable
             # to protocol/policy admission rather than an unrelated hash mismatch.
@@ -912,14 +920,22 @@ async def exercise(mode, *, observe_lock=False):
             approval["observation"]["approved_digest"] = approved
             kwargs.update(freeze_bytes=c.raw(freeze), approval_bytes=c.raw(approval), approved_digest=approved)
             hits.append(mode)
-        if mode.startswith("isolation_"):
+        if mode.startswith(("isolation_", "refusal_isolation_")):
             original_read = observations.Case._read_tool
             def counted_read(self, tool, arguments):
-                if self.path == "agent" and self.task["task_id"] in {"IC-11", "IC-13", "IC-14"}:
+                if self.path == "agent" and self.task["task_id"] in {"IC-11", "IC-13", "IC-14", "IC-15", "IC-16"}:
                     hits.append("target_tool_read_" + self.task["task_id"])
                 return original_read(self, tool, arguments)
             extra.enter_context(patch.object(observations.Case, "_read_tool", new=counted_read))
         audit_points = {"reject": case_isolation.REJECT, "close": case_isolation.CLOSE, "seal": case_isolation.SEALED}
+        if mode == "refusal_isolation_seal_failure":
+            original_append = session.AuditLedger.append_event
+            def fail_refusal_seal(self, run_id, event_type, payload, **kw):
+                if event_type == case_isolation.SEALED and payload.get("case_run_id", "").endswith("-agent-IC-14"):
+                    hits.append(mode)
+                    raise OSError("synthetic refusal seal failure")
+                return original_append(self, run_id, event_type, payload, **kw)
+            extra.enter_context(patch.object(session.AuditLedger, "append_event", new=fail_refusal_seal))
         for label, event in audit_points.items():
             if mode in {"isolation_audit_before_" + label, "isolation_audit_after_" + label}:
                 original_append = session.AuditLedger.append_event

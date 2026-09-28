@@ -26,11 +26,13 @@ EXPLICIT = (RECIPE, SCHEMA, "src/researchops_internal_telemetry/source_integrity
             "scripts/build_internal_source_integrity_v3.py", "scripts/verify_pre_v6_integrity.py",
             "evals/item6_experiment_bridge_v1/CONTRACT.md", SERVICE_MANIFEST,
             "evals/item6_experiment_bridge_v1/CASE_REJECTION_ISOLATION_V1.md",
+            "evals/item6_experiment_bridge_v1/CASE_REJECTION_ISOLATION_V1_1.md",
             "tests/internal_source_v2_historical_support.py", "tests/test_internal_source_integrity_v3.py",
             "tests/item6_experiment_fixture.py", "tests/test_item6_experiment_authority.py",
             "tests/test_item6_experiment_session.py", "tests/test_item6_experiment_budget.py",
             "tests/test_item6_experiment_artifacts.py", "tests/test_item6_experiment_integration.py",
             "tests/test_item6_case_isolation.py",
+            "tests/test_item6_refusal_isolation.py",
             "tests/test_internal_source_integrity_v2.py", "tests/test_deepseek_completion_first_live_validation.py",
             "tests/test_kimi_k3_handshake.py", "tests/test_phase6_depth60.py")
 
