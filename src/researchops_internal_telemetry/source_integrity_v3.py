@@ -28,6 +28,7 @@ EXPLICIT = (RECIPE, SCHEMA, "src/researchops_internal_telemetry/source_integrity
             "evals/item6_experiment_bridge_v1/CASE_REJECTION_ISOLATION_V1.md",
             "evals/item6_experiment_bridge_v1/CASE_REJECTION_ISOLATION_V1_1.md",
             "evals/item6_experiment_bridge_v1/PRIVACY_DIAGNOSTICS_V1.md",
+            "evals/item6_experiment_bridge_v1/BUSINESS_PRIVACY_RULES_V2.md",
             "tests/internal_source_v2_historical_support.py", "tests/test_internal_source_integrity_v3.py",
             "tests/item6_experiment_fixture.py", "tests/test_item6_experiment_authority.py",
             "tests/test_item6_experiment_session.py", "tests/test_item6_experiment_budget.py",

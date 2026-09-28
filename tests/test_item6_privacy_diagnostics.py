@@ -1,4 +1,4 @@
-"""No raw rejected content: unchanged scanner, safe labels, real offline path."""
+"""Named rules v2; unchanged shared scanner, safe labels, real offline path."""
 from copy import deepcopy
 import hashlib
 import json
@@ -18,23 +18,48 @@ LEGACY = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|[A-Za-z]:[\\/]|/(?:Use
 
 
 class PrivacyDiagnosticUnitTests(unittest.TestCase):
-    def test_matcher_union_order_and_flags_are_unchanged(self):
-        self.assertEqual(p.PATTERN, LEGACY)
-        examples=['plain','', 'AUTHORIZATION','x/home/demo','Traceback','reasoning_text','https://example.invalid',
-                  'C:/example','person@example.invalid','Traceback Authorization','Authorization Traceback']
-        for value in examples:
-            self.assertEqual(p.business_rule(value) is not None, re.search(LEGACY,value,re.I) is not None)
+    def test_legacy_rejections_are_preserved_as_history_not_current_semantics(self):
+        self.assertEqual(p.VERSION, 'item6-business-privacy-diagnostic/1.1')
+        self.assertEqual(p.RULE_REVISION, 'item6-business-privacy-rules/2.0')
+        for value in ('Authorization', 'Traceback', 'reasoning_text', 'https://example.invalid/home/help'):
+            self.assertIsNotNone(re.search(LEGACY, value, re.I))
+            self.assertIsNone(p.business_rule(value))
 
     def test_each_business_rule_has_only_an_opaque_label(self):
-        for value,rule in [('person@example.invalid','P01'),('C:/demo','P02'),('x/home/demo','P03'),
-                           ('Traceback','P04'),('Authorization','P05'),('reasoning_text','P06')]:
+        for value,rule in [('person@example.invalid','P01'),('C:/demo','P02'),('/home/demo','P03'),
+                           ('Traceback: synthetic frame','P04'),('Authorization=synthetic','P05'),('reasoning_text=synthetic','P06')]:
             self.assertEqual(p.business_rule(value),rule)
 
-    def test_legacy_url_rejection_is_not_silently_relaxed(self):
+    def test_new_url_acceptance_does_not_exempt_adjacent_sensitive_content(self):
         seen=[]
-        with self.assertRaisesRegex(c.ExperimentError,'item6_business_privacy'):
-            o.safe_business('https://example.invalid',diagnostic=lambda rule,error:seen.append(rule))
-        self.assertEqual(seen,['P02'])
+        for value in ('https://example.invalid', 'https://example.invalid/home/help', 'https://example.invalid/Users/help'):
+            o.safe_business(value,diagnostic=lambda rule,error:seen.append(rule))
+            for suffix in (' C:/private/data', ' /home/private/data', ' Authorization: synthetic',
+                           ' sk-SyntheticFixtureOnly123456', ' person@example.invalid', ' unique-offline-canary'):
+                with self.assertRaises(ExternalClosurePrimitiveError):
+                    o.safe_business(value+suffix,key='unique-offline-canary')
+        self.assertEqual(seen,[])
+
+    def test_mentions_pass_but_structured_fields_and_tracebacks_fail(self):
+        for text in ('Discuss Authorization and reasoning_text; mention Traceback.', ''):
+            o.safe_business(text)
+        for key in ('Authorization', 'proxy-Authorization', 'reasoning_text'):
+            for value in ('synthetic', '', None):
+                for level,payload in enumerate(({key:value}, json.dumps({key:value}), json.dumps(json.dumps({key:value})))):
+                    with self.subTest(key=key,payload=payload):
+                        seen=[]
+                        expected=ExternalClosurePrimitiveError if level==2 else c.ExperimentError
+                        with self.assertRaises(expected) as rejected:
+                            o.safe_business(payload,diagnostic=lambda rule,error:seen.append(rule))
+                        self.assertEqual(seen,['P00' if level==2 else 'P06' if key=='reasoning_text' else 'P05'])
+                        self.assertEqual(rejected.exception.code,'external_closure_sensitive_content_detected' if level==2 else 'item6_business_privacy')
+        for text in ('Traceback: synthetic frame', 'Traceback (most recent call last):'):
+            with self.assertRaises((c.ExperimentError,ExternalClosurePrimitiveError)):o.safe_business(text)
+
+    def test_boundary_matching_returns_label_without_losing_lookbehind_context(self):
+        self.assertEqual(p.business_rule('https://example.invalid then C:/private'), 'P02')
+        self.assertEqual(p.business_rule('https://example.invalid then /Users/private'), 'P03')
+        self.assertEqual(p.business_rule('reasoning_text=synthetic Authorization=synthetic'), 'P06')
 
     def test_public_scan_precedence_and_canary_are_preserved(self):
         for value,key in [('Authorization: synthetic',None),('sk-SyntheticFixtureOnly123456',None),
@@ -56,7 +81,7 @@ class PrivacyDiagnosticUnitTests(unittest.TestCase):
         originals=[]
         def broken(rule,error):originals.append(error);raise OSError('synthetic diagnostic I/O')
         with self.assertRaisesRegex(c.ExperimentError,'item6_business_privacy') as rejected:
-            o.safe_business('Authorization',diagnostic=broken)
+            o.safe_business({'Authorization':'synthetic'},diagnostic=broken)
         self.assertIs(rejected.exception,originals[0])
         self.assertEqual(rejected.exception.args,('item6_business_privacy',))
 
@@ -93,6 +118,7 @@ class PrivacyDiagnosticUnitTests(unittest.TestCase):
 
     def test_old_artifact_schema_and_freeze_are_preserved(self):
         for name,digest in [('artifact_v1_3.schema.json','6d8c5c0bac3f6e1865c5a5a1dfe90b5d7981b38f696169dfd45ec7f0a9ccac85'),
+                            ('artifact_v1_4.schema.json','5cb3286941248a1c2d73821a3692fb37ddb661c13fd28634dca2fa1c449f8232'),
                             ('freeze_v1_2.schema.json','63d88401282dfbfcb88c5d920069bc7e081cc0cf033e238ee57fbe93771e0b0c')]:
             self.assertEqual(hashlib.sha256((f.ROOT/c.DIRECTORY/name).read_bytes()).hexdigest(),digest)
         self.assertEqual(c.FREEZE_VERSION,'item6-experiment-freeze/1.2')
@@ -179,3 +205,62 @@ class PrivacyDiagnosticIntegrationTests(unittest.TestCase):
         self.assertTrue(all(row['privacy_diagnostic'] is None for rows in result['artifact']['business'].values() for row in rows.values()))
         self.assertFalse(any(e['event_type']==p.EVENT for e in result['artifact']['audit']['events']))
         checked=f.verify_result(result);self.assertEqual(checked['actual_exit_code'],0,checked)
+
+
+class BatchCollectionV2Tests(unittest.TestCase):
+    def check_common(self, mode):
+        result=f.isolation_case(mode);doc=result['artifact']
+        self.assertEqual((result['provider_calls'],result['network_attempts']),(0,0))
+        self.assertFalse(result['real_store_touched'])
+        self.assertEqual(result['claim_files'],1)
+        self.assertEqual(result['hits'].count(mode),1)  # IC-01 actual read result mutation.
+        self.assertNotIn('declared_stop_after_boundary_case',result['hits'])
+        for tid in ('IC-02','IC-03','IC-04'):
+            self.assertEqual(result['hits'].count('batch_final_'+tid),1)
+        self.assertEqual(doc['business']['agent']['IC-01']['status'],'failed')
+        self.assertEqual(doc['business']['agent']['IC-02']['final_output'],'')
+        self.assertEqual(doc['business']['agent']['IC-03']['final_output'],' \t\n　')
+        self.assertIn('https://example.invalid/home/help',doc['business']['agent']['IC-04']['final_output'])
+        self.assertFalse(doc['all_business_passed'])
+        for tid in ('IC-12','IC-14','IC-15'):
+            row=doc['business']['agent'][tid]
+            self.assertEqual(result['hits'].count('isolation_response_'+tid),1)
+            self.assertEqual(row['status'],'failed')
+            self.assertIsNotNone(row['case_rejection'])
+            self.assertEqual(row['events'],[])
+            self.assertIsNone(row['final_output'])
+        self.assertEqual(len(doc['budget']['requests']),len(result['calls']))
+        self.assertEqual(len(doc['segments']),len(result['calls']))
+        self.assertEqual(doc['cleanup_errors'],[])
+        self.assertEqual(sum(len(rows) for rows in doc['business'].values()),32)
+        checked=f.verify_result(result)
+        self.assertEqual(checked['actual_exit_code'],0,checked)
+        self.assertTrue(checked['archive_verified'])
+        return result,doc
+
+    def test_complete_32_after_missing_facts_empty_text_mentions_and_four_rejections(self):
+        result,doc=self.check_common('batch_complete_v2')
+        self.assertEqual(result['process_exit_code'],3,result.get('error'))
+        self.assertEqual(doc['collection_status'],'complete_with_case_rejections')
+        self.assertEqual(doc['collection_summary']['observed'],32)
+        self.assertEqual(doc['collection_summary']['not_executed'],0)
+        self.assertEqual(result['hits'].count('isolation_response_IC-16'),1)
+        self.assertTrue(all(row['execution_state']=='observed' for rows in doc['business'].values() for row in rows.values()))
+        self.assertTrue(all(row['privacy_diagnostic'] is None for rows in doc['business'].values() for row in rows.values()))
+
+    def test_late_privacy_stops_suffix_despite_prior_isolated_rejections(self):
+        result,doc=self.check_common('batch_late_privacy_v2')
+        self.assertEqual(result['process_exit_code'],2,result.get('error'))
+        self.assertEqual(doc['collection_status'],'stopped')
+        self.assertEqual(doc['authority']['stopped'],'item6_business_privacy')
+        self.assertEqual(result['hits'].count('batch_late_privacy_injected'),1)
+        self.assertEqual(result['hits'].count('isolation_response_IC-16'),1)
+        row=doc['business']['agent']['IC-06']
+        self.assertEqual(row['privacy_diagnostic']['rule_id'],'P06')
+        self.assertEqual(row['privacy_diagnostic']['state'],'recorded')
+        self.assertIsNone(row['case_rejection'])
+        position=next(i for i,entry in enumerate(doc['authority']['freeze']['business_plan'])
+                      if entry=={'path_kind':'agent','task_id':'IC-06'})
+        self.assertEqual(doc['collection_summary']['observed'],position+1)
+        self.assertEqual(doc['collection_summary']['not_executed'],32-position-1)
+        self.assertEqual(result['calls'][-1]['task_id'],'IC-06')

@@ -16,8 +16,8 @@ DIRECTORY = "evals/item6_experiment_bridge_v1"
 REJECTION_REVISION = "item6-case-rejection-isolation/1.1"
 REJECTION_POLICY_PATH = DIRECTORY + "/case_rejection_policy_v1_1.json"
 FREEZE_VERSION = "item6-experiment-freeze/1.2"
-ARTIFACT_VERSION = "item6-experiment-artifact/1.4"
-ARCHIVE_VERSION = "item6-experiment-archive/1.4"
+ARTIFACT_VERSION = "item6-experiment-artifact/1.5"
+ARCHIVE_VERSION = "item6-experiment-archive/1.5"
 SCOPE = "item6_controlled_experiment_v1"
 BASE = source.HISTORICAL_COMMIT
 SCORER = "fcc2026c60943de6016495ad244291689a9d491d"
@@ -108,7 +108,7 @@ def model_handles(mode, tasks_sha256, task_ids):
 
 def schema(value, name):
     from jsonschema import Draft202012Validator, validators
-    names = {"freeze": "freeze_v1_2.schema.json", "artifact": "artifact_v1_4.schema.json",
+    names = {"freeze": "freeze_v1_2.schema.json", "artifact": "artifact_v1_5.schema.json",
              "approval": "approval.schema.json"}
     require(type(name) is str and name in names, "schema_name")
     document = decode(read(DIRECTORY + "/" + names[name]))
@@ -207,6 +207,12 @@ def validate_approval(value, freeze, approved_digest, *, at=None):
 
 
 def safe_error(error):
+    # Exact SDK identity only; never inspect message/args/run_data or arbitrary
+    # properties to recognize exhaustion. This remains a batch-stopping error.
+    if type(error).__module__ == "agents.exceptions":
+        from agents.exceptions import MaxTurnsExceeded
+        if type(error) is MaxTurnsExceeded:
+            return "item6_sdk_max_turns_exceeded"
     code = getattr(error, "code", None)
     if type(error).__module__.startswith(("researchops_item6_experiment_v1", "researchops_completion_", "researchops_internal_telemetry", "researchops.audit", "researchops.model_providers")):
         if type(code) is str and re.fullmatch(r"[a-z][a-z0-9_]{0,127}", code): return code

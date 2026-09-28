@@ -796,6 +796,12 @@ async def exercise(mode, *, observe_lock=False):
                      "traceback_text": "Traceback: synthetic frame", "authorization_text": "Authorization: synthetic"}
     if mode in text_variants:
         scripts["IC-01"]["steps"][-1]["text"] = text_variants[mode]
+    batch_modes = {"batch_complete_v2", "batch_late_privacy_v2"}
+    if mode in batch_modes:
+        # Synthetic failures, not task/gold changes. No artificial early boundary.
+        for tid, text in {"IC-02": "", "IC-03": " \t\n　",
+                          "IC-04": "Discuss Traceback, Authorization and reasoning_text at https://example.invalid/home/help."}.items():
+            scripts[tid]["steps"][-1]["text"] = text
     async def handler(request):
         body = json.loads(request.content)
         task = json.loads(body["input"][0]["content"])
@@ -815,9 +821,9 @@ async def exercise(mode, *, observe_lock=False):
                 data = response.json()
                 if mode == "privacy_diag_args":
                     data["output"] = [{"type": "function_call", "id": "fc_privacy", "call_id": "call_privacy",
-                        "name": "inspect_sources", "arguments": json.dumps({"scope_id": "Authorization"}), "status": "completed"}]
+                        "name": "inspect_sources", "arguments": json.dumps({"scope_id": '{"Authorization":"synthetic"}'}), "status": "completed"}]
                 else:
-                    text = "sk-SyntheticFixtureOnly123456" if mode == "privacy_diag_public" else "Authorization"
+                    text = "sk-SyntheticFixtureOnly123456" if mode == "privacy_diag_public" else '{"Authorization":"synthetic"}'
                     data["output"] = [{"type": "message", "id": "msg_privacy", "role": "assistant", "status": "completed",
                         "content": [{"type": "output_text", "text": text}]}]
                 hits.append(mode + "_response_injected")
@@ -826,6 +832,8 @@ async def exercise(mode, *, observe_lock=False):
         isolation_target = ((refusal_mode and tid in {"IC-14", "IC-15", "IC-16"}) or (mode.startswith("isolation_") and
             (tid in {"IC-11", "IC-13"} if mode in {"isolation_design", "isolation_cross_case_error"}
              else tid == ("IC-14" if mode == "isolation_refusal" else "IC-11"))))
+        if mode in batch_modes and tid in {"IC-12", "IC-14", "IC-15", "IC-16"}:
+            isolation_target = True
         if isolation_target:
             assert responders[tid].count == 1
             data = response.json()
@@ -836,6 +844,15 @@ async def exercise(mode, *, observe_lock=False):
             data["output"] = [{"type": "function_call", "id": "fc_isolation_" + tid, "call_id": "call_isolation_" + tid,
                                "name": tool, "arguments": json.dumps(arguments), "status": "completed"}]
             hits.append("isolation_response_" + tid)
+            response = httpx2.Response(200, json=data)
+        if mode in batch_modes and tid in {"IC-02", "IC-03", "IC-04"}:
+            if any(item.get("type") == "message" for item in response.json()["output"]):
+                hits.append("batch_final_" + tid)
+        if mode == "batch_late_privacy_v2" and tid == "IC-06":
+            data = response.json()
+            data["output"] = [{"type": "message", "id": "msg_late_privacy", "role": "assistant", "status": "completed",
+                "content": [{"type": "output_text", "text": '{"reasoning_text":"synthetic"}'}]}]
+            hits.append("batch_late_privacy_injected")
             response = httpx2.Response(200, json=data)
         if mode == "ic11_tool_before_design" and tid == "IC-11":
             # Reconstruct the retained action plan, not a historical raw response.
@@ -1276,7 +1293,7 @@ async def exercise(mode, *, observe_lock=False):
                 return original_observed_read(self, tool, arguments)
             extra.enter_context(patch.object(session.AuditLedger, "append_event", new=fail_tool_audit))
             extra.enter_context(patch.object(observations.Case, "_read_tool", new=observe_tool_read))
-        if mode in {"tool_failure", "tool_timeout", "tool_missing_facts"}:
+        if mode in {"tool_failure", "tool_timeout", "tool_missing_facts", *batch_modes}:
             original_read = observations.Case._read_tool
             def fail_tool(self, tool, arguments):
                 if self.task["task_id"] == "IC-01" and self.path == "agent":

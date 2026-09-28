@@ -3,16 +3,21 @@ import re
 from . import contract as c
 from . import case_isolation as isolation
 
-VERSION = "item6-business-privacy-diagnostic/1.0"
+VERSION = "item6-business-privacy-diagnostic/1.1"
+RULE_REVISION = "item6-business-privacy-rules/2.0"
 EVENT = "item6_business_privacy_rejected_v1"
-# The union, order and flags are byte-for-byte equivalent to the previous
-# business matcher. Opaque IDs prevent diagnostic labels from matching it.
+# Named prospective revision, not a reinterpretation of historical diagnostics.
+# Scan every character: a URL never exempts adjacent credentials or paths.
+# Quoted/JSON-escaped sensitive keys are payload structure, not mere mentions.
 RULES = (
     ("P01", r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
-    ("P02", r"[A-Za-z]:[\\/]"), ("P03", r"/(?:Users|home)/"),
-    ("P04", r"Traceback"), ("P05", r"Authorization"), ("P06", r"reasoning_text"),
+    ("P02", r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/]"),
+    ("P03", r"(?<![A-Za-z0-9_:/])/(?:Users|home)/"),
+    ("P04", r"\bTraceback\s*(?:\(most recent call last\)|:\s*\S)"),
+    ("P05", r"\b(?:proxy-)?Authorization(?:\\*[\"'])?\s*[:=]\s*\S"),
+    ("P06", r"\breasoning_text(?:\\*[\"'])?\s*[:=]\s*\S"),
 )
-PATTERN = "|".join(pattern for _, pattern in RULES)
+PATTERN = "|".join("(?P<" + rule + ">" + pattern + ")" for rule, pattern in RULES)
 LOCATIONS = ("sdk_text", "sdk_tool_args")
 FIELDS = ("schema_version", "rule_id", "scan_location", "error_code", "stop_code",
           "sdk_response_index", "response_index", "attempt_index", "response_event_hash", "completion_record_sha256")
@@ -22,7 +27,7 @@ def business_rule(text):
     match = re.search(PATTERN, text, re.I)
     if match is None: return None
     # No matched text, offset, length or digest leaves this function.
-    return next(rule for rule, pattern in RULES if re.fullmatch(pattern, match.group(0), re.I))
+    return match.lastgroup
 
 
 def notify(callback, rule, error):

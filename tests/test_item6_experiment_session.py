@@ -190,6 +190,30 @@ class SafeErrorUnitTests(unittest.TestCase):
     def inner(self):
         return self.contract.ExperimentError("tool_before_design_or_refusal")
 
+    def test_exact_max_turns_has_safe_code_without_payload_access(self):
+        from agents.exceptions import MaxTurnsExceeded
+        class Unread:
+            def __str__(self): raise AssertionError('must not format payload')
+            def __repr__(self): raise AssertionError('must not format payload')
+        payload=Unread();error=MaxTurnsExceeded('synthetic')
+        error.message=payload;error.args=(payload,);error.run_data=payload
+        self.assertEqual(self.contract.safe_error(error),'item6_sdk_max_turns_exceeded')
+        self.assertIs(error.message,payload);self.assertIs(error.args[0],payload);self.assertIs(error.run_data,payload)
+
+    def test_max_turns_subclasses_impostors_and_wrappers_remain_generic(self):
+        from agents.exceptions import MaxTurnsExceeded
+        for cls in (type('MaxTurnsExceeded',(MaxTurnsExceeded,),{'__module__':'agents.exceptions'}),
+                    type('MaxTurnsExceeded',(ValueError,),{'__module__':'agents.exceptions'})):
+            self.assertEqual(self.contract.safe_error(cls('synthetic')),self.generic)
+        self.assertEqual(self.contract.safe_error(self.wrapped(MaxTurnsExceeded('synthetic'))),self.generic)
+
+    def test_max_turns_code_is_not_case_isolation_eligibility(self):
+        from agents.exceptions import MaxTurnsExceeded
+        from researchops_item6_experiment_v1 import case_isolation
+        error=MaxTurnsExceeded('synthetic')
+        self.assertNotEqual(self.contract.safe_error(error),self.contract.case_rejection_policy()['eligible_code'])
+        self.assertNotEqual(type(error),self.contract.ExperimentError)
+
     def test_direct_project_codes_keep_existing_behavior(self):
         for code in ("tool_before_design_or_refusal", "source_manifest_drift", "owner_stopped"):
             with self.subTest(code=code):
