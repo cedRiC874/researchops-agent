@@ -599,6 +599,16 @@ async def exercise(mode):
         if mode in faults and tid == "IC-01": hits.append(mode)
         if mode in text_variants and tid == "IC-01": hits.append(mode)
         response = await responders[tid].handle(request)
+        if mode == "ic11_tool_before_design" and tid == "IC-11":
+            # Reconstruct the retained action plan, not a historical raw response.
+            assert responders[tid].count == 1
+            assert task["design_requests"] == []
+            data = response.json()
+            data["output"] = [{"type": "function_call", "id": "fc_ic11_design",
+                "call_id": "call_ic11_design", "name": "inspect_sources",
+                "arguments": json.dumps({"scope_id": task["scope_id"]}), "status": "completed"}]
+            hits.append("ic11_tool_before_design_response_injected")
+            response = httpx2.Response(200, json=data)
         if mode in mixed_modes and tid == "IC-01" and responders[tid].count == 1:
             data = response.json()
             assert len(data["output"]) == 1 and data["output"][0]["type"] == "function_call"

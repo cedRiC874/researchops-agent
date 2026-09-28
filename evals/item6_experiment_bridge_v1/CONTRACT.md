@@ -34,6 +34,18 @@ message仍须assistant/completed，content只允许output_text；reasoning、未
 旧manifest或CI锚点；项目源码承诺此时预期尚未接续。隔离测试生成的synthetic manifest/commit仅证明测试夹具，
 不冒充项目发布或线上权限。旧失败不能由新规则追认成功，也不能使用旧授权补跑剩余用例。
 
+## 工具拒绝错误归因的限定修订
+
+设计缺失或冲突时零工具、先澄清的规则不变。本修订仅保留被锁定SDK包装后的具体拒绝原因：
+精确的 `agents.exceptions.UserError` 直接 `__cause__` 为精确 `ExperimentError`，且其原生字符串
+code 等于 `item6_tool_before_design_or_refusal` 时，归档保留该code，而不是泛化为 `item6_execution_failed`。
+不读取异常正文、args或run_data；不沿任意cause链或context遍历，不接受子类、同名/module伪装或其他code。
+其他包装仍保留通用拒绝。旧直接异常分支保持原语义，本修订不是对所有异常类型信任机制的全面加固。
+
+修订不改变是否允许执行、停止规则、评分标准或归档schema。旧在线归档不回填专用code、不追认成功。
+IC-11回归仅由保留动作计划构造MockTransport合成响应，并贯通实际Adapter/SDK、原Case.call门禁、
+失败归档及独立回读；不是原始线上响应重放或新模型效果证据。正式源码承诺接续与线上授权另行处理。
+
 ## 四项复审修订（本包artifact/archive v1.1）
 
 function_call必须明确status=completed才可进入工具计划或执行；顶层completed不能覆盖工具项incomplete、null或缺失。费用记录将usage观测与cost_settled分开：只有完整计数、总量关系及缓存/推理子计数均合法并实际计入账本，费用才已知。有效费用超预算仍保留真实结算和overshoot；未结算总额为null，已知小计单列。没有模型请求的空账本仍为已知零模型费用，固定路径usage不适用；这些都不是真实Provider账单。

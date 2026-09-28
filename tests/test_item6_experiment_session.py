@@ -172,7 +172,140 @@ class ObservedModelMixedUnitTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(case.replay, original_replay)
 
 
+class SafeErrorUnitTests(unittest.TestCase):
+    """Error attribution only: these objects confer no runtime authority."""
+
+    def setUp(self):
+        from agents.exceptions import UserError
+        from researchops_item6_experiment_v1 import contract
+        self.contract, self.user_error = contract, UserError
+        self.code = "item6_tool_before_design_or_refusal"
+        self.generic = "item6_execution_failed"
+
+    def wrapped(self, cause=None):
+        error = self.user_error("synthetic wrapper")
+        error.__cause__ = cause
+        return error
+
+    def inner(self):
+        return self.contract.ExperimentError("tool_before_design_or_refusal")
+
+    def test_direct_project_codes_keep_existing_behavior(self):
+        for code in ("tool_before_design_or_refusal", "source_manifest_drift", "owner_stopped"):
+            with self.subTest(code=code):
+                self.assertEqual(self.contract.safe_error(self.contract.ExperimentError(code)), "item6_" + code)
+
+    def test_exact_sdk_wrapper_preserves_confirmed_refusal_code(self):
+        self.assertEqual(self.contract.safe_error(self.wrapped(self.inner())), self.code)
+
+    def test_other_wrapped_project_codes_remain_generic(self):
+        for code in ("source_manifest_drift", "owner_stopped", "future_code"):
+            with self.subTest(code=code):
+                self.assertEqual(self.contract.safe_error(self.wrapped(self.contract.ExperimentError(code))), self.generic)
+
+    def test_no_cause_or_context_only_remains_generic(self):
+        error = self.wrapped()
+        self.assertEqual(self.contract.safe_error(error), self.generic)
+        error.__context__ = self.inner()
+        self.assertEqual(self.contract.safe_error(error), self.generic)
+
+    def test_nested_and_cyclic_wrappers_are_not_walked(self):
+        nested = self.wrapped(self.wrapped(self.inner()))
+        cyclic = self.wrapped(); cyclic.__cause__ = cyclic
+        for error in (nested, cyclic):
+            self.assertEqual(self.contract.safe_error(error), self.generic)
+
+    def test_non_sdk_wrappers_and_exception_groups_remain_generic(self):
+        error = ValueError("synthetic wrapper"); error.__cause__ = self.inner()
+        group = ExceptionGroup("synthetic group", [self.inner()])
+        for value in (error, group):
+            self.assertEqual(self.contract.safe_error(value), self.generic)
+
+    def test_sdk_subclass_and_same_named_impostor_are_not_unwrapped(self):
+        subclass = type("UserError", (self.user_error,), {"__module__": "agents.exceptions"})
+        impostor = type("UserError", (ValueError,), {"__module__": "agents.exceptions"})
+        for cls in (subclass, impostor):
+            value = cls("synthetic wrapper"); value.__cause__ = self.inner()
+            self.assertEqual(self.contract.safe_error(value), self.generic)
+
+    def test_cause_subclass_and_module_impostor_are_not_trusted(self):
+        actual = self.contract.ExperimentError
+        subclass = type("ExperimentError", (actual,), {"__module__": actual.__module__})
+        impostor = type("ExperimentError", (ValueError,), {"__module__": actual.__module__})
+        for cls in (subclass, impostor):
+            value = cls("tool_before_design_or_refusal"); value.code = self.code
+            self.assertEqual(self.contract.safe_error(self.wrapped(value)), self.generic)
+
+    def test_only_exact_string_code_is_allowed(self):
+        class StringSubclass(str): pass
+        for code in (None, 1, False, [self.code], StringSubclass(self.code), self.code + "\n"):
+            inner = self.inner(); inner.code = code
+            self.assertEqual(self.contract.safe_error(self.wrapped(inner)), self.generic)
+
+    def test_code_in_message_or_outer_attribute_does_not_grant_attribution(self):
+        error = self.user_error(self.code); error.code = self.code
+        self.assertEqual(self.contract.safe_error(error), self.generic)
+        inner = self.inner(); del inner.code
+        self.assertEqual(self.contract.safe_error(self.wrapped(inner)), self.generic)
+
+    def test_payload_fields_are_not_read_or_formatted(self):
+        class Unread:
+            def __str__(self): raise AssertionError("payload must not be formatted")
+            def __repr__(self): raise AssertionError("payload must not be formatted")
+        payload = Unread()
+        inner = self.inner(); inner.args = (payload,)
+        error = self.wrapped(inner)
+        error.message = payload; error.args = (payload,); error.run_data = payload
+        self.assertEqual(self.contract.safe_error(error), self.code)
+        self.assertIs(error.__cause__, inner)
+        self.assertIs(error.run_data, payload)
+
+    def test_sensitive_text_is_never_returned_and_exceptions_are_not_mutated(self):
+        canary = "sk-synthetic-offline-canary-never-a-real-key"
+        inner = self.inner(); inner.args = (canary,)
+        error = self.user_error("Authorization: " + canary)
+        error.__cause__ = inner
+        original_args = error.args
+        self.assertEqual(self.contract.safe_error(error), self.code)
+        self.assertEqual(inner.args, (canary,))
+        self.assertIs(error.args, original_args)
+        self.assertIs(error.__cause__, inner)
+
+
 class SessionTests(unittest.TestCase):
+    def test_ic11_design_refusal_survives_actual_sdk_and_failed_archive_readback(self):
+        result = f.run_case("ic11_tool_before_design")
+        self.assertEqual(result["process_exit_code"], 2, result.get("error"))
+        self.assertEqual(result["claim_files"], 1)
+        self.assertEqual(result["hits"].count("ic11_tool_before_design_response_injected"), 1)
+        self.assertEqual([row["task_id"] for row in result["calls"]],
+                         ["IC-01", "IC-01", "IC-07", "IC-07", "IC-07", "IC-11"])
+        self.assertEqual((result["provider_calls"], result["network_attempts"]), (0, 0))
+        self.assertFalse(result["real_store_touched"])
+        artifact = result["artifact"]
+        code = "item6_tool_before_design_or_refusal"
+        self.assertEqual((artifact["status"], artifact["authority"]["stopped"]), ("failed", code))
+        row = artifact["business"]["agent"]["IC-11"]
+        self.assertEqual(row["task_input"]["design_requests"], [])
+        self.assertEqual((row["execution_state"], row["status"]), ("observed", "failed"))
+        self.assertEqual(row["known_failures"], [{"code": code}])
+        self.assertIsNone(row["final_output"])
+        self.assertEqual(row["events"], [])
+        self.assertEqual(row["allowed_evidence"], [])
+        self.assertEqual(len(row["plan"]), 1)
+        self.assertEqual(row["plan"][0]["execution"], "not_executed")
+        self.assertEqual(artifact["business"]["fixed_workflow"]["IC-11"]["status"], "clarification")
+        all_rows = [value for path in artifact["business"].values() for value in path.values()]
+        self.assertEqual(len(all_rows), 32)
+        self.assertEqual(sum(value["execution_state"] == "not_executed" for value in all_rows), 26)
+        self.assertEqual((len(artifact["budget"]["requests"]), len(artifact["segments"])), (6, 6))
+        checked = f.verify_result(result)
+        self.assertEqual(checked["actual_exit_code"], 0, checked)
+        self.assertTrue(checked["archive_verified"])
+        self.assertFalse(checked["execution_completed"])
+        self.assertFalse(checked["runtime_authority_granted"])
+        self.assertEqual(checked["business_denominator"], 32)
+
     def test_mixed_before_actual_entry_replay_audit_and_independent_readback(self):
         # The opposite order is covered above as a unit, not claimed as an entrypoint run.
         result = f.run_case("mixed_before")

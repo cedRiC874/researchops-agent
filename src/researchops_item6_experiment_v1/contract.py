@@ -176,6 +176,15 @@ def safe_error(error):
     code = getattr(error, "code", None)
     if type(error).__module__.startswith(("researchops_item6_experiment_v1", "researchops_completion_", "researchops_internal_telemetry", "researchops.audit", "researchops.model_providers")):
         if type(code) is str and re.fullmatch(r"[a-z][a-z0-9_]{0,127}", code): return code
+    # The locked SDK wraps a rejected function tool once with UserError.
+    # Preserve only this confirmed refusal code; never parse exception text,
+    # follow context/arbitrary chains, or treat a same-named class as trusted.
+    if type(error).__module__ == "agents.exceptions":
+        from agents.exceptions import UserError
+        if type(error) is UserError and type(error.__cause__) is ExperimentError:
+            cause_code = error.__cause__.__dict__.get("code")
+            if type(cause_code) is str and cause_code == "item6_tool_before_design_or_refusal":
+                return cause_code
     return "item6_execution_failed"
 
 
