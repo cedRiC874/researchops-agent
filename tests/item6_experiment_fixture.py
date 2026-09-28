@@ -567,6 +567,9 @@ async def exercise(mode):
     known = allocate("item6-test-store-")
     scripts = json.loads((ROOT / "services/agent_workflow_comparison_v1/controlled_comparison_v1/fixtures/development/mock_responses.json").read_text(encoding="utf-8"))
     calls, hits, responders = [], [], {}
+    mixed_modes = {"mixed_before", "mixed_tool_audit_failure"}
+    mixed_observation = {"origin": "synthetic_mocktransport_only", "injected_output": None,
+                         "followup_input": None}
     os.environ["DEEPSEEK_API_KEY"] = "offline-fixture-key-item6"
     faults = {"http401": {"http_status": 401}, "http429": {"http_status": 429}, "http503": {"http_status": 503},
               "timeout": {"timeout": True}, "cancel": {"cancel": True}, "missing_usage": {"missing_usage": True},
@@ -589,9 +592,22 @@ async def exercise(mode):
         tid = task["task_id"]
         calls.append({"task_id": tid, "model": body["model"], "bytes": len(request.content)})
         if tid not in responders: responders[tid] = ResponsesFixture(scripts[tid], faults.get(mode, {}) if tid == "IC-01" else {})
+        if mode in mixed_modes and tid == "IC-01" and mixed_observation["injected_output"] is not None:
+            # Synthetic request items only; no headers, credentials or real response body.
+            mixed_observation["followup_input"] = copy.deepcopy(body["input"])
+            hits.append("mixed_followup_request_observed")
         if mode in faults and tid == "IC-01": hits.append(mode)
         if mode in text_variants and tid == "IC-01": hits.append(mode)
         response = await responders[tid].handle(request)
+        if mode in mixed_modes and tid == "IC-01" and responders[tid].count == 1:
+            data = response.json()
+            assert len(data["output"]) == 1 and data["output"][0]["type"] == "function_call"
+            data["output"].insert(0, {"type": "message", "id": "item6_mixed_companion",
+                "role": "assistant", "status": "completed", "content": [{"type": "output_text",
+                "text": "我先读取合成聚合结果。", "annotations": []}]})
+            mixed_observation["injected_output"] = copy.deepcopy(data["output"])
+            hits.extend((mode, "mixed_response_injected"))
+            response = httpx2.Response(200, json=data)
         if tid == "IC-01" and mode in {"function_incomplete", "function_status_missing", "function_status_null"}:
             data = response.json()
             for item in data["output"]:
@@ -730,13 +746,14 @@ async def exercise(mode):
                         hits.append(mode); raise OSError("synthetic intent failure")
                     return original_append(self, run_id, event_type, payload, **kw)
                 extra.enter_context(patch.object(session.AuditLedger, "append_event", new=fail_intent))
-        if mode in {"audit_tool_start", "audit_tool_finish"}:
+        if mode in {"audit_tool_start", "audit_tool_finish", "mixed_tool_audit_failure"}:
             original_tool_append = session.AuditLedger.append_event
             original_observed_read = observations.Case._read_tool
             target_event = "item6_tool_started_v1" if mode == "audit_tool_start" else "item6_tool_finished_v1"
             def fail_tool_audit(self, run_id, event_type, payload, **kw):
                 if event_type == target_event and payload.get("case_run_id", "").endswith("-agent-IC-01"):
                     hits.append(mode)
+                    if mode == "mixed_tool_audit_failure": hits.append("mixed_tool_finish_audit_failure")
                     raise OSError("synthetic tool audit failure")
                 return original_tool_append(self, run_id, event_type, payload, **kw)
             def observe_tool_read(self, tool, arguments):
@@ -842,6 +859,7 @@ async def exercise(mode):
             admission_observations=admission_observations, partial_observations=partial_observations, primary_stop_reason=primary_stop_reason,
             real_store_touched=False, provider_calls=0, network_attempts=len(real_network_attempts),
             synthetic_approval=True, synthetic_commit=True)
+        if mode in mixed_modes: value["mixed_response_observation"] = mixed_observation
         if mode in CLAIM_MODES:
             value["claim_error_observation"] = post_checks.get("claim_error_observation")
         value["store_isolation_diagnostic"] = store_diagnostic

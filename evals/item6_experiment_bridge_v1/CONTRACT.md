@@ -1,5 +1,39 @@
 # Item6 experiment bridge v1 — implementation candidate
 
+## 具名修订 item6-response-actions/1.1（有界离线候选）
+
+本节是对响应动作选择的前瞻性修订，不重写已经执行的
+`cfd590f33268654477907bbca76be2385b455589` 版本、其授权或失败证据。
+该历史版本将工具调用与文本分片同现拒绝为 `item6_response_actions`；
+新实现只有在另行完成源码承诺、固定版本验证及新的在线授权后才能用于线上。
+artifact/archive仍为1.1，FCC结构v1.0/测量v1.1、任务、顺序、提示、工具、预算及权限合同不变。
+
+响应形状上限分别计数function_call、message和output_text分片，不把message数量与文本分片数量混为一谈：
+
+| function_call数量 | message数量 | output_text分片总数 | 本修订语义 |
+| ---: | ---: | ---: | --- |
+| 0 | 1 | 1 | 作为本次最终文本；原字符串不改写，空串/空白仍由原测量规则判定 |
+| 1 | 0 | 0 | 执行合法工具并由SDK继续，尚无最终文本 |
+| 1 | 1 | 0或1 | 允许伴随message；其中的文本是中间说明，不是最终答案、完成状态或允许证据 |
+| 0 | 任意 | 0 | 无动作，拒绝 |
+| 大于1 | 任意 | 任意 | 拒绝；本修订不开放多工具调用或扩大工具预算 |
+| 任意 | 大于1 | 任意 | 拒绝，包含额外空message；避免SDK选择最后message而业务记录选择另一条 |
+| 任意 | 任意 | 大于1 | 拒绝，不拼接、不丢弃分片后伪装成一个最终文本 |
+
+function_call自身仍须明确completed，call_id不得重复，工具与参数必须来自原允许列表。
+message仍须assistant/completed，content只允许output_text；reasoning、未知item、refusal part等原拒绝路径不变。
+所有伴随文本（包括空串和空白）仍先经过原写入前隐私/限长检查，不能因其不是最终答案就绕过扫描。
+返回给SDK的响应及内存replay保持原有item、顺序和值；不得删掉message、改写文本或错配function_call_output的call_id。
+
+有工具调用时，不设置case的final_output/completion为最终状态。只有后续无工具调用、符合上表的最终响应
+才能提供最终文本；若工具执行、后续请求或预算失败，中间说明不得被提升为final_output，已知失败保持优先。
+不新增伴随文本正文的持久化，不扩展旧completion metadata的内容边界。
+请求中的parallel_tool_calls=false继续保留，但它不是响应中不会出现message或多个工具的保证；本地门禁仍负责检查。
+
+本批仅修订本节、实验专用解析及相关offline_test夹具/测试。不更改共享准入、真实claim store、评分规则、
+旧manifest或CI锚点；项目源码承诺此时预期尚未接续。隔离测试生成的synthetic manifest/commit仅证明测试夹具，
+不冒充项目发布或线上权限。旧失败不能由新规则追认成功，也不能使用旧授权补跑剩余用例。
+
 ## 四项复审修订（本包artifact/archive v1.1）
 
 function_call必须明确status=completed才可进入工具计划或执行；顶层completed不能覆盖工具项incomplete、null或缺失。费用记录将usage观测与cost_settled分开：只有完整计数、总量关系及缓存/推理子计数均合法并实际计入账本，费用才已知。有效费用超预算仍保留真实结算和overshoot；未结算总额为null，已知小计单列。没有模型请求的空账本仍为已知零模型费用，固定路径usage不适用；这些都不是真实Provider账单。
