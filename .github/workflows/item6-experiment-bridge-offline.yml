@@ -129,9 +129,9 @@ jobs:
                   sys.path.insert(0,str(root/'src'))
                   from researchops_internal_telemetry import source_integrity_v3 as source
                   if Path(source.__file__).resolve()!=root/'src/researchops_internal_telemetry/source_integrity_v3.py':raise ValueError('source_import')
-                  manifest=source.verify_source(root,expected='5de608c843bb09c028bdc872f1f4d5a09599f52d02fcf2e6e32170c4243816d9')
+                  manifest=source.verify_source(root,expected='7dece61847a4b0baf9bbfa97936be44c635f215e84aa545deab1f3323a74ae2a')
                   manifest_sha=digest((root/source.MANIFEST).read_bytes())
-                  if manifest_sha!='a1effad5d2c9b06b15b84b7773c9b3367e978980e01e4782e144f7416043213d':raise ValueError('manifest_sha')
+                  if manifest_sha!='d7357e137009883e63d1b19762b025717aa78ad2301d80e2ccfa90006da57246':raise ValueError('manifest_sha')
                   record.update(status='valid',stage='complete',source_commitment_sha256=manifest['commitment_sha256'],
                                 manifest_sha256=manifest_sha,source_file_count=len(manifest['files']))
                   code=0

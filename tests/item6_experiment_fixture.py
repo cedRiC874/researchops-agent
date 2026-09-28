@@ -4,7 +4,9 @@ from datetime import timedelta
 import asyncio
 import copy
 import functools
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
+import ctypes
+import hashlib
 import json
 import logging
 import os
@@ -25,6 +27,7 @@ BASE = "5605396e165fc5140eba54340d5a9c93f67540dc"
 PYTHON = sys.executable
 _temporary = []
 RESULTS = []
+LOCK_OBSERVATION = False  # Explicit single-test diagnostic; never inherited by live entrypoints.
 CLAIM_MODES = {"claim_write": "write", "claim_fsync": "fsync", "claim_close": "close"}
 CLAIM_ERROR_CODES = frozenset((
     "local_claim_write_unknown", "local_claim_close_unknown", "local_claim_failed",
@@ -39,6 +42,7 @@ STORE_CHECKS = ("exact_path_type", "absolute", "parent_matches_temp", "name_pref
 DIAGNOSTIC_ERROR_TYPES = {OSError: "OSError", PermissionError: "PermissionError",
     FileNotFoundError: "FileNotFoundError", RuntimeError: "RuntimeError", ValueError: "ValueError"}
 NEW_TESTS = (
+    "tests.test_item6_case_isolation",
     "tests.test_item6_experiment_authority", "tests.test_item6_experiment_session",
     "tests.test_item6_experiment_budget", "tests.test_item6_experiment_artifacts",
     "tests.test_item6_experiment_integration", "tests.test_internal_source_integrity_v3")
@@ -49,7 +53,9 @@ RELATED_TESTS = (
     "tests.test_deepseek_completion_first_live_validation", "tests.test_kimi_k3_handshake",
     "tests.test_phase6_depth60")
 OVERLAY = (
+    "tests/test_item6_case_isolation.py",
     "src/researchops/model_providers.py", "src/researchops_completion_telemetry/surface_mapping.py",
+    "src/researchops_external_closure/git_objects.py",
     "src/researchops_internal_telemetry/source_integrity_v3.py", "scripts/build_internal_source_integrity_v3.py",
     "scripts/verify_pre_v6_integrity.py", ".github/workflows/ci.yml", ".github/workflows/item6-experiment-bridge-offline.yml",
     "tests/internal_source_v2_historical_support.py", "tests/test_internal_source_integrity_v2.py",
@@ -112,6 +118,57 @@ def canonical_test_store_path(path):
     return canonical
 
 
+class FixtureSourceParityError(ValueError):
+    def __init__(self, code, differing_paths=()):
+        self.code = code
+        self.differing_paths = tuple(differing_paths)
+        super().__init__(code)
+
+
+def verify_fixture_source_parity(source_root, fixture_root):
+    """Compare all selected bytes, not the potentially stale source manifest."""
+    from researchops_internal_telemetry import source_integrity_v3 as source
+    def snapshot(root):
+        rows = []
+        for name in source.source_files(root):
+            body = source.v2._regular(root, name)
+            rows.append(dict(path=name, bytes=len(body), sha256=source.digest(body)))
+        workflows = {name: source.digest(source.v2._regular(root, name))
+                     for name in source.SEPARATE_GIT_BINDINGS}
+        return rows, workflows
+    original, workflow_before = snapshot(source_root)
+    derived, workflow_derived = snapshot(fixture_root)
+    names = [row["path"] for row in original]
+    copied_names = [row["path"] for row in derived]
+    if names != copied_names:
+        raise FixtureSourceParityError("fixture_selected_paths_mismatch", sorted(set(names) ^ set(copied_names)))
+    differences = [left["path"] for left, right in zip(original, derived) if left != right]
+    if differences:
+        raise FixtureSourceParityError("fixture_selected_bytes_mismatch", differences)
+    if workflow_before != workflow_derived:
+        raise FixtureSourceParityError("fixture_separate_workflow_mismatch",
+            [name for name in workflow_before if workflow_before[name] != workflow_derived[name]])
+    checked = source.verify_source(fixture_root)
+    if checked["files"] != derived:
+        raise FixtureSourceParityError("fixture_manifest_projection_mismatch")
+    if snapshot(source_root) != (original, workflow_before) or snapshot(fixture_root) != (derived, workflow_derived):
+        raise FixtureSourceParityError("fixture_source_changed_during_verification")
+    return dict(schema="item6-fixture-full-source-parity/1", selected_count=len(names),
+        selected_rows_sha256=source.digest(source.canonical(original)),
+        source_commitment_sha256=checked["commitment_sha256"], separately_bound_workflows=workflow_before,
+        source_manifest_need_not_be_current=True, generated_fixture_manifest_verified=True,
+        historical_fixture_rebased=False, provider_calls=0, real_store_touched=False)
+
+
+def record_fixture_source_parity(source_root, fixture_root, name):
+    value = verify_fixture_source_parity(source_root, fixture_root)
+    directory = fixture_root / "output/item6-bridge-validation"
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / name).open("x", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2)
+    return value
+
+
 @functools.lru_cache(maxsize=1)
 def seed():
     root = allocate("i6-seed-")
@@ -125,6 +182,7 @@ def seed():
         target = root / name; target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / name, target)
     command([PYTHON, "-B", "-m", "tests.item6_experiment_fixture", "freeze-source"], root)
+    record_fixture_source_parity(ROOT, root, "seed-source-parity.json")
     command(["git", "add", "--", *names, "evals/provider_completion_internal_source_v3/source_manifest_v3.json"], root)
     command(["git", "-c", "user.name=Item6 Fixture", "-c", "user.email=fixture@example.invalid", "-c", "core.hooksPath=" + str(root / "no-hooks"),
              "commit", "--no-gpg-sign", "-m", "Synthetic offline Item6 fixture; never published"], root)
@@ -138,8 +196,14 @@ def seed():
 def run_case(mode="normal"):
     root = allocate("i6-case-")
     command(["git", "clone", "--shared", str(seed()), str(root)], ROOT)
+    # Verify the execution clone, too: cached seeds are not authority for a
+    # later source tree. This runs before exercise/key/store/transport setup.
+    record_fixture_source_parity(ROOT, root, "case-source-parity.json")
     env = environment(root)
-    result = subprocess.run([PYTHON, "-B", "-m", "tests.item6_experiment_fixture", "exercise", mode],
+    if LOCK_OBSERVATION and mode != "isolation_design":
+        raise ValueError("lock_observation_single_mode_only")
+    action = "exercise-lock-observed" if LOCK_OBSERVATION else "exercise"
+    result = subprocess.run([PYTHON, "-B", "-m", "tests.item6_experiment_fixture", action, mode],
         cwd=root, env=env, capture_output=True, text=True, encoding="utf-8", timeout=900)
     rows = [line for line in result.stdout.splitlines() if line.startswith("{")]
     if not rows: raise AssertionError("fixture_missing_result:" + result.stderr[-1500:])
@@ -165,6 +229,29 @@ def run_case(mode="normal"):
         encoded = json.dumps({"diagnostic_copy_redacted": True, "payload": json.loads(encoded.replace("offline-fixture-key-item6", "<synthetic-key-redacted>"))}, ensure_ascii=False, indent=2)
     (directory / (mode + "-" + uuid.uuid4().hex + ".json")).write_text(encoded, encoding="utf-8")
     return value
+
+
+@functools.lru_cache(maxsize=None)
+def isolation_case(mode="isolation_design"):
+    return run_case(mode)
+
+
+def historical_case(mode="ic11_tool_before_design"):
+    """Original assertion on its actual fixed producer, without a new source overlay."""
+    commit = "1e41012696519a180a5a4e59909b08ef29180494"
+    root = allocate("i6-historical-")
+    command(["git", "clone", "--shared", "--no-checkout", str(ROOT), str(root)], ROOT)
+    command(["git", "checkout", "--detach", commit], root)
+    actual = command(["git", "rev-parse", "HEAD"], root).strip()
+    if actual != commit: raise ValueError("historical_fixture_identity")
+    process = subprocess.run([PYTHON, "-B", "-m", "tests.item6_experiment_fixture", "exercise", mode],
+        cwd=root, env=environment(root), capture_output=True, text=True, encoding="utf-8", timeout=900)
+    rows = [line for line in process.stdout.splitlines() if line.startswith("{")]
+    if not rows: raise ValueError("historical_fixture_missing_result")
+    result = json.loads(rows[-1])
+    result.update(process_exit_code=process.returncode, fixture_root=str(root), historical_commit=actual)
+    RESULTS.append(dict(kind="historical_fixture", mode=mode, commit=actual, actual_exit_code=process.returncode))
+    return result
 
 
 def claim_error_observation(error):
@@ -556,15 +643,134 @@ def suite_parent(run_id, *, remaining=False):
     return process.returncode if before == after else 1
 
 
-async def exercise(mode):
+@contextmanager
+def observe_test_store_locks(local_claim, known, *, enabled):
+    """Pass native parameters/results unchanged; retain only bounded safe diagnostics."""
+    if not enabled:
+        yield None
+        return
+    temp = Path(tempfile.gettempdir()).resolve(strict=True)
+    if (ROOT.resolve().parent != temp or not ROOT.name.startswith("i6-case-")
+            or known.parent != temp or not known.name.startswith("item6-test-store-")
+            or known.resolve(strict=True) != known or known.is_symlink() or known.is_junction()):
+        raise ValueError("lock_observation_temporary_scope")
+    directory = ROOT / "output/item6-bridge-validation/directory-lock-observation"
+    directory.mkdir(parents=True, exist_ok=False)
+    factory = local_claim._kernel
+    invalid = ctypes.c_void_p(-1).value
+    active, components, failures = {}, {}, []
+    state = dict(schema="item6-test-store-lock-observation/1", stopped=False,
+        create_calls=0, close_calls=0, close_failures=0, evidence_io_failed=False,
+        first_failure=None, directory=directory.relative_to(ROOT).as_posix(),
+        provider_calls=0, real_store_touched=False, native_parameters_unchanged=True)
+    def write(name, value):
+        data = (json.dumps(value, sort_keys=True) + "\n").encode()
+        try:
+            with (directory / name).open("xb") as stream:
+                stream.write(data); stream.flush(); os.fsync(stream.fileno())
+        except BaseException:
+            state["stopped"] = True; state["evidence_io_failed"] = True
+            raise
+    def safe_component(path):
+        candidate = Path(path)
+        if candidate not in known.parents and candidate != known and known not in candidate.parents:
+            state["stopped"] = True
+            raise ValueError("lock_observation_outside_temporary_chain")
+        identity = hashlib.sha256(os.path.normcase(str(candidate)).encode()).hexdigest()
+        if identity not in components:
+            if len(components) >= 32:
+                state["stopped"] = True
+                raise ValueError("lock_observation_component_limit")
+            components[identity] = dict(path_sha256=identity, path_chars=len(str(candidate)),
+                component_index=len(candidate.parts)-1,
+                role="test_store_component" if candidate == known or known in candidate.parents else "ancestor",
+                create_calls=0, create_successes=0, close_successes=0)
+        return components[identity]
+    def stage():
+        allowed = {"provision_local_claim_store", "local_claim_store_status",
+                   "read_reserved_local_claim", "_reserve_local_claim_receipt"}
+        frame = sys._getframe(1)
+        for _ in range(12):
+            if frame is None: break
+            if frame.f_code.co_name in allowed and frame.f_globals.get("__name__") == local_claim.__name__:
+                return frame.f_code.co_name
+            frame = frame.f_back
+        return "not_identified"
+    class ObservedKernel:
+        def __init__(self, native): self.native = native
+        def GetDriveTypeW(self, *args): return self.native.GetDriveTypeW(*args)
+        def CreateFileW(self, path, access, sharing, security, creation, flags, template):
+            if state["stopped"]: raise RuntimeError("lock_observation_stopped")
+            if (access, sharing, security, creation, flags, template) != (1, 3, None, 3, 0x02200000, None):
+                state["stopped"] = True
+                raise ValueError("lock_observation_native_parameters")
+            component = safe_component(path)
+            state["create_calls"] += 1; component["create_calls"] += 1
+            handle = self.native.CreateFileW(path, access, sharing, security, creation, flags, template)
+            os_error = ctypes.get_last_error()  # Capture immediately; no intervening native call.
+            if handle not in (None, invalid):
+                component["create_successes"] += 1
+                active[handle] = dict(component=component, native=self.native, close_attempted=False)
+            else:
+                row = dict(operation="CreateFileW", call_index=state["create_calls"], stage=stage(),
+                    **{key: component[key] for key in ("path_sha256", "path_chars", "component_index", "role")},
+                    desired_access=access, share_mode=sharing, flags=flags, winerror=os_error,
+                    observed_success=False, exception_body_recorded=False)
+                if state["first_failure"] is None: state["first_failure"] = row
+                if len(failures) >= 32:
+                    state["stopped"] = True
+                    raise RuntimeError("lock_observation_failure_limit")
+                failures.append(row)
+                write("native-failure-%02d.json" % len(failures), row)
+            return handle
+        def CloseHandle(self, handle):
+            entry = active[handle]
+            entry["close_attempted"] = True
+            result = self.native.CloseHandle(handle)
+            os_error = ctypes.get_last_error()
+            state["close_calls"] += 1
+            if result:
+                entry["component"]["close_successes"] += 1
+                del active[handle]
+            else:
+                state["stopped"] = True; state["close_failures"] += 1
+                row = dict(operation="CloseHandle", path_sha256=entry["component"]["path_sha256"],
+                    winerror=os_error, observed_success=False, close_retried=False)
+                failures.append(row)
+                if not state["evidence_io_failed"]: write("native-failure-%02d.json" % len(failures), row)
+            return result
+    write("started.json", dict(schema=state["schema"], fixture_module_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        production_module_sha256=hashlib.sha256(Path(local_claim.__file__).read_bytes()).hexdigest(),
+        native_access=1, native_sharing=3, native_flags=0x02200000, full_path_values_recorded=False,
+        real_store_touched=False, network_authorized=False))
+    with patch.object(local_claim, "_kernel", side_effect=lambda: ObservedKernel(factory())):
+        try:
+            yield state
+        finally:
+            # Unknown/failed close is never retried. Only reclaim a successful
+            # open that an evidence exception prevented returning to its caller.
+            for handle, entry in list(active.items()):
+                if not entry["close_attempted"]:
+                    try:
+                        ObservedKernel(entry["native"]).CloseHandle(handle)
+                    except BaseException as exc:
+                        state["stopped"] = True
+                        state.setdefault("cleanup_exception_types", []).append(type(exc).__name__)
+            state.update(remaining_handles=len(active), components=list(components.values()),
+                         failures=failures, observation_complete=not state["evidence_io_failed"])
+            write("result.json", state)
+
+
+async def exercise(mode, *, observe_lock=False):
     logging.disable(logging.CRITICAL)
     from agents import set_tracing_disabled
     set_tracing_disabled(True)
     from researchops_completion_timing import local_claim
-    from researchops_item6_experiment_v1 import contract as c, runner, session, authority, observations
+    from researchops_item6_experiment_v1 import contract as c, runner, session, authority, observations, case_isolation
     from services.agent_workflow_comparison_v1.deepseek_flash_v1.wire import ResponsesFixture
     import httpx2
     known = allocate("item6-test-store-")
+    if observe_lock and mode != "isolation_design": raise ValueError("lock_observation_single_mode_only")
     scripts = json.loads((ROOT / "services/agent_workflow_comparison_v1/controlled_comparison_v1/fixtures/development/mock_responses.json").read_text(encoding="utf-8"))
     calls, hits, responders = [], [], {}
     mixed_modes = {"mixed_before", "mixed_tool_audit_failure"}
@@ -599,6 +805,19 @@ async def exercise(mode):
         if mode in faults and tid == "IC-01": hits.append(mode)
         if mode in text_variants and tid == "IC-01": hits.append(mode)
         response = await responders[tid].handle(request)
+        isolation_target = (mode.startswith("isolation_") and
+            (tid in {"IC-11", "IC-13"} if mode in {"isolation_design", "isolation_cross_case_error"}
+             else tid == ("IC-14" if mode == "isolation_refusal" else "IC-11")))
+        if isolation_target:
+            assert responders[tid].count == 1
+            data = response.json()
+            tool, arguments = "inspect_sources", {"scope_id": task["scope_id"]}
+            if mode == "isolation_scope": arguments = {"scope_id": "outside-frozen-scope"}
+            if mode == "isolation_catalog": tool, arguments = "read_aggregate", {"bundle_id": "aggregate-01"}
+            data["output"] = [{"type": "function_call", "id": "fc_isolation_" + tid, "call_id": "call_isolation_" + tid,
+                               "name": tool, "arguments": json.dumps(arguments), "status": "completed"}]
+            hits.append("isolation_response_" + tid)
+            response = httpx2.Response(200, json=data)
         if mode == "ic11_tool_before_design" and tid == "IC-11":
             # Reconstruct the retained action plan, not a historical raw response.
             assert responders[tid].count == 1
@@ -645,7 +864,8 @@ async def exercise(mode):
     real_network_attempts = []
     def no_network(*a, **kw):
         real_network_attempts.append("blocked"); raise AssertionError("real network forbidden")
-    with patch.object(local_claim, "_windows_local_app_data", return_value=known), \
+    with observe_test_store_locks(local_claim, known, enabled=observe_lock) as lock_observation, \
+         patch.object(local_claim, "_windows_local_app_data", return_value=known), \
          patch.object(session, "_native_transport", side_effect=lambda mode: httpx2.MockTransport(handler)), \
          patch("socket.socket.connect", side_effect=no_network), patch("socket.getaddrinfo", side_effect=no_network), \
          patch("socket.socket.sendto", side_effect=no_network):
@@ -679,6 +899,248 @@ async def exercise(mode):
         factories = []
         post_checks = {}
         extra = ExitStack()
+        if mode in {"old_freeze", "isolation_policy_drift"}:
+            if mode == "old_freeze":
+                freeze["schema_version"] = "item6-experiment-freeze/1.0"
+                freeze.pop("case_rejection_policy_revision"); freeze.pop("case_rejection_policy_sha256")
+            else: freeze["case_rejection_policy_sha256"] = "1" * 64
+            # Keep the synthetic approval coherent, so rejection is attributable
+            # to protocol/policy admission rather than an unrelated hash mismatch.
+            candidate["freeze_sha256"] = c.commit("freeze", freeze)
+            approved = c.commit("approval-candidate", candidate)
+            approval["candidate"] = candidate
+            approval["observation"]["approved_digest"] = approved
+            kwargs.update(freeze_bytes=c.raw(freeze), approval_bytes=c.raw(approval), approved_digest=approved)
+            hits.append(mode)
+        if mode.startswith("isolation_"):
+            original_read = observations.Case._read_tool
+            def counted_read(self, tool, arguments):
+                if self.path == "agent" and self.task["task_id"] in {"IC-11", "IC-13", "IC-14"}:
+                    hits.append("target_tool_read_" + self.task["task_id"])
+                return original_read(self, tool, arguments)
+            extra.enter_context(patch.object(observations.Case, "_read_tool", new=counted_read))
+        audit_points = {"reject": case_isolation.REJECT, "close": case_isolation.CLOSE, "seal": case_isolation.SEALED}
+        for label, event in audit_points.items():
+            if mode in {"isolation_audit_before_" + label, "isolation_audit_after_" + label}:
+                original_append = session.AuditLedger.append_event
+                def injected_append(self, run_id, event_type, payload, _event=event, **kw):
+                    if event_type == _event and payload.get("case_run_id", "").endswith("-agent-IC-11"):
+                        hits.append(mode)
+                        if "_after_" in mode:
+                            original_append(self, run_id, event_type, payload, **kw)
+                            hits.append("original_append_committed_before_failure")
+                        raise OSError("synthetic isolation audit failure")
+                    return original_append(self, run_id, event_type, payload, **kw)
+                extra.enter_context(patch.object(session.AuditLedger, "append_event", new=injected_append))
+        if mode in {"isolation_capture_subclass", "isolation_capture_deep_cause",
+                    "isolation_capture_context", "isolation_capture_pid"}:
+            original_capture = case_isolation.capture
+            def reject_foreign_capture(case, error):
+                if case.task["task_id"] != "IC-11":
+                    return original_capture(case, error)
+                from agents.exceptions import UserError
+                assert type(error) is UserError and type(error.__cause__) is c.ExperimentError
+                original_error = error.__cause__
+                assert case_isolation._rejections[case]["error"] is original_error
+                hits.append("isolation_registered_original_verified")
+                hits.append(mode)
+                if mode == "isolation_capture_pid":
+                    # Assign only the isolation module's reference: never patch
+                    # global os.getpid or the authority/store process identity.
+                    native_os = case_isolation.os
+                    class ProcessProxy:
+                        def getpid(self):
+                            hits.append("isolation_local_pid_proxy_hit")
+                            return native_os.getpid() + 1
+                        def __getattr__(self, name):
+                            return getattr(native_os, name)
+                    try:
+                        with patch.object(case_isolation, "os", new=ProcessProxy()):
+                            return original_capture(case, error)
+                    finally:
+                        post_checks["isolation_os_reference_restored"] = case_isolation.os is native_os
+                if mode == "isolation_capture_subclass":
+                    class DerivedUserError(UserError):
+                        pass
+                    counterfeit = DerivedUserError("synthetic subclass")
+                    counterfeit.__cause__ = original_error
+                elif mode == "isolation_capture_deep_cause":
+                    counterfeit = UserError("synthetic deep wrapper")
+                    counterfeit.__cause__ = error
+                else:
+                    counterfeit = UserError("synthetic context wrapper")
+                    counterfeit.__cause__ = None
+                    counterfeit.__context__ = original_error
+                return original_capture(case, counterfeit)
+            extra.enter_context(patch.object(case_isolation, "capture", new=reject_foreign_capture))
+        if mode == "isolation_tool_after_reject":
+            original_close = session._ExperimentTransport.aclose
+            injected = []
+            async def tool_during_context_exit(self):
+                await original_close(self)
+                case = self.session.factory.current
+                if case is None or case.task["task_id"] != "IC-11" or injected:
+                    return
+                assert case.record["case_rejection"] is not None
+                assert case_isolation._rejections[case]["captured"]
+                injected.append(True)
+                hits.append(mode)
+                hits.append("original_transport_closed")
+                try:
+                    await case.call("inspect_sources", {"scope_id": case.task["scope_id"]})
+                except c.ExperimentError as error:
+                    post_checks["isolation_extra_tool_error"] = error.code
+                    hits.append("isolation_extra_tool_rejected")
+                    raise
+                raise AssertionError("post-rejection tool unexpectedly executed")
+            extra.enter_context(patch.object(session._ExperimentTransport, "aclose", new=tool_during_context_exit))
+        if mode == "isolation_open_before_sealed":
+            original_append = case_isolation._append
+            def open_during_sealing(case, event_type, payload):
+                if event_type != case_isolation.SEALED or case.task["task_id"] != "IC-11":
+                    return original_append(case, event_type, payload)
+                factory = case.factory
+                assert factory.current is None and factory.active is None
+                assert case.record["case_lifecycle"]["closed_event_hash"] is not None
+                assert case.record["case_rejection"]["sealed_event_hash"] is None
+                assert case_isolation._factory(factory)["pending"] is case
+                next_item = factory.freeze["business_plan"][factory.case_index]
+                next_task = next(task for task in c.decode(c.read(c.TASKS))["tasks"]
+                                 if task["task_id"] == next_item["task_id"])
+                next_case = observations.Case(factory, next_task, next_item["path_kind"])
+                def count_next_starts():
+                    return sum(event["event_type"] == case_isolation.START
+                        and event["safe_payload"].get("case_run_id") == next_case.record["run_id"]
+                        for event in factory.ledger.export_run(factory.owner.run_id)["events"])
+                before = count_next_starts()
+                assert before == 0
+                hits.append(mode)
+                try:
+                    factory.open_case(next_case)
+                except c.ExperimentError as error:
+                    post_checks["isolation_next_case_probe"] = dict(
+                        task_id=next_item["task_id"], path_kind=next_item["path_kind"],
+                        started_before=before, started_after=count_next_starts(), error_code=error.code)
+                    hits.append("isolation_next_case_open_rejected")
+                    raise
+                raise AssertionError("next case admitted before durable isolation seal")
+            extra.enter_context(patch.object(case_isolation, "_append", new=open_during_sealing))
+        if mode == "isolation_provider_close_timeout":
+            # Keep both original five-second timeout layers. Only the isolated
+            # MockTransport delegate's close is made to remain pending.
+            original_delegate_close = session._CheckedDelegate.aclose
+            injected = []
+            async def pending_fake_delegate_close(self):
+                await original_delegate_close(self)
+                case = self.session.factory.current
+                if case is None or case.task["task_id"] != "IC-11" or injected:
+                    return
+                assert case.record["case_rejection"] is not None
+                assert case_isolation._rejections[case]["captured"]
+                assert type(self.delegate) is httpx2.MockTransport
+                injected.append(True)
+                from researchops.model_providers import _DEEPSEEK_POST_REQUEST_CLEANUP_TIMEOUT_SECONDS
+                assert _DEEPSEEK_POST_REQUEST_CLEANUP_TIMEOUT_SECONDS == 5
+                import time
+                began = time.monotonic()
+                hits.append("original_fake_delegate_close_returned")
+                hits.append(mode)
+                try:
+                    await asyncio.Event().wait()
+                except asyncio.CancelledError:
+                    post_checks["isolation_cleanup_timeout"] = dict(
+                        elapsed_seconds=time.monotonic() - began,
+                        original_timeout_seconds=_DEEPSEEK_POST_REQUEST_CLEANUP_TIMEOUT_SECONDS,
+                        awaited_real_pending_close=True, wait_cancelled=True, isolated_mock_delegate=True)
+                    hits.append("isolation_close_wait_cancelled")
+                    raise
+                raise AssertionError("pending synthetic close unexpectedly returned")
+            extra.enter_context(patch.object(session._CheckedDelegate, "aclose", new=pending_fake_delegate_close))
+        if mode in {"isolation_capture_clone", "isolation_repeat_capture"}:
+            original_capture = case_isolation.capture
+            def injected_capture(case, error):
+                if case.task["task_id"] == "IC-11":
+                    hits.append(mode)
+                    if mode == "isolation_capture_clone":
+                        from agents.exceptions import UserError
+                        counterfeit = UserError("synthetic wrapper")
+                        counterfeit.__cause__ = c.ExperimentError("tool_before_design_or_refusal")
+                        return original_capture(case, counterfeit)
+                    original_capture(case, error)
+                return original_capture(case, error)
+            extra.enter_context(patch.object(case_isolation, "capture", new=injected_capture))
+        if mode == "isolation_cross_case_error":
+            original_capture = case_isolation.capture
+            earlier_error = []
+            def cross_case_capture(case, error):
+                if case.task["task_id"] == "IC-11":
+                    earlier_error.append(error.__cause__)
+                if case.task["task_id"] == "IC-13":
+                    from agents.exceptions import UserError
+                    assert len(earlier_error) == 1
+                    hits.append(mode)
+                    wrong = UserError("synthetic cross-case wrapper")
+                    wrong.__cause__ = earlier_error[0]
+                    return original_capture(case, wrong)
+                return original_capture(case, error)
+            extra.enter_context(patch.object(case_isolation, "capture", new=cross_case_capture))
+        if mode in {"isolation_provider_close", "isolation_provider_cancel"}:
+            # Invoke the real transport close first, then inject the exit failure.
+            original_close = session._ExperimentTransport.aclose
+            async def injected_close(self):
+                await original_close(self)
+                case = self.session.factory.current
+                if case is not None and case.task["task_id"] == "IC-11":
+                    hits.append("original_transport_closed")
+                    hits.append(mode)
+                    if mode == "isolation_provider_cancel": raise asyncio.CancelledError()
+                    raise OSError("synthetic resource close failure")
+            extra.enter_context(patch.object(session._ExperimentTransport, "aclose", new=injected_close))
+        if mode in {"isolation_forged_reconciliation", "isolation_missing_indices"}:
+            from researchops_completion_telemetry.capture import RuntimeDenominatorTracker
+            from dataclasses import replace
+            original_seal = RuntimeDenominatorTracker.seal_case
+            def injected_seal(self, case_id, **kw):
+                if case_id == freeze["model_case_handles"]["IC-11"] and mode == "isolation_missing_indices":
+                    hits.append(mode); kw["sdk_request_usage_indices_by_response"] = None
+                returned = original_seal(self, case_id, **kw)
+                if case_id == freeze["model_case_handles"]["IC-11"] and mode == "isolation_forged_reconciliation":
+                    hits.append(mode); return replace(returned)
+                return returned
+            extra.enter_context(patch.object(RuntimeDenominatorTracker, "seal_case", new=injected_seal))
+        if mode == "isolation_send_after_reject":
+            original_register = case_isolation.register_rejection
+            def injected_register(case, error, tool, arguments):
+                result = original_register(case, error, tool, arguments)
+                if result:
+                    hits.append(mode)
+                    case.factory.active.begin_attempt()
+                    raise AssertionError("post-rejection send unexpectedly admitted")
+                return result
+            extra.enter_context(patch.object(case_isolation, "register_rejection", new=injected_register))
+        if mode in {"isolation_source_drift", "isolation_expired"}:
+            original_register = case_isolation.register_rejection
+            def drift_after_registered(case, error, tool, arguments):
+                result = original_register(case, error, tool, arguments)
+                if result:
+                    hits.append(mode)
+                    if mode == "isolation_source_drift":
+                        path = ROOT / "src/researchops_item6_experiment_v1/budget.py"
+                        path.write_bytes(path.read_bytes() + b"\n# isolated post-rejection drift\n")
+                    else:
+                        extra.enter_context(patch.object(c, "now", return_value=c.utc(candidate["expires_at_utc"]) + timedelta(seconds=1)))
+                return result
+            extra.enter_context(patch.object(case_isolation, "register_rejection", new=drift_after_registered))
+        if mode == "isolation_later_unfinished":
+            from dataclasses import replace
+            original_finalize = session.ExperimentSession._finalize
+            def later_foreign_handle(self, handle, *args, **kw):
+                if self.case_id == freeze["model_case_handles"]["IC-14"]:
+                    hits.append(mode)
+                    wrong = freeze["model_case_handles"]["IC-01"]
+                    return original_finalize(self, replace(handle, case_id=wrong), *args, **kw)
+                return original_finalize(self, handle, *args, **kw)
+            extra.enter_context(patch.object(session.ExperimentSession, "_finalize", new=later_foreign_handle))
         if mode in {"factory_freeze_drift", "budget_policy_drift"}:
             original_open = session.ExperimentFactory.open_case
             def mutate_policy(self, case):
@@ -873,6 +1335,7 @@ async def exercise(mode):
         if mode in CLAIM_MODES:
             value["claim_error_observation"] = post_checks.get("claim_error_observation")
         value["store_isolation_diagnostic"] = store_diagnostic
+        if observe_lock: value["directory_lock_observation"] = lock_observation
         if result is not None:
             if "archive_kind" in result:
                 assert result["archive_kind"] == "unfinished_failure"
@@ -912,8 +1375,8 @@ if __name__ == "__main__":
         print(json.dumps(report))
     else:
         try:
-            result = asyncio.run(exercise(sys.argv[2])); print(json.dumps(result, ensure_ascii=True))
-            raise SystemExit(0 if result["error"] is None and result["run"] and result["run"]["actual_exit_code"] == 0 else 2)
+            result = asyncio.run(exercise(sys.argv[2], observe_lock=sys.argv[1] == "exercise-lock-observed")); print(json.dumps(result, ensure_ascii=True))
+            raise SystemExit(result["run"]["actual_exit_code"] if result["error"] is None and result["run"] else 2)
         except SystemExit: raise
         except BaseException as error:
             print(json.dumps({"fixture_error": type(error).__name__, "code": getattr(error, "code", None)}))

@@ -27,7 +27,10 @@ def main():
         if args.command == "prepare":
             # A draft cannot be submitted to run: all real approval/pricing/environment fields remain absent.
             manifest = c.source.verify_source(c.ROOT)
+            c.case_rejection_policy()
             value = dict(schema_version="item6-unapproved-draft/1.0", source_commitment_sha256=manifest["commitment_sha256"],
+                         case_rejection_policy_revision=c.REJECTION_REVISION,
+                         case_rejection_policy_sha256=c.digest(c.read(c.REJECTION_POLICY_PATH, 8192)),
                          policy=c.policy(), execution_commit=None, pricing=None, environment_id=None, approval=None,
                          online_authorized=False, scorer_commit=c.SCORER)
             target = Path(args.output).resolve()

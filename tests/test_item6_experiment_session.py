@@ -274,7 +274,9 @@ class SafeErrorUnitTests(unittest.TestCase):
 
 class SessionTests(unittest.TestCase):
     def test_ic11_design_refusal_survives_actual_sdk_and_failed_archive_readback(self):
-        result = f.run_case("ic11_tool_before_design")
+        # This preserves the old all-stop claim on its original fixed producer.
+        # New isolation semantics are exercised separately, never by weakening it.
+        result = f.historical_case("ic11_tool_before_design")
         self.assertEqual(result["process_exit_code"], 2, result.get("error"))
         self.assertEqual(result["claim_files"], 1)
         self.assertEqual(result["hits"].count("ic11_tool_before_design_response_injected"), 1)

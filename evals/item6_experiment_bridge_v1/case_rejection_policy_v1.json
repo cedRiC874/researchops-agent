@@ -1,0 +1,20 @@
+{
+  "schema_version": "item6-case-rejection-isolation/1.0",
+  "eligible_path": "agent",
+  "eligible_reasons": [
+    "missing_design",
+    "conflicting_design"
+  ],
+  "eligible_code": "item6_tool_before_design_or_refusal",
+  "max_rejections_per_case": 1,
+  "max_rejections": 16,
+  "require_zero_prior_tools": true,
+  "forbid_refusal_requests": true,
+  "same_case_retry": false,
+  "continue_only_after_closed_case_and_sealed_audit": true,
+  "exit_codes": {
+    "complete": 0,
+    "complete_with_case_rejections": 3,
+    "stopped": 2
+  }
+}

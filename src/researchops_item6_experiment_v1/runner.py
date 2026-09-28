@@ -14,6 +14,7 @@ from researchops.model_providers import DeepSeekProvider
 from researchops.deepseek_completion_first_live_validation import _environment_isolated, _network_logging_disabled
 from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import INSTRUCTION, fixed_path
 from . import contract as c
+from . import case_isolation as isolation
 from .authority import validate_experiment, _claim_experiment
 from .session import ExperimentFactory
 from .observations import Case, safe_business, score_business, write_archive
@@ -76,6 +77,7 @@ class _ObservedModel(Model):
 
 async def _agent(case, key):
     session = case.factory.model_session(key)
+    rejected = False
     async with DeepSeekProvider().open_model(model_id="deepseek-flash", api_key=key,
             timeout_seconds=case.factory.freeze["budget"]["request_seconds"], completion_telemetry_session=session) as provider:
         async def invoke(tool, arguments):
@@ -95,8 +97,15 @@ async def _agent(case, key):
             model=_ObservedModel(provider.sdk_model, case), tools=[inspect_sources, read_aggregate],
             model_settings=ModelSettings(max_tokens=case.factory.freeze["budget"]["output_per_request"],
                 reasoning=Reasoning(effort="none"), store=False, parallel_tool_calls=False))
-        await Runner.run(agent, json.dumps(case.task, ensure_ascii=False), max_turns=case.factory.freeze["budget"]["requests_per_task"],
-                         run_config=RunConfig(tracing_disabled=True, trace_include_sensitive_data=False))
+        try:
+            await Runner.run(agent, json.dumps(case.task, ensure_ascii=False), max_turns=case.factory.freeze["budget"]["requests_per_task"],
+                             run_config=RunConfig(tracing_disabled=True, trace_include_sensitive_data=False))
+        except BaseException as error:
+            if not isolation.capture(case, error): raise
+            rejected = True
+    # Context exit must complete normally; close errors never become case-local.
+    if rejected:
+        isolation.provider_closed(case)
     return case.finish()
 
 
@@ -184,7 +193,9 @@ async def _run_owned(owner):
                     case.record["known_failures"].append({"code": c.safe_error(error)})
                     record = case.finish()
                     factory.current = factory.active = None
-        records[path][task_id] = record
+                    isolation.abort(case)
+        # close_case appends the durable lifecycle and isolation links after finish.
+        records[path][task_id] = deepcopy(case.record)
     denominator = None
     try: denominator = factory.tracker.seal_runtime().to_dict()
     except Exception as error: owner.stop(c.safe_error(error))
@@ -217,12 +228,13 @@ async def _run_owned(owner):
         if not unfinished:
             owner.clock.phase_terminal()
             deadline.check("phase_terminal_after")
-        document = dict(schema_version="item6-experiment-artifact/1.1", mode=owner.mode, run_id=owner.run_id,
+        collection = isolation.result_fields(records, scores, owner.stopped)
+        document = dict(schema_version=c.ARTIFACT_VERSION, mode=owner.mode, run_id=owner.run_id,
             status=status, authority=owner.snapshots(), business=records, scores=scores,
             binding=factory.binding.runtime_snapshot(), denominator_plan=factory.plan, denominator=denominator,
             budget=factory.budget.snapshot(), dispatches=factory.dispatches, audit=audit,
             segments=segments, phase=owner.clock.snapshot(), cleanup_errors=cleanup_errors, formal_comparison_result=False,
-            provider_calls=0 if owner.mode == "offline_test" else factory.dispatches)
+            provider_calls=0 if owner.mode == "offline_test" else factory.dispatches, **collection)
         if unfinished:
             from .failed_archive import write_failed_archive
             deadline.check("failure_evidence_before")
@@ -231,7 +243,7 @@ async def _run_owned(owner):
             owner.close()
             return dict(status="failed", archive_kind="unfinished_failure", execution_completed=False,
                 archive_namespace=c.OUTPUT + "/" + owner.output.name, failure_receipt_sha256=receipt,
-                mode=owner.mode, actual_exit_code=2, provider_calls=document["provider_calls"])
+                mode=owner.mode, actual_exit_code=2, provider_calls=document["provider_calls"], **collection)
         deadline.check("seal_before")
         seal = write_archive(owner.output, document)
         deadline.check("seal_after")
@@ -246,7 +258,8 @@ async def _run_owned(owner):
     owner.close()
     return dict(status=status, archive_namespace=c.OUTPUT + "/" + owner.output.name, seal_sha256=seal,
                 finalization_sha256=finalization_sha256,
-                mode=owner.mode, actual_exit_code=0 if status == "completed" else 2, provider_calls=document["provider_calls"])
+                mode=owner.mode, actual_exit_code=c.case_rejection_policy()["exit_codes"][collection["collection_status"]],
+                provider_calls=document["provider_calls"], **collection)
 
 
 async def run_live(**kwargs):
