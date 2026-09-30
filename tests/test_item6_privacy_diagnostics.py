@@ -127,6 +127,31 @@ class PrivacyDiagnosticUnitTests(unittest.TestCase):
 
 
 class PrivacyDiagnosticIntegrationTests(unittest.TestCase):
+    def test_native_call_id_rejection_stops_without_persisting_or_executing_it(self):
+        for mode, rejected in (("native_id_canary", b"offline-fixture-key-item6"),
+                               ("native_id_path", b"C:/private/synthetic.txt")):
+            with self.subTest(mode=mode):
+                result = f.isolation_case(mode)
+                self.assertEqual(result['process_exit_code'], 2, result.get('error'))
+                self.assertEqual(result['hits'].count(mode + '_injected'), 1)
+                self.assertEqual(len(result['calls']), 1)
+                doc = result['artifact']; row = doc['business']['agent']['IC-01']
+                self.assertEqual(doc['collection_status'], 'stopped')
+                self.assertEqual(row['native_call_ids'], [])
+                self.assertEqual(row['plan'], []); self.assertEqual(row['events'], [])
+                self.assertIsNone(row['privacy_diagnostic'])  # Not mislabeled as text/argument scanning.
+                self.assertIsNone(row['final_output'])
+                self.assertEqual(doc['authority']['stopped'], 'item6_execution_failed')
+                self.assertEqual(doc['business']['agent']['IC-02']['execution_state'], 'not_executed')
+                self.assertEqual(sum(len(rows) for rows in doc['business'].values()), 32)
+                self.assertNotIn(rejected, c.raw(doc))
+                self.assertTrue(doc['budget']['requests'][0]['cost_settled'])
+                self.assertIsNotNone(doc['budget']['requests'][0]['usage'])
+                checked = f.verify_result(result)
+                self.assertEqual(checked['actual_exit_code'], 0, checked)
+                self.assertTrue(checked['archive_verified']); self.assertFalse(checked['execution_completed'])
+                self.assertEqual(result['provider_calls'], 0)
+
     def checked(self,mode,location,index,rule='P05'):
         result=f.isolation_case(mode);doc=result['artifact'];row=doc['business']['agent']['IC-01']
         self.assertEqual(result['process_exit_code'],2,result.get('error'))

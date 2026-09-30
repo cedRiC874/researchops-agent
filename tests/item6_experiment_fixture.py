@@ -841,6 +841,13 @@ async def exercise(mode, *, observe_lock=False):
                         "content": [{"type": "output_text", "text": text}]}]
                 hits.append(mode + "_response_injected")
                 response = httpx2.Response(200, json=data)
+        if mode in {"native_id_canary", "native_id_path"} and tid == "IC-01" and responders[tid].count == 1:
+            data = response.json()
+            assert len(data["output"]) == 1 and data["output"][0]["type"] == "function_call"
+            data["output"][0]["call_id"] = ("offline-fixture-key-item6" if mode == "native_id_canary"
+                                                   else "C:/private/synthetic.txt")
+            hits.append(mode + "_injected")
+            response = httpx2.Response(200, json=data)
         refusal_mode = mode.startswith("refusal_isolation_")
         isolation_target = ((refusal_mode and tid in {"IC-14", "IC-15", "IC-16"}) or (mode.startswith("isolation_") and
             (tid in {"IC-11", "IC-13"} if mode in {"isolation_design", "isolation_cross_case_error"}

@@ -1,4 +1,5 @@
 import unittest
+import json
 from copy import deepcopy
 from types import SimpleNamespace
 from . import item6_experiment_fixture as f
@@ -170,6 +171,122 @@ class ObservedModelMixedUnitTests(unittest.IsolatedAsyncioTestCase):
                         await model.get_response()
                     self.assertIsNone(case.text)
                     self.assertEqual(case.replay, original_replay)
+
+    async def test_native_call_id_privacy_rejects_before_record_plan_and_replay(self):
+        from researchops_external_closure.errors import ExternalClosurePrimitiveError
+        values = ("offline-unit-sensitive-canary", "sk-SyntheticFixtureOnly123456",
+                  "C:/private/synthetic.txt", "/home/private/synthetic.txt",
+                  "Authorization: synthetic", "person@example.invalid")
+        for value in values:
+            with self.subTest(native_id_kind=values.index(value)):
+                model, case, _ = self.context([self.tool(call_id=value)])
+                before = deepcopy(case.replay)
+                with self.assertRaises(ExternalClosurePrimitiveError): await model.get_response()
+                self.assertEqual(case.record, {"native_call_ids": [], "plan": []})
+                self.assertEqual(case.replay, before)
+                self.assertIsNone(case.text)
+
+    async def test_native_call_id_utf8_limit_preserves_original_boundary_values(self):
+        from researchops_item6_experiment_v1 import contract as c, observations as o
+        self.assertEqual(o.MAX_NATIVE_CALL_ID_BYTES, 1024)
+        for value in ("c" * 1024, "界" * 341 + "c"):
+            model, case, responses = self.context([self.tool(call_id=value)])
+            self.assertIs(await model.get_response(), responses[0])
+            self.assertEqual(case.record["native_call_ids"], [value])
+            self.assertEqual(case.replay[-1]["call_id"], value)
+        for value in ("c" * 1025, "界" * 341 + "cc", "", "\ud800"):
+            model, case, _ = self.context([self.tool(call_id=value)])
+            before = deepcopy(case.replay)
+            code = "call_identity" if not value else "native_call_id_bytes"
+            with self.assertRaisesRegex(c.ExperimentError, "^item6_" + code + "$"):
+                await model.get_response()
+            self.assertEqual(case.record, {"native_call_ids": [], "plan": []})
+            self.assertEqual(case.replay, before)
+
+
+class CliFailureProjectionUnitTests(unittest.TestCase):
+    """Fake exceptions/argv only; not live entry or admission evidence."""
+
+    def invoke(self, error, *, projection_failure=False):
+        import contextlib
+        import io
+        from unittest.mock import patch
+        from researchops_item6_experiment_v1 import __main__ as cli
+        stream = io.StringIO()
+        with patch('sys.argv', ['item6', 'verify', '--archive', 'synthetic', '--seal-sha256', 'a'*64,
+                                  '--finalization-sha256', 'b'*64]), \
+                patch('researchops_item6_experiment_v1.observations.verify_archive', side_effect=error), \
+                contextlib.redirect_stdout(stream):
+            if projection_failure:
+                with patch.object(cli, 'failure_projection', side_effect=OSError('synthetic sensitive body')):
+                    code = cli.main()
+            else:
+                code = cli.main()
+        self.assertEqual(code, 2)
+        output = stream.getvalue()
+        from researchops_item6_experiment_v1 import contract as c
+        c.scan_public_artifact_bytes((output.encode(),))
+        self.assertLessEqual(len(output.encode()), 4096)
+        return json.loads(output), output
+
+    def test_failure_stdout_is_counts_only_while_internal_records_remain_exact(self):
+        import json
+        from researchops_item6_experiment_v1 import contract as c
+        class NoExceptionFormatting(c.ExperimentError):
+            def __str__(self): raise AssertionError('exception body formatted')
+        error = NoExceptionFormatting('archive_seal')
+        error.claim_may_exist = True
+        error.primary_stop_reason = 'item6_business_privacy'
+        secret = 'sk-SyntheticFixtureOnly123456'
+        error.partial_observations = {'agent': {'arbitrary-key': dict(execution_state='observed', status='failed',
+            native_call_ids=[secret], final_output=secret, task_input={'path':'C:/private/data'})},
+            'fixed_workflow': {'other-key': dict(execution_state='not_executed', status='failed')}}
+        before = c.raw(error.partial_observations)
+        error.admission_observations = dict(planned=32, runtime_authority_granted=False,
+            records=[dict(execution_state='not_executed', final_output=secret)] * 32)
+        error.unknown_attribute = secret
+        value, output = self.invoke(error)
+        self.assertNotIn(secret, output); self.assertNotIn('C:/private', output)
+        self.assertNotIn('arbitrary-key', output); self.assertNotIn('native_call_ids', output)
+        self.assertEqual(value['schema_version'], 'item6-cli-failure/2.0')
+        self.assertTrue(value['claim_may_exist']); self.assertFalse(value['online_authorized'])
+        self.assertEqual(value['primary_stop_reason'], 'item6_business_privacy')
+        self.assertEqual(value['partial_observations']['available_rows'], 2)
+        self.assertEqual(value['partial_observations']['observed_failed'], 1)
+        self.assertEqual(value['partial_observations']['not_executed'], 1)
+        self.assertEqual(value['admission_observations']['not_executed'], 32)
+        self.assertFalse(value['partial_observations']['complete_collection_claim'])
+        self.assertEqual(c.raw(error.partial_observations), before)
+
+    def test_missing_malformed_and_unknown_states_do_not_become_not_executed(self):
+        from researchops_item6_experiment_v1 import contract as c
+        error = c.ExperimentError('execution_failed')
+        value, _ = self.invoke(error)
+        self.assertIsNone(value['claim_may_exist'])
+        self.assertEqual(value['partial_observations']['state'], 'unavailable')
+        self.assertIsNone(value['partial_observations']['not_executed'])
+        for malformed in ({'agent':{}}, {'agent':{}, 'fixed_workflow':{}, 'extra':{}},
+                          {'agent':{str(i):{} for i in range(17)}, 'fixed_workflow':{}},
+                          {'agent':{'one':None}, 'fixed_workflow':{}}, 'C:/private/data'):
+            error.partial_observations = malformed
+            error.claim_may_exist = 'sk-SyntheticFixtureOnly123456'
+            error.primary_stop_reason = 'C:/private/data'
+            value, output = self.invoke(error)
+            self.assertIsNone(value['claim_may_exist']); self.assertIsNone(value['primary_stop_reason'])
+            self.assertEqual(value['partial_observations']['state'], 'invalid')
+            self.assertIsNone(value['partial_observations']['available_rows'])
+        error.partial_observations = {'agent':{'one':{'execution_state':None}}, 'fixed_workflow':{}}
+        value, _ = self.invoke(error)
+        self.assertEqual(value['partial_observations']['unknown_execution_state'], 1)
+        self.assertEqual(value['partial_observations']['not_executed'], 0)
+
+    def test_unavailable_projection_has_safe_fallback_and_exit_two(self):
+        from researchops_item6_experiment_v1 import contract as c
+        value, output = self.invoke(c.ExperimentError('archive_seal'), projection_failure=True)
+        self.assertEqual(value['error'], 'item6_cli_failure_projection_unavailable')
+        self.assertIsNone(value['claim_may_exist'])
+        self.assertNotIn('synthetic sensitive', output)
+        self.assertFalse(value['partial_observations']['complete_collection_claim'])
 
 
 class SafeErrorUnitTests(unittest.TestCase):

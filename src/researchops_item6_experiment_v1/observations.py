@@ -20,6 +20,22 @@ from . import case_isolation as isolation
 from . import privacy_diagnostics as privacy
 
 
+MAX_NATIVE_CALL_ID_BYTES = 1024  # Local defensive limit, not a Provider specification.
+
+
+def safe_native_call_id(value, *, key=None):
+    """Reject before record/plan/replay; never truncate an SDK correlation key."""
+    c.require(type(value) is str and bool(value), "call_identity")
+    c.require(len(value) <= MAX_NATIVE_CALL_ID_BYTES, "native_call_id_bytes")
+    try:
+        size = len(value.encode("utf-8"))
+    except UnicodeError:
+        raise c.ExperimentError("native_call_id_bytes") from None
+    c.require(size <= MAX_NATIVE_CALL_ID_BYTES, "native_call_id_bytes")
+    # No text/argument diagnostic is fabricated for this different scan location.
+    safe_business(value, key=key)
+
+
 def safe_business(value, *, key=None, diagnostic=None):
     data = c.raw(value)
     c.require(len(data) <= c.policy()["business_field_bytes"], "business_size")

@@ -19,7 +19,7 @@ from . import case_isolation as isolation
 from . import privacy_diagnostics as privacy
 from .authority import validate_experiment, _claim_experiment
 from .session import ExperimentFactory
-from .observations import Case, safe_business, score_business, write_archive
+from .observations import Case, safe_business, safe_native_call_id, score_business, write_archive
 from .finalization import FinalizationDeadline, record_failure
 
 
@@ -46,6 +46,7 @@ class _ObservedModel(Model):
             if item.type == "function_call":
                 c.require(getattr(item, "status", None) == "completed", "function_call_not_complete")
                 c.require(type(item.call_id) is str and item.call_id not in case.record["native_call_ids"], "call_identity")
+                safe_native_call_id(item.call_id, key=case.factory.canary)
                 c.require(item.name in {"inspect_sources", "read_aggregate"} and type(item.arguments) is str, "model_tool")
                 arguments = c.decode(item.arguments.encode(), 8192)
                 field = "scope_id" if item.name == "inspect_sources" else "bundle_id"
