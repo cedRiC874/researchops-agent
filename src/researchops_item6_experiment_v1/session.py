@@ -196,7 +196,7 @@ class ExperimentFactory:
         c.require(body.get("model") == policy["model"] and type(body.get("max_output_tokens")) is int and body.get("max_output_tokens") == self.freeze["budget"]["output_per_request"]
             and body.get("store") is False and body.get("stream", False) is False and body.get("parallel_tool_calls") is False
             and body.get("reasoning") == {"effort": "none"} and body.get("include") == [], "request_policy")
-        from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import INSTRUCTION
+        from .interface_v2 import INSTRUCTION
         c.require(body.get("instructions") == INSTRUCTION and body.get("tools") == policy["tools"]
                   and body.get("input") == self.current.replay, "request_replay")
         self.budget.wire(len(request.content))

@@ -13,7 +13,8 @@ from researchops_completion_telemetry.persisted_evidence import (
     create_persisted_live_evidence_validation_context, validate_persisted_live_runtime_denominator_artifact)
 from researchops_completion_timing.ledger_event import validate_segment_link
 from researchops_external_closure.artifact_inputs import _read_database_rows
-from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import public_task, refusal, needs_design, INSTRUCTION
+from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import public_task, refusal, needs_design
+from .interface_v2 import INSTRUCTION
 from . import contract as c
 from . import case_isolation as isolation
 from . import privacy_diagnostics as privacy

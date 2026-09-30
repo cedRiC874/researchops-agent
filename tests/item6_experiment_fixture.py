@@ -42,6 +42,7 @@ STORE_CHECKS = ("exact_path_type", "absolute", "parent_matches_temp", "name_pref
 DIAGNOSTIC_ERROR_TYPES = {OSError: "OSError", PermissionError: "PermissionError",
     FileNotFoundError: "FileNotFoundError", RuntimeError: "RuntimeError", ValueError: "ValueError"}
 NEW_TESTS = (
+    "tests.test_item6_interface_v2",
     "tests.test_item6_privacy_diagnostics",
     "tests.test_item6_refusal_isolation",
     "tests.test_item6_case_isolation",
@@ -55,6 +56,9 @@ RELATED_TESTS = (
     "tests.test_deepseek_completion_first_live_validation", "tests.test_kimi_k3_handshake",
     "tests.test_phase6_depth60")
 OVERLAY = (
+    ".gitattributes",
+    "tests/test_item6_interface_v2.py", "scripts/invoke_item6_once.ps1", "scripts/item6_process_exit.psm1",
+    "services/agent_workflow_comparison_v1/controlled_comparison_v1/tasks/frozen/tasks_v2.json",
     "tests/test_item6_privacy_diagnostics.py",
     "tests/test_item6_refusal_isolation.py",
     "tests/test_item6_case_isolation.py",
@@ -796,6 +800,9 @@ async def exercise(mode, *, observe_lock=False):
                      "traceback_text": "Traceback: synthetic frame", "authorization_text": "Authorization: synthetic"}
     if mode in text_variants:
         scripts["IC-01"]["steps"][-1]["text"] = text_variants[mode]
+    if mode == "interface_deviation":
+        scripts["IC-01"]["steps"].insert(0, {"kind":"tool", "tool":"inspect_sources", "arguments":{"scope_id":"s01"}})
+        scripts["IC-01"]["steps"][-1]["text"] = scripts["IC-01"]["steps"][-1]["text"].replace("[E1]", "[E2]")
     batch_modes = {"batch_complete_v2", "batch_late_privacy_v2"}
     if mode in batch_modes:
         # Synthetic failures, not task/gold changes. No artificial early boundary.
@@ -806,6 +813,12 @@ async def exercise(mode, *, observe_lock=False):
         body = json.loads(request.content)
         task = json.loads(body["input"][0]["content"])
         tid = task["task_id"]
+        if mode == "interface_v2":
+            from researchops_item6_experiment_v1.interface_v2 import INSTRUCTION
+            assert body["instructions"] == INSTRUCTION
+            if tid == "IC-15":
+                assert (task["scope_id"], task["subject"], task["metric"]) == ("s05", "East-West", "difference")
+            hits.append("interface_instruction_checked_" + tid)
         calls.append({"task_id": tid, "model": body["model"], "bytes": len(request.content)})
         if tid not in responders: responders[tid] = ResponsesFixture(scripts[tid], faults.get(mode, {}) if tid == "IC-01" else {})
         if mode in mixed_modes and tid == "IC-01" and mixed_observation["injected_output"] is not None:
@@ -833,6 +846,8 @@ async def exercise(mode, *, observe_lock=False):
             (tid in {"IC-11", "IC-13"} if mode in {"isolation_design", "isolation_cross_case_error"}
              else tid == ("IC-14" if mode == "isolation_refusal" else "IC-11"))))
         if mode in batch_modes and tid in {"IC-12", "IC-14", "IC-15", "IC-16"}:
+            isolation_target = True
+        if mode == "interface_deviation" and tid in {"IC-11", "IC-12", "IC-13"}:
             isolation_target = True
         if isolation_target:
             assert responders[tid].count == 1

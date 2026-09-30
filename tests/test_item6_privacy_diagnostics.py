@@ -121,7 +121,9 @@ class PrivacyDiagnosticUnitTests(unittest.TestCase):
                             ('artifact_v1_4.schema.json','5cb3286941248a1c2d73821a3692fb37ddb661c13fd28634dca2fa1c449f8232'),
                             ('freeze_v1_2.schema.json','63d88401282dfbfcb88c5d920069bc7e081cc0cf033e238ee57fbe93771e0b0c')]:
             self.assertEqual(hashlib.sha256((f.ROOT/c.DIRECTORY/name).read_bytes()).hexdigest(),digest)
-        self.assertEqual(c.FREEZE_VERSION,'item6-experiment-freeze/1.2')
+        self.assertEqual(json.loads((f.ROOT/c.DIRECTORY/'freeze_v1_2.schema.json').read_bytes())['properties']['schema_version']['const'],
+                         'item6-experiment-freeze/1.2')
+        self.assertEqual(c.FREEZE_VERSION,'item6-experiment-freeze/1.3')
 
 
 class PrivacyDiagnosticIntegrationTests(unittest.TestCase):

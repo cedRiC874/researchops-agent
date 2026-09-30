@@ -2,6 +2,7 @@ name: item6-experiment-bridge-offline
 on:
   pull_request:
     paths:
+      - ".gitattributes"
       - "src/**"
       - "evals/**"
       - "services/agent_workflow_comparison_v1/**"
@@ -17,6 +18,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".gitattributes"
       - "src/**"
       - "evals/**"
       - "services/agent_workflow_comparison_v1/**"
@@ -129,9 +131,9 @@ jobs:
                   sys.path.insert(0,str(root/'src'))
                   from researchops_internal_telemetry import source_integrity_v3 as source
                   if Path(source.__file__).resolve()!=root/'src/researchops_internal_telemetry/source_integrity_v3.py':raise ValueError('source_import')
-                  manifest=source.verify_source(root,expected='1150b0c3dde9006bbc56a7ffaf5ba6e6e9ff10b3366d7be88fd819eafbe02c06')
+                  manifest=source.verify_source(root,expected='0bf8412de2e070dfde71350d3ad00477d3b843ea052988bbb290f40ace7393ea')
                   manifest_sha=digest((root/source.MANIFEST).read_bytes())
-                  if manifest_sha!='fd3a1e09f22870b38de3b8ab1b72e56677939d5653ee72ecf0246a270c01963c':raise ValueError('manifest_sha')
+                  if manifest_sha!='db3a907bbcf8eb4636ab94f8da8272c288e7f022b1c702951e40b1598d3c28d0':raise ValueError('manifest_sha')
                   record.update(status='valid',stage='complete',source_commitment_sha256=manifest['commitment_sha256'],
                                 manifest_sha256=manifest_sha,source_file_count=len(manifest['files']))
                   code=0

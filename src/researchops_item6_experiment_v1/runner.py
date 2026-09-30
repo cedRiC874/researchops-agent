@@ -12,7 +12,8 @@ from openai.types.shared import Reasoning
 from researchops.audit import AuditLedger
 from researchops.model_providers import DeepSeekProvider
 from researchops.deepseek_completion_first_live_validation import _environment_isolated, _network_logging_disabled
-from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import INSTRUCTION, fixed_path
+from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import fixed_path
+from .interface_v2 import INSTRUCTION
 from . import contract as c
 from . import case_isolation as isolation
 from . import privacy_diagnostics as privacy

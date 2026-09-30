@@ -15,14 +15,14 @@ ROOT = Path(__file__).resolve().parents[2]
 DIRECTORY = "evals/item6_experiment_bridge_v1"
 REJECTION_REVISION = "item6-case-rejection-isolation/1.1"
 REJECTION_POLICY_PATH = DIRECTORY + "/case_rejection_policy_v1_1.json"
-FREEZE_VERSION = "item6-experiment-freeze/1.2"
-ARTIFACT_VERSION = "item6-experiment-artifact/1.5"
-ARCHIVE_VERSION = "item6-experiment-archive/1.5"
+FREEZE_VERSION = "item6-experiment-freeze/1.3"
+ARTIFACT_VERSION = "item6-experiment-artifact/1.6"
+ARCHIVE_VERSION = "item6-experiment-archive/1.6"
 SCOPE = "item6_controlled_experiment_v1"
 BASE = source.HISTORICAL_COMMIT
 SCORER = "fcc2026c60943de6016495ad244291689a9d491d"
 SERVICE = "services/agent_workflow_comparison_v1/controlled_comparison_v1"
-TASKS = SERVICE + "/tasks/frozen/tasks.json"
+TASKS = SERVICE + "/tasks/frozen/tasks_v2.json"
 EVIDENCE = SERVICE + "/tasks/frozen/evidence.json"
 GOLD = SERVICE + "/scoring/contracts.json"
 OUTPUT = "output/item6-experiment-bridge-v1"
@@ -77,7 +77,7 @@ def read(name, maximum=1048576):
     return source.v2._regular(ROOT, name, maximum)
 
 
-def policy(): return decode(read(DIRECTORY + "/policy_v1.json"))
+def policy(): return decode(read(DIRECTORY + "/policy_v2.json"))
 
 
 def case_rejection_policy():
@@ -108,7 +108,7 @@ def model_handles(mode, tasks_sha256, task_ids):
 
 def schema(value, name):
     from jsonschema import Draft202012Validator, validators
-    names = {"freeze": "freeze_v1_2.schema.json", "artifact": "artifact_v1_5.schema.json",
+    names = {"freeze": "freeze_v1_3.schema.json", "artifact": "artifact_v1_6.schema.json",
              "approval": "approval.schema.json"}
     require(type(name) is str and name in names, "schema_name")
     document = decode(read(DIRECTORY + "/" + names[name]))
