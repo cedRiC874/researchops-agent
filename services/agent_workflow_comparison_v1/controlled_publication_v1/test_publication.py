@@ -53,6 +53,32 @@ class PublicationTests(unittest.TestCase):
             (root / b.MANIFEST).write_text('{"files":{},"files":{}}', encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "duplicate_manifest_key"): b.read_manifest(root)
 
+    def test_named_task_successor_is_frozen_with_exact_bytes(self):
+        name = b.PREFIX + "controlled_comparison_v1/tasks/frozen/tasks_v2.json"
+        manifest = b.read_manifest()
+        self.assertEqual(len(manifest["files"]), 49)
+        self.assertIn(name, b.source_names())
+        self.assertIn(name, manifest["files"])
+        self.assertEqual(manifest["files"][name], b.sha(b.REPO / name))
+        self.assertEqual(set(manifest["files"]), set(b.source_names()))
+
+    def test_named_task_successor_missing_or_mutated_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.materialize(directory)
+            name = b.PREFIX + "controlled_comparison_v1/tasks/frozen/tasks_v2.json"
+            target = root / name
+            original = target.read_bytes()
+            with self.subTest(fault="missing_successor"):
+                target.unlink()
+                with self.assertRaisesRegex(ValueError, "source_inventory_mismatch"):
+                    b.verify_files(root)
+            target.write_bytes(original)
+            with self.subTest(fault="same_json_different_bytes"):
+                target.write_bytes(original + b"\n")
+                self.assertEqual(json.loads(target.read_bytes()), json.loads(original))
+                with self.assertRaisesRegex(ValueError, "source_bytes_mismatch"):
+                    b.verify_files(root)
+
     def fake_git(self, root, tracked=True, ancestor=True):
         # Simulated Git identity unit fixture, not a committed execution receipt.
         names = [*b.read_manifest(root)["files"], b.MANIFEST]
