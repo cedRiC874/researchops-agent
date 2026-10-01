@@ -1,6 +1,8 @@
 import copy
+import asyncio
 import pickle
 import unittest
+from unittest.mock import patch
 from researchops_item6_experiment_v1.authority import Owner, Prepared
 from researchops_completion_telemetry.surface_mapping import create_item6_experiment_binding
 from researchops.model_providers import DeepSeekProvider, ProviderConfigurationError
@@ -8,6 +10,59 @@ from . import item6_experiment_fixture as f
 
 
 class AuthorityTests(unittest.TestCase):
+    def test_rejection_ids_use_immutable_baseline_without_claim_or_runtime(self):
+        from researchops_item6_experiment_v1 import runner
+        original = runner.c.ExperimentError("source_manifest_drift")
+        real_git = runner.c.source.v2._git
+        historical_path = runner.c.BASE + ":" + runner.c.SERVICE + "/tasks/frozen/tasks.json"
+        historical_tasks = runner.c.decode(real_git(runner.c.ROOT, "show", historical_path))["tasks"]
+        expected_order = [(task["task_id"], path) for index, task in enumerate(historical_tasks)
+                          for path in (("fixed_workflow", "agent") if index % 2 == 0 else ("agent", "fixed_workflow"))]
+        with patch.object(runner, "_environment_isolated", return_value=True), \
+             patch.object(runner, "_network_logging_disabled", return_value=True), \
+             patch.object(runner, "validate_experiment", side_effect=original), \
+             patch.object(runner, "_claim_experiment") as claim, \
+             patch.object(runner, "_run_owned") as runtime, \
+             patch.object(runner.c.source.v2, "_git", wraps=real_git) as historical_read:
+            with self.assertRaises(type(original)) as raised:
+                asyncio.run(runner._run(freeze_bytes=b"synthetic-rejected", approval_bytes=b"synthetic-rejected",
+                                        approved_digest="synthetic", expected_mode="offline_test"))
+        self.assertIs(raised.exception, original)
+        historical_read.assert_called_once_with(runner.c.ROOT, "show",
+            runner.c.BASE + ":" + runner.c.SERVICE + "/tasks/frozen/tasks.json")
+        claim.assert_not_called()
+        runtime.assert_not_called()
+        observations = original.admission_observations
+        self.assertEqual(observations["planned"], 32)
+        self.assertEqual(len(observations["records"]), 32)
+        self.assertFalse(observations["runtime_authority_granted"])
+        self.assertEqual(observations["baseline_commit"], runner.c.BASE)
+        self.assertEqual([(row["task_id"], row["path_kind"]) for row in observations["records"]], expected_order)
+        self.assertTrue(all(row["execution_state"] == "not_executed" and row["run_id"] is None
+                            and row["final_output"] is None and row["model_dispatch_count"] == 0
+                            for row in observations["records"]))
+
+    def test_missing_historical_id_evidence_keeps_original_rejection(self):
+        from researchops_item6_experiment_v1 import runner
+        from researchops_item6_experiment_v1.__main__ import failure_projection
+        original = runner.c.ExperimentError("source_manifest_drift")
+        with patch.object(runner, "_environment_isolated", return_value=True), \
+             patch.object(runner, "_network_logging_disabled", return_value=True), \
+             patch.object(runner, "validate_experiment", side_effect=original), \
+             patch.object(runner, "_claim_experiment") as claim, \
+             patch.object(runner.c.source.v2, "_git", side_effect=OSError("synthetic historical object unavailable")):
+            with self.assertRaises(type(original)) as raised:
+                asyncio.run(runner._run(freeze_bytes=b"synthetic-rejected", approval_bytes=b"synthetic-rejected",
+                                        approved_digest="synthetic", expected_mode="offline_test"))
+        self.assertIs(raised.exception, original)
+        claim.assert_not_called()
+        self.assertIsNone(original.admission_observations)
+        summary = failure_projection(original)["admission_observations"]
+        self.assertEqual(summary["state"], "unavailable")
+        self.assertFalse(summary["record_body_recorded"])
+        self.assertFalse(summary["identity_verified"])
+        self.assertFalse(summary["complete_collection_claim"])
+
     def test_manifest_digest_mismatch_rejected_before_claim(self):
         result=f.run_case("manifest_hash_mismatch")
         self.assertEqual(result["process_exit_code"],2)

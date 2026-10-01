@@ -134,7 +134,10 @@ async def _run(*, freeze_bytes, approval_bytes, approved_digest, expected_mode):
         owner = _claim_experiment(prepared)
     except BaseException as error:
         try:
-            frozen_tasks = c.decode(c.source.v2._git(c.ROOT, "show", c.BASE + ":" + c.TASKS))["tasks"]
+            # The immutable baseline supplies IDs only; the current v2 task file
+            # did not exist there. Never read unverified current tasks on rejection.
+            historical_ids_path = c.SERVICE + "/tasks/frozen/tasks.json"
+            frozen_tasks = c.decode(c.source.v2._git(c.ROOT, "show", c.BASE + ":" + historical_ids_path))["tasks"]
             error.admission_observations = dict(scope="entry_rejection_not_runtime_authority", baseline_commit=c.BASE,
                 runtime_authority_granted=False, planned=32, records=[dict(task_id=t["task_id"], path_kind=p,
                     run_id=None, execution_state="not_executed", final_output=None, model_dispatch_count=0)
