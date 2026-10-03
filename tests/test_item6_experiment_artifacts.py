@@ -11,6 +11,59 @@ from researchops_item6_experiment_v1 import contract as c
 from . import item6_experiment_fixture as f
 
 
+FINALIZATION_EXPIRY_DIAGNOSTICS = []
+
+
+def _observe_finalization_expiry(result, mode, stage, sealed, verifier=None):
+    """Value-free test observation; never changes the result or an assertion."""
+    def number(value):
+        return value if type(value) is int and -1 <= value <= 4096 else None
+
+    def enum(value, allowed):
+        return value if type(value) is str and value in allowed else None
+
+    failure = result.get("finalization_failure")
+    failure = failure if type(failure) is dict else {}
+    partial = result.get("partial_observations")
+    partial_count = (sum(len(value) for value in partial.values())
+                     if type(partial) is dict and all(type(value) is dict for value in partial.values()) else None)
+    calls, hits = result.get("calls"), result.get("hits")
+    row = dict(schema="item6-finalization-expiry-test-observation/1", mode=mode,
+        expected_stage=stage, expected_seal_present=sealed,
+        process_exit_code=number(result.get("process_exit_code")), expected_process_exit_code=2,
+        injection_hit=mode in hits if type(hits) is list else None,
+        run_is_null=result.get("run") is None,
+        error_code=enum(result.get("error"), ("item6_finalization_deadline",)),
+        error_code_allowlisted=result.get("error") == "item6_finalization_deadline",
+        failure_status=enum(failure.get("status"), ("failed", "completed")),
+        failure_stage=enum(failure.get("stage"), ("start", "scoring_after", "export_after", "seal_after", "terminal_after_write")),
+        seal_present=failure.get("seal_present") if type(failure.get("seal_present")) is bool else None,
+        partial_observation_count=number(partial_count), expected_partial_observation_count=32,
+        calls_count=number(len(calls)) if type(calls) is list else None,
+        candidate_status=enum(result.get("candidate_status"), ("failed", "completed")),
+        exception_text_recorded=False, path_values_recorded=False, raw_output_recorded=False)
+    if verifier is not None:
+        row["verifier_exit_code"] = number(verifier.returncode)
+        row["expected_verifier_exit_code"] = 2
+        try:
+            document = json.loads(verifier.stdout.splitlines()[-1])
+        except (ValueError, IndexError):
+            document = None
+        row["verifier_output_is_json_object"] = type(document) is dict
+        value = document.get("error") if type(document) is dict else None
+        row["verifier_error_code"] = enum(value, ("item6_finalization_failed",))
+        row["verifier_error_code_allowlisted"] = value == "item6_finalization_failed"
+    # This named test-only observation is not a shared-fixture marker. Keep
+    # that existing marker allowlist strict and reuse its scanner/size bound.
+    from researchops_external_closure.io import scan_public_artifact_bytes
+    encoded = json.dumps(row, ensure_ascii=True, sort_keys=True)
+    if len(encoded.encode()) > 16384:
+        raise ValueError("finalization_diagnostic_size")
+    scan_public_artifact_bytes((encoded.encode(),))
+    print("ITEM6_FINALIZATION_DIAGNOSTIC " + encoded, flush=True)
+    FINALIZATION_EXPIRY_DIAGNOSTICS.append(row)
+
+
 class ArtifactTests(unittest.TestCase):
     def _assert_rehashed_diagnostic_rejected(self, change, code, *, mode="cross_case_handle"):
         from researchops_item6_experiment_v1.failed_archive import verify_failed_archive
@@ -164,6 +217,7 @@ class ArtifactTests(unittest.TestCase):
                                    ("expiry_after_terminal","terminal_after_write",True)):
             with self.subTest(mode=mode):
                 result=f.run_case(mode)
+                _observe_finalization_expiry(result, mode, stage, sealed)
                 self.assertEqual(result["process_exit_code"],2)
                 self.assertIn(mode,result["hits"])
                 self.assertIsNone(result["run"])
@@ -171,6 +225,13 @@ class ArtifactTests(unittest.TestCase):
                 failure=result["finalization_failure"]
                 self.assertEqual(failure["status"],"failed")
                 self.assertEqual(failure["stage"],stage)
+                if mode == "expiry_after_export":
+                    fault = result["post_checks"]["finalization_export_fault"]
+                    self.assertTrue(fault["original_exports_preserved"])
+                    self.assertGreater(fault["nonmatching_exports"], 0)
+                    self.assertEqual(fault["target_exports"], 1)
+                    self.assertTrue(fault["expiry_injected"])
+                    self.assertEqual(fault["matched_stage"], "scoring_after")
                 self.assertEqual(failure["seal_present"],sealed)
                 self.assertEqual(sum(len(v) for v in result["partial_observations"].values()),32)
                 root=Path(result["fixture_root"])
@@ -182,6 +243,7 @@ class ArtifactTests(unittest.TestCase):
                 process=subprocess.run([f.PYTHON,"-B","-m","researchops_item6_experiment_v1","verify",
                     "--archive",str(directory),"--seal-sha256","1"*64,"--finalization-sha256","1"*64],
                     cwd=root,env=f.environment(root),capture_output=True,text=True,encoding="utf-8",timeout=120)
+                _observe_finalization_expiry(result, mode, stage, sealed, verifier=process)
                 self.assertEqual(process.returncode,2)
                 self.assertEqual(json.loads(process.stdout.splitlines()[-1])["error"],"item6_finalization_failed")
 
@@ -607,3 +669,83 @@ class CaseIsolationArtifactTamperTests(unittest.TestCase):
 
     def test_collection_all_pass_forgery_rejected_after_full_rehash(self):
         self._assert_rehashed_isolation("collection_all_pass", "isolation_collection_projection")
+
+
+class FinalizationExportInjectionUnitTests(unittest.TestCase):
+    def frame_fixture(self):
+        from types import SimpleNamespace
+        from researchops_item6_experiment_v1 import runner, finalization
+        ledger = object()
+        owner = SimpleNamespace(run_id="synthetic-finalization-run")
+        factory = SimpleNamespace(ledger=ledger, owner=owner)
+        # Pure selector model only, not an Owner or a live admission proof.
+        deadline = object.__new__(finalization.FinalizationDeadline)
+        deadline.owner, deadline.stage = owner, "scoring_after"
+        frame = SimpleNamespace(f_code=runner._run_owned.__code__, f_globals=runner._run_owned.__globals__,
+            f_locals=dict(deadline=deadline, owner=owner, factory=factory, ledger=ledger))
+        return frame, ledger, (owner.run_id,), runner._run_owned, finalization.FinalizationDeadline
+
+    def matches(self, values, args=None, kw=None):
+        frame, ledger, original_args, run, deadline_type = values
+        return f.finalization_export_matches(frame, ledger, original_args if args is None else args,
+            {} if kw is None else kw, run, deadline_type)
+
+    def test_exact_finalization_identity_matches(self):
+        self.assertTrue(self.matches(self.frame_fixture()))
+
+    def test_business_export_caller_and_earlier_stage_do_not_match(self):
+        from researchops_item6_experiment_v1 import case_isolation, runner
+        values = self.frame_fixture()
+        values[0].f_code = case_isolation._append.__code__
+        self.assertFalse(self.matches(values))
+        values = self.frame_fixture()
+        values[0].f_code = runner._run.__code__
+        self.assertFalse(self.matches(values))
+        values = self.frame_fixture()
+        values[0].f_locals["deadline"].stage = "start"
+        self.assertFalse(self.matches(values))
+
+    def test_foreign_globals_or_deadline_type_do_not_match(self):
+        from types import SimpleNamespace
+        values = self.frame_fixture()
+        values[0].f_globals = {}
+        self.assertFalse(self.matches(values))
+        values = self.frame_fixture()
+        values[0].f_locals["deadline"] = SimpleNamespace(stage="scoring_after", owner=values[0].f_locals["owner"])
+        self.assertFalse(self.matches(values))
+
+    def test_wrong_ledger_run_or_arguments_do_not_match(self):
+        values = self.frame_fixture()
+        values[0].f_locals["ledger"] = object()
+        self.assertFalse(self.matches(values))
+        self.assertFalse(self.matches(self.frame_fixture(), args=("foreign-run",)))
+        self.assertFalse(self.matches(self.frame_fixture(), args=()))
+        self.assertFalse(self.matches(self.frame_fixture(), kw={"extra": True}))
+
+    def test_foreign_owner_or_factory_does_not_match(self):
+        from types import SimpleNamespace
+        values = self.frame_fixture()
+        values[0].f_locals["owner"] = SimpleNamespace(run_id=values[2][0])
+        self.assertFalse(self.matches(values))
+        values = self.frame_fixture()
+        values[0].f_locals["factory"].ledger = object()
+        self.assertFalse(self.matches(values))
+        values = self.frame_fixture()
+        values[0].f_locals["factory"].owner = object()
+        self.assertFalse(self.matches(values))
+
+    def test_earlier_export_keeps_original_call_and_return_without_expiry(self):
+        values = self.frame_fixture()
+        calls, expired = [], []
+        document = object()
+        def original(ledger, *args, **kw):
+            calls.append((ledger, args, kw))
+            return document
+        observation = dict(target_exports=0, nonmatching_exports=0, expiry_injected=False, matched_stage=None)
+        wrapped = f.finalization_export_expiry(original, lambda: expired.append(True), values[3], values[4], observation)
+        self.assertIs(wrapped(values[1], *values[2]), document)
+        self.assertEqual(calls, [(values[1], values[2], {})])
+        self.assertEqual(expired, [])
+        self.assertEqual(observation["nonmatching_exports"], 1)
+        self.assertEqual(observation["target_exports"], 0)
+        self.assertFalse(observation["expiry_injected"])

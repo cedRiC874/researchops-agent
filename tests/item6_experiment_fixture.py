@@ -204,6 +204,42 @@ def seed():
     return root
 
 
+def finalization_export_matches(caller, ledger, args, kw, run_function, deadline_type):
+    """Test-fault selector only; never a source of runtime authority."""
+    if (caller is None or caller.f_code is not run_function.__code__
+            or caller.f_globals is not run_function.__globals__
+            or type(args) is not tuple or len(args) != 1 or kw):
+        return False
+    state = caller.f_locals
+    deadline, owner, factory = (state.get(name) for name in ("deadline", "owner", "factory"))
+    return (type(deadline) is deadline_type and deadline.stage == "scoring_after"
+            and deadline.owner is owner and owner is not None and factory is not None
+            and state.get("ledger") is ledger
+            and factory.ledger is ledger and factory.owner is owner
+            and type(args[0]) is str and args[0] == owner.run_id)
+
+
+def finalization_export_expiry(original_export, expire, run_function, deadline_type, observation):
+    """Retain every real export; inject once at the exact finalization call."""
+    def export_then_expire(ledger, *args, **kw):
+        result = original_export(ledger, *args, **kw)
+        caller = sys._getframe(1)
+        try:
+            matched = finalization_export_matches(caller, ledger, args, kw, run_function, deadline_type)
+        finally:
+            del caller
+        if matched:
+            observation["target_exports"] += 1
+            observation["matched_stage"] = "scoring_after"
+            if not observation["expiry_injected"]:
+                expire()
+                observation["expiry_injected"] = True
+        else:
+            observation["nonmatching_exports"] += 1
+        return result
+    return export_then_expire
+
+
 def run_case(mode="normal"):
     root = allocate("i6-case-")
     command(["git", "clone", "--shared", str(seed()), str(root)], ROOT)
@@ -1365,8 +1401,11 @@ async def exercise(mode, *, observe_lock=False):
                 extra.enter_context(patch.object(runner, "score_business", side_effect=score_then_expire))
             elif mode == "expiry_after_export":
                 original_export = session.AuditLedger.export_run
-                def export_then_expire(self, *args, **kw):
-                    result = original_export(self, *args, **kw); expire(); return result
+                observation = dict(target_exports=0, nonmatching_exports=0,
+                    expiry_injected=False, matched_stage=None, original_exports_preserved=True)
+                post_checks["finalization_export_fault"] = observation
+                export_then_expire = finalization_export_expiry(
+                    original_export, expire, runner._run_owned, finalization.FinalizationDeadline, observation)
                 extra.enter_context(patch.object(session.AuditLedger, "export_run", new=export_then_expire))
             elif mode == "expiry_after_seal":
                 original_archive = runner.write_archive
