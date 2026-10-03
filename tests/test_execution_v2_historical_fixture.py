@@ -107,5 +107,5 @@ class HistoricalV2FixtureTests(unittest.TestCase):
         self.assertNotIn("tests/execution_v2_fixture.py", selected)
         self.assertNotIn("tests/test_execution_v2_historical_fixture.py", selected)
         self.assertIn("src/researchops_item6_experiment_v1/runner.py", selected)
-        self.assertEqual(len(selected), 471)
+        self.assertEqual(len(selected), 499)
         self.assertFalse(checked["online_execution_authorized"])

@@ -13,16 +13,45 @@ from researchops_completion_telemetry.persisted_evidence import (
     create_persisted_live_evidence_validation_context, validate_persisted_live_runtime_denominator_artifact)
 from researchops_completion_timing.ledger_event import validate_segment_link
 from researchops_external_closure.artifact_inputs import _read_database_rows
-from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import public_task, refusal, needs_design, INSTRUCTION
+from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import public_task, refusal, needs_design
+from .interface_v2 import INSTRUCTION
 from . import contract as c
+from . import case_isolation as isolation
+from . import privacy_diagnostics as privacy
 
 
-def safe_business(value, *, key=None):
+MAX_NATIVE_CALL_ID_BYTES = 1024  # Local defensive limit, not a Provider specification.
+
+
+def safe_native_call_id(value, *, key=None):
+    """Reject before record/plan/replay; never truncate an SDK correlation key."""
+    c.require(type(value) is str and bool(value), "call_identity")
+    c.require(len(value) <= MAX_NATIVE_CALL_ID_BYTES, "native_call_id_bytes")
+    try:
+        size = len(value.encode("utf-8"))
+    except UnicodeError:
+        raise c.ExperimentError("native_call_id_bytes") from None
+    c.require(size <= MAX_NATIVE_CALL_ID_BYTES, "native_call_id_bytes")
+    # No text/argument diagnostic is fabricated for this different scan location.
+    safe_business(value, key=key)
+
+
+def safe_business(value, *, key=None, diagnostic=None):
     data = c.raw(value)
     c.require(len(data) <= c.policy()["business_field_bytes"], "business_size")
-    c.scan_public_artifact_bytes((data,), sensitive_canaries=(() if key is None else (key.encode(),)))
+    from researchops_external_closure.errors import ExternalClosurePrimitiveError
+    try:
+        c.scan_public_artifact_bytes((data,), sensitive_canaries=(() if key is None else (key.encode(),)))
+    except ExternalClosurePrimitiveError as error:
+        if type(error) is ExternalClosurePrimitiveError and error.code == "external_closure_sensitive_content_detected":
+            privacy.notify(diagnostic, "P00", error)
+        raise
     text = data.decode()
-    c.require(not re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|[A-Za-z]:[\\/]|/(?:Users|home)/|Traceback|Authorization|reasoning_text", text, re.I), "business_privacy")
+    rule = privacy.business_rule(text)
+    if rule is not None:
+        error = c.ExperimentError("business_privacy")
+        privacy.notify(diagnostic, rule, error)
+        raise error
 
 
 def safe_directory(path):
@@ -53,7 +82,9 @@ class Case:
             approval_interruptions=[], side_effects=[], side_effects_complete=True,
             side_effect_scope="two frozen read-only tools", delivered_artifacts=[],
             human_help={"during_run": [], "observations_complete": True}, native_call_ids=[],
-            formal_experiment_result=False)
+            formal_experiment_result=False,
+            case_lifecycle=dict(started_event_hash=None, closed_event_hash=None), case_rejection=None,
+            privacy_diagnostic=None)
 
     def check_deadline(self):
         c.require(time.monotonic() - self.started < self.factory.freeze["budget"]["task_seconds"], "task_deadline")
@@ -78,7 +109,11 @@ class Case:
             self.factory.owner.check(source_check=True); self.check_deadline()
             self.factory.owner.assert_case(self.factory, self)
             c.require(self.factory.current is self and self.record["execution_state"] == "observed", "tool_case")
-            c.require(not refusal(self.task) and not needs_design(self.task), "tool_before_design_or_refusal")
+            isolation.work_allowed(self)
+            if refusal(self.task) or needs_design(self.task):
+                error = c.ExperimentError("tool_before_design_or_refusal")
+                isolation.register_rejection(self, error, tool, arguments)
+                raise error
             self.factory.budget.tool(self.task["task_id"] + ":" + self.path)
             event = dict(call_id=f"C{len(self.record['events'])+1}", tool=tool, arguments=deepcopy(arguments),
                          status="failed", produced_artifacts=[], result=None)
@@ -192,7 +227,7 @@ def write_archive(directory, document):
     c.require(len(blob) + len(db) <= c.policy()["archive_bytes"], "archive_size")
     c.scan_public_artifact_bytes((db,))
     _check_archive_entries(directory, {"experiment.json", "audit.sqlite3"})
-    receipt = dict(schema_version="item6-experiment-archive/1.1", files={"experiment.json": dict(bytes=len(blob), sha256=c.digest(blob)),
+    receipt = dict(schema_version=c.ARCHIVE_VERSION, files={"experiment.json": dict(bytes=len(blob), sha256=c.digest(blob)),
                    "audit.sqlite3": dict(bytes=len(db), sha256=c.digest(db))},
                    mode=document["mode"], run_id=document["run_id"])
     sealed = c.raw(receipt)
@@ -207,7 +242,7 @@ def verify_archive(directory, *, expected_seal_sha256, expected_finalization_sha
     c.require(c.digest(receipt_bytes) == expected_seal_sha256, "archive_seal")
     receipt = c.decode(receipt_bytes, 8192)
     c.exact(receipt, "schema_version files mode run_id")
-    c.require(receipt["schema_version"] == "item6-experiment-archive/1.1" and set(receipt["files"]) == {"experiment.json", "audit.sqlite3"}, "archive_files")
+    c.require(receipt["schema_version"] == c.ARCHIVE_VERSION and set(receipt["files"]) == {"experiment.json", "audit.sqlite3"}, "archive_files")
     _check_archive_entries(directory, {"experiment.json", "audit.sqlite3", "sealed.json", "finalization.json"})
     data = c.read_regular_file_no_follow(directory / "experiment.json", max_bytes=c.policy()["archive_bytes"])
     c.require(receipt["files"]["experiment.json"] == {"bytes": len(data), "sha256": c.digest(data)}, "archive_hash")
@@ -234,7 +269,11 @@ def verify_archive(directory, *, expected_seal_sha256, expected_finalization_sha
               and final["phase_scope"] == "request_and_cleanup_before_archive", "finalization_timing")
     return dict(archive_verified=True, execution_completed=doc["status"] == "completed", mode=doc["mode"],
                 business_denominator=32, provider_calls=0 if doc["mode"] == "offline_test" else doc["dispatches"],
-                runtime_authority_granted=False, formal_comparison_result=False)
+                runtime_authority_granted=False, formal_comparison_result=False,
+                collection_status=doc["collection_status"], collection_summary=doc["collection_summary"],
+                all_business_passed=doc["all_business_passed"],
+                unacknowledged_case_events=isolation.unacknowledged_events(doc),
+                unacknowledged_privacy_events=privacy.unacknowledged_events(doc))
 
 
 def _verify_document(directory, doc, db):
@@ -369,4 +408,6 @@ def _verify_document(directory, doc, db):
                 c.require(evidence["run_id"] == record["run_id"] and len(matching) == 1 and matching[0]["result"]["facts"] == evidence["facts"], "evidence_binding")
     c.require(replay_budget.snapshot() == doc["budget"], "budget_readback")
     c.require(doc["scores"] == score_business(freeze, doc["business"]), "score_readback")
+    isolation.verify_document(doc, events)
+    privacy.verify_document(doc, events)
     return freeze, events

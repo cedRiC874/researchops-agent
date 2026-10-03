@@ -1,7 +1,9 @@
 * text=auto
+.gitattributes text eol=lf
 
 *.py text eol=lf
 *.ps1 text eol=lf
+*.psm1 text eol=lf
 *.sh text eol=lf
 *.md text eol=lf
 *.toml text eol=lf

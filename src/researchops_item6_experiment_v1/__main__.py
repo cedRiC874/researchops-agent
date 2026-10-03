@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import json
+import re
 from pathlib import Path
 
 from . import contract as c
@@ -9,6 +10,58 @@ from . import contract as c
 
 class Parser(argparse.ArgumentParser):
     def error(self, message): self.exit(2, '{"error":"item6_invalid_arguments"}\n')
+
+
+def _observation_summary(value, *, admission=False):
+    """Counts only, not a denominator/identity verifier or an evidence archive."""
+    result = dict(state="unavailable" if value is None else "invalid", planned=32,
+        available_rows=None, observed=None, not_executed=None, unknown_execution_state=None,
+        observed_failed=None, record_body_recorded=False, identity_verified=False,
+        complete_collection_claim=False)
+    if admission:
+        if (type(value) is not dict or type(value.get("planned")) is not int
+                or value["planned"] != 32 or value.get("runtime_authority_granted") is not False
+                or type(value.get("records")) is not list or len(value["records"]) > 32):
+            return result
+        rows = value["records"]
+    else:
+        if type(value) is not dict or set(value) != {"fixed_workflow", "agent"}:
+            return result
+        paths = (value["fixed_workflow"], value["agent"])
+        if any(type(path) is not dict or len(path) > 16 for path in paths):
+            return result
+        rows = [row for path in paths for row in path.values()]
+    if any(type(row) is not dict for row in rows):
+        return result
+    observed = not_executed = failed = unknown = 0
+    for row in rows:
+        state = row.get("execution_state")
+        if type(state) is str and state == "observed":
+            observed += 1
+            if type(row.get("status")) is str and row["status"] == "failed": failed += 1
+        elif type(state) is str and state == "not_executed":
+            not_executed += 1
+        else:
+            unknown += 1
+    result.update(state="available", available_rows=len(rows), observed=observed,
+        not_executed=not_executed, unknown_execution_state=unknown, observed_failed=failed)
+    return result
+
+
+def failure_projection(error):
+    """item6-cli-failure/2.0: bounded value-free failure output, exit remains 2."""
+    attributes = vars(error)
+    primary = attributes.get("primary_stop_reason")
+    if type(primary) is not str or re.fullmatch(r"[a-z][a-z0-9_]{0,127}", primary) is None:
+        primary = None
+    claim = attributes.get("claim_may_exist")
+    result = dict(schema_version="item6-cli-failure/2.0", error=c.safe_error(error),
+        claim_may_exist=claim if type(claim) is bool else None, primary_stop_reason=primary,
+        admission_observations=_observation_summary(attributes.get("admission_observations"), admission=True),
+        partial_observations=_observation_summary(attributes.get("partial_observations")), online_authorized=False)
+    c.require(len(c.raw(result)) <= 4096, "cli_failure_size")
+    c.scan_public_artifact_bytes((c.raw(result),))
+    return result
 
 
 def main():
@@ -27,7 +80,10 @@ def main():
         if args.command == "prepare":
             # A draft cannot be submitted to run: all real approval/pricing/environment fields remain absent.
             manifest = c.source.verify_source(c.ROOT)
+            c.case_rejection_policy()
             value = dict(schema_version="item6-unapproved-draft/1.0", source_commitment_sha256=manifest["commitment_sha256"],
+                         case_rejection_policy_revision=c.REJECTION_REVISION,
+                         case_rejection_policy_sha256=c.digest(c.read(c.REJECTION_POLICY_PATH, 8192)),
                          policy=c.policy(), execution_commit=None, pricing=None, environment_id=None, approval=None,
                          online_authorized=False, scorer_commit=c.SCORER)
             target = Path(args.output).resolve()
@@ -48,10 +104,15 @@ def main():
             approval_bytes=c.read_regular_file_no_follow(Path(args.approval), max_bytes=16384), approved_digest=args.approved_digest))
         print(json.dumps(result)); return result["actual_exit_code"]
     except BaseException as error:
-        print(json.dumps({"error": c.safe_error(error), "claim_may_exist": bool(getattr(error, "claim_may_exist", False)),
-                          "primary_stop_reason": getattr(error, "primary_stop_reason", None),
-                          "admission_observations": getattr(error, "admission_observations", None),
-                          "partial_observations": getattr(error, "partial_observations", None), "online_authorized": False}))
+        try:
+            output = failure_projection(error)
+        except BaseException:
+            # Even a broken projection/scanner must not expose the first error.
+            output = dict(schema_version="item6-cli-failure/2.0",
+                error="item6_cli_failure_projection_unavailable", claim_may_exist=None,
+                primary_stop_reason=None, admission_observations=_observation_summary(None),
+                partial_observations=_observation_summary(None), online_authorized=False)
+        print(json.dumps(output))
         return 2
 
 

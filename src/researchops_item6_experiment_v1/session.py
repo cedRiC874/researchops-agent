@@ -13,6 +13,7 @@ from researchops_completion_timing.session import _PendingTimedLedgerSession
 from .authority import Owner
 from .budget import Budget
 from . import contract as c
+from . import case_isolation as isolation
 
 
 def _native_transport(mode):
@@ -98,6 +99,7 @@ class ExperimentSession(_PendingTimedLedgerSession):
 
     def begin_attempt(self):
         self.assert_provider_telemetry_authority()
+        isolation.work_allowed(self.factory.current)
         self.factory.owner.check(source_check=True)
         self.factory.budget.reserve(self.case_id)
         self.factory.request_deadline = time.monotonic_ns() + self.factory.freeze["budget"]["request_seconds"] * 10**9
@@ -162,15 +164,18 @@ class ExperimentFactory:
         self.request_deadline = 0
         ledger.start_run(run_id=owner.run_id, mode=c.SCOPE + "." + owner.mode,
             request_summary=dict(mode=owner.mode, freeze_sha256=c.commit("freeze", self.freeze), source_sha256=self.freeze["source_commitment_sha256"]))
+        isolation.bind_factory(self)
 
     def open_case(self, case):
         self.owner.check(source_check=True)
+        isolation.new_case(self)
         c.require(self.current is None and self.case_index < 32, "case_overlap")
         expected = self.freeze["business_plan"][self.case_index]
         c.require(expected == {"task_id": case.task["task_id"], "path_kind": case.path}, "case_order")
         self.owner.open_business_case(self, case)
         self.current = case
         self.case_index += 1
+        isolation.started(case)
 
     def model_session(self, key):
         c.require(self.current is not None and self.current.path == "agent" and self.active is None, "model_case")
@@ -182,6 +187,7 @@ class ExperimentFactory:
         self.owner.check(source_check=True)
         self.owner.assert_case(self, self.current)
         c.require(self.active is session and self.current is not None, "session_identity")
+        isolation.work_allowed(self.current)
         self.current.check_deadline()
         policy = self.freeze["policy"]
         c.require(request.method == "POST" and str(request.url) == policy["origin"] + "/responses", "request_origin")
@@ -190,7 +196,7 @@ class ExperimentFactory:
         c.require(body.get("model") == policy["model"] and type(body.get("max_output_tokens")) is int and body.get("max_output_tokens") == self.freeze["budget"]["output_per_request"]
             and body.get("store") is False and body.get("stream", False) is False and body.get("parallel_tool_calls") is False
             and body.get("reasoning") == {"effort": "none"} and body.get("include") == [], "request_policy")
-        from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import INSTRUCTION
+        from .interface_v2 import INSTRUCTION
         c.require(body.get("instructions") == INSTRUCTION and body.get("tools") == policy["tools"]
                   and body.get("input") == self.current.replay, "request_replay")
         self.budget.wire(len(request.content))
@@ -201,9 +207,19 @@ class ExperimentFactory:
             policy_sha256=c.digest(c.raw(policy)), request_bytes=len(request.content), request_body_persisted=False, headers_persisted=False), actor_kind="system")
 
     def close_case(self, *, sdk_responses=None, sdk_requests=None, sdk_indices=None):
+        case = self.current
+        reconciliation = None
         if self.current.path == "agent":
-            self.tracker.seal_case(self.freeze["model_case_handles"][self.current.task["task_id"]], sdk_raw_response_count=sdk_responses,
-                                  sdk_usage_request_count=sdk_requests, sdk_request_usage_indices_by_response=sdk_indices)
+            reconciliation = self.tracker.seal_case(self.freeze["model_case_handles"][self.current.task["task_id"]],
+                sdk_raw_response_count=sdk_responses, sdk_usage_request_count=sdk_requests,
+                sdk_request_usage_indices_by_response=sdk_indices)
+        if self.owner.stopped is None:
+            isolation.before_close(case, reconciliation)
         if self.active is not None: self.active._capture_canaries = ()
         self.owner.close_business_case(self, self.current)
         self.current = self.active = None
+        if self.owner.stopped is None:
+            isolation.closed(case, reconciliation)
+        else:
+            isolation.abort(case)
+        return reconciliation

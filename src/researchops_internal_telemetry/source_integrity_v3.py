@@ -22,13 +22,23 @@ FLAGS = dict(source_integrity_only=True, online_execution_authorized=False,
              runtime_admission_verified=False, historical_result_revalidated=False)
 SERVICE_MANIFEST = "services/agent_workflow_comparison_v1/controlled_publication_v1/runtime-manifest.json"
 SEPARATE_GIT_BINDINGS = (".github/workflows/ci.yml", ".github/workflows/item6-experiment-bridge-offline.yml")
-EXPLICIT = (RECIPE, SCHEMA, "src/researchops_internal_telemetry/source_integrity_v3.py",
+EXPLICIT = (RECIPE, SCHEMA, ".gitattributes", "src/researchops_internal_telemetry/source_integrity_v3.py",
             "scripts/build_internal_source_integrity_v3.py", "scripts/verify_pre_v6_integrity.py",
             "evals/item6_experiment_bridge_v1/CONTRACT.md", SERVICE_MANIFEST,
+            "evals/item6_experiment_bridge_v1/CASE_REJECTION_ISOLATION_V1.md",
+            "evals/item6_experiment_bridge_v1/CASE_REJECTION_ISOLATION_V1_1.md",
+            "evals/item6_experiment_bridge_v1/PRIVACY_DIAGNOSTICS_V1.md",
+            "evals/item6_experiment_bridge_v1/BUSINESS_PRIVACY_RULES_V2.md",
+            "evals/item6_experiment_bridge_v1/TASK_INTERFACE_V2.md",
+            "services/agent_workflow_comparison_v1/controlled_comparison_v1/tasks/frozen/tasks_v2.json",
+            "scripts/invoke_item6_once.ps1", "scripts/item6_process_exit.psm1", "tests/test_item6_interface_v2.py",
             "tests/internal_source_v2_historical_support.py", "tests/test_internal_source_integrity_v3.py",
             "tests/item6_experiment_fixture.py", "tests/test_item6_experiment_authority.py",
             "tests/test_item6_experiment_session.py", "tests/test_item6_experiment_budget.py",
             "tests/test_item6_experiment_artifacts.py", "tests/test_item6_experiment_integration.py",
+            "tests/test_item6_case_isolation.py",
+            "tests/test_item6_refusal_isolation.py",
+            "tests/test_item6_privacy_diagnostics.py",
             "tests/test_internal_source_integrity_v2.py", "tests/test_deepseek_completion_first_live_validation.py",
             "tests/test_kimi_k3_handshake.py", "tests/test_phase6_depth60.py")
 

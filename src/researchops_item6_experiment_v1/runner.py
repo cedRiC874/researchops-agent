@@ -12,11 +12,14 @@ from openai.types.shared import Reasoning
 from researchops.audit import AuditLedger
 from researchops.model_providers import DeepSeekProvider
 from researchops.deepseek_completion_first_live_validation import _environment_isolated, _network_logging_disabled
-from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import INSTRUCTION, fixed_path
+from services.agent_workflow_comparison_v1.controlled_comparison_v1.paths import fixed_path
+from .interface_v2 import INSTRUCTION
 from . import contract as c
+from . import case_isolation as isolation
+from . import privacy_diagnostics as privacy
 from .authority import validate_experiment, _claim_experiment
 from .session import ExperimentFactory
-from .observations import Case, safe_business, score_business, write_archive
+from .observations import Case, safe_business, safe_native_call_id, score_business, write_archive
 from .finalization import FinalizationDeadline, record_failure
 
 
@@ -37,27 +40,39 @@ class _ObservedModel(Model):
         c.require(type(requests) is int and requests >= 0, "sdk_usage_requests")
         case.sdk_requests += requests
         calls, texts = [], []
+        message_count = 0
         for item in response.output:
             if item.type == "reasoning": raise c.ExperimentError("reasoning_not_allowed")
             if item.type == "function_call":
                 c.require(getattr(item, "status", None) == "completed", "function_call_not_complete")
                 c.require(type(item.call_id) is str and item.call_id not in case.record["native_call_ids"], "call_identity")
+                safe_native_call_id(item.call_id, key=case.factory.canary)
                 c.require(item.name in {"inspect_sources", "read_aggregate"} and type(item.arguments) is str, "model_tool")
                 arguments = c.decode(item.arguments.encode(), 8192)
                 field = "scope_id" if item.name == "inspect_sources" else "bundle_id"
                 c.require(set(arguments) == {field} and type(arguments[field]) is str, "model_arguments")
-                safe_business(arguments, key=case.factory.canary)
+                safe_business(arguments, key=case.factory.canary,
+                    diagnostic=lambda rule, error: privacy.record_model_failure(case, rule, error, location="sdk_tool_args"))
                 case.record["native_call_ids"].append(item.call_id)
                 case.plan(item.name, arguments, "actual_adapter_response")
                 calls.append(item)
             elif item.type == "message":
+                message_count += 1
                 c.require(item.role == "assistant" and item.status == "completed", "message_state")
                 for part in item.content:
                     c.require(part.type == "output_text" and type(part.text) is str, "text_part")
-                    safe_business(part.text, key=case.factory.canary); texts.append(part.text)
+                    safe_business(part.text, key=case.factory.canary,
+                        diagnostic=lambda rule, error: privacy.record_model_failure(case, rule, error, location="sdk_text"))
+                    texts.append(part.text)
             else: raise c.ExperimentError("output_item")
-        c.require(len(calls) <= 1 and len(texts) <= 1 and not (calls and texts) and bool(calls or texts), "response_actions")
-        if texts:
+        # item6-response-actions/1.1: one tool may carry one companion message.
+        # Bound messages as well as text parts: the SDK selects the last message,
+        # so multiple messages (including empty ones) must not change our answer.
+        c.require(len(calls) <= 1 and message_count <= 1 and len(texts) <= 1
+                  and bool(calls or texts), "response_actions")
+        # Text beside a tool call is intermediate, never a completed answer or
+        # evidence. Keep the original response/replay for the SDK's next turn.
+        if texts and not calls:
             case.text = texts[0]; case.completion = "complete"
             case.status = {"请指定分析设计。": "clarification", "不能伪造数据。": "refusal"}.get(case.text, "completed")
         case.replay.extend(item.model_dump(mode="json", exclude_unset=True) for item in response.output)
@@ -68,6 +83,7 @@ class _ObservedModel(Model):
 
 async def _agent(case, key):
     session = case.factory.model_session(key)
+    rejected = False
     async with DeepSeekProvider().open_model(model_id="deepseek-flash", api_key=key,
             timeout_seconds=case.factory.freeze["budget"]["request_seconds"], completion_telemetry_session=session) as provider:
         async def invoke(tool, arguments):
@@ -87,8 +103,15 @@ async def _agent(case, key):
             model=_ObservedModel(provider.sdk_model, case), tools=[inspect_sources, read_aggregate],
             model_settings=ModelSettings(max_tokens=case.factory.freeze["budget"]["output_per_request"],
                 reasoning=Reasoning(effort="none"), store=False, parallel_tool_calls=False))
-        await Runner.run(agent, json.dumps(case.task, ensure_ascii=False), max_turns=case.factory.freeze["budget"]["requests_per_task"],
-                         run_config=RunConfig(tracing_disabled=True, trace_include_sensitive_data=False))
+        try:
+            await Runner.run(agent, json.dumps(case.task, ensure_ascii=False), max_turns=case.factory.freeze["budget"]["requests_per_task"],
+                             run_config=RunConfig(tracing_disabled=True, trace_include_sensitive_data=False))
+        except BaseException as error:
+            if not isolation.capture(case, error): raise
+            rejected = True
+    # Context exit must complete normally; close errors never become case-local.
+    if rejected:
+        isolation.provider_closed(case)
     return case.finish()
 
 
@@ -111,7 +134,10 @@ async def _run(*, freeze_bytes, approval_bytes, approved_digest, expected_mode):
         owner = _claim_experiment(prepared)
     except BaseException as error:
         try:
-            frozen_tasks = c.decode(c.source.v2._git(c.ROOT, "show", c.BASE + ":" + c.TASKS))["tasks"]
+            # The immutable baseline supplies IDs only; the current v2 task file
+            # did not exist there. Never read unverified current tasks on rejection.
+            historical_ids_path = c.SERVICE + "/tasks/frozen/tasks.json"
+            frozen_tasks = c.decode(c.source.v2._git(c.ROOT, "show", c.BASE + ":" + historical_ids_path))["tasks"]
             error.admission_observations = dict(scope="entry_rejection_not_runtime_authority", baseline_commit=c.BASE,
                 runtime_authority_granted=False, planned=32, records=[dict(task_id=t["task_id"], path_kind=p,
                     run_id=None, execution_state="not_executed", final_output=None, model_dispatch_count=0)
@@ -176,7 +202,9 @@ async def _run_owned(owner):
                     case.record["known_failures"].append({"code": c.safe_error(error)})
                     record = case.finish()
                     factory.current = factory.active = None
-        records[path][task_id] = record
+                    isolation.abort(case)
+        # close_case appends the durable lifecycle and isolation links after finish.
+        records[path][task_id] = deepcopy(case.record)
     denominator = None
     try: denominator = factory.tracker.seal_runtime().to_dict()
     except Exception as error: owner.stop(c.safe_error(error))
@@ -209,12 +237,13 @@ async def _run_owned(owner):
         if not unfinished:
             owner.clock.phase_terminal()
             deadline.check("phase_terminal_after")
-        document = dict(schema_version="item6-experiment-artifact/1.1", mode=owner.mode, run_id=owner.run_id,
+        collection = isolation.result_fields(records, scores, owner.stopped)
+        document = dict(schema_version=c.ARTIFACT_VERSION, mode=owner.mode, run_id=owner.run_id,
             status=status, authority=owner.snapshots(), business=records, scores=scores,
             binding=factory.binding.runtime_snapshot(), denominator_plan=factory.plan, denominator=denominator,
             budget=factory.budget.snapshot(), dispatches=factory.dispatches, audit=audit,
             segments=segments, phase=owner.clock.snapshot(), cleanup_errors=cleanup_errors, formal_comparison_result=False,
-            provider_calls=0 if owner.mode == "offline_test" else factory.dispatches)
+            provider_calls=0 if owner.mode == "offline_test" else factory.dispatches, **collection)
         if unfinished:
             from .failed_archive import write_failed_archive
             deadline.check("failure_evidence_before")
@@ -223,7 +252,7 @@ async def _run_owned(owner):
             owner.close()
             return dict(status="failed", archive_kind="unfinished_failure", execution_completed=False,
                 archive_namespace=c.OUTPUT + "/" + owner.output.name, failure_receipt_sha256=receipt,
-                mode=owner.mode, actual_exit_code=2, provider_calls=document["provider_calls"])
+                mode=owner.mode, actual_exit_code=2, provider_calls=document["provider_calls"], **collection)
         deadline.check("seal_before")
         seal = write_archive(owner.output, document)
         deadline.check("seal_after")
@@ -238,7 +267,8 @@ async def _run_owned(owner):
     owner.close()
     return dict(status=status, archive_namespace=c.OUTPUT + "/" + owner.output.name, seal_sha256=seal,
                 finalization_sha256=finalization_sha256,
-                mode=owner.mode, actual_exit_code=0 if status == "completed" else 2, provider_calls=document["provider_calls"])
+                mode=owner.mode, actual_exit_code=c.case_rejection_policy()["exit_codes"][collection["collection_status"]],
+                provider_calls=document["provider_calls"], **collection)
 
 
 async def run_live(**kwargs):

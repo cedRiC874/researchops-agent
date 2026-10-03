@@ -13,11 +13,16 @@ from researchops_external_closure.io import read_regular_file_no_follow, scan_pu
 
 ROOT = Path(__file__).resolve().parents[2]
 DIRECTORY = "evals/item6_experiment_bridge_v1"
+REJECTION_REVISION = "item6-case-rejection-isolation/1.1"
+REJECTION_POLICY_PATH = DIRECTORY + "/case_rejection_policy_v1_1.json"
+FREEZE_VERSION = "item6-experiment-freeze/1.3"
+ARTIFACT_VERSION = "item6-experiment-artifact/1.6"
+ARCHIVE_VERSION = "item6-experiment-archive/1.6"
 SCOPE = "item6_controlled_experiment_v1"
 BASE = source.HISTORICAL_COMMIT
 SCORER = "fcc2026c60943de6016495ad244291689a9d491d"
 SERVICE = "services/agent_workflow_comparison_v1/controlled_comparison_v1"
-TASKS = SERVICE + "/tasks/frozen/tasks.json"
+TASKS = SERVICE + "/tasks/frozen/tasks_v2.json"
 EVIDENCE = SERVICE + "/tasks/frozen/evidence.json"
 GOLD = SERVICE + "/scoring/contracts.json"
 OUTPUT = "output/item6-experiment-bridge-v1"
@@ -72,7 +77,28 @@ def read(name, maximum=1048576):
     return source.v2._regular(ROOT, name, maximum)
 
 
-def policy(): return decode(read(DIRECTORY + "/policy_v1.json"))
+def policy(): return decode(read(DIRECTORY + "/policy_v2.json"))
+
+
+def case_rejection_policy():
+    """A fixed, source-bound policy; matching codes alone grant no capability."""
+    value = decode(read(REJECTION_POLICY_PATH, 8192))
+    expected = dict(schema_version=REJECTION_REVISION, eligible_path="agent",
+        eligible_reasons=["missing_design", "conflicting_design", "policy_refusal"],
+        eligible_code="item6_tool_before_design_or_refusal", max_rejections_per_case=1,
+        max_rejections=16, require_zero_prior_tools=True, forbid_refusal_tool_execution=True,
+        same_case_retry=False, continue_only_after_closed_case_and_sealed_audit=True,
+        exit_codes=dict(complete=0, complete_with_case_rejections=3, stopped=2))
+    # Canonical byte comparison distinguishes bool from int (True == 1 in Python).
+    require(raw(value) == raw(expected), "case_rejection_policy")
+    return value
+
+
+def check_rejection_policy_binding(freeze):
+    case_rejection_policy()
+    require(freeze.get("case_rejection_policy_revision") == REJECTION_REVISION
+            and freeze.get("case_rejection_policy_sha256") == digest(read(REJECTION_POLICY_PATH, 8192)),
+            "case_rejection_policy_binding")
 
 
 def model_handles(mode, tasks_sha256, task_ids):
@@ -81,8 +107,11 @@ def model_handles(mode, tasks_sha256, task_ids):
 
 
 def schema(value, name):
-    from jsonschema import Draft202012Validator
-    document = decode(read(DIRECTORY + "/" + name + ".schema.json"))
+    from jsonschema import Draft202012Validator, validators
+    names = {"freeze": "freeze_v1_3.schema.json", "artifact": "artifact_v1_6.schema.json",
+             "approval": "approval.schema.json"}
+    require(type(name) is str and name in names, "schema_name")
+    document = decode(read(DIRECTORY + "/" + names[name]))
     pending = [document]
     while pending:
         item = pending.pop()
@@ -91,7 +120,9 @@ def schema(value, name):
             pending.extend(item.values())
         elif type(item) is list: pending.extend(item)
     Draft202012Validator.check_schema(document)
-    require(not list(Draft202012Validator(document).iter_errors(value)), name + "_schema")
+    checker = Draft202012Validator.TYPE_CHECKER.redefine("integer", lambda checker, item: type(item) is int)
+    strict = validators.extend(Draft202012Validator, type_checker=checker)
+    require(not list(strict(document).iter_errors(value)), name + "_schema")
     return deepcopy(value)
 
 
@@ -100,6 +131,7 @@ def exact(value, names):
 
 
 def check_source(freeze):
+    check_rejection_policy_binding(freeze)
     require(digest(read(source.MANIFEST, source.v2.LIMITS["file_bytes"])) == freeze["source_manifest_sha256"], "source_manifest_drift")
     checked = source.verify_source(ROOT, expected=freeze["source_commitment_sha256"])
     require(digest(read(TASKS)) == freeze["tasks_sha256"] and digest(read(EVIDENCE)) == freeze["evidence_sha256"]
@@ -112,6 +144,7 @@ def check_source(freeze):
 
 
 def check_execution(freeze):
+    check_rejection_policy_binding(freeze)
     require(type(freeze["execution_commit"]) is str and re.fullmatch(r"[0-9a-f]{40}", freeze["execution_commit"]), "execution_uncommitted")
     head = source.v2._git(ROOT, "rev-parse", "HEAD").decode().strip()
     require(head == freeze["execution_commit"], "execution_head_drift")
@@ -132,6 +165,7 @@ def check_execution(freeze):
 
 def validate_freeze(value):
     value = schema(value, "freeze")
+    check_rejection_policy_binding(value)
     require(value["scope"] == SCOPE and value["policy"] == policy(), "freeze_policy")
     require(value["mode"] in ("offline_test", "live"), "mode")
     tasks = decode(read(TASKS))["tasks"]
@@ -173,9 +207,24 @@ def validate_approval(value, freeze, approved_digest, *, at=None):
 
 
 def safe_error(error):
+    # Exact SDK identity only; never inspect message/args/run_data or arbitrary
+    # properties to recognize exhaustion. This remains a batch-stopping error.
+    if type(error).__module__ == "agents.exceptions":
+        from agents.exceptions import MaxTurnsExceeded
+        if type(error) is MaxTurnsExceeded:
+            return "item6_sdk_max_turns_exceeded"
     code = getattr(error, "code", None)
     if type(error).__module__.startswith(("researchops_item6_experiment_v1", "researchops_completion_", "researchops_internal_telemetry", "researchops.audit", "researchops.model_providers")):
         if type(code) is str and re.fullmatch(r"[a-z][a-z0-9_]{0,127}", code): return code
+    # The locked SDK wraps a rejected function tool once with UserError.
+    # Preserve only this confirmed refusal code; never parse exception text,
+    # follow context/arbitrary chains, or treat a same-named class as trusted.
+    if type(error).__module__ == "agents.exceptions":
+        from agents.exceptions import UserError
+        if type(error) is UserError and type(error.__cause__) is ExperimentError:
+            cause_code = error.__cause__.__dict__.get("code")
+            if type(cause_code) is str and cause_code == "item6_tool_before_design_or_refusal":
+                return cause_code
     return "item6_execution_failed"
 
 
@@ -188,7 +237,10 @@ def build_freeze(*, mode, environment_id, pricing, budget=None):
     names = [row["path"] for row in checked["files"]] + [source.MANIFEST, *source.SEPARATE_GIT_BINDINGS]
     committed = set(names) <= tracked and all(blob == read(name, source.v2.LIMITS["file_bytes"])
         for name, blob in zip(names, source.committed_blobs(ROOT, head, names)))
-    candidate = dict(schema_version="item6-experiment-freeze/1.0", scope=SCOPE, mode=mode,
+    case_rejection_policy()
+    candidate = dict(schema_version=FREEZE_VERSION, scope=SCOPE, mode=mode,
+        case_rejection_policy_revision=REJECTION_REVISION,
+        case_rejection_policy_sha256=digest(read(REJECTION_POLICY_PATH, 8192)),
         execution_commit=head if committed else None,
         execution_tree=source.v2._git(ROOT, "rev-parse", head + "^{tree}").decode().strip() if committed else None,
         source_commitment_sha256=checked["commitment_sha256"], source_manifest_sha256=digest(read(source.MANIFEST)),
