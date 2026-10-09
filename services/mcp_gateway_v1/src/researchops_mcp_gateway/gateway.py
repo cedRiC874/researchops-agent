@@ -36,6 +36,7 @@ from .state import StateStore
 
 CONTROL_TOOLS = frozenset({"begin_run", "execute_approved", "get_call_status"})
 LOCAL_TOOLS = frozenset({*CONTROL_TOOLS, "inspect_dataset", "recommend_statistical_method", "read_aggregate_evidence", "publish_aggregate_results"})
+_AUDIT_META_KEY = "researchops_gateway"
 
 
 class Gateway:
@@ -287,13 +288,15 @@ class Gateway:
         except (OSError, UnicodeError, csv.Error):
             return []
 
-    def _wire(self, payload: Mapping[str, Any], *, is_error: bool = False, gateway_metadata: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    def _wire(self, payload: Mapping[str, Any], *, is_error: bool = False, gateway_metadata: Mapping[str, Any] | None = None, request_status: str = "succeeded", request_decision: str = "allow") -> dict[str, Any]:
         metadata = gateway_metadata or {}
         body = {key: value for key, value in payload.items() if key not in metadata}
         safe = sanitize_result(body, column_names=self._column_names())
         # 审批摘要来自已保存的安全参数，不能被不相关的数据列名改写；仍进行路径及秘密过滤。
         safe.update(sanitize_result(metadata))
-        return {"content": [{"type": "text", "text": json.dumps(safe, ensure_ascii=False, sort_keys=True)}], "structuredContent": safe, "isError": is_error}
+        # 传输元数据只由网关生成，不从业务结果或上游 _meta 复制。
+        audit_meta = {"result_status": "error" if is_error else request_status, "decision": "denied" if is_error else request_decision}
+        return {"content": [{"type": "text", "text": json.dumps(safe, ensure_ascii=False, sort_keys=True)}], "structuredContent": safe, "isError": is_error, "_meta": {_AUDIT_META_KEY: audit_meta}}
 
     def list_pending_approvals(self) -> list[dict[str, Any]]:
         """供本地 CLI 读取；不注册为 MCP 工具。"""
@@ -372,8 +375,11 @@ class Gateway:
             elif name in CONTROL_TOOLS:
                 payload = dict(outcome.result or {})
             else:
-                payload = {**dict(outcome.result or {}), "status": outcome.status, "run_id": run_id, "call_id": outcome.call_id, "tool_name": name}
-            result = self._wire(payload, gateway_metadata=gateway_metadata)
+                payload = dict(outcome.result or {})
+                payload.setdefault("status", outcome.status)
+                payload.update({"run_id": run_id, "call_id": outcome.call_id, "tool_name": name})
+            result = self._wire(payload, gateway_metadata=gateway_metadata, request_status=outcome.status,
+                                request_decision="require_approval" if outcome.requires_approval else "allow")
             return result
         except (AuditError, ToolRuntimeError) as exc:
             error_code = exc.code
@@ -418,10 +424,11 @@ class Gateway:
         wire_error = isinstance(result, Mapping) and result.get("isError") is True
         request_failed = error_code is not None or wire_error
         effective_error = error_code if error_code is not None else (structured.get("error_code") if wire_error else None)
-        # 业务结果和被查询调用中的 error_code/status 不是本次请求的失败信号。
-        status = "error" if request_failed else (
-            "succeeded" if tool_name == "get_call_status" else structured.get("status", "succeeded")
-        )
+        wire_meta = result.get("_meta") if isinstance(result, Mapping) else None
+        audit_meta = wire_meta.get(_AUDIT_META_KEY) if isinstance(wire_meta, Mapping) else None
+        requires_approval = isinstance(audit_meta, Mapping) and audit_meta.get("result_status") == "awaiting_approval" and audit_meta.get("decision") == "require_approval"
+        # 业务 status 始终属于数据；缺少网关传输元数据的成功请求按正常完成记账。
+        status = "error" if request_failed else ("awaiting_approval" if requires_approval else "succeeded")
         call_id = structured.get("call_id")
         if call_id is None and isinstance(arguments, Mapping):
             call_id = arguments.get("call_id")
@@ -429,7 +436,7 @@ class Gateway:
             "method": safe_text(str(method)),
             "tool_name": safe_text(tool_name) if isinstance(tool_name, str) else None,
             "arguments_hash": arguments_hash,
-            "decision": "denied" if request_failed else ("require_approval" if status == "awaiting_approval" else "allow"),
+            "decision": "denied" if request_failed else ("require_approval" if requires_approval else "allow"),
             "call_id": call_id if isinstance(call_id, str) and re.fullmatch(CALL_ID["pattern"], call_id) else None,
             "result_status": status if isinstance(status, str) else "unknown",
             "error_code": effective_error,
