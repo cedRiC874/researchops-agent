@@ -6,6 +6,7 @@ import json
 import re
 from collections.abc import Mapping, Sequence
 from typing import Any
+from urllib.parse import urlsplit
 
 from researchops.audit import safe_audit_value
 from researchops.tool_runtime import ToolRuntimeError
@@ -17,7 +18,8 @@ DEFAULT_PUBLISH_PATTERNS = (
     r"(?i)(?:subject|participant|patient|受试者)[-_]?[a-z]*\d+",
 )
 _WINDOWS_PATH = re.compile(r"(?i)(?<![A-Za-z0-9])(?:[A-Z]:[\\/]|\\\\)[^\r\n\t\"']+")
-_POSIX_PATH = re.compile(r"(?<![\w:/])/(?!/)[^\s\"'<>]+")
+_POSIX_PATH = re.compile(r"(?<![\w/])/[^\s\"'<>]+")
+_HTTP_URL = re.compile(r"(?i)\bhttps?://[^\s\"'<>]+")
 _SECRET_VALUE = re.compile(r"(?i)\b(?:sk|api-key|token|secret)[-_][A-Za-z0-9_-]{8,}\b")
 _SECRET_FIELD = re.compile(r"(?i)(?:api[_-]?key|secret|password|authorization|cookie|credential|access[_-]?token)")
 _MACHINE_FIELDS = frozenset({
@@ -30,7 +32,21 @@ _MACHINE_FIELDS = frozenset({
 def safe_text(value: str) -> str:
     value = _SECRET_VALUE.sub("[SECRET_REDACTED]", value)
     value = _WINDOWS_PATH.sub("[PATH_REDACTED]", value)
-    return _POSIX_PATH.sub("[PATH_REDACTED]", value)
+    # 仅保留有真实主机部分的 HTTP(S) URL；file:/// 和 http:/// 不能借位置例外绕过。
+    fragments = []
+    cursor = 0
+    for match in _HTTP_URL.finditer(value):
+        try:
+            parsed = urlsplit(match.group())
+            is_public_url = bool(parsed.hostname) and parsed.username is None and parsed.password is None
+        except ValueError:
+            is_public_url = False
+        if is_public_url:
+            fragments.append(_POSIX_PATH.sub("[PATH_REDACTED]", value[cursor:match.start()]))
+            fragments.append(match.group())
+            cursor = match.end()
+    fragments.append(_POSIX_PATH.sub("[PATH_REDACTED]", value[cursor:]))
+    return "".join(fragments)
 
 
 def reject_sensitive_publish(arguments: Mapping[str, Any], patterns: Sequence[str] | None = None) -> None:

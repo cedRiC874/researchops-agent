@@ -73,8 +73,54 @@ class ProxyManager:
         required = schema.get("required", [])
         if not isinstance(properties, Mapping) or not isinstance(required, list) or "run_id" in properties or "run_id" in required:
             raise ToolRuntimeError("gateway_schema_unsupported", "上游 schema 不能占用运行句柄。")
-        if canonical_json(sanitize_result(schema)) != canonical_json(schema):
+        ProxyManager._check_schema_references(schema)
+
+        def display_projection(value: Any) -> Any:
+            if isinstance(value, Mapping):
+                # 已验证的本地 JSON 指针不是文件路径，检查其余可展示文本即可。
+                return {key: "validated_local_schema_reference" if key == "$ref" else display_projection(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [display_projection(item) for item in value]
+            return value
+
+        projected = display_projection(schema)
+        if canonical_json(sanitize_result(projected)) != canonical_json(projected):
             raise ToolRuntimeError("gateway_schema_unsupported", "上游 schema 包含不能安全展示的字段。")
+
+    @staticmethod
+    def _check_schema_references(schema: Mapping[str, Any]) -> None:
+        # 加入 run_id 会改变指向根对象的引用语义；仅接受 $defs 中不递归的静态定义。
+        active: set[int] = set()
+
+        def visit(value: Any) -> None:
+            if not isinstance(value, (Mapping, list)):
+                return
+            identity = id(value)
+            if identity in active:
+                raise ToolRuntimeError("gateway_schema_unsupported", "代理不支持递归参数 schema。")
+            active.add(identity)
+            try:
+                if isinstance(value, Mapping):
+                    for key, item in value.items():
+                        if key in {"$id", "$anchor", "$dynamicAnchor", "$dynamicRef"}:
+                            raise ToolRuntimeError("gateway_schema_unsupported", "代理仅支持不改变解析基址的静态定义引用。")
+                        if key == "$ref":
+                            if not isinstance(item, str) or re.fullmatch(r"#/\$defs/[^/~%]+", item) is None:
+                                raise ToolRuntimeError("gateway_schema_unsupported", "代理仅允许指向 $defs 具名定义的引用。")
+                            definitions = schema.get("$defs", {})
+                            target = definitions.get(item[len("#/$defs/"):]) if isinstance(definitions, Mapping) else None
+                            if not isinstance(target, (Mapping, bool)):
+                                raise ToolRuntimeError("gateway_schema_unsupported", "引用的参数定义不存在。")
+                            visit(target)
+                        else:
+                            visit(item)
+                else:
+                    for item in value:
+                        visit(item)
+            finally:
+                active.remove(identity)
+
+        visit(schema)
 
     @staticmethod
     def _validate_arguments(arguments: Mapping[str, Any]) -> dict[str, Any]:

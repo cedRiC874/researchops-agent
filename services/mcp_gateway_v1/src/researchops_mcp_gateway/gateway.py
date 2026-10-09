@@ -287,8 +287,12 @@ class Gateway:
         except (OSError, UnicodeError, csv.Error):
             return []
 
-    def _wire(self, payload: Mapping[str, Any], *, is_error: bool = False) -> dict[str, Any]:
-        safe = sanitize_result(payload, column_names=self._column_names())
+    def _wire(self, payload: Mapping[str, Any], *, is_error: bool = False, gateway_metadata: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        metadata = gateway_metadata or {}
+        body = {key: value for key, value in payload.items() if key not in metadata}
+        safe = sanitize_result(body, column_names=self._column_names())
+        # 审批摘要来自已保存的安全参数，不能被不相关的数据列名改写；仍进行路径及秘密过滤。
+        safe.update(sanitize_result(metadata))
         return {"content": [{"type": "text", "text": json.dumps(safe, ensure_ascii=False, sort_keys=True)}], "structuredContent": safe, "isError": is_error}
 
     def list_pending_approvals(self) -> list[dict[str, Any]]:
@@ -353,6 +357,7 @@ class Gateway:
             if self.proxy is not None:
                 self.proxy.before_call(name, normalized)
             outcome = self.executor.propose(run_id, name, normalized)
+            gateway_metadata = None
             if outcome.requires_approval:
                 call = self.ledger.get_tool_call(outcome.call_id)
                 safe_arguments = call["safe_args"]
@@ -363,11 +368,12 @@ class Gateway:
                     "tool_name": name, "safe_arguments": safe_arguments,
                     "summary": summary, "message": "需要有人在本地 CLI 批准",
                 }
+                gateway_metadata = {"summary": payload["summary"], "message": payload["message"]}
             elif name in CONTROL_TOOLS:
                 payload = dict(outcome.result or {})
             else:
                 payload = {**dict(outcome.result or {}), "status": outcome.status, "run_id": run_id, "call_id": outcome.call_id, "tool_name": name}
-            result = self._wire(payload)
+            result = self._wire(payload, gateway_metadata=gateway_metadata)
             return result
         except (AuditError, ToolRuntimeError) as exc:
             error_code = exc.code
