@@ -325,7 +325,14 @@ class Gateway:
         result = None
         error_code = None
         try:
-            if not isinstance(name, str) or name not in self._definitions:
+            recognized = isinstance(name, str) and (name in self._definitions or (self.proxy is not None and self.proxy.recognizes(name)))
+            if not recognized:
+                # 有效运行上的未知工具尝试也消耗配额；未知名始终保留协议错误语义。
+                if isinstance(arguments, Mapping) and "run_id" in arguments:
+                    try:
+                        self.store.consume_call(arguments["run_id"])
+                    except ToolRuntimeError:
+                        pass
                 # 未知工具仍先进入核心策略路径，但不会产生业务执行。
                 unknown_name = name if isinstance(name, str) else "invalid_tool_name"
                 if unknown_name not in {spec.name for spec in self.registry.specs()}:

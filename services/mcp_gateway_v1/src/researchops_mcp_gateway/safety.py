@@ -16,7 +16,7 @@ DEFAULT_PUBLISH_PATTERNS = (
     r"(?i)(?:^|[-_])p\d{3,}(?:$|[-_])",
     r"(?i)(?:subject|participant|patient|受试者)[-_]?[a-z]*\d+",
 )
-_WINDOWS_PATH = re.compile(r"(?i)(?:[A-Z]:[\\/]|\\\\)[^\r\n\t\"']+")
+_WINDOWS_PATH = re.compile(r"(?i)(?<![A-Za-z0-9])(?:[A-Z]:[\\/]|\\\\)[^\r\n\t\"']+")
 _POSIX_PATH = re.compile(r"(?<![\w:/])/(?!/)[^\s\"'<>]+")
 _SECRET_VALUE = re.compile(r"(?i)\b(?:sk|api-key|token|secret)[-_][A-Za-z0-9_-]{8,}\b")
 _SECRET_FIELD = re.compile(r"(?i)(?:api[_-]?key|secret|password|authorization|cookie|credential|access[_-]?token)")
@@ -44,7 +44,8 @@ def reject_sensitive_publish(arguments: Mapping[str, Any], patterns: Sequence[st
 
 def contains_path(value: Any) -> bool:
     if isinstance(value, str):
-        return bool(_WINDOWS_PATH.search(value) or value.startswith(("/", "~/", "~\\")) or re.search(r"(?:^|[\\/])\.\.(?:[\\/]|$)", value))
+        # 代理参数仅允许逻辑标识；相对目录、URL 和盘符相对路径也不能透传。
+        return bool("/" in value or "\\" in value or value in {".", ".."} or re.match(r"^[A-Za-z]:", value))
     if isinstance(value, Mapping):
         return any(contains_path(key) or contains_path(item) for key, item in value.items())
     if isinstance(value, (list, tuple)):
