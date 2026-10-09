@@ -14,7 +14,10 @@ from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.shared.exceptions import MCPError
 from mcp.shared.memory import create_client_server_memory_streams
+from mcp.shared.message import SessionMessage
+from mcp_types import CLIENT_CAPABILITIES_META_KEY, PROTOCOL_VERSION_META_KEY
 
+from researchops.audit import sha256_json
 from researchops_mcp_gateway.cli import main
 from researchops_mcp_gateway.sdk_adapter import create_server
 from services.mcp_gateway_v1.tests.offline import prohibit_network
@@ -133,3 +136,88 @@ class SDKAdapterTests(GatewayFixture):
         for event in ["socket.getaddrinfo", "socket.gethostbyname", "socket.sendto"]:
             with self.assertRaisesRegex(RuntimeError, "offline_test_network_forbidden"):
                 prohibit_network(event, ())
+
+    def test_stdio_protocol_version_errors_do_not_reflect_sensitive_input(self):
+        async def scenario():
+            before = {event["event_id"] for event in self.all_gateway_events()}
+            source_path = PROJECT_ROOT / "services/mcp_gateway_v1/src"
+            child_code = (
+                "import sys; "
+                f"sys.path[:0] = [{str(PROJECT_ROOT)!r}, {str(source_path)!r}]; "
+                "from services.mcp_gateway_v1.tests.offline import prohibit_network; "
+                "sys.addaudithook(prohibit_network); "
+                "from researchops_mcp_gateway.bootstrap import main; "
+                "raise SystemExit(main())"
+            )
+            child_env = {"MPLCONFIGDIR": str(self.root / "mpl-cache")}
+            if sys.platform == "win32":
+                child_env["SYSTEMROOT"] = os.environ.get("SYSTEMROOT", r"C:\Windows")
+            parameters = StdioServerParameters(
+                command=sys.executable,
+                args=["-c", child_code, "--project-root", str(self.root),
+                      "--state-dir", str(self.root / "state"), "serve"],
+                env=child_env, cwd=self.root,
+            )
+            # 使用官方类型收发消息，不实现解析器或协议序列化。
+            with patch("mcp.client.stdio.get_default_environment", return_value={}):
+                async with stdio_client(parameters) as (read_stream, write_stream):
+                    with anyio.fail_after(20):
+                        canaries = ["C:/private/protocol-path-canary", "sk-test-only-protocol-canary-9aa82", "2099-01-01"]
+                        for request_id, version in enumerate(canaries, 1):
+                            await write_stream.send(SessionMessage(types.JSONRPCRequest(
+                                jsonrpc="2.0", id=request_id, method="tools/call", params={
+                                    "name": "inspect_dataset", "arguments": {"run_id": self.run_id, "dataset_id": "synthetic_trial"},
+                                    "_meta": {PROTOCOL_VERSION_META_KEY: version, CLIENT_CAPABILITIES_META_KEY: {}},
+                                })))
+                            response = (await read_stream.receive()).message
+                            self.assertIsInstance(response, types.JSONRPCError)
+                            self.assertEqual(response.id, request_id)
+                            self.assertEqual(response.error.code, types.UNSUPPORTED_PROTOCOL_VERSION)
+                            self.assertIn("2026-07-28", response.error.data["supported"])
+                            expected = version if version == "2099-01-01" else "<invalid-protocol-version>"
+                            self.assertEqual(response.error.data["requested"], expected)
+                            if version != "2099-01-01":
+                                self.assertNotIn(version, response.model_dump_json(by_alias=True))
+                        await write_stream.send(SessionMessage(types.JSONRPCRequest(
+                            jsonrpc="2.0", id=4, method="server/discover", params={
+                                "_meta": {PROTOCOL_VERSION_META_KEY: "2026-07-28", CLIENT_CAPABILITIES_META_KEY: {}},
+                            })))
+                        normal = (await read_stream.receive()).message
+                        self.assertIsInstance(normal, types.JSONRPCResponse)
+                        self.assertEqual(normal.id, 4)
+                        self.assertIn("2026-07-28", normal.result["supportedVersions"])
+                        duplicate_arguments = [
+                            {"run_id": self.run_id, "dataset_id": "synthetic_trial", "marker": marker}
+                            for marker in ("first", "second")]
+                        # 相同 ID 的并发错误仍必须各自按原参数审计，不能覆盖观察对象。
+                        for arguments in duplicate_arguments:
+                            await write_stream.send(SessionMessage(types.JSONRPCRequest(
+                                jsonrpc="2.0", id=50, method="tools/call", params={
+                                    "name": "inspect_dataset", "arguments": arguments,
+                                    "_meta": {PROTOCOL_VERSION_META_KEY: "2099-01-01", CLIENT_CAPABILITIES_META_KEY: {}},
+                                })))
+                        for _ in duplicate_arguments:
+                            response = (await read_stream.receive()).message
+                            self.assertIsInstance(response, types.JSONRPCError)
+                            self.assertEqual(response.id, 50)
+                            self.assertEqual(response.error.code, types.UNSUPPORTED_PROTOCOL_VERSION)
+                        await write_stream.send(SessionMessage(types.JSONRPCRequest(
+                            jsonrpc="2.0", id=5, method="tools/call", params={
+                                "name": "inspect_dataset", "arguments": {"run_id": self.run_id, "dataset_id": "synthetic_trial"},
+                                "_meta": {PROTOCOL_VERSION_META_KEY: "2026-07-28", CLIENT_CAPABILITIES_META_KEY: {}},
+                            })))
+                        normal = (await read_stream.receive()).message
+                        self.assertIsInstance(normal, types.JSONRPCResponse)
+                        self.assertEqual(normal.result["structuredContent"]["row_count"], 240)
+            events = [event["safe_payload"] for event in self.all_gateway_events() if event["event_id"] not in before]
+            self.assertEqual(len(events), 7, events)
+            denied = [event for event in events if event["decision"] == "denied"]
+            self.assertEqual(len(denied), 5)
+            self.assertTrue(all(event["method"] == "tools/call" and event["tool_name"] == "inspect_dataset"
+                                and event["result_status"] == "error" and event["error_code"] == "mcp_protocol_error"
+                                and len(event["arguments_hash"]) == 64 and "call_id" in event for event in denied))
+            for arguments in duplicate_arguments:
+                self.assertEqual(sum(event["arguments_hash"] == sha256_json(arguments) for event in denied), 1)
+            self.assertEqual(sum(event["method"] == "server/discover" for event in events), 1)
+            self.assertEqual(sum(event["method"] == "tools/call" and event["decision"] == "allow" for event in events), 1)
+        anyio.run(scenario)

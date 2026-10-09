@@ -2,15 +2,20 @@
 from __future__ import annotations
 
 import json
+import re
+from contextvars import ContextVar
+from dataclasses import dataclass, replace
 from functools import partial
 from typing import Any
 
 import anyio
+from anyio.abc import ObjectReceiveStream, ObjectSendStream
 import mcp.types as types
 from mcp.server.context import CallNext, HandlerResult, ServerRequestContext
 from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 from mcp.shared.exceptions import MCPError
+from mcp.shared.message import SessionMessage
 from pydantic import ValidationError
 
 from researchops.tool_runtime import ToolRuntimeError
@@ -19,6 +24,39 @@ from . import __version__
 
 SDK_VERSION = "2.3.0"
 PROTOCOL_VERSION = "2026-07-28"
+
+
+@dataclass
+class _RequestObservation:
+    request_id: str | int
+    method: str
+    tool_name: str | None
+    arguments: Any
+    audited: bool = False
+
+
+_request_observation: ContextVar[_RequestObservation | None] = ContextVar("mcp_request_observation", default=None)
+
+
+class _ObservedReceiveStream(ObjectReceiveStream[SessionMessage | Exception]):
+    """SDK 为每条消息保留 sender context；观察对象不依赖请求 ID 唯一性。"""
+    def __init__(self, stream: ObjectReceiveStream[SessionMessage | Exception]) -> None:
+        self.stream = stream
+
+    async def receive(self) -> SessionMessage | Exception:
+        item = await self.stream.receive()
+        observed = None
+        if isinstance(item, SessionMessage) and isinstance(item.message, types.JSONRPCRequest):
+            request = item.message
+            params = request.params
+            tool_name = params.get("name") if isinstance(params, dict) else None
+            arguments = params.get("arguments") if request.method == "tools/call" and isinstance(params, dict) else params
+            observed = _RequestObservation(request.id, request.method, tool_name if isinstance(tool_name, str) else None, arguments)
+        _request_observation.set(observed)
+        return item
+
+    async def aclose(self) -> None:
+        await self.stream.aclose()
 
 
 def _tool_error(code: str) -> types.CallToolResult:
@@ -90,6 +128,9 @@ class _GatewayAuditMiddleware:
                             error_code=error_code,
                         )
                     )
+                    observed = _request_observation.get()
+                    if observed is not None and observed.request_id == ctx.request_id:
+                        observed.audited = True
                 except Exception:
                     raise MCPError(
                         code=types.INTERNAL_ERROR,
@@ -135,10 +176,49 @@ def create_server(gateway: Any) -> Server[Any]:
     return server
 
 
+class _ProtocolSafeSendStream(ObjectSendStream[SessionMessage]):
+    """清洗 SDK 前置版本错误的反射字段；消息解析与序列化仍由 SDK 负责。"""
+    def __init__(self, stream: ObjectSendStream[SessionMessage], gateway: Any) -> None:
+        self.stream = stream
+        self.gateway = gateway
+
+    async def send(self, item: SessionMessage) -> None:
+        message = item.message
+        if isinstance(message, types.JSONRPCError) and message.error.code == types.UNSUPPORTED_PROTOCOL_VERSION:
+            data = message.error.data
+            if isinstance(data, dict) and isinstance(data.get("requested"), str):
+                requested = data["requested"]
+                if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", requested) is None:
+                    # 日期形版本可用于协商；任意其他输入不应通过错误响应返回。
+                    error = message.error.model_copy(update={
+                        "data": {**data, "requested": "<invalid-protocol-version>"}})
+                    message = message.model_copy(update={"error": error})
+                    item = replace(item, message=message)
+        observed = _request_observation.get()
+        if (isinstance(message, types.JSONRPCError) and observed is not None
+                and observed.request_id == message.id and not observed.audited):
+            try:
+                # 前置拒绝没有进入 middleware；按原请求补记，不保存输入原文。
+                await anyio.to_thread.run_sync(partial(
+                    self.gateway.audit_request, observed.method, observed.tool_name, observed.arguments,
+                    error_code="mcp_protocol_error"))
+                observed.audited = True
+            except Exception:
+                # 仍由 SDK 发出原响应包络；审计失败必须返回安全错误。
+                error = types.ErrorData(code=types.INTERNAL_ERROR, message="审计记录未完成。",
+                                        data={"error_code": "mcp_audit_failed"})
+                item = replace(item, message=message.model_copy(update={"error": error}))
+        await self.stream.send(item)
+
+    async def aclose(self) -> None:
+        await self.stream.aclose()
+
+
 async def run_stdio_async(gateway: Any) -> None:
     server = create_server(gateway)
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+        await server.run(_ObservedReceiveStream(read_stream), _ProtocolSafeSendStream(write_stream, gateway),
+                         server.create_initialization_options())
 
 
 def run_stdio(gateway: Any) -> None:
