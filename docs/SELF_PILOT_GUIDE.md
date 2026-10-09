@@ -1,5 +1,7 @@
 # ResearchOps Agent 内部 Self-Pilot Web / CLI 指南
 
+> 历史流程说明，不是当前在线操作授权。下列旧命令不保证满足现行session、遥测和批准门禁；当前状态以[STATUS](../STATUS.md)为准。不要仅凭本页配置Key或启动Provider。
+
 > 适用范围：项目创建者本人进行内部可用性与工作流 pilot。
 > 正确标签：`internal self-pilot`。
 > 不能称为：外部科研用户 pilot、独立专家验证或生产验证。
@@ -7,7 +9,7 @@
 ## 1. 进入项目并设置环境
 
 ```powershell
-cd "C:\Users\付翔\Documents\ChatGPT\项目\researchops-agent"
+Set-Location '<repository-root>'
 $env:PYTHONPATH = "src"
 ```
 

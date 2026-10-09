@@ -1,0 +1,19 @@
+{
+  "name": "ResearchOps offline demo (candidate)",
+  "build": { "dockerfile": "Dockerfile", "context": ".." },
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "containerEnv": {
+    "PYTHON_PATH": "/home/vscode/.venvs/researchops/bin/python",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "OPENAI_AGENTS_DISABLE_TRACING": "1"
+  },
+  "postCreateCommand": ["bash", ".devcontainer/setup-offline.sh"],
+  "waitFor": "postCreateCommand",
+  "forwardPorts": [],
+  "customizations": {
+    "vscode": {
+      "settings": { "python.defaultInterpreterPath": "/home/vscode/.venvs/researchops/bin/python" }
+    }
+  }
+}

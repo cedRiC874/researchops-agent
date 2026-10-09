@@ -29,7 +29,7 @@ request with local stable code `kimi_chat_response_invalid`: one request/call, z
 zero trusted tool calls and zero tool executions. No usage record passed validation; actual tokens,
 billing and Provider latency remain unknown. G4 is `planned_not_registered`, and the authorization
 cannot be retried. See the
-[sanitized v7 failure evidence](evidence/kimi-controlled-pilot-v2-response-failure-v1/README.md).
+[sanitized v7 failure evidence](../../evidence/kimi-controlled-pilot-v2-response-failure-v1/README.md).
 
 Candidate v7 is unrelated to the historical supervised `pilot_pack.supervised_v7.json`; its Pack8
 successor is also retained only as a historical artifact. Active Pilot Staging remains configured to

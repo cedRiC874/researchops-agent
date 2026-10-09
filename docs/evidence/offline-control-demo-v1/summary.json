@@ -1,0 +1,127 @@
+{
+  "schema": "offline-control-demo-public-projection/1",
+  "mode": "offline_script_driven_no_model",
+  "disclosure": "离线、脚本驱动、未调用模型",
+  "presentation": "实际执行记录的分幕回放，停留时间不等于执行耗时",
+  "production_code_baseline": "a877a5a0c6ae1dedc5faec61726d86279aafe749",
+  "capture_sha256": "64afa6bbe1b0953ae2d391e5de983db24ed59f532fb3a18f45c6a14f584de5cb",
+  "helper_sha256": "8c668929a2bee5c38199334730e3f0efc467a668abc2953ead49f0f24f619e38",
+  "source_bindings": {
+    "src/researchops/artifact_security.py": "8727af8e0451cb7b4b2c23d94c0071205056d8f0129a77c7e1036e16d7a1d150",
+    "src/researchops/audit.py": "f80a181d0f4246b0d50a9bce3d896437b2a963f1f434c0efc8c0cf561bd0c054",
+    "src/researchops/cli.py": "1329a5f0d8a5e6e0f5578d6f86d937bcefd2e9c25954c3d808efaf8226a6acaf",
+    "src/researchops/offline_agent.py": "bc80fc27d1ad310b6c547d071a58a58d990b1ca8a14970e48061f37863ee9217",
+    "src/researchops/reporting.py": "0cf145d30638e5df96618a79a2675559a6b7918f5fd5f5a27a61cd860841f319",
+    "src/researchops/tool_runtime.py": "1a8e44c22cfaf6fed5fa82ef95ff7a7682f482f3bfe3568ce1d50a39fb8cea10"
+  },
+  "stages": [
+    {
+      "stage": "read-only",
+      "case": "main_success",
+      "status": "succeeded",
+      "attempt_count": 1,
+      "release_present": false,
+      "error_code": null,
+      "cli_actual_exit": null,
+      "audit_chain_valid": true,
+      "clock_overridden": null,
+      "approval_ttl_seconds": null,
+      "real_wait_seconds": null
+    },
+    {
+      "stage": "publish-pending",
+      "case": "main_success",
+      "status": "awaiting_approval",
+      "attempt_count": 0,
+      "release_present": false,
+      "error_code": null,
+      "cli_actual_exit": null,
+      "audit_chain_valid": true,
+      "clock_overridden": null,
+      "approval_ttl_seconds": null,
+      "real_wait_seconds": null
+    },
+    {
+      "stage": "cli-approved",
+      "case": "main_success",
+      "status": "approved",
+      "attempt_count": 0,
+      "release_present": false,
+      "error_code": null,
+      "cli_actual_exit": 0,
+      "audit_chain_valid": true,
+      "clock_overridden": null,
+      "approval_ttl_seconds": null,
+      "real_wait_seconds": null
+    },
+    {
+      "stage": "cli-executed",
+      "case": "main_success",
+      "status": "succeeded",
+      "attempt_count": 1,
+      "release_present": true,
+      "error_code": null,
+      "cli_actual_exit": 0,
+      "audit_chain_valid": true,
+      "clock_overridden": null,
+      "approval_ttl_seconds": null,
+      "real_wait_seconds": null
+    },
+    {
+      "stage": "parameter-rejected",
+      "case": "independent_parameter_rejection",
+      "status": "failed",
+      "attempt_count": 0,
+      "release_present": false,
+      "error_code": "tool_approval_mismatch",
+      "cli_actual_exit": null,
+      "audit_chain_valid": true,
+      "clock_overridden": null,
+      "approval_ttl_seconds": null,
+      "real_wait_seconds": null
+    },
+    {
+      "stage": "expired-rejected",
+      "case": "independent_real_expiry_rejection",
+      "status": "expired",
+      "attempt_count": 0,
+      "release_present": false,
+      "error_code": "tool_approval_expired",
+      "cli_actual_exit": 4,
+      "audit_chain_valid": true,
+      "clock_overridden": false,
+      "approval_ttl_seconds": 1,
+      "real_wait_seconds": 1.078
+    }
+  ],
+  "model_calls": 0,
+  "cli_actual_exits": [
+    0,
+    0,
+    0,
+    4
+  ],
+  "cli_process_count": 4,
+  "report_claims": [
+    {
+      "claim_id": "primary_adjusted_effect",
+      "direction": "treatment - control",
+      "displayed_value": -5.6069303056318915,
+      "evidence_id": "E-7C87BB6C88EB",
+      "metric_path": "estimates.contrast.adjusted_mean_difference"
+    },
+    {
+      "claim_id": "sensitivity_unadjusted_effect",
+      "direction": "treatment - control",
+      "displayed_value": -6.788698752228186,
+      "evidence_id": "E-B93CD9DC7751",
+      "metric_path": "estimates.contrast.mean_difference"
+    }
+  ],
+  "report_source_sha256": "f2e1dc8b6fff3589cdf82f54766cb5371ff02a25c3239077298d70a38725b2f8",
+  "prior_source_and_artifacts_unchanged": true,
+  "historical_online_observations_spliced": false,
+  "phase6_resume_supported": false,
+  "independent_rejection_cases": true,
+  "full_private_audit_included": false
+}

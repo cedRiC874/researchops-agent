@@ -1,108 +1,70 @@
 # ResearchOps Agent
 
-**中文** · [English](README.en.md)
+**中文** · [English](README.en.md) · [文档入口](docs/README.md) · [项目状态](STATUS.md)
 
-[![offline-quality-gate](https://github.com/cedRiC874/researchops-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/cedRiC874/researchops-agent/actions/workflows/ci.yml)
-![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+科研数据分析场景的受控Agent原型：模型编排工具，代码约束权限，结果关联证据。项目首先回答的是：**什么时候不该用Agent？**
 
-_CI 信号：Ubuntu x86-64 安装锁定依赖并运行完整 Linux x86-64 离线演示；Windows 离线质量门运行完整单元/集成套件，并重建与验证固定 50 题 evidence。_
+![离线、脚本驱动、未调用模型：只读调用、发布挂起、CLI批准、执行及两种拒绝](docs/media/offline-control-demo.gif)
 
-**让 LLM 做科研数据分析，但不让它编数字：** ResearchOps Agent 让模型负责规划，让确定性工具负责数据质量、方法选择、统计计算与可视化，并把每条结论绑定到可复核 evidence 与人工审批边界。
+**离线、脚本驱动、未调用模型** · 108秒实际离线记录回放：只读调用 → 发布挂起 → CLI批准 → 执行 → 改参数被拒 → 过期被拒。两种拒绝是独立案例；CLI批准由脚本发起，不冒充真人审批录像。未剪接真实模型运行。[分镜、证据与局限](docs/DEMO.md)
 
-![ANCOVA 与 Welch 聚合效应图](artifacts/phase3/effect_estimates.png)
+## 任务定义清楚时，先用固定流程
 
-_30 秒演示结果：输入脱敏 CSV、研究问题和显式研究设计，输出带样本流、效应量、置信区间、证据 ID 与限制说明的聚合分析。_
+2026-10-04，同一组16道开发方已知合成任务、同一冻结工具证据下：
 
-模型看不到真实文件路径，也不能自由执行 Python、SQL 或 shell；它只能调用允许的逻辑工具，统计数值由本地确定性实现产生并进入审计链。
+| 路径 | 通过 | 失败 | 无法判定 | 模型请求 |
+| --- | ---: | ---: | ---: | ---: |
+| 固定流程 | 16 | 0 | 0 | 0 |
+| Agent | 13 | 1 | 2 | 30 |
 
-> 这是一个 research prototype / portfolio project，不是临床决策工具，也不是已经通过生产验证的产品。
+32条业务观察完整收集，但不是业务全部通过。固定流程直接实现规则、单位换算和模板；Agent还需要生成正确参数与文字。这个结果支持本组明确任务优先采用固定流程，不足以排名通用能力。
 
-延伸阅读：[如何设计一个不会骗你的 Agent 评测（知乎中文版）](https://zhuanlan.zhihu.com/p/2078131794466099751) ·
-[Hacker News 讨论](https://news.ycombinator.com/item?id=49518667)
+Agent的新增价值需要在开放式输入、变化的目标和动态工具选择中另行证明，并抵偿调用成本、延迟与风险。本项目尚未证明这类优势，不能从13/16推导未知任务上的收益。
 
-## 一个具体结果：基线校正后的治疗效应
+[结果、失败案例与固定版本](docs/evidence/main51-controlled-observation-v1/README.md)
 
-示例问题：在 240 行完全模拟的随机对照试验中，治疗组与对照组的随访收缩压是否不同？考虑基线收缩压后，结论是否仍成立？
+## 四个工程重点
 
-| 方法 | treatment − control | 95% CI | p 值 | 分析样本 | Evidence ID |
-| --- | ---: | ---: | ---: | ---: | --- |
-| ANCOVA，基线校正、HC3 | -5.6069 mmHg | [-7.9351, -3.2787] | 3.82e-6 | 212 | `E-7C87BB6C88EB` |
-| Welch，未校正敏感性分析 | -6.7887 mmHg | [-10.8425, -2.7349] | 0.001134 | 212 | `E-B93CD9DC7751` |
+- **工具编排**：仅逻辑资源ID和白名单工具，不直接运行任意Python、SQL或shell。
+- **权限边界**：受控写入停在待审批状态，批准绑定具体范围，恢复时重新核对；拒绝不是等待审批。
+- **响应遥测**：原生／归一化状态分栏，usage和计时关联同一事件；缺失保持未知。
+- **证据核验**：报告统计值关联evidence ID、指标路径及显示值；审计、评分和归档保留失败。
 
-负值表示治疗组随访收缩压更低；只有研究方案预定义 `beneficial_direction=lower` 时，报告才允许使用“获益”措辞。
+Main51对照只有两个只读工具；通用科研分析、离线审批演示和服务切片是不同路径，不拼成一套已生产验收的系统。
 
-> **专业边界：**研究请求的是 ITT 人群，但 28 个随访结局缺失后，当前实现实际分析 212 个 available cases。因此系统会明确记录 `requested_population=intention_to_treat`、`realized_population=available_case`，并拒绝把该结果描述成完整 ITT 分析。
+## 改变设计判断的教训
 
-可复核产物：[analysis bundle](artifacts/phase3/analysis_bundle.json) · [聚合图表](artifacts/phase3/effect_estimates.png)
+1. **能力与格式遵循分开测。** 早期对照中，额外查询的严格序列要求与有限文本解析影响了很多分数；也有真实不合格工具请求，不能把所有失败归咎格式。unknown不等于错误或通过。
+2. **检查结果与必要不变量，而非唯一轨迹。** 一次额外只读查询可能合理；权限、证据来源、预算和副作用约束则必须持续成立。这是后继设计原则，不回改旧协议成绩。
+3. **算术交给确定性实现。** IC-04取得0.00625 g，却输出0.00625 mg，正确值应为6.25 mg。有证据和引用ID不代表最终文字正确。
+4. **CI绿色不等于质量达标。** 历史workflow成功但质量结果仅44/50、证据引用10/21；后续才接入质量阈值和真实退出传播。[事故记录](docs/evidence/main-offline-gate-20260822/README.md)
 
-## Quickstart
+## 安全覆盖与缺口
 
-严格 frozen-evidence 演示当前支持 Python 3.12 的 Windows x86-64 和 Linux x86-64（NumPy/OpenBLAS）；CI 分别固定 Python 3.12.10 与 3.12.13。锁定依赖要求 Python ≥3.12，不能使用 3.11。macOS 与 ARM 尚未建立可比较的数值基线，因此不在这一严格演示的支持范围内。
+对照[OWASP LLM Top 10 2025](https://genai.owasp.org/llm-top-10/)，不是安全认证或完备防御声明。
 
-为避免把跨操作系统的浮点位差异误当成同一证据，canonical ANCOVA identity 分别固定为 Windows x86-64 `E-36034128278C` 与 Linux x86-64 `E-14EBFFCA843E`。
+| 风险 | 覆盖状态与对应证据 | 仍需注意 |
+| --- | --- | --- |
+| 提示注入 | **部分覆盖**：[公开场景](evals/v2/public_tasks.jsonl)及[4项离线描述投毒测试](tests/test_phase6_tool_description_poisoning.py) | 不证明真实模型抵抗投毒 |
+| 敏感信息泄露 | **已测试**：[写前扫描／持久化拒绝](tests/test_completion_telemetry_ledger.py) | 未覆盖完备DLP，不存完整body |
+| 过度代理 | **已测试**：[范围绑定审批与执行](tests/test_tool_runtime.py) | 未覆盖生产多租户授权 |
+| 错误信息 | **已测试**：[报告追证](tests/test_reporting.py)及[实际失败](docs/evidence/main51-controlled-observation-v1/README.md) | IC-04仍有错误，引用ID不是保证 |
+| 无限制消耗 | **已测试**：[预算／未知usage](tests/test_item6_experiment_budget.py) | 未覆盖账单硬封顶，存在观测停止线 |
 
-### Windows x86-64 / PowerShell
+[风险映射、已有注入题与待补测试](docs/SECURITY_OWASP.md)
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.lock
-powershell -ExecutionPolicy Bypass -File .\scripts\portfolio_demo.ps1
-```
+## 已知限制
 
-### Linux x86-64
+**当前真实 Agent 在审批暂停后不能恢复。** 本页离线演示使用脚本驱动的Phase4控制面，不把它与Main51真实线上结果剪成同一次执行。安全表“已测试”只指所链接的限定场景，不是完备安全声明。
 
-```bash
-python3 -m venv .venv
-./.venv/bin/python -m pip install -r requirements.linux.lock
-bash ./scripts/portfolio_demo.sh
-```
+## 继续阅读
 
-Linux 锁文件与 Windows 锁文件保持同一组版本，仅排除 Windows 专用的 `pywin32`；Linux demo 使用独立冻结的 `evals/tasks.linux-x86_64.jsonl`，只重绑定跨操作系统变化的 evidence/chart IDs，不放宽数值或质量阈值。CI 会安装该锁文件并执行完整 demo。
+离线复核使用Python 3.12及锁定依赖：Windows x86-64入口为`scripts\portfolio_demo.ps1`；Linux x86-64入口为`scripts/portfolio_demo.sh`，使用`requirements.linux.lock`。严格数值复现尚不支持原生macOS 与 ARM；Codespaces路线仍待单独构建验证，不假称已一键可用。
 
-演示会重建固定 50 题确定性评测、验证 50 条事件哈希链、检查敏感信息 canary，并把结果写入一个新的 artifact 目录。它不会运行在线 Provider，也不会覆盖已有产物。
+- [一页项目说明](docs/PORTFOLIO.md) · [文档导航](docs/README.md) · [当前状态](STATUS.md)
+- [聚合结果图](artifacts/phase3/effect_estimates.png)：历史模拟分析，212个available cases，不是完整ITT。
+- [文章中文版](https://zhuanlan.zhihu.com/p/2078131794466099751) · [Hacker News讨论](https://news.ycombinator.com/item?id=49518667)
 
-## 架构
+这是研究原型／作品集，不是临床决策工具或生产SLA证明。Depth-60仍为20/60，旧归因与原STATUS/T7不被新结果覆盖。个人贡献和AI辅助分工待本人确认，不填写未经核实的工时。
 
-```mermaid
-flowchart LR
-    I["研究问题 + 脱敏 CSV + 显式设计"]
-    A["Agent 规划层"]
-    R["逻辑资源注册表"]
-    Q["数据质量与方法选择"]
-    S["确定性统计工具"]
-    E["证据包 + 聚合图表 + 报告"]
-    P["中央风险策略"]
-    H["人工审批"]
-    X["受控执行器"]
-    L["SQLite 审计 + SHA-256 链"]
-    V["Phase 5 / Phase 6 评测器"]
-
-    I --> R --> Q --> S --> E
-    R --> A
-    A -->|"仅逻辑 ID"| P
-    P -->|"只读允许"| X
-    P -->|"受控写入"| H --> X
-    X --> Q
-    X --> E
-    X --> L
-    H --> L
-    Q --> V
-    S --> V
-    E --> V
-    A --> V
-```
-
-关键边界：
-
-- 研究设计必须显式输入；系统不从列名猜随机化、因果、配对或协变量时序。
-- 方法建议与执行绑定数据 SHA-256；输入变化时安全停止。
-- 报告 claim 必须匹配本次工具生成的 `evidence_id + metric_path + displayed_value + direction`。
-- 未知工具、未知风险、越权资源和未批准写入默认拒绝。
-
-详细设计见 [ARCHITECTURE.md](docs/ARCHITECTURE.md)。
-
-当前在线/离线验证、失败分母、Provider 历史、candidate commitments 与严格声明边界见 **[STATUS.md](STATUS.md)**。
-
-## License
-
-[MIT](LICENSE)
+License: [MIT](LICENSE)
