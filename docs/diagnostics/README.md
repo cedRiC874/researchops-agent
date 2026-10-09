@@ -1,5 +1,10 @@
 # Frozen offline replay inputs
 
+The root [`probe_out_v3.json`](../../probe_out_v3.json) is indexed here but has not
+been moved. Its canonical root path, bytes and digest are consumed by historical
+surface mapping and source-integrity contracts. This batch keeps it in place:
+no move, successor, historical commitment rewrite or symlink substitution.
+
 This directory contains the exact historical source and contract bytes needed
 by the separately published completion-telemetry tests. These are replay inputs,
 not new Provider runs, current execution authority or passing releases. Copied

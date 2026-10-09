@@ -17,7 +17,7 @@ schemas, candidate content or task selection.
 - Private/non-synthetic data: forbidden.
 
 The sanitized post-lock record is available in the
-[usage-stage failure evidence](evidence/kimi-controlled-pilot-usage-failure-v1/README.md). This
+[usage-stage failure evidence](../../evidence/kimi-controlled-pilot-usage-failure-v1/README.md). This
 runbook describes the frozen v6 procedure for audit purposes; it must not be used to repeat that run.
 A future attempt requires a versioned successor runbook and new authority.
 

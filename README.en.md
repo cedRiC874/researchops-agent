@@ -1,108 +1,116 @@
 # ResearchOps Agent
 
-[中文](README.md) · **English**
+[中文](README.md) · **English** · [Documentation](docs/README.md) · [Project status](STATUS.md)
 
-[![offline-quality-gate](https://github.com/cedRiC874/researchops-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/cedRiC874/researchops-agent/actions/workflows/ci.yml)
-![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+A controlled Agent prototype for research data analysis: **the model orchestrates tools; code computes statistics and checks permissions; results retain their evidence and failure records.**
 
-_CI signal: Ubuntu x86-64 installs locked dependencies and runs the complete Linux x86-64 offline demo; the Windows offline gate runs the complete unit/integration suite and rebuilds and verifies the frozen 50-task evidence._
+The first question this project asks is: **when should you not use an Agent?** On 16 clearly defined internal synthetic tasks, the fixed workflow passed all 16 without calling a model; the Agent passed 13. For well-defined tasks, a simpler workflow is often the better starting point.
 
-**Let an LLM analyze research data without letting it invent the numbers:** ResearchOps Agent delegates planning to the model, deterministic data-quality and statistical work to controlled tools, and binds every reported claim to reviewable evidence and approval boundaries.
+![Offline, script-driven, no model calls: read-only call, pending publication, CLI approval, execution and two rejection cases](docs/media/offline-control-demo.gif)
 
-![Aggregate ANCOVA and Welch effects](artifacts/phase3/effect_estimates.png)
+**Offline, script-driven, no model calls** · A 40-second replay of actual offline records: read-only call → publication pending → CLI approval → execution → changed parameters rejected → expired approval rejected. A script invokes the CLI to approve; the two rejections are independent cases. No footage from real model runs is spliced in. [Storyboard and evidence](docs/DEMO.md)
 
-_Thirty-second result: provide a de-identified CSV, a research question and an explicit study design; receive an aggregate analysis with sample flow, effect estimates, confidence intervals, evidence IDs and limitations._
+## Conclusion: start with a fixed workflow for well-defined tasks
 
-The model never sees real filesystem paths and cannot freely run Python, SQL or shell commands. It can only call allowlisted logical tools; deterministic local implementations produce the statistics and append them to the audit chain.
+On 2026-10-04, both paths used the same 16 developer-known synthetic tasks, fixed tools and evidence:
 
-> This is a research prototype and portfolio project, not a clinical decision tool or a production-validated product.
+| Path | Pass | Fail | Unknown | Model requests |
+| --- | ---: | ---: | ---: | ---: |
+| Fixed workflow | 16 | 0 | 0 | 0 |
+| Agent | 13 | 1 | 2 | 30 |
 
-Further reading: [How to Design an Agent Evaluation That Doesn’t Lie to You (English article)](https://github.com/cedRiC874/researchops-agent/blob/6457358d74cc07106dfb7a348ac143cdaa87e459/docs/articles/honest-agent-evaluation/article.md) ·
-[Hacker News discussion](https://news.ycombinator.com/item?id=49518667)
+The fixed workflow encodes rules, unit conversions and output templates directly in code; the Agent must also generate correct arguments and wording. One clear error was writing **0.00625 g as 0.00625 mg**; the correct conversion is 6.25 mg. The other two cases remain “unknown” under the original rules, not retroactively counted as passes.
 
-## A concrete result: baseline-adjusted treatment effect
+These results support using a fixed workflow first for these specific tasks; they do not establish a model capability ranking. An Agent's value would need to be demonstrated separately on open-ended inputs, changing goals and dynamic tool selection, while justifying its cost, latency and risk. This project has not yet demonstrated that advantage.
 
-Example question: in a fully synthetic 240-row randomized trial, do follow-up systolic blood-pressure values differ between treatment and control, after accounting for baseline pressure?
+[Results, case-level issues and fixed version](docs/evidence/main51-controlled-observation-v1/README.md)
 
-| Method | treatment − control | 95% CI | p-value | Analysis n | Evidence ID |
-| --- | ---: | ---: | ---: | ---: | --- |
-| ANCOVA, baseline-adjusted, HC3 | -5.6069 mmHg | [-7.9351, -3.2787] | 3.82e-6 | 212 | `E-7C87BB6C88EB` |
-| Welch, unadjusted sensitivity analysis | -6.7887 mmHg | [-10.8425, -2.7349] | 0.001134 | 212 | `E-B93CD9DC7751` |
+## Architecture: separate computation, permissions and the model
 
-Negative values mean lower follow-up pressure in the treatment group. The report may use benefit language only when the study design pre-specifies `beneficial_direction=lower`.
-
-> **Professional boundary:** the requested population is intention-to-treat, but 28 missing follow-up outcomes leave 212 available cases in the realized analysis. The system therefore records `requested_population=intention_to_treat` and `realized_population=available_case`, and refuses to describe this result as a complete ITT analysis.
-
-Reviewable artifacts: [analysis bundle](artifacts/phase3/analysis_bundle.json) · [aggregate chart](artifacts/phase3/effect_estimates.png)
-
-## Quickstart
-
-The strict frozen-evidence demo currently supports Python 3.12 on Windows x86-64 and Linux x86-64 with NumPy/OpenBLAS; CI pins Python 3.12.10 and 3.12.13, respectively. The locked dependencies require Python ≥3.12; Python 3.11 cannot install them. macOS and ARM do not yet have a comparable numerical baseline and are outside this strict demo's supported scope.
-
-To avoid treating cross-OS floating-point differences as the same evidence, the canonical ANCOVA identity is pinned separately to Windows x86-64 `E-36034128278C` and Linux x86-64 `E-14EBFFCA843E`.
-
-### Windows x86-64 / PowerShell
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.lock
-powershell -ExecutionPolicy Bypass -File .\scripts\portfolio_demo.ps1
+```mermaid
+flowchart LR
+    U["Research question + logical resource IDs"] --> A["Agent: selects tools"]
+    A --> P{"Policy and permission checks"}
+    D["De-identified data + explicit study design"] --> T["Deterministic tools: inspect, analyze, compute"]
+    P -->|"Allowed read-only call"| T
+    P -->|"Controlled publication"| H["Await human approval"]
+    P -->|"Forbidden operation"| X["Reject"]
+    H -->|"Explicit CLI execution after approval"| W["Publish aggregate results"]
+    T --> E["Aggregate evidence: values, intervals and sources"]
+    E --> R["Structured report: bound values can be traced"]
+    P -.-> L["Audit records"]
+    H -.-> L
+    W -.-> L
 ```
 
-### Linux x86-64
+This diagram shows component relationships, not a sequence followed by all 16 tasks: the comparison used only two read-only tools. Execution after approval is demonstrated by the offline control-plane demo. **The current real Agent cannot resume after pausing for approval.** Statistical tool results are reviewable, but the model's final wording can still be wrong.
+
+## Engineering work
+
+- **Controlled tool orchestration:** the model can use only logical resource IDs and allowlisted tools; it cannot run arbitrary Python, SQL or shell commands.
+- **Approval means more than “yes”:** it binds to specific arguments and resources, expires, and is checked again before execution. Approval itself does not perform a write; changed arguments or expired approval are rejected.
+- **Traceable results:** structured reports link bound effect values to their sources and metric paths. A citation ID is not a guarantee that the entire answer is correct.
+- **Recording why a call ended:** completion state, truncation signals, usage and timing are retained. Missing information remains unknown rather than becoming zero; full request/response bodies are not stored.
+- **Preserving failures:** pass, fail and unknown are counted separately. New results do not overwrite historical scores, and passing tests does not establish model quality.
+
+## Four lessons that changed the design
+
+1. **Measure capability and format compliance separately.** Strict call sequences and limited text parsing affected early comparison scores, alongside genuinely invalid tool requests. Not every failure can be attributed to formatting.
+2. **Check outcomes and required constraints, not a single prescribed trajectory.** An extra read-only lookup may be reasonable, but permissions, evidence provenance, budgets and side-effect boundaries must always hold. This is a future design principle, not a rewrite of historical scores.
+3. **Leave arithmetic to deterministic code.** The unit-conversion error shows that evidence and citations do not guarantee the numbers written by the model are correct.
+4. **Green CI does not establish quality.** An earlier automated check reported success while actual quality was only 44/50, with evidence references at 10/21. Quality thresholds and propagation of actual exit codes were added afterwards. [Incident record](docs/evidence/main-offline-gate-20260822/README.md)
+
+## Security coverage and gaps
+
+Mapped to the [OWASP LLM Top 10 2025](https://genai.owasp.org/llm-top-10/); this is neither a security certification nor a claim of complete protection.
+
+| Risk | Coverage and tests/evidence | What this does not establish |
+| --- | --- | --- |
+| Prompt injection | **Partially covered:** [public attack scenarios](evals/v2/public_tasks.jsonl), [4 tool-description poisoning tests](tests/test_phase6_tool_description_poisoning.py) | Scripted calls do not prove that a real model resists poisoning |
+| Sensitive information disclosure | **Tested:** [allowlisting, pre-write scanning and persistence rejection](tests/test_completion_telemetry_ledger.py) | Not comprehensive data-loss prevention |
+| Excessive agency | **Tested:** [scope-bound approvals, expiry and execution](tests/test_tool_runtime.py) | Not production-grade multi-tenant authorization |
+| Misinformation | **Tested:** [report traceability](tests/test_reporting.py), [an observed error](docs/evidence/main51-controlled-observation-v1/README.md) | Citation IDs do not guarantee correct model answers |
+| Unbounded consumption | **Tested:** [budgets and unknown usage](tests/test_item6_experiment_budget.py) | The cost stop takes effect after a response, not as a hard billing cap |
+
+“Tested” refers only to the limited scenarios linked above. [Full risk mapping and gaps](docs/SECURITY_OWASP.md)
+
+## Quickstart: offline, no model calls
+
+Requires Git and **Python 3.12**. Installing dependencies requires network access; the demo makes no model calls and needs no API Key.
+
+Clone the repository and enter its directory:
 
 ```bash
-python3 -m venv .venv
+git clone https://github.com/cedRiC874/researchops-agent.git
+cd researchops-agent
+```
+
+**Linux x86-64:**
+
+```bash
+python3.12 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.linux.lock
 bash ./scripts/portfolio_demo.sh
 ```
 
-The Linux lock keeps the same package versions as the Windows lock while excluding the Windows-only `pywin32`. The Linux demo uses the separately frozen `evals/tasks.linux-x86_64.jsonl`, which rebinds only cross-OS evidence/chart IDs without relaxing numerical or quality thresholds. CI installs this lock and runs the complete demo.
+**Windows x86-64 (PowerShell):**
 
-The demo rebuilds the frozen 50-task deterministic evaluation, verifies all 50 event hash chains, checks sensitive-data canaries, and writes to a new artifact directory. It never invokes an online Provider and never overwrites an existing artifact.
-
-## Architecture
-
-```mermaid
-flowchart LR
-    I["Research question + de-identified CSV + explicit design"]
-    A["Agent planning"]
-    R["Logical resource registry"]
-    Q["Data quality + method selection"]
-    S["Deterministic statistics"]
-    E["Evidence bundle + chart + report"]
-    P["Central risk policy"]
-    H["Human approval"]
-    X["Controlled executor"]
-    L["SQLite audit + SHA-256 chain"]
-    V["Phase 5 / Phase 6 evaluators"]
-
-    I --> R --> Q --> S --> E
-    R --> A
-    A -->|"logical IDs only"| P
-    P -->|"read-only allow"| X
-    P -->|"controlled write"| H --> X
-    X --> Q
-    X --> E
-    X --> L
-    H --> L
-    Q --> V
-    S --> V
-    E --> V
-    A --> V
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.lock
+.\.venv\Scripts\python.exe .\scripts\portfolio_demo.py
 ```
 
-Key boundaries:
+Windows also has a wrapper, `scripts\portfolio_demo.ps1`, that invokes the same implementation. These commands run the **50-task offline control-plane demo**, not the 16-task online comparison or the full root-level test suite. Outputs go into a new `artifacts/portfolio_demo_*` directory, including evaluation summaries, reports and an audit index; existing outputs cannot be overwritten.
 
-- The study design must be explicit; the system does not infer randomization, causality, pairing or covariate timing from column names.
-- Method recommendations and execution bind to the dataset SHA-256 and fail safely if the input changes.
-- Every report claim must match the current tool output's `evidence_id + metric_path + displayed_value + direction`.
-- Unknown tools, unknown risk, unauthorized resources and unapproved writes are denied by default.
+Strict numerical reproduction does not currently support native **macOS and ARM**.
 
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the detailed design.
+## Further reading
 
-For current online/offline validation, failure denominators, Provider history, candidate commitments and strict claim boundaries, see **[STATUS.md](STATUS.md)**.
+- [One-page project overview](docs/PORTFOLIO.md) · [Documentation](docs/README.md) · [Current status](STATUS.md)
+- [Example analysis chart](artifacts/phase3/effect_estimates.png): historical synthetic-data analysis with 212 available cases, not a complete intention-to-treat analysis.
+- [English article](https://github.com/cedRiC874/researchops-agent/blob/6457358d74cc07106dfb7a348ac143cdaa87e459/docs/articles/honest-agent-evaluation/article.md) · [Hacker News discussion](https://news.ycombinator.com/item?id=49518667)
 
-## License
+This is a research prototype and portfolio project, not a clinical decision tool, and it has no production SLA. The earlier strict 60-task protocol score remains 20/60; later results do not rewrite it.
 
-[MIT](LICENSE)
+License: [MIT](LICENSE)

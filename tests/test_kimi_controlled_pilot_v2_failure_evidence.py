@@ -363,7 +363,7 @@ class KimiControlledPilotV2FailureEvidenceTests(unittest.TestCase):
             _sha(ROOT / "evals/v2/kimi_controlled_pilot_contract_v2.json"),
             "6c305f7bf53ec2b10dca16a4fdbec157d3cbfcb8a6804e58641c5c0d848ff605",
         )
-        runbook = (ROOT / "docs/KIMI_CONTROLLED_PILOT_V2_RUNBOOK.md").read_text(
+        runbook = (ROOT / "docs/archive/kimi/KIMI_CONTROLLED_PILOT_V2_RUNBOOK.md").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("--confirm-online", runbook)
