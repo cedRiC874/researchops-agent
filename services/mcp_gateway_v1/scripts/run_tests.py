@@ -9,11 +9,6 @@ import unittest
 from pathlib import Path
 
 
-def prohibit_network(event, arguments):
-    if event in {"socket.connect", "socket.getaddrinfo", "socket.gethostbyname", "socket.sendto"}:
-        raise RuntimeError("offline_test_network_forbidden")
-
-
 class MeasuredResult(unittest.TextTestResult):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -47,6 +42,7 @@ def main():
     root = Path(__file__).resolve().parents[3]
     for location in (root, root / "src", root / "services/mcp_gateway_v1/src"):
         sys.path.insert(0, str(location))
+    from services.mcp_gateway_v1.tests.offline import prohibit_network
     sys.addaudithook(prohibit_network)
     suite = unittest.defaultTestLoader.discover(
         str(root / "services/mcp_gateway_v1/tests"), top_level_dir=str(root)
