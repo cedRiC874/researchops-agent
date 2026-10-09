@@ -1,6 +1,19 @@
-# Codespaces离线演示候选
+# Codespaces与开发容器离线演示
 
-已准备[devcontainer配置](../.devcontainer/devcontainer.json)和[独立CI门禁](../.github/workflows/devcontainer-offline-demo.yml)。当前尚无该配置的CI成功记录，README中的Codespaces按钮须等真实构建与离线演示通过后再添加。本次配置工作没有创建云实例。
+[devcontainer配置](../.devcontainer/devcontainer.json)已在固定提交 `9481e60dc9a57c99b766bfad1a36654385348935` 的[独立CI门禁](../.github/workflows/devcontainer-offline-demo.yml)中通过实际构建与离线演示。该结果属于GitHub托管runner上的开发容器，不是Codespaces云实例验收；本项目尚未创建云实例，README暂不添加Codespaces按钮。
+
+## 已完成的CI记录
+
+| 触发事件 | 固定版本检查 | 实际结论 |
+| --- | --- | --- |
+| pull_request | [run 37944465953 / devcontainer-linux-x86-demo](https://github.com/cedRiC874/researchops-agent/actions/runs/37944465953/job/113867044272) | success |
+| push | [run 37944459480 / devcontainer-linux-x86-demo](https://github.com/cedRiC874/researchops-agent/actions/runs/37944459480/job/113867019979) | success |
+
+push实际检出并执行上述固定head；PR运行的实际检出是GitHub为该head和main生成的合成merge提交 `9feb96d60ed4b4695f0c1018ecfc516bb20bed0c`，并不表示PR已合并。
+
+两份运行工件均记录Python 3.12.15、Unicode 15.0.0、Linux x86_64；50题全部通过、0失败、0模型调用，21/21证据引用匹配，意外工具错误和安全违规均为0。`process.json`中`phase=completed`，`actual_exit_code=0`、`demo_actual_exit_code=0`。工件ID分别为push `11622808860`、PR `11621878728`。
+
+后续文档提交仍须核验自己的全部CI，不能用这次容器绿色代替根全量或其他检查。
 
 ## 目标与限制
 
@@ -8,7 +21,7 @@
 
 ## 官方镜像与可核查来源
 
-Dockerfile使用官方`mcr.microsoft.com/devcontainers/python:3.2.5-3.12-bookworm`并固定其linux/amd64 manifest。2026-10-09只读查询MCR时，分别计算了index、manifest和config响应字节的SHA-256，并核对各层摘要引用；未下载镜像层。
+Dockerfile使用官方Dev Containers Python镜像的digest-only引用；来源标签为`mcr.microsoft.com/devcontainers/python:3.2.5-3.12-bookworm`，固定其linux/amd64 manifest。2026-10-09只读查询MCR时，分别计算了index、manifest和config响应字节的SHA-256，并核对各层摘要引用；该次查询未下载镜像层，后续CI才进行实际拉取与构建。
 
 | 元数据 | 已核验的值 |
 | --- | --- |
@@ -40,6 +53,6 @@ bash scripts/portfolio_demo.sh
 
 CI只声明`contents: read`权限，使用`pull_request`事件，不引用secrets、不持久化checkout凭据、不继承runner全部环境，且明确`push: never`。运行会记录源提交、关键输入哈希、实际Python／Unicode／架构、依赖列表、演示日志和真实进程退出码；报告与运行记录作为本次attempt的artifact保留14天。构建或准备失败时工作流失败，只记录action结果，不伪造演示成功或退出码。
 
-只有这个门禁在待发布提交上通过后，才能添加README中的Codespaces按钮并宣称该配置可用。它不创建Codespace，不替代现有CI、S10历史回放或线上授权验收。
+该门禁已在上面的固定提交通过；本批仍不添加README中的Codespaces按钮。入口安排在作品集文档清理之后。CI不创建Codespace，不替代根全量、其他专项检查或线上授权验收；PR所有checks通过后仍须用户确认才能合并。
 
 GitHub Codespaces在VM中运行devcontainer，可通过浏览器使用；创建与后续使用可能涉及账户额度或费用。[GitHub配置说明](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers)。本地只写配置没有创建Codespace，也没有使用任何线上授权。

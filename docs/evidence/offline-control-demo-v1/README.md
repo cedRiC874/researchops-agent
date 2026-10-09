@@ -13,7 +13,9 @@
 
 ## GIF与公开材料边界
 
-[GIF](../../media/offline-control-demo.gif)由实际结果生成8张静态浏览器画面后编码，1280×860、108秒、302611字节；SHA-256为`c03fca921136115c37013a1cd665119e7bd6bc3aaa3bce619168b3ededa8bced`。每幕停留时间是讲解节奏，不是执行耗时。调用别名只为展示，不是可复制执行命令。
+[GIF](../../media/offline-control-demo.gif)由同一次实际结果生成8张静态浏览器画面后编码，1280×860，每页5秒、共40秒、302834字节；SHA-256为`35ef336e99d598d5f5f4440f0dcaaa9d4618d1cf2744c3df44bd726ab7c03a2d`。每幕停留时间是讲解节奏，不是执行耗时。调用别名只为展示，不是可复制执行命令。
+
+此次仅将首页说明中的“Main51”改为“16 题对照”并缩短停留时间；其余7页的原始PNG及GIF解码像素一致，未重跑采集或改写结果。[108秒初版](https://github.com/cedRiC874/researchops-agent/blob/9481e60dc9a57c99b766bfad1a36654385348935/docs/media/offline-control-demo.gif)保留在旧提交中，原302611字节、SHA-256 `c03fca921136115c37013a1cd665119e7bd6bc3aaa3bce619168b3ededa8bced`；下述采集摘要与原始证据不变。
 
 公开投影来自本地采集JSON，其SHA-256为`64afa6bbe1b0953ae2d391e5de983db24ed59f532fb3a18f45c6a14f584de5cb`。采集辅助脚本SHA-256为`8c668929a2bee5c38199334730e3f0efc467a668abc2953ead49f0f24f619e38`。原件本地保留；摘要绑定不等于公开了完整私有审计，也不构成第三方独立见证。
 
