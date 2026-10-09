@@ -13,14 +13,14 @@ from pathlib import Path
 from typing import Any, Protocol
 
 # 允许从仓库检出直接运行；不安装根目录 Provider 依赖。
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 for location in (PROJECT_ROOT, PROJECT_ROOT / "src", PROJECT_ROOT / "services/mcp_gateway_v1/src"):
     if str(location) not in sys.path:
         sys.path.insert(0, str(location))
 
 import anyio
 from researchops_mcp_gateway import __version__
-from evals.mcp_injection_v1.scenario import Scenario
+from services.mcp_gateway_v1.evals.scenario import Scenario
 
 CASES_PATH = Path(__file__).with_name("cases.json")
 REPORT_SCHEMA_VERSION = "mcp-model-eval/1.0"

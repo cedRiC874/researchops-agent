@@ -20,7 +20,7 @@ from researchops_mcp_gateway.manifest import ManifestStore, definition_sha256
 from researchops_mcp_gateway.proxy import ProxyManager
 from researchops_mcp_gateway.safety import contains_path, reject_sensitive_publish
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def tool_definition(name="summarize", description="返回已登记条目的聚合数量。"):

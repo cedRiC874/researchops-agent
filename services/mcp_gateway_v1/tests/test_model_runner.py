@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import anyio
 
-from evals.mcp_injection_v1.runner import CASES_PATH, MockModelAdapter, cluster_metrics, load_live_factory, main, run_evaluation
-from evals.mcp_injection_v1.scenario import Scenario
+from services.mcp_gateway_v1.evals.runner import CASES_PATH, MockModelAdapter, cluster_metrics, load_live_factory, main, run_evaluation
+from services.mcp_gateway_v1.evals.scenario import Scenario
 
 
 class ModelRunnerTests(unittest.TestCase):
@@ -44,7 +44,7 @@ class ModelRunnerTests(unittest.TestCase):
             self.assertNotIn(forbidden, text)
 
     def test_live_authorization_is_checked_before_import(self):
-        with patch("evals.mcp_injection_v1.runner.importlib.import_module") as imported:
+        with patch("services.mcp_gateway_v1.evals.runner.importlib.import_module") as imported:
             with self.assertRaisesRegex(PermissionError, "live_authorization_required"):
                 load_live_factory("forbidden_provider:create", authorized=False)
             with redirect_stdout(StringIO()) as output:

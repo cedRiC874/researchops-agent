@@ -10,7 +10,7 @@ from services.mcp_gateway_v1.tests.support import GatewayFixture, PROJECT_ROOT, 
 
 
 CASES = {case["case_id"]: case for case in json.loads(
-    (PROJECT_ROOT / "evals/mcp_injection_v1/cases.json").read_text(encoding="utf-8"))["cases"]}
+    (PROJECT_ROOT / "services/mcp_gateway_v1/evals/cases.json").read_text(encoding="utf-8"))["cases"]}
 
 
 class LocalInjectionTests(GatewayFixture):

@@ -25,10 +25,13 @@ flowchart TD
 - 直接导入仓库现有 `researchops` 包。由于其 `__init__` 同时导出分析功能，服务锁包含 pandas、SciPy、statsmodels 和 matplotlib；没有新增 Provider SDK。
 - 仓库基线的根锁文件原本已有 `mcp==2.0.0`。本服务不修改、升级或删除该条目，也不复用根环境安装本服务的 SDK。
 - 服务使用仓库检出中的核心源码，不能脱离仓库单独复制 wheel 运行。启动入口从自身位置定位核心，不依赖客户端当前工作目录。
+- 评测代码和 JSON 清单位于本服务 `evals/`；根 `evals/mcp_injection_v1/` 保留预注册和文档入口。这样不把新增实现纳入旧评测自动扫描的冻结源集合。
 
 ## 安装与启动
 
 在仓库根目录使用已安装的 Python 3.12。以下安装步骤需要访问依赖源；后面的测试运行禁止外部网络。
+
+如果启动器没有登记 Python 3.12，可将 `py -3.12` 替换为一个完整的 3.12 解释器绝对路径；无需修改系统默认 Python。
 
 PowerShell：
 
@@ -82,7 +85,9 @@ Claude Desktop 将该条目加入 `claude_desktop_config.json`，保存后完全
 | `execute_approved` | `call_id` | 不接受业务参数，内部只调用 `executor.execute(call_id)` |
 | `get_call_status` | `call_id` | 检查运行归属并返回调用状态和安全结果 |
 
-每次调用进入已有执行器的提议路径。网关控制工具的处理器只做句柄操作；恢复执行仍由内层执行器重新检查审批。工具注解用于客户端展示，实际执行权限取决于策略和台账。
+通过前置检查的调用进入已有执行器的提议路径。网关控制工具的处理器只做句柄操作；恢复执行仍由内层执行器重新检查审批。工具注解用于客户端展示，实际执行权限取决于策略和台账。
+
+只读结果保留原业务状态，例如方法推荐的 `status=ready`。请求的执行状态和审计决定由网关生成，放入 MCP `_meta`；业务状态及上游自带元数据不能充当审批信号。
 
 运行配额默认 100 次，包括创建运行、查询和带合法运行句柄的失败调用。计数与到期时间跨进程持久化；`--run-ttl`、`--max-calls` 可由操作者配置。运行过期后，执行、查询及成功结果重放都拒绝，需要新建运行并重新提议。审批默认有效期 900 秒，不能延长已经过期的运行。
 
@@ -166,7 +171,7 @@ researchops-mcp-gateway --upstreams upstreams.json serve
 
 ```powershell
 & $gatewayPython services/mcp_gateway_v1/scripts/run_tests.py
-& $gatewayPython evals/mcp_injection_v1/runner.py --k 5
+& $gatewayPython services/mcp_gateway_v1/evals/runner.py --k 5
 ```
 
 测试运行器阻断网络连接和 DNS，仅对 Windows 标准库事件循环的内部自连管道设置精确例外；普通回环连接仍被拒绝。测试用真实核心、官方 SDK 内存传输、本机 stdio 假服务器和实际本地 CLI，输出从 `unittest.TestResult` 得到的执行数、失败、错误、跳过、退出码及 12 类结果。
@@ -185,4 +190,5 @@ researchops-mcp-gateway --upstreams upstreams.json serve
 - SDK 中间件覆盖已解析的 MCP 请求，包括发现、列举、调用及请求参数错误。非法 JSON 字节等在 SDK 传输解析前被拒绝的输入，不能由该中间件写入逐请求账本；当前没有另写协议解析器绕过 SDK。
 - 工具定义固定不能证明上游进程诚实，不能阻止恶意上游在启动或列举时自行访问操作系统。上游进程隔离、授权鉴别和代码审查属于部署方责任。
 - 当前是本地单操作者服务，没有多租户鉴权；运行句柄具有到期时间，但不能代替本地账户和状态目录权限。已有审计哈希链也不能抵抗拥有数据库完全写权限的管理员重写整条链。
+- 策略只作用于本服务暴露的工具；客户端另行连接的工具和内置能力不在本次验证范围内。
 - 不宣称客户端 UI 联调、Linux CI、HTTP、真实模型成功率或全面提示注入防护已通过。具体已执行与未执行项以验证报告为准。
