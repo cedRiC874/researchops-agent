@@ -55,7 +55,8 @@ class UpstreamTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        # Windows runner 的 TEMP 可能使用 8.3 别名；夹具与 loader 都使用规范路径。
+        self.root = Path(temporary.name).resolve(strict=True)
         environment = {"MPLCONFIGDIR": str(self.root / "mpl-cache")}
         if sys.platform == "win32":
             environment["SYSTEMROOT"] = os.environ.get("SYSTEMROOT", r"C:\Windows")
