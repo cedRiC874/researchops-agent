@@ -76,6 +76,10 @@ Mapped to the [OWASP LLM Top 10 2025](https://genai.owasp.org/llm-top-10/); this
 
 ## Quickstart: offline, no model calls
 
+[![Open in Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/cedRiC874/researchops-agent)
+
+You can also use a Linux environment in your browser without installing Python locally. The button opens GitHub's creation page; you confirm creation, and account usage or charges follow GitHub's prompts. Once setup completes, run `bash scripts/portfolio_demo.sh`; no model API key is needed. [Environment details and successful container checks](docs/CODESPACES.md)
+
 Requires Git and **Python 3.12**. Installing dependencies requires network access; the demo makes no model calls and needs no API Key.
 
 Clone the repository and enter its directory:

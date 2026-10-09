@@ -76,6 +76,10 @@ flowchart LR
 
 ## 快速开始：离线，不调用模型
 
+[![在 Codespaces 打开](https://github.com/codespaces/badge.svg)](https://codespaces.new/cedRiC874/researchops-agent)
+
+也可以在浏览器中的Linux环境运行，无需在本机安装Python。按钮进入GitHub创建页面，由你确认创建；用量和费用以账户提示为准。环境准备完成后运行 `bash scripts/portfolio_demo.sh`，无需模型Key。[环境说明与已通过的容器检查](docs/CODESPACES.md)
+
 需要Git和 **Python 3.12**。安装依赖需要联网；演示不调用模型，无需API Key。
 
 先克隆仓库并进入目录：
