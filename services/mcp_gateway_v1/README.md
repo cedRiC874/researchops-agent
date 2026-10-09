@@ -93,9 +93,13 @@ Claude Desktop 将该条目加入 `claude_desktop_config.json`，保存后完全
 
 未知工具以协议错误 `-32602` 和 `tool_unknown` 返回。其他工具错误使用 `isError=true`，在 `structuredContent.error_code` 提供稳定错误码，同时给出 JSON 文本。返回不透传异常堆栈或内部路径。
 
+SDK 提前拒绝未知协议版本时，stdio 适配层把错误中的非日期版本字符串替换为固定值，并补记一次请求审计。日期形式的未知版本、SDK 错误码及支持版本列表保留。观察对象随每条消息的 SDK 上下文传递，重复请求编号不会覆盖彼此，正常中间件审计不会重复。解析、协商和序列化仍由官方 SDK 负责。
+
 不符合 `^[A-Za-z_][A-Za-z0-9_]{0,63}$` 的列名会使用不冲突的 `col_N` 别名，相关引用同步处理，并附 `gateway_column_alias_applied` 告警。发布摘要的 `release_name` 不受列名别名改写。发布名称还经过模式检查，默认拒绝 `p001`、`subject-123` 等受试者标识形式；`--publish-pattern` 可重复指定运维拒绝正则。这些模式不覆盖所有可能的身份信息。
 
 ## 人工审批与演示
+
+下文的 `researchops-mcp-gateway` 命令适用于已激活的服务虚拟环境。若沿用上面的 PowerShell 安装步骤、没有激活环境，将该命令前缀替换为 `& $gatewayPython -m researchops_mcp_gateway`；macOS / Linux 则替换为 `services/mcp_gateway_v1/.venv/bin/python -m researchops_mcp_gateway`。
 
 本地命令：
 
@@ -187,7 +191,7 @@ researchops-mcp-gateway --upstreams upstreams.json serve
 - 已测试现代 `server/discover`、`2026-07-28` 协商、显式运行句柄、手写 Schema、结构化结果与文本副本、未知工具协议错误及业务 `isError`。
 - 服务器和上游当前都只启用 stdio。没有提供 Streamable HTTP 入口，因此没有声明已验证 `Mcp-Method` / `Mcp-Name` HTTP 头行为；将来启用 HTTP 应用 SDK 传输并默认绑定 `127.0.0.1`。
 - 没有启用可选的 `InputRequiredResult` 确认体验。即使将来加入，也不能代替本地 CLI 审批。
-- SDK 中间件覆盖已解析的 MCP 请求，包括发现、列举、调用及请求参数错误。非法 JSON 字节等在 SDK 传输解析前被拒绝的输入，不能由该中间件写入逐请求账本；当前没有另写协议解析器绕过 SDK。
+- SDK 中间件覆盖发现、列举、调用及请求参数错误；stdio 类型化消息观察补齐中间件前拒绝的已解析请求。非法 JSON 字节等在 SDK 传输解析前被拒绝的输入，无法取得完整请求字段写入逐请求账本；当前没有另写协议解析器绕过 SDK。
 - 工具定义固定不能证明上游进程诚实，不能阻止恶意上游在启动或列举时自行访问操作系统。上游进程隔离、授权鉴别和代码审查属于部署方责任。
 - 当前是本地单操作者服务，没有多租户鉴权；运行句柄具有到期时间，但不能代替本地账户和状态目录权限。已有审计哈希链也不能抵抗拥有数据库完全写权限的管理员重写整条链。
 - 策略只作用于本服务暴露的工具；客户端另行连接的工具和内置能力不在本次验证范围内。
