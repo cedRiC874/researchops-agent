@@ -19,6 +19,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Set up the OCI-capable Buildx builder
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          driver: docker-container
+          use: true
+          cleanup: true
+          # Replace the action's default insecure/network.host entitlements.
+          buildkitd-flags: --debug
+
       - name: Build the development container and run the offline demo
         id: container
         uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3
