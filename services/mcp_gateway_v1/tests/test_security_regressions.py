@@ -5,7 +5,7 @@ from copy import deepcopy
 
 from jsonschema import Draft202012Validator
 
-from researchops.tool_runtime import RiskLevel
+from researchops.tool_runtime import RiskLevel, ToolRuntimeError
 from researchops_mcp_gateway.manifest import ManifestStore
 from researchops_mcp_gateway.proxy import ProxyManager
 from researchops_mcp_gateway.safety import safe_text
@@ -21,6 +21,57 @@ class SecurityRegressionTests(GatewayFixture):
         proxy = ProxyManager(manifest, {"review": upstream})
         proxy.attach(self.gateway)
         return upstream, manifest
+
+    def test_business_error_code_does_not_turn_success_audit_into_denial(self):
+        upstream, _ = self.connect(definition())
+        upstream.result = {"error_code": "business_note", "aggregate_count": 3}
+        result = self.call("review__summarize", item_id="summary")
+        self.assertFalse(result["isError"], result)
+        self.assertEqual(result["structuredContent"]["error_code"], "business_note")
+        event = self.gateway_events()[-1]["safe_payload"]
+        self.assertEqual(event["decision"], "allow")
+        self.assertEqual(event["result_status"], "succeeded")
+        self.assertIsNone(event["error_code"])
+
+    def test_query_failed_call_audits_the_successful_query(self):
+        call_id = self.propose_publish()
+        pending = self.call("get_call_status", call_id=call_id)
+        self.assertFalse(pending["isError"], pending)
+        self.assertEqual(pending["structuredContent"]["status"], "awaiting_approval")
+        event = self.gateway_events()[-1]["safe_payload"]
+        self.assertEqual(event["decision"], "allow")
+        self.assertEqual(event["result_status"], "succeeded")
+        self.assertIsNone(event["error_code"])
+        self.approve(call_id)
+        with self.assertRaises(ToolRuntimeError) as error:
+            self.gateway.executor.execute(call_id, arguments={"bundle_id": "phase3", "release_name": "different-release"})
+        self.assertEqual(error.exception.code, "tool_approval_mismatch")
+        result = self.call("get_call_status", call_id=call_id)
+        self.assertFalse(result["isError"], result)
+        self.assertEqual(result["structuredContent"]["status"], "failed")
+        self.assertEqual(result["structuredContent"]["error_code"], "tool_approval_mismatch")
+        event = self.gateway_events()[-1]["safe_payload"]
+        self.assertEqual(event["decision"], "allow")
+        self.assertEqual(event["result_status"], "succeeded")
+        self.assertIsNone(event["error_code"])
+        self.assertEqual(self.executions, [])
+
+    def test_real_wire_and_protocol_errors_still_audit_denial(self):
+        # SDK 中间件传回的 isError 结果没有 Python 异常，仍必须据传输标志归为失败。
+        self.gateway.audit_request("tools/call", "review__summarize", {"run_id": self.run_id}, result={
+            "isError": True, "structuredContent": {"status": "error", "error_code": "gateway_upstream_error"},
+        })
+        event = self.gateway_events()[-1]["safe_payload"]
+        self.assertEqual(event["decision"], "denied")
+        self.assertEqual(event["result_status"], "error")
+        self.assertEqual(event["error_code"], "gateway_upstream_error")
+        with self.assertRaises(ToolRuntimeError) as error:
+            self.call("unregistered_tool")
+        self.assertEqual(error.exception.code, "tool_unknown")
+        event = self.gateway_events()[-1]["safe_payload"]
+        self.assertEqual(event["decision"], "denied")
+        self.assertEqual(event["result_status"], "error")
+        self.assertEqual(event["error_code"], "tool_unknown")
 
     def test_paths_after_colons_and_file_uris_do_not_escape_in_results(self):
         upstream, _ = self.connect(definition())

@@ -415,10 +415,13 @@ class Gateway:
             arguments_hash = sha256_json(arguments)
         except Exception:
             arguments_hash = sha256_json({"invalid_json_arguments": True})
-        status = structured.get("status", "error" if error_code else "succeeded")
-        effective_error = error_code or structured.get("error_code")
-        if isinstance(result, Mapping) and result.get("isError"):
-            status = "error"
+        wire_error = isinstance(result, Mapping) and result.get("isError") is True
+        request_failed = error_code is not None or wire_error
+        effective_error = error_code if error_code is not None else (structured.get("error_code") if wire_error else None)
+        # 业务结果和被查询调用中的 error_code/status 不是本次请求的失败信号。
+        status = "error" if request_failed else (
+            "succeeded" if tool_name == "get_call_status" else structured.get("status", "succeeded")
+        )
         call_id = structured.get("call_id")
         if call_id is None and isinstance(arguments, Mapping):
             call_id = arguments.get("call_id")
@@ -426,7 +429,7 @@ class Gateway:
             "method": safe_text(str(method)),
             "tool_name": safe_text(tool_name) if isinstance(tool_name, str) else None,
             "arguments_hash": arguments_hash,
-            "decision": "denied" if effective_error else ("require_approval" if status == "awaiting_approval" else "allow"),
+            "decision": "denied" if request_failed else ("require_approval" if status == "awaiting_approval" else "allow"),
             "call_id": call_id if isinstance(call_id, str) and re.fullmatch(CALL_ID["pattern"], call_id) else None,
             "result_status": status if isinstance(status, str) else "unknown",
             "error_code": effective_error,
