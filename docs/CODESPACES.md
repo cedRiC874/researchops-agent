@@ -1,6 +1,6 @@
 # Codespaces与开发容器离线演示
 
-[devcontainer配置](../.devcontainer/devcontainer.json)已在固定提交 `9481e60dc9a57c99b766bfad1a36654385348935` 的[独立CI门禁](../.github/workflows/devcontainer-offline-demo.yml)中通过实际构建与离线演示。该结果属于GitHub托管runner上的开发容器，不是Codespaces云实例验收；本项目尚未创建云实例，README暂不添加Codespaces按钮。
+[devcontainer配置](../.devcontainer/devcontainer.json)已在固定提交 `9481e60dc9a57c99b766bfad1a36654385348935` 的[独立CI门禁](../.github/workflows/devcontainer-offline-demo.yml)中通过实际构建与离线演示；合并后的[main容器检查](https://github.com/cedRiC874/researchops-agent/actions/runs/37977328797)也已成功。中英文README现提供“在Codespaces打开”入口，由使用者确认创建。CI结果属于GitHub托管runner上的开发容器，不是对所有Codespaces云实例的验收；本次文档修改没有创建云实例。
 
 ## 已完成的CI记录
 
@@ -53,6 +53,6 @@ bash scripts/portfolio_demo.sh
 
 CI只声明`contents: read`权限，使用`pull_request`事件，不引用secrets、不持久化checkout凭据、不继承runner全部环境，且明确`push: never`。运行会记录源提交、关键输入哈希、实际Python／Unicode／架构、依赖列表、演示日志和真实进程退出码；报告与运行记录作为本次attempt的artifact保留14天。构建或准备失败时工作流失败，只记录action结果，不伪造演示成功或退出码。
 
-该门禁已在上面的固定提交通过；本批仍不添加README中的Codespaces按钮。入口安排在作品集文档清理之后。CI不创建Codespace，不替代根全量、其他专项检查或线上授权验收；PR所有checks通过后仍须用户确认才能合并。
+该门禁已在上面的固定提交通过，中英文README已提供GitHub官方创建入口。点击后仍需使用者确认创建及账户用量；本项目不会代为创建。CI不创建Codespace，不替代根全量、其他专项检查或线上授权验收；后续PR仍须完成自身checks并获确认后再合并。
 
 GitHub Codespaces在VM中运行devcontainer，可通过浏览器使用；创建与后续使用可能涉及账户额度或费用。[GitHub配置说明](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers)。本地只写配置没有创建Codespace，也没有使用任何线上授权。
