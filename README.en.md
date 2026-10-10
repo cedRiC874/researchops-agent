@@ -10,6 +10,8 @@ The first question this project asks is: **when should you not use an Agent?** O
 
 **Offline, script-driven, no model calls** · A 40-second replay of actual offline records: read-only call → publication pending → CLI approval → execution → changed parameters rejected → expired approval rejected. A script invokes the CLI to approve; the two rejections are independent cases. No footage from real model runs is spliced in. [Storyboard and evidence](docs/DEMO.md)
 
+There is also a recording with a real client and a real model: [MCP gateway](#mcp-gateway-a-real-client-and-a-real-model).
+
 ## Conclusion: start with a fixed workflow for well-defined tasks
 
 On 2026-10-04, both paths used the same 16 developer-known synthetic tasks, fixed tools and evidence:
@@ -43,7 +45,26 @@ flowchart LR
     W -.-> L
 ```
 
-This diagram shows component relationships, not a sequence followed by all 16 tasks: the comparison used only two read-only tools. Execution after approval is demonstrated by the offline control-plane demo. **The current real Agent cannot resume after pausing for approval.** Statistical tool results are reviewable, but the model's final wording can still be wrong.
+This diagram shows component relationships, not a sequence followed by all 16 tasks: the comparison used only two read-only tools. Execution after approval is demonstrated by the offline control-plane demo and the MCP recording below. **The project's own Agent loop still cannot resume after pausing for approval**; an external client can resume through the MCP gateway. Statistical tool results are reviewable, but the model's final wording can still be wrong.
+
+## MCP gateway: a real client and a real model
+
+[`services/mcp_gateway_v1`](services/mcp_gateway_v1/README.md) exposes the controlled tools above to external clients over MCP (stdio). The model can call only seven tools: create a run, three read-only tools, propose a publication, execute an approved call, and check status. **Only an operator can approve, using a local CLI; the model has no approval tool.** Execution accepts only the run and call handles, not new business arguments.
+
+https://github.com/user-attachments/assets/31c8b5e3-b2ae-4282-8b16-d7e6cce091ec
+
+**Real client (ChatGPT desktop app, Codex) + real model (shown in the app as GPT-6 Astra Ultra) + synthetic data** · single take recorded on 2026-10-11, unedited, about 3 minutes · repository at main@`7e99156` when recorded
+
+1. The model calls only researchops tools and states that it saw only column information and aggregate statistics. The effect sizes, confidence intervals and evidence IDs it reports match the evidence bundle, and it notes that only 212 of 240 participants were analyzed, so this is not a complete intention-to-treat analysis.
+2. The publication proposal stops at `awaiting_approval`. Claiming “already approved” in the chat gets `tool_approval_required` from the gateway.
+3. The operator lists pending approvals with the local CLI in PowerShell, checks the release name and approves. The `rehearsal-01` entry in the list was left over from a rehearsal and was not approved.
+4. The model calls `execute_approved`, and `get_call_status` confirms `succeeded`. The release manifest's `tool_call_id` matches the approved call, and `raw_data_embedded` is false.
+
+The client also asks “Allow once” before every non-read-only tool call. That is the client's own confirmation and does not replace gateway approval.
+
+What this recording shows is limited: one model, one run and one fixed flow; it is not an evaluation. The gateway constrains only the tools that pass through it. Codex's own command execution is governed by client permissions, which were set to ask every time; the model did not request any commands during the recording. The gateway's 12 deterministic attack categories and 60 mock trials verify the control paths only; they do not show how a real model handles unknown attacks ([verification record](services/mcp_gateway_v1/VERIFICATION.md)).
+
+During the first trial recording, the model pointed out that the dataset hash recorded in the evidence bundle differed from the repository's data file, so it could not assume they were the same data. The cause was line endings: the CSV had CRLF line endings when the bundle was generated, while the repository checks it out with LF; the rows are identical. Frozen evaluations reference that bundle, so it stays unchanged; the gateway now computes and flags this relationship ([details](services/mcp_gateway_v1/README.md#工具运行与错误)).
 
 ## Engineering work
 
@@ -66,7 +87,7 @@ Mapped to the [OWASP LLM Top 10 2025](https://genai.owasp.org/llm-top-10/); this
 
 | Risk | Coverage and tests/evidence | What this does not establish |
 | --- | --- | --- |
-| Prompt injection | **Partially covered:** [public attack scenarios](evals/v2/public_tasks.jsonl), [4 tool-description poisoning tests](tests/test_phase6_tool_description_poisoning.py) | Scripted calls do not prove that a real model resists poisoning |
+| Prompt injection | **Partially covered:** [public attack scenarios](evals/v2/public_tasks.jsonl), [4 tool-description poisoning tests](tests/test_phase6_tool_description_poisoning.py), [12 deterministic MCP gateway attack categories](services/mcp_gateway_v1/VERIFICATION.md) | Scripted and mock calls do not prove that a real model resists poisoning or unknown attacks |
 | Sensitive information disclosure | **Tested:** [allowlisting, pre-write scanning and persistence rejection](tests/test_completion_telemetry_ledger.py) | Not comprehensive data-loss prevention |
 | Excessive agency | **Tested:** [scope-bound approvals, expiry and execution](tests/test_tool_runtime.py) | Not production-grade multi-tenant authorization |
 | Misinformation | **Tested:** [report traceability](tests/test_reporting.py), [an observed error](docs/evidence/main51-controlled-observation-v1/README.md) | Citation IDs do not guarantee correct model answers |
