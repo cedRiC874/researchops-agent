@@ -10,6 +10,8 @@
 
 **离线、脚本驱动、未调用模型** · 40秒实际离线记录回放：只读调用 → 发布挂起 → CLI批准 → 执行 → 改参数被拒 → 过期被拒。批准由脚本调用CLI，两种拒绝是独立案例；没有剪接真实模型运行。[分镜与证据](docs/DEMO.md)
 
+另有真实客户端、真实模型的录像：[MCP网关](#mcp网关真实客户端真实模型)。
+
 ## 结论：任务定义清楚时，先用固定流程
 
 2026-10-04，同一组16道开发方已知合成题、同一套固定工具与证据：
@@ -43,7 +45,26 @@ flowchart LR
     W -.-> L
 ```
 
-上图是组件关系，不是16题都走过的流程：这次对照只用了两个只读工具。审批后执行由离线控制面演示验证，**当前真实 Agent 在审批暂停后不能恢复**。统计工具的结果可复核，但模型最终文字仍可能出错。
+上图是组件关系，不是16题都走过的流程：这次对照只用了两个只读工具。审批后执行由离线控制面演示和下文的MCP录像验证；**项目自带的Agent循环在审批暂停后仍不能恢复**，外部客户端可以经MCP网关恢复。统计工具的结果可复核，但模型最终文字仍可能出错。
+
+## MCP网关：真实客户端、真实模型
+
+[`services/mcp_gateway_v1`](services/mcp_gateway_v1/README.md)把上面的受控工具通过MCP（stdio）开放给外部客户端。模型能调用的只有7个工具：创建运行、三个只读工具、提议发布、执行已批准的调用、查询状态。**批准只能由操作者在本地CLI完成，模型侧没有审批工具**；执行时只认运行和调用句柄，不接受新的业务参数。
+
+https://github.com/user-attachments/assets/ddc14f6e-6d64-4cdd-90aa-211235262064
+
+**真实客户端（ChatGPT桌面版Codex）+ 真实模型（界面显示为GPT-6 Astra Ultra）+ 合成数据** · 2026-10-11单次录制，未剪辑，约3分钟 · 录制时仓库为main@`7e99156`
+
+1. 模型只调用researchops的工具，说明只看到了列信息和聚合统计；报告的效应值、置信区间和evidence ID与证据包一致，并指出240人中只分析了212人，不能称为完整意向治疗分析。
+2. 发布提议停在`awaiting_approval`。在聊天里声称“已经批准”，网关返回`tool_approval_required`。
+3. 操作者在PowerShell用本地CLI查看待审批项，核对发布名后批准。列表里的`rehearsal-01`是彩排留下的，没有批准。
+4. 模型调用`execute_approved`，`get_call_status`确认`succeeded`；发布清单的`tool_call_id`与被批准的调用一致，`raw_data_embedded`为false。
+
+客户端在每次非只读工具调用前还会弹出“允许一次”，这是客户端自己的确认，不能代替网关审批。
+
+这段录像能说明的有限：只有一个模型、一次运行和一条固定流程，不是评测。网关只约束经过它的工具；Codex自带的命令执行由客户端权限控制，本次设为每次请求批准，录制中模型没有申请运行命令。网关的12类确定性攻击用例和60次mock试验只验证控制路径，不代表真实模型面对未知攻击的表现（[验证记录](services/mcp_gateway_v1/VERIFICATION.md)）。
+
+第一次试录时，模型指出证据包记录的数据哈希与仓库数据不同，不能认定是同一份数据。核实后是换行符差异：证据包生成时CSV为CRLF换行，仓库检出为LF，逐行内容相同。该证据包被冻结评测引用，保持原样；网关现在会计算并标注这种关系（[说明](services/mcp_gateway_v1/README.md#工具运行与错误)）。
 
 ## 工程上做了什么
 
@@ -66,7 +87,7 @@ flowchart LR
 
 | 风险 | 覆盖状态与测试／证据 | 尚不能证明什么 |
 | --- | --- | --- |
-| 提示注入 | **部分覆盖**：[公开攻击场景](evals/v2/public_tasks.jsonl)、[4项工具描述投毒测试](tests/test_phase6_tool_description_poisoning.py) | 脚本模拟调用，不证明真实模型能抵抗投毒 |
+| 提示注入 | **部分覆盖**：[公开攻击场景](evals/v2/public_tasks.jsonl)、[4项工具描述投毒测试](tests/test_phase6_tool_description_poisoning.py)、[MCP网关12类确定性攻击用例](services/mcp_gateway_v1/VERIFICATION.md) | 脚本与mock调用，不证明真实模型能抵抗投毒或未知攻击 |
 | 敏感信息泄露 | **已测试**：[白名单、写前扫描与持久化拒绝](tests/test_completion_telemetry_ledger.py) | 不等于完备的数据防泄漏 |
 | 过度代理 | **已测试**：[范围绑定审批、过期及执行](tests/test_tool_runtime.py) | 不等于生产级多租户授权 |
 | 错误信息 | **已测试**：[报告追证](tests/test_reporting.py)、[实际错误](docs/evidence/main51-controlled-observation-v1/README.md) | 引用ID不能保证模型回答正确 |
