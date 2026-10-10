@@ -36,7 +36,7 @@ Only `kimi_chat_response_invalid` may carry:
 ```
 
 `code` is selected by a fixed local parser branch from the closed enum in the
-[Chat v3 contract](../evals/v2/kimi_chat_completions_contract_v3.json). When the terminal error
+[Chat v3 contract](../../../evals/v2/kimi_chat_completions_contract_v3.json). When the terminal error
 remains `kimi_chat_response_invalid`, it is copied unchanged to `request_failed`, `run_terminal`,
 checkpoint and receipt. If a terminal authorization/terms/pricing guard supersedes that error, the
 original request-failure event remains hash-bound while the terminal/checkpoint/receipt diagnostic

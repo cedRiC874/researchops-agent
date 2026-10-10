@@ -434,7 +434,7 @@ def _rewrite_event_chain(run_directory: Path, events: list[dict[str, object]]) -
 
 class KimiControlledPilotTests(unittest.TestCase):
     def test_v3_runbook_publishes_only_offline_commands(self) -> None:
-        runbook = (ROOT / "docs/KIMI_CONTROLLED_PILOT_V3_RUNBOOK.md").read_text(
+        runbook = (ROOT / "docs/archive/kimi/KIMI_CONTROLLED_PILOT_V3_RUNBOOK.md").read_text(
             encoding="utf-8"
         )
         self.assertIn(

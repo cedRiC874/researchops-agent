@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - ".gitattributes"
+      - ".github/ci/bridge_diagnostics.py"
       - "src/**"
       - "evals/**"
       - "services/agent_workflow_comparison_v1/**"
@@ -19,6 +20,7 @@ on:
     branches: [main]
     paths:
       - ".gitattributes"
+      - ".github/ci/bridge_diagnostics.py"
       - "src/**"
       - "evals/**"
       - "services/agent_workflow_comparison_v1/**"
@@ -152,174 +154,21 @@ jobs:
           if __name__=='__main__':sys.exit(main())
           '@ | python -B -X utf8 -
           exit $LASTEXITCODE
-      - name: Run only bridge and affected checks
-        id: bridge_tests
+      - name: Verify diagnostic projection with synthetic inputs
         run: |
-          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/src;$env:GITHUB_WORKSPACE"
-          python -B -X utf8 -m tests.item6_experiment_fixture suite "CI-${{ github.run_id }}-${{ github.run_attempt }}"
+          python -B -X utf8 -m unittest discover -s tests -p test_bridge_ci_diagnostics.py -t . -v
           exit $LASTEXITCODE
-      - name: Preserve bounded partial progress after bridge failure
-        if: always() && steps.bridge_tests.outcome == 'failure'
-        timeout-minutes: 2
+      - name: Run only bridge and affected checks
         env:
           ITEM6_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/src;$env:GITHUB_WORKSPACE"
-          @'
-          import ast
-          import hashlib
-          import json
-          import os
-          from pathlib import Path
-          import re
-          import stat
-          import sys
-
-          MODULES = ('tests.test_item6_interface_v2', 'tests.test_item6_privacy_diagnostics', 'tests.test_item6_refusal_isolation', 'tests.test_item6_case_isolation', 'tests.test_item6_experiment_authority', 'tests.test_item6_experiment_session', 'tests.test_item6_experiment_budget', 'tests.test_item6_experiment_artifacts', 'tests.test_item6_experiment_integration', 'tests.test_internal_source_integrity_v3', 'tests.test_phase6_providers', 'tests.test_phase6_provider_completion_capture', 'tests.test_provider_completion_surface_mapping', 'tests.test_completion_telemetry_ledger', 'tests.test_completion_timed_ledger', 'tests.test_internal_source_integrity_v2', 'tests.test_deepseek_completion_first_live_validation', 'tests.test_kimi_k3_handshake', 'tests.test_phase6_depth60')
-
-
-          def project_progress(raw, allowed):
-              header = re.compile(r'^([A-Za-z_][A-Za-z0-9_]*) \(([A-Za-z_][A-Za-z0-9_.]*)\)(?: \.\.\. ?(.*))?$')
-              pending = last_observed = last_completed = None
-              completed = []
-              for line in raw.decode('utf-8', errors='replace').splitlines():
-                  match = header.fullmatch(line)
-                  tail = None
-                  if match:
-                      method, test_id, tail = match.groups()
-                      pending = None
-                      if test_id not in allowed or method != test_id.rsplit('.', 1)[-1]:
-                          continue
-                      pending = last_observed = test_id
-                  elif pending is not None:
-                      tail = line
-                  if tail in ('ok', 'FAIL', 'ERROR'):
-                      outcome = tail
-                  elif tail is not None and re.match(r"^skipped (?:'|\")", tail):
-                      outcome = 'skipped'
-                  else:
-                      continue
-                  if pending is not None:
-                      completed.append(dict(test_id=pending, status=outcome))
-                      last_completed, pending = pending, None
-                      if len(completed) > 2048:
-                          raise ValueError('bounded_observations')
-              return dict(schema='item6-bridge-progress/1', partial=True,
-                  full_suite_verified=False, failure_cause_verified=False,
-                  observation_kind='unittest_text_only',
-                  last_observed_test_id=last_observed,
-                  last_completed_test_id=last_completed, completed_observations=completed)
-
-
-          def checkout_identity(raw, run_id, attempt, expected_head):
-              if (not re.fullmatch(r'[0-9]{1,24}', run_id)
-                      or not re.fullmatch(r'[0-9]{1,8}', attempt)
-                      or not re.fullmatch(r'[0-9a-f]{40}', expected_head)):
-                  raise ValueError('identity')
-              receipt = json.loads(raw)
-              if (type(receipt) is not dict or receipt.get('status') != 'valid'
-                      or receipt.get('stage') != 'complete'
-                      or type(receipt.get('intended_exit_code')) is not int
-                      or receipt['intended_exit_code'] != 0
-                      or receipt.get('expected_head') != expected_head
-                      or receipt.get('actual_head') != expected_head):
-                  raise ValueError('checkout_receipt')
-              return dict(run_id=run_id, run_attempt=attempt, verified_head=expected_head,
-                  identity_evidence_kind='existing_exact_checkout_receipt',
-                  checkout_evidence_sha256=hashlib.sha256(raw).hexdigest())
-
-
-          def main():
-              root = Path(os.environ['GITHUB_WORKSPACE']).absolute()
-              if Path.cwd() != root:
-                  raise ValueError('workspace')
-              def directory(path):
-                  metadata = path.lstat()
-                  if (not stat.S_ISDIR(metadata.st_mode) or path.is_symlink()
-                          or getattr(metadata, 'st_file_attributes', 0) & 0x400):
-                      raise ValueError('directory')
-              directory(root)
-              run_id, attempt = os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']
-              if not re.fullmatch(r'[0-9]{1,24}', run_id) or not re.fullmatch(r'[0-9]{1,8}', attempt):
-                  raise ValueError('identity')
-              target = root
-              for part in ('output', 'item6-bridge-validation', 'CI-' + run_id + '-' + attempt):
-                  target = target / part
-                  directory(target)
-              public = target / 'public'
-              if public.exists():
-                  directory(public)
-                  if (public / 'validation.json').exists():
-                      return 0
-              directory(root / 'src')
-              directory(root / 'src/researchops_external_closure')
-              directory(root / 'tests')
-              sys.path.insert(0, str(root / 'src'))
-              from researchops_external_closure.io import read_regular_file_no_follow, scan_public_artifact_bytes
-              checkout = root
-              for part in ('output', 'item6-checkout-source', 'CI-' + run_id + '-' + attempt):
-                  checkout = checkout / part
-                  directory(checkout)
-              receipt = read_regular_file_no_follow(checkout / 'checkout-source.json', max_bytes=1024*1024)
-              identity = checkout_identity(receipt, run_id, attempt, os.environ['ITEM6_EXPECTED_HEAD'])
-              fixture = ast.parse(read_regular_file_no_follow(root / 'tests/item6_experiment_fixture.py', max_bytes=1024*1024))
-              selections = {node.targets[0].id: ast.literal_eval(node.value)
-                  for node in fixture.body if isinstance(node, ast.Assign)
-                  and isinstance(node.targets[0], ast.Name)
-                  and node.targets[0].id in ('NEW_TESTS', 'RELATED_TESTS')}
-              if selections['NEW_TESTS'] + selections['RELATED_TESTS'] != MODULES:
-                  raise ValueError('scope')
-              allowed = set()
-              for module in MODULES:
-                  source = ast.parse(read_regular_file_no_follow(root / (module.replace('.', '/') + '.py'), max_bytes=1024*1024))
-                  for cls in source.body:
-                      if not isinstance(cls, ast.ClassDef):
-                          continue
-                      if not any(isinstance(base, ast.Attribute) and isinstance(base.value, ast.Name)
-                          and base.value.id == 'unittest' and base.attr in ('TestCase', 'IsolatedAsyncioTestCase')
-                          for base in cls.bases):
-                          continue
-                      for method in cls.body:
-                          if (isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef))
-                                  and method.name.startswith('test_')):
-                              test_id = module + '.' + cls.name + '.' + method.name
-                              if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.]{1,511}', test_id):
-                                  raise ValueError('test_identifier')
-                              allowed.add(test_id)
-              if len(allowed) != 455:
-                  raise ValueError('scope')
-              raw = read_regular_file_no_follow(target / 'process.log', max_bytes=16*1024*1024)
-              report = project_progress(raw, allowed)
-              report.update(identity)
-              encoded = (json.dumps(report, sort_keys=True, ensure_ascii=True) + '\n').encode('utf-8')
-              if len(encoded) > 512*1024:
-                  raise ValueError('output_bound')
-              scan_public_artifact_bytes((encoded,))
-              public.mkdir(exist_ok=True)
-              directory(public)
-              destination = public / 'progress-on-failure.json'
-              if destination.exists() or destination.is_symlink():
-                  raise ValueError('output_exists')
-              staging = target / 'progress-on-failure.json.pending'
-              with staging.open('xb') as stream:
-                  stream.write(encoded)
-                  stream.flush()
-                  os.fsync(stream.fileno())
-              directory(public)
-              staging.rename(destination)
-              print('Partial bridge progress saved; full suite remains unverified.')
-              return 0
-
-
-          if __name__ == '__main__':
-              try:
-                  code = main()
-              except Exception:
-                  print('Partial bridge progress unavailable; no raw diagnostic content exported.', file=sys.stderr)
-                  code = 1
-              raise SystemExit(code)
-          '@ | python -B -X utf8 -
-          exit $LASTEXITCODE
+          python -B -X utf8 .github/ci/bridge_diagnostics.py run "CI-${{ github.run_id }}-${{ github.run_attempt }}"
+          $bridgeExit = $LASTEXITCODE
+          python -B -X utf8 .github/ci/bridge_diagnostics.py record-exit "CI-${{ github.run_id }}-${{ github.run_attempt }}" "$bridgeExit"
+          $recordExit = $LASTEXITCODE
+          if ($bridgeExit -ne 0) { exit $bridgeExit }
+          exit $recordExit
       - name: Retain this isolated attempt
         if: always()
         uses: actions/upload-artifact@v4
@@ -328,5 +177,8 @@ jobs:
           path: |
             output/item6-bridge-validation/CI-${{ github.run_id }}-${{ github.run_attempt }}/public/
             output/item6-checkout-source/CI-${{ github.run_id }}-${{ github.run_attempt }}/
+            output/item6-bridge-diagnostics/CI-${{ github.run_id }}-${{ github.run_attempt }}/start.json
+            output/item6-bridge-diagnostics/CI-${{ github.run_id }}-${{ github.run_attempt }}/result.json
+            output/item6-bridge-diagnostics/CI-${{ github.run_id }}-${{ github.run_attempt }}/wrapper-exit.json
           overwrite: false
           if-no-files-found: warn

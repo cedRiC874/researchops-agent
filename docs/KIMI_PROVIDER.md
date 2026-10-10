@@ -55,7 +55,7 @@ Candidate v8 has performed zero online calls and inherits neither the v7 authori
 post-lock failure. The v6 and v7 online commands remain permanently disabled. Candidate v8 is also
 fixed `online_not_authorized`; both unconfirmed and confirmed CLI paths return zero-call,
 zero-Key-load non-authorizing receipts. See the
-[Candidate v8 / Pilot v3 runbook](KIMI_CONTROLLED_PILOT_V3_RUNBOOK.md),
+[Candidate v8 / Pilot v3 runbook](archive/kimi/KIMI_CONTROLLED_PILOT_V3_RUNBOOK.md),
 [Chat v3 contract](../evals/v2/kimi_chat_completions_contract_v3.json),
 [Pilot v3 contract](../evals/v2/kimi_controlled_pilot_contract_v3.json) and
 [runtime v8 contract](../evals/v2/kimi_runtime_candidate_v8_contract.json).
@@ -89,7 +89,7 @@ not inherited into Candidate v7 or Pack v8. See the
 Candidate v7's one-time authorization is consumed; no further v7 online execution is authorized, and
 no online command is published. Both the v6 and v7 online commands are permanently tombstoned. The
 retained implementations are auditable snapshots, not permission to call them. See the
-[Candidate v7 / Pilot v2 runbook](KIMI_CONTROLLED_PILOT_V2_RUNBOOK.md),
+[Candidate v7 / Pilot v2 runbook](archive/kimi/KIMI_CONTROLLED_PILOT_V2_RUNBOOK.md),
 [Chat v2 contract](../evals/v2/kimi_chat_completions_contract_v2.json),
 [Pilot v2 contract](../evals/v2/kimi_controlled_pilot_contract_v2.json) and
 [runtime v7 contract](../evals/v2/kimi_runtime_candidate_v7_contract.json).
@@ -132,7 +132,7 @@ The historical runtime contract is
 It records `offline_ready_not_run`, zero online/model-token calls in the locked v6 snapshot, no campaign
 or registry registration, no private/non-synthetic support and no model-quality or compatibility claim.
 The consumed-run procedure is retained in the
-[controlled synthetic pilot runbook](KIMI_CONTROLLED_PILOT_RUNBOOK.md).
+[controlled synthetic pilot runbook](archive/kimi/KIMI_CONTROLLED_PILOT_RUNBOOK.md).
 
 ## Historical candidate v5 metadata baseline
 
