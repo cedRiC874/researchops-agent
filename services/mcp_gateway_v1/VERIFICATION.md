@@ -1,21 +1,22 @@
 # MCP 网关 v1 验证报告
 
-任务开始：2026-10-09；报告更新：2026-10-10。基线：`a877a5a0c6ae1dedc5faec61726d86279aafe749`。分支：`codex/mcp-gateway-v1`。
+任务开始：2026-10-09；报告更新：2026-10-10。初始基线：`a877a5a0c6ae1dedc5faec61726d86279aafe749`；交付已同步 main `73dcec400c6ff08c00d0103359cecbd2152fab4f`。分支：`codex/mcp-gateway-v1`。
 
 **本地实现与离线验证已完成：新增 51 项测试全部通过，12 类确定性用例全部通过，60 次 mock 试验危险执行为 0。既有全量的原始失败记录保留；环境修正后定向覆盖 106 个不同旧用例，最终 101 项通过、5 项既有跳过。没有把分次结果拼接成一次全绿的全量运行。** 随后已按用户授权正常推送并创建 [PR #54](https://github.com/cedRiC874/researchops-agent/pull/54)。验收以 PR 当前提交的实际 CI 结果为准，尚未合并。
 
 ## 变更边界
 
-MCP 实现新增 36 个文件，范围为 `services/mcp_gateway_v1/`、`evals/mcp_injection_v1/` 和 `.github/workflows/mcp-gateway-v1.yml`。旧桥接 CI 连续超时后，用户先授权旧 bridge workflow 的失败进度诊断，再单独授权四个旧文件的测试总预算修订：`tests/item6_experiment_fixture.py`、当前项目 v3 manifest，以及 `.github/workflows/ci.yml` 和 bridge workflow。现为 36 个新增文件和 4 个经明确授权修改的旧文件。既有生产源码、测试断言与跳过规则、根锁文件、STATUS、证据目录、v1/v2 历史清单均未修改。原本位于其他工作区的未提交改动未被带入本分支。
+MCP 实现新增 36 个文件，范围为 `services/mcp_gateway_v1/`、`evals/mcp_injection_v1/` 和 `.github/workflows/mcp-gateway-v1.yml`。旧桥接 CI 连续超时后，用户先授权旧 bridge workflow 的失败进度诊断，再单独授权四个旧文件的测试总预算修订：`tests/item6_experiment_fixture.py`、当前项目 v3 manifest，以及 `.github/workflows/ci.yml` 和 bridge workflow。main 随后合入独立诊断，用户另行授权同步 `.github/ci/bridge_diagnostics.py` 和 `tests/test_bridge_ci_diagnostics.py` 的预算识别及严格期望值。相对已同步的 main，现为 36 个新增文件和 6 个经明确授权修改的文件。455 项主套件断言、跳过规则、生产源码、根锁、STATUS、证据目录和 v1/v2 历史均无本 PR 自行改动；main 已有内容原样保留。其他工作区的未提交改动未被带入本分支。
 
-实现提交依次为：`61c840f`（A 网关）、`d61a2e6`（确定性测试首块）、`dca9dca`（B 代理及后四类攻击）、`ba0568b`（审查发现的安全边界修复）、`c5d0df8`（C2 模型运行器与预注册）、`647349e`（合法研究设计的评测判定修复）、`f943f2a`（文档及人工审批演示）、`711e5e4`（请求失败与业务状态的审计归因修复）、`6eab830`（业务状态保真）、`f43727e`（独立评测实现迁移，保持旧冻结源范围）、`df7c864`（SDK 提前拒绝的安全错误与审计）、`f3c0753`（Windows CI 临时路径夹具规范化）、`2ca9c79`（经授权的旧桥接失败诊断）、`05980bc`（经另行授权的测试总预算与 v3 承诺修订）。首次推送前已确认 df7c864 之后仅有 README 和验证报告修改；后续代码修改均在推送前重新运行了全部 51 项新测试。
+实现提交依次为：`61c840f`（A 网关）、`d61a2e6`（确定性测试首块）、`dca9dca`（B 代理及后四类攻击）、`ba0568b`（审查发现的安全边界修复）、`c5d0df8`（C2 模型运行器与预注册）、`647349e`（合法研究设计的评测判定修复）、`f943f2a`（文档及人工审批演示）、`711e5e4`（请求失败与业务状态的审计归因修复）、`6eab830`（业务状态保真）、`f43727e`（独立评测实现迁移，保持旧冻结源范围）、`df7c864`（SDK 提前拒绝的安全错误与审计）、`f3c0753`（Windows CI 临时路径夹具规范化）、`2ca9c79`（经授权的旧桥接失败诊断）、`05980bc`（经另行授权的测试总预算与 v3 承诺修订）、`00e59fa`（同步 main 并接续新诊断预算）。首次推送前已确认 df7c864 之后仅有 README 和验证报告修改；后续代码修改均在推送前重新运行了全部 51 项新测试。
 
 ## 实际测试结果
 
 | 范围 | 执行／完成 | 通过 | 失败记录 | 错误记录 | 跳过 | 退出码 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 新服务最终统一 unittest | 51 | 51 | 0 | 0 | 0 | 0 |
-| 预算修订后的旧 v3 源完整性模块 | 9 | 9 | 0 | 0 | 0 | 0 |
+| 同步 main 后的旧 v3 源完整性模块 | 9 | 9 | 0 | 0 | 0 | 0 |
+| 同步 main 后的桥接诊断与 CI 路由 | 102 | 102 | 0 | 0 | 0 | 0 |
 | 既有根目录完整套件，固定基线 a877a5a | 2535 | 2432 | 17 | 131 | 6 | 1 |
 | 恢复环境代表用例，固定本次代码 f43727e | 1 | 1 | 0 | 0 | 0 | 0 |
 | 恢复环境定向分组 A，固定本次代码 f43727e | 30 | 30 | 0 | 0 | 0 | 0 |
@@ -36,12 +37,12 @@ MCP 实现新增 36 个文件，范围为 `services/mcp_gateway_v1/`、`evals/mc
 新增统一测试命令为 `python services/mcp_gateway_v1/scripts/run_tests.py`，实际尾部输出：
 
 ```text
-Ran 51 tests in 65.723s
+Ran 51 tests in 54.205s
 OK
 tests_run=51, passed=51, failures=0, errors=0, skipped=0, exit_code=0
 ```
 
-新增环境实际使用 Windows、Python 3.12.14、官方 `mcp==2.3.0`。51 项包含网关运行与 CLI、12 类攻击、真实 SDK 内存和 stdio、本地假上游、模型运行器、安全审查回归及分步审批演示。最新本地运行覆盖代码提交 `05980bc` 的实际内容。执行时阻断外部网络和 DNS，只有 Windows 标准库事件循环内部 IPC 例外。没有新增 skip、删除测试或放宽既有断言。
+新增环境实际使用 Windows、Python 3.12.14、官方 `mcp==2.3.0`。51 项包含网关运行与 CLI、12 类攻击、真实 SDK 内存和 stdio、本地假上游、模型运行器、安全审查回归及分步审批演示。最新本地运行覆盖代码提交 `00e59fa` 的实际内容。执行时阻断外部网络和 DNS，只有 Windows 标准库事件循环内部 IPC 例外。没有新增 skip、删除测试或放宽既有断言。
 
 默认模型 dry-run 的实际汇总另列如下；其中“试验”不计入上表的 unittest 数量：
 
@@ -82,9 +83,17 @@ tests_run=51, passed=51, failures=0, errors=0, skipped=0, exit_code=0
 
 fixture 属于当前 v3 冻结选集，因此同步修订项目 v3 manifest 中唯一的 fixture 行和顶层承诺，并更新两个 CI workflow 的固定摘要。499 个文件路径保持不变；新的 source commitment 为 `ee54098241d108350aee1f55e067448c421e5bede48f6f5c07991609173af8fc`，manifest SHA-256 为 `aff2cfeb6ec7c627f8dd40bf23ffd28ea4d186174f3eaa0fd05ada86af44f923`。旧提交及其失败证据保留，v1/v2 历史清单和锚点未变，已有运行 freeze 未改写。
 
-应用后完整复跑新服务 51 项／12 类用例全部通过，零失败／错误／跳过、实际退出码 0，测试用时 65.723 秒。在隔离 Python 3.12.13 与 82 项原锁依赖下，`tests.test_internal_source_integrity_v3` 整个模块实际 9/9 通过，零失败／错误／跳过、退出码 0，用时 82.553 秒；测试前后真实 `source.verify_source` 均通过，499 文件、新摘要和输入稳定性一致。静态 AST 和字节比较确认 fixture 只改变共用总时限，四文件字节与获批预览一致。没有在本地重跑 455 项整套，完整桥接验收由新提交的 CI 执行。
+首次四文件预算修订后完整复跑新服务 51 项／12 类用例全部通过，零失败／错误／跳过、实际退出码 0，测试用时 65.723 秒。在隔离 Python 3.12.13 与 82 项原锁依赖下，`tests.test_internal_source_integrity_v3` 整个模块实际 9/9 通过，零失败／错误／跳过、退出码 0，用时 82.553 秒；测试前后真实 `source.verify_source` 均通过，499 文件、新摘要和输入稳定性一致。静态 AST 和字节比较确认 fixture 只改变共用总时限，四文件字节与获批预览一致。没有在本地重跑 455 项整套，完整桥接验收由新提交的 CI 执行。
 
-预算修订前，`4e1ac4b` 的 MCP PR／push 四个 Linux／Windows job 均实际 51/51、12 类用例全通过，失败／错误／跳过 0、退出码 0。该提交的旧 push 全量实际执行 2535 项、2524 通过、11 项既有跳过，无失败或错误，用时 7064.324 秒，原生步骤成功；11 个跳过 ID 和原因与 main 成功基线逐条一致。历史提交结果不能代替预算修订后的新提交验收。
+预算修订前，`4e1ac4b` 的 MCP PR／push 四个 Linux／Windows job 均实际 51/51、12 类用例全通过，失败／错误／跳过 0、退出码 0。旧 push 全量实际执行 2535 项、2524 通过、11 项既有跳过，用时 7064.324 秒；PR 全量实际执行 2539 项、2528 通过、11 项既有跳过，用时 8655.697 秒，两轮均无失败或错误、原生步骤成功。11 个跳过 ID 和原因与 main 成功基线逐条一致。该旧提交最终 11 项 checks 成功，bridge 超时失败；历史结果不能代替新提交验收。
+
+### 与 main 新诊断及路由的兼容
+
+main `73dcec4` 已合入 PR #55 的 CI 路由和 bridge 诊断。同步时保留 main 的路由、合成自检、诊断包装器、退出码记录、公开产物路径及最终门禁，移除本 PR 重复的内联失败诊断。两个经追加授权的文件只把精确超时分类、启动记录和合成测试的固定期望同步为 10800 秒／210 分钟；增加严格启动元数据检查，并在原方法内验证旧 6000 秒异常不能冒充新总超时。诊断合成模块仍为 42 项，主桥接套件仍为原 455 项。
+
+main 已有的 helper 和对应测试不在 499 文件选集中，新 v3 摘要保持不变。保留 main 的触发方式：旧 offline-quality-gate 和 devcontainer 不再为 feature 分支 push 重复运行，PR 中本次混合变更必须走完整验证；MCP 自己的 PR／push 检查保留。按实际触发的 checks 验收，不把有条件的文档 job 跳过误称主测试跳过。
+
+实际同步工作树再次验证：新服务 51/51、12 类用例全部通过，用时 54.205 秒；旧 v3 源模块 9/9，用时 70.153 秒；桥接诊断 42 项与 CI 路由 60 项合计 102/102，用时 52.735 秒。三组均失败／错误／跳过 0、实际退出码 0。源验证前后输入稳定，临时夹具生成的两个 workflow 绑定与实际同步后的字节一致。102 项的首次独立启动器预检缺少仓库根模块路径，尚未执行真实用例；只补齐忽略目录启动器的路径后完成上述运行，原预检失败保留。
 
 ## 既有全量与环境复核
 
@@ -172,19 +181,20 @@ SDK 边界回归验证：提前拒绝的协议版本错误不再回显路径或�
 
 ## 完整变更文件及 diff stat
 
-下方为本次交付相对 `a877a5a` 的完整文件名 diff stat：36 个新增文件，以及 4 个用户明确授权修改的旧文件。
+下方为本次交付相对已同步 main `73dcec4` 的完整文件名 diff stat：36 个新增文件，以及 6 个用户明确授权修改的文件；main 已有内容不计作本 PR 新增。
 
 <!-- DIFF_STAT_START -->
 ```text
+ .github/ci/bridge_diagnostics.py                                     |   6 +-
  .github/workflows/ci.yml                                             |   4 +-
- .github/workflows/item6-experiment-bridge-offline.yml                | 169 ++++++++++++++++++++++++++++++++++++++-
+ .github/workflows/item6-experiment-bridge-offline.yml                |   6 +-
  .github/workflows/mcp-gateway-v1.yml                                 |  38 +++++++++
  evals/mcp_injection_v1/PREREGISTRATION.md                            |  46 +++++++++++
  evals/mcp_injection_v1/README.md                                     |  20 +++++
  evals/provider_completion_internal_source_v3/source_manifest_v3.json |   2 +-
  services/mcp_gateway_v1/.gitignore                                   |   6 ++
  services/mcp_gateway_v1/README.md                                    | 198 ++++++++++++++++++++++++++++++++++++++++++++++
- services/mcp_gateway_v1/VERIFICATION.md                              | 221 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/VERIFICATION.md                              | 232 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  services/mcp_gateway_v1/evals/cases.json                             |  17 ++++
  services/mcp_gateway_v1/evals/runner.py                              | 234 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  services/mcp_gateway_v1/evals/scenario.py                            | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -216,6 +226,7 @@ SDK 边界回归验证：提前拒绝的协议版本错误不再回显路径或�
  services/mcp_gateway_v1/tests/test_security_regressions.py           | 200 ++++++++++++++++++++++++++++++++++++++++++++++
  services/mcp_gateway_v1/tests/test_upstream.py                       | 118 ++++++++++++++++++++++++++++
  tests/item6_experiment_fixture.py                                    |   2 +-
- 40 files changed, 4469 insertions(+), 7 deletions(-)
+ tests/test_bridge_ci_diagnostics.py                                  |  22 +++---
+ 42 files changed, 4332 insertions(+), 20 deletions(-)
 ```
 <!-- DIFF_STAT_END -->
