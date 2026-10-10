@@ -36,6 +36,26 @@ PARITY_CODES = frozenset({
     "fixture_separate_workflow_mismatch", "fixture_manifest_projection_mismatch",
     "fixture_source_changed_during_verification",
 })
+TIMING_PREFIX = b"ITEM6_BRIDGE_TIMING "
+TIMING_SCHEMA = "item6-bridge-segment-timing/1"
+TIMING_MAX_SEQUENCE = 16384
+TIMING_MAX_NS = 86400000000000
+TIMING_KEYS = (
+    "schema", "sequence", "kind", "monotonic_offset_ns", "test_ordinal", "test_id",
+    "span", "stage", "mode", "duration_ns", "outcome", "exception_type", "safe_marker",
+)
+TIMING_MODES = frozenset({
+    "expiry_after_scoring", "expiry_after_export", "expiry_after_seal", "expiry_after_terminal",
+})
+TIMING_STAGES = frozenset({
+    "suite_pre_source", "suite_load", "suite_run", "suite_post_source", "case_prepare",
+    "case_source_parity", "case_exercise", "case_result", "independent_readback",
+})
+TIMING_MARKER_KEYS = (
+    "mode", "point", "injection_hit", "process_exit_code", "verifier_exit_code",
+    "failure_stage", "seal_present", "partial_observation_count", "calls_count",
+    "error_code", "verifier_error_code",
+)
 
 
 class DiagnosticError(Exception):
@@ -205,6 +225,162 @@ def log_hints(raw, identifiers, *, offset=0, total_bytes=None):
             "marker_counts_not_test_counts": counts, "last_markers": hints[-20:]}
 
 
+def timing_hints(raw, identifiers, *, offset=0, total_bytes=None):
+    """Strict, bounded text hints; neither source nor claimed timing is authenticated."""
+    require(type(raw) is bytes and len(raw) <= MAX_LOG, "timing_log_size")
+    require(type(offset) is int and offset >= 0, "timing_log_offset")
+    require(total_bytes is None or (type(total_bytes) is int and total_bytes >= 0), "timing_log_total")
+    if offset:
+        raw = raw.partition(b"\n")[2]
+
+    def integer(value, low, high, *, nullable=False):
+        return (nullable and value is None) or (type(value) is int and low <= value <= high)
+
+    def choice(value, allowed, *, nullable=False):
+        return (nullable and value is None) or (type(value) is str and value in allowed)
+
+    def project(line):
+        value = decode(line[len(TIMING_PREFIX):])
+        require(type(value) is dict and set(value) == set(TIMING_KEYS), "timing_fields")
+        require(value["schema"] == TIMING_SCHEMA, "timing_schema")
+        require(integer(value["sequence"], 1, TIMING_MAX_SEQUENCE), "timing_sequence")
+        require(integer(value["monotonic_offset_ns"], 0, TIMING_MAX_NS), "timing_offset")
+        require(integer(value["duration_ns"], 0, TIMING_MAX_NS, nullable=True), "timing_duration")
+        require(value["duration_ns"] is None or value["duration_ns"] <= value["monotonic_offset_ns"],
+                "timing_duration_offset")
+        require(integer(value["test_ordinal"], 1, MAX_ROWS, nullable=True), "timing_test_ordinal")
+        require(integer(value["span"], 1, TIMING_MAX_SEQUENCE, nullable=True), "timing_span")
+        identifier = value["test_id"]
+        require(identifier is None or (type(identifier) is str and
+                re.fullmatch(r"[A-Za-z0-9_.]{1,256}", identifier) and identifier in identifiers), "timing_test_id")
+        require(choice(value["kind"], {"test_start", "test_end", "segment_start", "segment_end",
+                                      "finalization_marker"}), "timing_kind")
+        require(choice(value["stage"], TIMING_STAGES, nullable=True), "timing_stage")
+        require(choice(value["mode"], TIMING_MODES | {"other_fixture_mode"}, nullable=True), "timing_mode")
+        require(choice(value["outcome"], {"started", "returned", "raised", "callback_complete", "observed"}),
+                "timing_outcome")
+        require(choice(value["exception_type"], {"TimeoutExpired", "OSError", "PermissionError",
+                "FileNotFoundError", "KeyboardInterrupt", "SystemExit", "FixtureSourceParityError", "other"},
+                nullable=True), "timing_exception")
+        kind = value["kind"]
+        if kind in {"test_start", "test_end"}:
+            require(value["test_ordinal"] is not None and value["stage"] is None and value["span"] is None,
+                    "timing_test_context")
+            require(value["outcome"] == ("started" if kind == "test_start" else "callback_complete"),
+                    "timing_test_outcome")
+            require((value["duration_ns"] is None) == (kind == "test_start"), "timing_test_duration")
+        elif kind in {"segment_start", "segment_end"}:
+            require(value["stage"] is not None and value["span"] is not None, "timing_segment_context")
+            require(value["outcome"] == "started" if kind == "segment_start" else
+                    value["outcome"] in {"returned", "raised"}, "timing_segment_outcome")
+            require((value["duration_ns"] is None) == (kind == "segment_start"), "timing_segment_duration")
+        else:
+            require(value["outcome"] == "observed" and value["stage"] is None and
+                    value["span"] is None and value["duration_ns"] is None, "timing_marker_context")
+        require(value["exception_type"] is None or (kind == "segment_end" and value["outcome"] == "raised"),
+                "timing_exception_context")
+        marker = value["safe_marker"]
+        if kind != "finalization_marker":
+            require(marker is None, "timing_marker_kind")
+        else:
+            require(type(marker) is dict and set(marker) == set(TIMING_MARKER_KEYS), "timing_marker_fields")
+            require(choice(marker["mode"], TIMING_MODES) and marker["mode"] == value["mode"], "timing_marker_mode")
+            require(choice(marker["point"], {"after_run_case", "after_verify"}), "timing_marker_point")
+            require(all(marker[key] is None or type(marker[key]) is bool
+                        for key in ("injection_hit", "seal_present")), "timing_marker_boolean")
+            require(all(integer(marker[key], -1, 4096, nullable=True)
+                        for key in ("process_exit_code", "verifier_exit_code")), "timing_marker_exit")
+            require(all(integer(marker[key], 0, 4096, nullable=True)
+                        for key in ("partial_observation_count", "calls_count")), "timing_marker_count")
+            require(choice(marker["failure_stage"], {"start", "scoring_after", "export_after", "seal_after",
+                                                    "terminal_after_write"}, nullable=True), "timing_failure_stage")
+            require(choice(marker["error_code"], {"item6_finalization_deadline"}, nullable=True), "timing_error_code")
+            require(choice(marker["verifier_error_code"], {"item6_finalization_failed"}, nullable=True),
+                    "timing_verifier_error_code")
+        projected = {key: value[key] for key in TIMING_KEYS}
+        projected["safe_marker"] = None if marker is None else {key: marker[key] for key in TIMING_MARKER_KEYS}
+        return projected
+
+    # Keep only complete, size-bounded candidate lines, with an independent
+    # candidate cap. Matching text is still forgeable, even after validation.
+    lines = deque(maxlen=TIMING_MAX_SEQUENCE)
+    ignored, oversized, incomplete, candidates = 0, 0, 0, 0
+    for line in io.BytesIO(raw):
+        if not line.endswith(b"\n"):
+            incomplete += 1
+            continue
+        line = line[:-1].removesuffix(b"\r")
+        if len(line) > MAX_LINE:
+            oversized += 1
+        elif line.startswith(TIMING_PREFIX):
+            candidates += 1
+            lines.append(line)
+        elif line:
+            ignored += 1
+    events, markers = deque(maxlen=50), {}
+    open_tests, open_segments = {}, {}
+    accepted, rejected, out_of_order, gaps = 0, 0, 0, 0
+    duplicate_starts, unmatched_ends, mismatched_ends, duration_mismatches = 0, 0, 0, 0
+    previous_sequence, previous_offset = 0, 0
+    for line in lines:
+        try:
+            event = project(line)
+        except (DiagnosticError, ValueError, UnicodeError, RecursionError):
+            rejected += 1
+            continue
+        sequence, tick = event["sequence"], event["monotonic_offset_ns"]
+        if sequence <= previous_sequence or tick < previous_offset:
+            out_of_order += 1
+            continue
+        gaps += sequence - previous_sequence - 1
+        previous_sequence, previous_offset = sequence, tick
+        accepted += 1
+        events.append(event)
+        kind = event["kind"]
+        context = (event["test_ordinal"], event["test_id"], event["stage"], event["mode"])
+        if kind in {"test_start", "test_end", "segment_start", "segment_end"}:
+            pending = open_tests if kind.startswith("test_") else open_segments
+            key = context[:2] if kind.startswith("test_") else event["span"]
+            if kind.endswith("_start"):
+                duplicate_starts += int(key in pending)
+                pending[key] = (tick, context)
+            else:
+                start = pending.get(key)
+                if start is None:
+                    unmatched_ends += 1
+                elif start[1] != context:
+                    mismatched_ends += 1
+                else:
+                    del pending[key]
+                    if event["duration_ns"] is not None and event["duration_ns"] != tick - start[0]:
+                        duration_mismatches += 1
+        marker = event["safe_marker"]
+        if kind == "finalization_marker" and marker is not None:
+            markers[(marker["mode"], marker["point"])] = {
+                "sequence": sequence, "test_ordinal": event["test_ordinal"],
+                "test_id": event["test_id"], "safe_marker": marker,
+            }
+    row_cut = candidates > TIMING_MAX_SEQUENCE
+    return {
+        "kind": "untrusted_segment_timing_hints", "source_schema": TIMING_SCHEMA,
+        "independently_attested": False, "marker_source_authenticated": False,
+        "trusted_execution_counts": False, "cannot_prove_current_test_or_completion": True,
+        "missing_end_is_not_timeout_or_failure_proof": True, "static_allowlist_may_be_incomplete": True,
+        "observed_bytes": len(raw), "total_file_bytes": total_bytes, "tail_offset": offset,
+        "truncated": bool(offset or row_cut or incomplete), "event_tail_truncated": accepted > 50,
+        "ignored_lines": ignored, "oversized_lines": oversized, "incomplete_lines": incomplete,
+        "rejected_markers": rejected, "out_of_order_markers": out_of_order,
+        "accepted_marker_count_not_execution_count": accepted,
+        "sequence_gap_count": gaps, "duplicate_start_count": duplicate_starts,
+        "unmatched_end_count": unmatched_ends, "mismatched_end_context_count": mismatched_ends,
+        "duration_mismatch_count": duration_mismatches,
+        "missing_end_count": len(open_tests) + len(open_segments),
+        "ordering_and_pairing_are_untrusted_hints": True,
+        "last_events": list(events),
+        "finalization_marker_summary": [markers[key] for key in sorted(markers)],
+    }
+
+
 def safe_exception(exc, parent, run_id, parity_type):
     kind = {subprocess.TimeoutExpired: "TimeoutExpired", FileNotFoundError: "FileNotFoundError",
             PermissionError: "PermissionError", OSError: "OSError", ValueError: "ValueError",
@@ -275,7 +451,7 @@ def run_attempt(root, run_id, load_parent, *, checkout=None):
         "diagnostic_only_not_validation": True, "original_suite_timeout_seconds": 10800})
     record = {"schema": "bridge-ci-diagnostic/1", "run_id": run_id, "status": "not_started",
         "parent_return_code": None, "child_actual_exit_code": None, "process_tree_cleanup_proved": None,
-        "exception": None, "original_receipts": None, "log_hints": None, "diagnostic_errors": [],
+        "exception": None, "original_receipts": None, "log_hints": None, "timing_hints": None, "diagnostic_errors": [],
         "selected_source_postcheck": None, "binding_stable": None,
         "hard_job_kill_sealing_guaranteed": False, "all_tests_passed_without_skips": None,
         "validation_success_evaluated_by_diagnostic_wrapper": False}
@@ -307,6 +483,11 @@ def run_attempt(root, run_id, load_parent, *, checkout=None):
     try:
         raw, offset, total = read_bounded(root, f"output/item6-bridge-validation/{run_id}/process.log", MAX_LOG, tail=True)
         record["log_hints"] = log_hints(raw, ids, offset=offset, total_bytes=total)
+        try:
+            record["timing_hints"] = timing_hints(raw, ids, offset=offset, total_bytes=total)
+        except BaseException:
+            # This optional hint projection never changes the original verdict.
+            record["timing_projection_state"] = "unavailable"
     except FileNotFoundError:
         record["log_state"] = "not_available"
         if record["status"] == "parent_returned":
