@@ -62,6 +62,7 @@ def _observe_finalization_expiry(result, mode, stage, sealed, verifier=None):
     scan_public_artifact_bytes((encoded.encode(),))
     print("ITEM6_FINALIZATION_DIAGNOSTIC " + encoded, flush=True)
     FINALIZATION_EXPIRY_DIAGNOSTICS.append(row)
+    f.bridge_finalization_marker(row)
 
 
 class ArtifactTests(unittest.TestCase):
@@ -240,9 +241,10 @@ class ArtifactTests(unittest.TestCase):
                 if mode=="expiry_after_seal":
                     self.assertEqual(result["candidate_status"],"completed")
                     self.assertEqual(len(result["calls"]),30)
-                process=subprocess.run([f.PYTHON,"-B","-m","researchops_item6_experiment_v1","verify",
-                    "--archive",str(directory),"--seal-sha256","1"*64,"--finalization-sha256","1"*64],
-                    cwd=root,env=f.environment(root),capture_output=True,text=True,encoding="utf-8",timeout=120)
+                with f.bridge_segment("independent_readback", mode):
+                    process=subprocess.run([f.PYTHON,"-B","-m","researchops_item6_experiment_v1","verify",
+                        "--archive",str(directory),"--seal-sha256","1"*64,"--finalization-sha256","1"*64],
+                        cwd=root,env=f.environment(root),capture_output=True,text=True,encoding="utf-8",timeout=120)
                 _observe_finalization_expiry(result, mode, stage, sealed, verifier=process)
                 self.assertEqual(process.returncode,2)
                 self.assertEqual(json.loads(process.stdout.splitlines()[-1])["error"],"item6_finalization_failed")

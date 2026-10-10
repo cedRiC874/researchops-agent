@@ -29,6 +29,34 @@ FIRST_ID = "tests.test_synthetic_new.Example.test_first"
 SECOND_ID = "tests.test_synthetic_related.Related.test_second"
 
 
+def timing_event(sequence=1, **changes):
+    event = {
+        "schema": "item6-bridge-segment-timing/1", "sequence": sequence,
+        "kind": "segment_start", "monotonic_offset_ns": sequence * 10 if type(sequence) is int else 10,
+        "test_ordinal": 1, "test_id": FIRST_ID, "span": 1,
+        "stage": "case_exercise", "mode": "expiry_after_scoring",
+        "duration_ns": None, "outcome": "started", "exception_type": None, "safe_marker": None,
+    }
+    event.update(changes)
+    return event
+
+
+def timing_line(event):
+    return b"ITEM6_BRIDGE_TIMING " + json.dumps(event).encode("utf-8") + b"\n"
+
+
+def finalization_marker(mode="expiry_after_scoring", point="after_run_case"):
+    return {
+        "mode": mode, "point": point, "injection_hit": True,
+        "process_exit_code": 1, "verifier_exit_code": 1 if point == "after_verify" else None,
+        "failure_stage": {"expiry_after_scoring": "scoring_after", "expiry_after_export": "export_after",
+                          "expiry_after_seal": "seal_after", "expiry_after_terminal": "terminal_after_write"}[mode],
+        "seal_present": False, "partial_observation_count": 1, "calls_count": 1,
+        "error_code": "item6_finalization_deadline",
+        "verifier_error_code": "item6_finalization_failed" if point == "after_verify" else None,
+    }
+
+
 class SyntheticParityError(Exception):
     def __init__(self, code):
         super().__init__(CANARY)
@@ -492,6 +520,256 @@ class BridgeDiagnosticsSyntheticTests(unittest.TestCase):
         self.assertFalse(hints["trusted_execution_counts"])
         self.assertIsNone(record["original_receipts"])
         self.assertIsNone(record["child_actual_exit_code"])
+
+    def test_timing_pairs_are_bounded_untrusted_hints_even_when_complete(self):
+        events = [
+            timing_event(1, kind="test_start", stage=None, span=None, mode=None),
+            timing_event(2),
+            timing_event(3, kind="segment_end", outcome="returned", duration_ns=10),
+            timing_event(4, kind="test_end", stage=None, span=None, mode=None,
+                         outcome="callback_complete", duration_ns=30),
+        ]
+        hints = DIAGNOSTICS.timing_hints(b"".join(map(timing_line, events)), {FIRST_ID})
+        self.assertEqual(hints["last_events"], events)
+        self.assertEqual(hints["accepted_marker_count_not_execution_count"], 4)
+        for key in ("missing_end_count", "unmatched_end_count", "duration_mismatch_count", "sequence_gap_count"):
+            self.assertEqual(hints[key], 0)
+        self.assertFalse(hints["independently_attested"])
+        self.assertFalse(hints["marker_source_authenticated"])
+        self.assertFalse(hints["trusted_execution_counts"])
+        self.assertTrue(hints["cannot_prove_current_test_or_completion"])
+        self.assertTrue(hints["ordering_and_pairing_are_untrusted_hints"])
+        self.assertEqual(set(hints["last_events"][0]), set(DIAGNOSTICS.TIMING_KEYS))
+
+    def test_timing_rejects_canaries_unknown_fields_enums_and_test_ids(self):
+        events = [timing_event(**{key: CANARY}) for key in DIAGNOSTICS.TIMING_KEYS]
+        events += [timing_event(private_unused=CANARY), timing_event(test_id="tests.test_foreign.Example.test_first")]
+        missing = timing_event()
+        del missing["exception_type"]
+        events.append(missing)
+        for event in events:
+            with self.subTest(field_changes=event):
+                hints = DIAGNOSTICS.timing_hints(timing_line(event), {FIRST_ID})
+                self.assertEqual(hints["last_events"], [])
+                self.assertEqual(hints["rejected_markers"], 1)
+                self.assertNotIn(CANARY, json.dumps(hints))
+
+    def test_timing_rejects_booleans_negative_duration_and_numeric_overflow(self):
+        invalid = {
+            "sequence": (True, False, 0, 16385, 1.0, None),
+            "monotonic_offset_ns": (True, -1, 86400000000001, 1.0, None),
+            "duration_ns": (True, False, -1, 86400000000001, 1.0),
+            "test_ordinal": (True, 0, 4097, 1.0),
+            "span": (True, 0, 16385, 1.0),
+        }
+        for field, values in invalid.items():
+            for value in values:
+                with self.subTest(field=field, value=value):
+                    event = timing_event(kind="segment_end", outcome="returned", duration_ns=0)
+                    event[field] = value
+                    hints = DIAGNOSTICS.timing_hints(timing_line(event), {FIRST_ID})
+                    self.assertEqual(hints["last_events"], [])
+                    self.assertEqual(hints["rejected_markers"], 1)
+        boundary = timing_event(16384, monotonic_offset_ns=86400000000000, duration_ns=86400000000000,
+                                kind="segment_end", outcome="returned", test_ordinal=4096,
+                                span=16384, mode="other_fixture_mode")
+        hints = DIAGNOSTICS.timing_hints(timing_line(boundary), {FIRST_ID})
+        self.assertEqual(hints["last_events"], [boundary])
+
+    def test_timing_safe_marker_is_an_exact_typed_allowlist(self):
+        changes = [(key, CANARY) for key in DIAGNOSTICS.TIMING_MARKER_KEYS]
+        changes += [("private_unused", CANARY), ("mode", "other_fixture_mode"), ("point", None),
+                    ("injection_hit", 1), ("seal_present", 0)]
+        changes += [(key, value) for key in ("process_exit_code", "verifier_exit_code")
+                    for value in (True, False, -2, 4097, 1.0)]
+        changes += [(key, value) for key in ("partial_observation_count", "calls_count")
+                    for value in (True, False, -1, 4097, 1.0)]
+        for field, value in changes:
+            with self.subTest(field=field, value=value):
+                marker = finalization_marker()
+                marker[field] = value
+                event = timing_event(kind="finalization_marker", stage=None, span=None,
+                                     safe_marker=marker, outcome="observed")
+                hints = DIAGNOSTICS.timing_hints(timing_line(event), {FIRST_ID})
+                self.assertEqual(hints["last_events"], [])
+                self.assertEqual(hints["finalization_marker_summary"], [])
+                self.assertEqual(hints["rejected_markers"], 1)
+                self.assertNotIn(CANARY, json.dumps(hints))
+        marker = finalization_marker()
+        del marker["calls_count"]
+        event = timing_event(kind="finalization_marker", stage=None, span=None, safe_marker=marker, outcome="observed")
+        hints = DIAGNOSTICS.timing_hints(timing_line(event), {FIRST_ID})
+        self.assertEqual(hints["rejected_markers"], 1)
+
+    def test_timing_rejects_schema_valid_fields_in_invalid_event_shapes(self):
+        cases = [
+            (timing_event(kind="test_start", stage=None, span=None), [
+                {"test_ordinal": None}, {"stage": "case_exercise"}, {"span": 1},
+                {"duration_ns": 0}, {"outcome": "callback_complete"},
+                {"safe_marker": finalization_marker()}, {"exception_type": "OSError"},
+            ]),
+            (timing_event(kind="test_end", stage=None, span=None, duration_ns=10, outcome="callback_complete"), [
+                {"test_ordinal": None}, {"stage": "case_exercise"}, {"span": 1},
+                {"duration_ns": None}, {"outcome": "returned"},
+                {"safe_marker": finalization_marker()}, {"exception_type": "OSError"},
+            ]),
+            (timing_event(), [
+                {"stage": None}, {"span": None}, {"duration_ns": 0}, {"outcome": "returned"},
+                {"safe_marker": finalization_marker()}, {"exception_type": "OSError"},
+            ]),
+            (timing_event(kind="segment_end", duration_ns=10, outcome="returned"), [
+                {"stage": None}, {"span": None}, {"duration_ns": None}, {"duration_ns": 11},
+                {"outcome": "observed"}, {"safe_marker": finalization_marker()}, {"exception_type": "OSError"},
+            ]),
+            (timing_event(kind="finalization_marker", stage=None, span=None,
+                          outcome="observed", safe_marker=finalization_marker()), [
+                {"stage": "case_exercise"}, {"span": 1}, {"duration_ns": 0}, {"outcome": "returned"},
+                {"safe_marker": None}, {"mode": None}, {"mode": "other_fixture_mode"},
+                {"mode": "expiry_after_export"}, {"exception_type": "OSError"},
+            ]),
+        ]
+        for valid, changes in cases:
+            baseline = DIAGNOSTICS.timing_hints(timing_line(valid), {FIRST_ID})
+            self.assertEqual(baseline["last_events"], [valid])
+            for fields in changes:
+                with self.subTest(kind=valid["kind"], changes=fields):
+                    event = {**valid, **fields}
+                    hints = DIAGNOSTICS.timing_hints(timing_line(event), {FIRST_ID})
+                    self.assertEqual(hints["last_events"], [])
+                    self.assertEqual(hints["finalization_marker_summary"], [])
+                    self.assertEqual(hints["rejected_markers"], 1)
+                    self.assertFalse(hints["marker_source_authenticated"])
+                    self.assertTrue(hints["cannot_prove_current_test_or_completion"])
+
+    def test_timing_projects_all_four_expiry_modes_and_both_marker_points(self):
+        events = []
+        for mode in ("expiry_after_scoring", "expiry_after_export", "expiry_after_seal", "expiry_after_terminal"):
+            for point in ("after_run_case", "after_verify"):
+                events.append(timing_event(len(events) + 1, kind="finalization_marker", mode=mode,
+                    stage=None, span=None, outcome="observed", safe_marker=finalization_marker(mode, point)))
+        hints = DIAGNOSTICS.timing_hints(b"".join(map(timing_line, events)), {FIRST_ID})
+        self.assertEqual(hints["last_events"], events)
+        self.assertEqual(len(hints["finalization_marker_summary"]), 8)
+        self.assertEqual({(row["safe_marker"]["mode"], row["safe_marker"]["point"])
+                          for row in hints["finalization_marker_summary"]},
+                         {(event["mode"], event["safe_marker"]["point"]) for event in events})
+        for row in hints["finalization_marker_summary"]:
+            self.assertEqual(set(row["safe_marker"]), set(DIAGNOSTICS.TIMING_MARKER_KEYS))
+        self.assertTrue(hints["cannot_prove_current_test_or_completion"])
+        self.assertFalse(hints["marker_source_authenticated"])
+
+    def test_timing_rejects_duplicate_json_keys_and_non_json_without_leaking_text(self):
+        valid = timing_line(timing_event())
+        duplicate = valid.replace(b'"schema":', b'"schema": "' + CANARY.encode() + b'", "schema":', 1)
+        marker = timing_line(timing_event(kind="finalization_marker", stage=None, span=None,
+                                         outcome="observed", safe_marker=finalization_marker()))
+        duplicate_marker = marker.replace(b'"calls_count":', b'"calls_count": "' + CANARY.encode() + b'", "calls_count":', 1)
+        raw = duplicate + duplicate_marker + b"ITEM6_BRIDGE_TIMING \xff\n" + b"ITEM6_BRIDGE_TIMING [1, 2]\n"
+        hints = DIAGNOSTICS.timing_hints(raw, {FIRST_ID})
+        self.assertEqual(hints["rejected_markers"], 4)
+        self.assertEqual(hints["last_events"], [])
+        self.assertNotIn(CANARY, json.dumps(hints))
+
+    def test_timing_sequence_and_pairing_anomalies_cannot_establish_timeout_or_completion(self):
+        events = [timing_event(1), timing_event(1), timing_event(2, monotonic_offset_ns=9),
+                  timing_event(4, kind="segment_end", span=2, outcome="returned", duration_ns=1)]
+        hints = DIAGNOSTICS.timing_hints(b"".join(map(timing_line, events)), {FIRST_ID})
+        self.assertEqual([event["sequence"] for event in hints["last_events"]], [1, 4])
+        self.assertEqual(hints["out_of_order_markers"], 2)
+        self.assertEqual(hints["sequence_gap_count"], 2)
+        self.assertEqual(hints["unmatched_end_count"], 1)
+        self.assertEqual(hints["missing_end_count"], 1)
+        self.assertTrue(hints["missing_end_is_not_timeout_or_failure_proof"])
+        self.assertTrue(hints["cannot_prove_current_test_or_completion"])
+        mismatched = [timing_event(1), timing_event(2, kind="segment_end", stage="case_result",
+                      outcome="raised", duration_ns=10, exception_type="TimeoutExpired"),
+                      timing_event(3, kind="segment_end", outcome="returned", duration_ns=1)]
+        hints = DIAGNOSTICS.timing_hints(b"".join(map(timing_line, mismatched)), {FIRST_ID})
+        self.assertEqual(hints["mismatched_end_context_count"], 1)
+        self.assertEqual(hints["duration_mismatch_count"], 1)
+        self.assertFalse(hints["trusted_execution_counts"])
+
+    def test_timing_requires_complete_standalone_lines_and_bounds_tail_projection(self):
+        first, second = timing_line(timing_event(1)), timing_line(timing_event(2))
+        raw = first + second.replace(b"\n", b"\r\n") + b"\x1b[32m" + first
+        raw += b"prefix " + first + b"x" * (DIAGNOSTICS.MAX_LINE + 1) + b"\n" + first[:-1]
+        hints = DIAGNOSTICS.timing_hints(raw, {FIRST_ID}, offset=17, total_bytes=99999)
+        self.assertEqual([event["sequence"] for event in hints["last_events"]], [2])
+        self.assertEqual(hints["ignored_lines"], 2)
+        self.assertEqual(hints["oversized_lines"], 1)
+        self.assertEqual(hints["incomplete_lines"], 1)
+        self.assertTrue(hints["truncated"])
+        self.assertEqual(hints["tail_offset"], 17)
+        self.assertEqual(hints["total_file_bytes"], 99999)
+        events = [timing_event(sequence, span=sequence) for sequence in range(1, 56)]
+        hints = DIAGNOSTICS.timing_hints(b"".join(map(timing_line, events)), {FIRST_ID})
+        self.assertEqual(hints["last_events"], events[-50:])
+        self.assertTrue(hints["event_tail_truncated"])
+        with mock.patch.object(DIAGNOSTICS, "TIMING_MAX_SEQUENCE", 3):
+            bounded = DIAGNOSTICS.timing_hints(first * 8, {FIRST_ID})
+        self.assertTrue(bounded["truncated"])
+        self.assertEqual(bounded["out_of_order_markers"], 2)
+        with self.assertRaises(DIAGNOSTICS.DiagnosticError):
+            DIAGNOSTICS.timing_hints(b"x" * (DIAGNOSTICS.MAX_LOG + 1), {FIRST_ID})
+
+    def test_timing_uses_the_same_single_log_read_and_missing_end_does_not_change_exit(self):
+        raw = b"test_first (tests.test_synthetic_new.Example) ... ok\n" + timing_line(timing_event())
+
+        def parent(_):
+            self.evidence(log=raw)
+            return 0
+
+        with mock.patch.object(DIAGNOSTICS, "read_bounded", wraps=DIAGNOSTICS.read_bounded) as reading:
+            with mock.patch.object(DIAGNOSTICS, "log_hints", wraps=DIAGNOSTICS.log_hints) as legacy:
+                with mock.patch.object(DIAGNOSTICS, "timing_hints", wraps=DIAGNOSTICS.timing_hints) as timing:
+                    code, record = self.attempt(parent)
+        self.assertEqual(sum(call.args[1].endswith("/process.log") for call in reading.call_args_list), 1)
+        self.assertEqual(legacy.call_args, timing.call_args)
+        self.assertEqual(code, 0)
+        self.assertEqual(record["diagnostic_errors"], [])
+        self.assertEqual(record["timing_hints"]["missing_end_count"], 1)
+        self.assertTrue(record["timing_hints"]["cannot_prove_current_test_or_completion"])
+
+    def test_timing_projection_failure_is_private_and_does_not_change_original_verdict(self):
+        def parent(_):
+            self.evidence()
+            return 0
+
+        with mock.patch.object(DIAGNOSTICS, "timing_hints", side_effect=ValueError(CANARY)):
+            code, record = self.attempt(parent)
+        self.assertEqual(code, 0)
+        self.assertEqual(record["diagnostic_errors"], [])
+        self.assertIsNone(record["timing_hints"])
+        self.assertEqual(record["timing_projection_state"], "unavailable")
+        self.assert_private()
+
+    def test_rejected_timing_markers_do_not_change_original_verdict_or_publish_canary(self):
+        def parent(_):
+            self.evidence(log=timing_line(timing_event(private_unused=CANARY)))
+            return 0
+
+        code, record = self.attempt(parent)
+        self.assertEqual(code, 0)
+        self.assertEqual(record["diagnostic_errors"], [])
+        self.assertEqual(record["timing_hints"]["rejected_markers"], 1)
+        self.assertEqual(record["timing_hints"]["last_events"], [])
+        self.assert_private()
+
+    def test_forged_complete_timing_cannot_supply_missing_original_receipts(self):
+        def parent(_):
+            self.put(f"output/item6-bridge-validation/{RUN_ID}/process.log", b"".join(map(timing_line, [
+                timing_event(1, kind="test_start", stage=None, span=None),
+                timing_event(2, kind="test_end", stage=None, span=None, outcome="callback_complete", duration_ns=10),
+            ])))
+            return 0
+
+        code, record = self.attempt(parent)
+        self.assertEqual(code, 1)
+        self.assertEqual(record["timing_hints"]["missing_end_count"], 0)
+        self.assertIsNone(record["original_receipts"])
+        self.assertIsNone(record["child_actual_exit_code"])
+        self.assertIsNone(record["all_tests_passed_without_skips"])
+        self.assertIn("original_receipts_unavailable_or_invalid", record["diagnostic_errors"])
 
     def test_run_ids_and_unsafe_paths_are_rejected(self):
         for invalid in ("", "CI-1", "CI-1-1/escape", "CI-1-1\n", "CI-" + "1" * 21 + "-1", True, 1):

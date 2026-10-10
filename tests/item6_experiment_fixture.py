@@ -2,6 +2,7 @@
 from pathlib import Path
 from datetime import timedelta
 import asyncio
+import ast
 import copy
 import functools
 from contextlib import ExitStack, contextmanager
@@ -10,6 +11,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 import socket
 import stat
@@ -17,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
 import uuid
 import io
 import unittest
@@ -76,6 +79,291 @@ OVERLAY = (
     "tests/test_item6_experiment_artifacts.py", "tests/test_item6_experiment_integration.py")
 
 
+# Test-only observation. Never an authority, timer extension, result, or retry.
+_BRIDGE_PROGRESS = None
+_TIMING_STAGES = frozenset(("suite_pre_source", "suite_load", "suite_run", "suite_post_source",
+    "case_prepare", "case_source_parity", "case_exercise", "case_result", "independent_readback"))
+_FINALIZATION_MODES = frozenset(("expiry_after_scoring", "expiry_after_export", "expiry_after_seal", "expiry_after_terminal"))
+_TIMING_EXCEPTIONS = frozenset(("TimeoutExpired", "OSError", "PermissionError", "FileNotFoundError",
+    "KeyboardInterrupt", "SystemExit", "FixtureSourceParityError", "other"))
+
+
+class BridgeTimingError(RuntimeError):
+    pass
+
+
+def _validate_bridge_timing_row(row, allowed_ids):
+    """Producer-side allowlist before the first output byte; no free-form values."""
+    def require(condition):
+        if not condition:
+            raise BridgeTimingError("timing_record_fields")
+    def number(value, low=0, high=86400000000000, optional=False):
+        return optional and value is None or type(value) is int and low <= value <= high
+    require(type(row) is dict and set(row) == {"schema", "sequence", "kind", "monotonic_offset_ns",
+        "test_ordinal", "test_id", "span", "stage", "mode", "duration_ns", "outcome", "exception_type", "safe_marker"})
+    require(type(row["schema"]) is str and row["schema"] == "item6-bridge-segment-timing/1")
+    require(type(row["kind"]) is str and type(row["outcome"]) is str)
+    require(number(row["sequence"], 1, 16384) and number(row["monotonic_offset_ns"]))
+    require(number(row["test_ordinal"], 1, 4096, True))
+    require(row["test_id"] is None or type(row["test_id"]) is str and row["test_id"] in allowed_ids)
+    require(number(row["span"], 1, 16384, True) and number(row["duration_ns"], optional=True))
+    require(row["duration_ns"] is None or row["duration_ns"] <= row["monotonic_offset_ns"])
+    require(row["stage"] is None or type(row["stage"]) is str and row["stage"] in _TIMING_STAGES)
+    require(row["mode"] is None or type(row["mode"]) is str and row["mode"] in _FINALIZATION_MODES | {"other_fixture_mode"})
+    require(row["exception_type"] is None or type(row["exception_type"]) is str and row["exception_type"] in _TIMING_EXCEPTIONS)
+    kind = row["kind"]
+    if kind in {"test_start", "test_end"}:
+        require(row["test_ordinal"] is not None and row["stage"] is None and row["span"] is None)
+        require(row["outcome"] == ("started" if kind == "test_start" else "callback_complete"))
+        require((row["duration_ns"] is None) == (kind == "test_start"))
+    elif kind in {"segment_start", "segment_end"}:
+        require(row["stage"] is not None and row["span"] is not None)
+        require(row["outcome"] == "started" if kind == "segment_start" else row["outcome"] in {"returned", "raised"})
+        require((row["duration_ns"] is None) == (kind == "segment_start"))
+    else:
+        require(kind == "finalization_marker" and row["outcome"] == "observed")
+        require(row["stage"] is None and row["span"] is None and row["duration_ns"] is None)
+    require(row["exception_type"] is None or kind == "segment_end" and row["outcome"] == "raised")
+    marker = row["safe_marker"]
+    if kind != "finalization_marker":
+        require(marker is None)
+        return
+    keys = {"mode", "point", "injection_hit", "process_exit_code", "verifier_exit_code", "failure_stage",
+        "seal_present", "partial_observation_count", "calls_count", "error_code", "verifier_error_code"}
+    require(type(marker) is dict and set(marker) == keys)
+    require(type(marker["mode"]) is str and marker["mode"] in _FINALIZATION_MODES and marker["mode"] == row["mode"])
+    require(type(marker["point"]) is str and marker["point"] in {"after_run_case", "after_verify"})
+    require(all(marker[k] is None or type(marker[k]) is bool for k in ("injection_hit", "seal_present")))
+    require(all(number(marker[k], -1, 4096, True) for k in ("process_exit_code", "verifier_exit_code")))
+    require(all(number(marker[k], 0, 4096, True) for k in ("partial_observation_count", "calls_count")))
+    require(marker["failure_stage"] is None or type(marker["failure_stage"]) is str and marker["failure_stage"] in
+            {"start", "scoring_after", "export_after", "seal_after", "terminal_after_write"})
+    require(marker["error_code"] is None or type(marker["error_code"]) is str and marker["error_code"] == "item6_finalization_deadline")
+    require(marker["verifier_error_code"] is None or type(marker["verifier_error_code"]) is str and marker["verifier_error_code"] == "item6_finalization_failed")
+
+
+def _bridge_test_ids(root, names):
+    """AST inventory only; never import another test to manufacture an ID."""
+    allowed = set()
+    for name in names:
+        if type(name) is not str or re.fullmatch(r"tests\.test_[a-z0-9_]+", name) is None:
+            raise BridgeTimingError("timing_test_module")
+        body = (root / (name.replace(".", "/") + ".py")).read_bytes()
+        if len(body) > 2 * 1024 * 1024:
+            raise BridgeTimingError("timing_test_source_size")
+        for cls in ast.parse(body).body:
+            if isinstance(cls, ast.ClassDef):
+                for method in cls.body:
+                    if isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)) and method.name.startswith("test_"):
+                        value = name + "." + cls.name + "." + method.name
+                        if re.fullmatch(r"[A-Za-z0-9_.]{1,256}", value) is None:
+                            raise BridgeTimingError("timing_test_id")
+                        allowed.add(value)
+    if len(allowed) > 4096:
+        raise BridgeTimingError("timing_test_count")
+    return frozenset(allowed)
+
+
+class _BridgeProgress:
+    """Bounded stdout hints, not authenticated execution/audit evidence.
+
+    The borrowed stream is never closed. Flush makes partial progress available
+    to the existing parent log; a hard kill may still prevent artifact sealing.
+    Offsets start at collector construction, not at the parent's budget clock.
+    A returned segment or completed test callback is not a passing test verdict.
+    """
+    def __init__(self, stream, *, clock=None):
+        self.stream = stream
+        self.clock = time.monotonic_ns if clock is None else clock
+        self.origin = self.clock()
+        if type(self.origin) is not int or self.origin < 0:
+            raise BridgeTimingError("timing_clock")
+        self.last_offset = 0
+        self.sequence = 0
+        self.ordinal = 0
+        self.test_id = None
+        self.test_started = None
+        self.allowed_ids = frozenset()
+        self.failed = False
+        self.on_failure = None
+        self.lock = threading.RLock()
+
+    def require_available(self):
+        if self.failed:
+            raise BridgeTimingError("timing_evidence_unavailable")
+
+    def _failure(self):
+        self.failed = True
+        if self.on_failure is not None:
+            try:
+                self.on_failure()
+            except BaseException:
+                pass  # Preserve the evidence failure, not a callback exception.
+
+    def _emit(self, kind, *, stage=None, mode=None, span=None, start=None,
+              outcome="observed", exception_type=None, safe_marker=None):
+        with self.lock:
+            self.require_available()
+            try:
+                current = self.clock()
+                if type(current) is not int:
+                    raise BridgeTimingError("timing_clock")
+                offset = current - self.origin
+                if not self.last_offset <= offset <= 86400000000000:
+                    raise BridgeTimingError("timing_clock")
+                if start is not None and (type(start) is not int or not 0 <= start <= offset):
+                    raise BridgeTimingError("timing_start_clock")
+                if self.sequence >= 16384 or stage is not None and stage not in _TIMING_STAGES:
+                    raise BridgeTimingError("timing_bounds")
+                if kind not in {"test_start", "test_end", "segment_start", "segment_end", "finalization_marker"}:
+                    raise BridgeTimingError("timing_kind")
+                self.sequence += 1
+                self.last_offset = offset
+                if kind == "segment_start":
+                    span = self.sequence
+                row = dict(schema="item6-bridge-segment-timing/1", sequence=self.sequence, kind=kind,
+                    monotonic_offset_ns=offset, test_ordinal=self.ordinal if self.test_started is not None else None,
+                    test_id=self.test_id, span=span, stage=stage,
+                    mode=mode if mode in _FINALIZATION_MODES else "other_fixture_mode" if mode is not None else None,
+                    duration_ns=None if start is None else offset - start, outcome=outcome,
+                    exception_type=exception_type, safe_marker=safe_marker)
+                _validate_bridge_timing_row(row, self.allowed_ids)
+                encoded = "\nITEM6_BRIDGE_TIMING " + json.dumps(row, ensure_ascii=True, sort_keys=True) + "\n"
+                if len(encoded.encode("utf-8")) > 2048:
+                    raise BridgeTimingError("timing_record_size")
+                written = self.stream.write(encoded)
+                if type(written) is not int or written != len(encoded):
+                    raise BridgeTimingError("timing_short_write")
+                self.stream.flush()
+                return row
+            except BaseException:
+                self._failure()
+                raise BridgeTimingError("timing_evidence_write_failed") from None
+
+    @contextmanager
+    def segment(self, stage, mode=None):
+        begun = self._emit("segment_start", stage=stage, mode=mode, outcome="started")
+        try:
+            yield
+        except BaseException as original:
+            kinds = {subprocess.TimeoutExpired: "TimeoutExpired", OSError: "OSError",
+                PermissionError: "PermissionError", FileNotFoundError: "FileNotFoundError",
+                KeyboardInterrupt: "KeyboardInterrupt", SystemExit: "SystemExit",
+                FixtureSourceParityError: "FixtureSourceParityError"}
+            try:
+                self._emit("segment_end", stage=stage, mode=mode, span=begun["span"],
+                    start=begun["monotonic_offset_ns"], outcome="raised",
+                    exception_type=kinds.get(type(original), "other"))
+            except BaseException:
+                pass  # Failed reporter stays locked; the original exception wins.
+            raise
+        else:
+            self._emit("segment_end", stage=stage, mode=mode, span=begun["span"],
+                start=begun["monotonic_offset_ns"], outcome="returned")
+
+    def start_test(self, test):
+        self.require_available()
+        if self.test_started is not None or self.ordinal >= 4096:
+            self._failure()
+            raise BridgeTimingError("timing_test_overlap")
+        self.ordinal += 1
+        parts = (type(test).__module__, type(test).__qualname__, getattr(test, "_testMethodName", None))
+        candidate = ".".join(parts) if all(type(part) is str for part in parts) else None
+        self.test_id = candidate if candidate in self.allowed_ids else None
+        self.test_started = 0  # Active while writing the start row, including time zero.
+        row = self._emit("test_start", outcome="started")
+        self.test_started = row["monotonic_offset_ns"]
+
+    def stop_test(self):
+        self.require_available()
+        if self.test_started is None:
+            self._failure()
+            raise BridgeTimingError("timing_test_missing_start")
+        # Callback completion is not a pass/fail assertion.
+        self._emit("test_end", start=self.test_started, outcome="callback_complete")
+        self.test_started, self.test_id = None, None
+
+    def finalization_marker(self, value):
+        if (type(value) is not dict or type(value.get("mode")) is not str
+                or value["mode"] not in _FINALIZATION_MODES):
+            self._failure()
+            raise BridgeTimingError("timing_marker_mode")
+        def number(name, lower=0):
+            item = value.get(name)
+            return item if type(item) is int and lower <= item <= 4096 else None
+        def flag(name):
+            item = value.get(name)
+            return item if type(item) is bool else None
+        stage = value.get("failure_stage")
+        if type(stage) is not str or stage not in {"start", "scoring_after", "export_after", "seal_after", "terminal_after_write"}:
+            stage = None
+        safe = dict(mode=value["mode"], point="after_verify" if "verifier_exit_code" in value else "after_run_case",
+            injection_hit=flag("injection_hit"), process_exit_code=number("process_exit_code", -1),
+            verifier_exit_code=number("verifier_exit_code", -1), failure_stage=stage,
+            seal_present=flag("seal_present"), partial_observation_count=number("partial_observation_count"),
+            calls_count=number("calls_count"),
+            error_code="item6_finalization_deadline" if value.get("error_code") == "item6_finalization_deadline" else None,
+            verifier_error_code="item6_finalization_failed" if value.get("verifier_error_code") == "item6_finalization_failed" else None)
+        self._emit("finalization_marker", mode=value["mode"], safe_marker=safe)
+
+
+@contextmanager
+def bridge_segment(stage, mode=None):
+    reporter = _BRIDGE_PROGRESS
+    if reporter is None:
+        yield  # Disabled: no clock read, output, cache change, or added timeout.
+    else:
+        with reporter.segment(stage, mode):
+            yield
+
+
+def bridge_finalization_marker(value):
+    if _BRIDGE_PROGRESS is not None:
+        _BRIDGE_PROGRESS.finalization_marker(value)
+
+
+@contextmanager
+def _bridge_progress_scope(reporter):
+    """Share observation with the existing imported fixture; never alias modules."""
+    global _BRIDGE_PROGRESS
+    imported = sys.modules.get("tests.item6_experiment_fixture")
+    if imported is not None and Path(imported.__file__).resolve() != ROOT / "tests/item6_experiment_fixture.py":
+        raise BridgeTimingError("timing_fixture_origin")
+    previous = _BRIDGE_PROGRESS
+    imported_previous = getattr(imported, "_BRIDGE_PROGRESS", None) if imported is not None else None
+    _BRIDGE_PROGRESS = reporter
+    if imported is not None:
+        imported._BRIDGE_PROGRESS = reporter
+    try:
+        yield
+    finally:
+        _BRIDGE_PROGRESS = previous
+        if imported is not None:
+            imported._BRIDGE_PROGRESS = imported_previous
+
+
+class _BridgeTimedResult(unittest.TextTestResult):
+    def __init__(self, stream, descriptions, verbosity, reporter):
+        super().__init__(stream, descriptions, verbosity)
+        self.reporter = reporter
+        reporter.on_failure = self.stop
+
+    def startTest(self, test):
+        self.reporter.start_test(test)
+        super().startTest(test)
+
+    def stopTest(self, test):
+        active_exception = sys.exc_info()[1]
+        super().stopTest(test)
+        try:
+            self.reporter.stop_test()
+        except BaseException:
+            if active_exception is None:
+                raise
+            # TestCase.run invokes stopTest from a finally block. Never replace
+            # an escaping KeyboardInterrupt/SystemExit with an observer error.
+
+
 def environment(root):
     env = {k: os.environ[k] for k in ("PATH", "SystemRoot", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "COMSPEC", "PATHEXT") if k in os.environ}
     env.update(PYTHONPATH=str(root / "src") + os.pathsep + str(root), PYTHONDONTWRITEBYTECODE="1",
@@ -84,6 +372,8 @@ def environment(root):
 
 
 def command(args, root):
+    if _BRIDGE_PROGRESS is not None:
+        _BRIDGE_PROGRESS.require_available()
     result = subprocess.run(args, cwd=root, env=environment(root), capture_output=True, text=True, encoding="utf-8", timeout=180)
     if result.returncode:
         raise RuntimeError("fixture_command_failed:" + str(args[:2]) + ":" + result.stderr[-2000:])
@@ -91,6 +381,8 @@ def command(args, root):
 
 
 def allocate(prefix):
+    if _BRIDGE_PROGRESS is not None:
+        _BRIDGE_PROGRESS.require_available()
     # Retain fixture sources/stores after failures; never delete a claim to retry.
     path = Path(tempfile.mkdtemp(prefix=prefix))
     if prefix == "item6-test-store-":
@@ -241,17 +533,26 @@ def finalization_export_expiry(original_export, expire, run_function, deadline_t
 
 
 def run_case(mode="normal"):
-    root = allocate("i6-case-")
-    command(["git", "clone", "--shared", str(seed()), str(root)], ROOT)
+    with bridge_segment("case_prepare", mode):
+        root = allocate("i6-case-")
+        command(["git", "clone", "--shared", str(seed()), str(root)], ROOT)
     # Verify the execution clone, too: cached seeds are not authority for a
     # later source tree. This runs before exercise/key/store/transport setup.
-    record_fixture_source_parity(ROOT, root, "case-source-parity.json")
+    with bridge_segment("case_source_parity", mode):
+        record_fixture_source_parity(ROOT, root, "case-source-parity.json")
     env = environment(root)
     if LOCK_OBSERVATION and mode != "isolation_design":
         raise ValueError("lock_observation_single_mode_only")
     action = "exercise-lock-observed" if LOCK_OBSERVATION else "exercise"
-    result = subprocess.run([PYTHON, "-B", "-m", "tests.item6_experiment_fixture", action, mode],
-        cwd=root, env=env, capture_output=True, text=True, encoding="utf-8", timeout=900)
+    with bridge_segment("case_exercise", mode):
+        result = subprocess.run([PYTHON, "-B", "-m", "tests.item6_experiment_fixture", action, mode],
+            cwd=root, env=env, capture_output=True, text=True, encoding="utf-8", timeout=900)
+    with bridge_segment("case_result", mode):
+        return _run_case_result(result, root, mode)
+
+
+def _run_case_result(result, root, mode):
+    """Original return processing, moved unchanged into its timed boundary."""
     rows = [line for line in result.stdout.splitlines() if line.startswith("{")]
     if not rows: raise AssertionError("fixture_missing_result:" + result.stderr[-1500:])
     value = json.loads(rows[-1]); value["process_exit_code"] = result.returncode
@@ -622,7 +923,9 @@ def claim_fixture_child(command_name, known, directory, index=None):
 def suite_child(run_id, names):
     """Executed in an actual synthetic committed checkout, never a mock source verifier."""
     from researchops_internal_telemetry import source_integrity_v3 as source
-    before = source.verify_source(ROOT)
+    reporter = _BridgeProgress(sys.stdout)
+    with reporter.segment("suite_pre_source"):
+        before = source.verify_source(ROOT)
     directory = ROOT / "output/item6-bridge-validation" / run_id
     directory.mkdir(parents=True, exist_ok=False)
     public = directory / "public"; public.mkdir()
@@ -640,10 +943,16 @@ def suite_child(run_id, names):
             sys.stdout.write(value); sys.stdout.flush()
             return result
     stream = Progress()
-    suite = unittest.defaultTestLoader.loadTestsFromNames(names)
+    with reporter.segment("suite_load"):
+        reporter.allowed_ids = _bridge_test_ids(ROOT, names)
+        suite = unittest.defaultTestLoader.loadTestsFromNames(names)
     planned_tests = suite.countTestCases()
-    result = unittest.TextTestRunner(stream=stream, verbosity=2, failfast=True).run(suite)
-    after = source.verify_source(ROOT)
+    def result_class(stream, descriptions, verbosity):
+        return _BridgeTimedResult(stream, descriptions, verbosity, reporter)
+    with _bridge_progress_scope(reporter), reporter.segment("suite_run"):
+        result = unittest.TextTestRunner(stream=stream, verbosity=2, failfast=True, resultclass=result_class).run(suite)
+    with reporter.segment("suite_post_source"):
+        after = source.verify_source(ROOT)
     code = 0 if result.wasSuccessful() and before == after and result.testsRun == planned_tests else 1
     report = dict(tests=result.testsRun, failures=len(result.failures), errors=len(result.errors), skips=len(result.skipped),
         intended_exit_code=code, scope=list(names), source_before=before, source_after=after, inputs_stable=before == after,
