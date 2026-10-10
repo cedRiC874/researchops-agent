@@ -51,7 +51,7 @@ flowchart LR
 
 [`services/mcp_gateway_v1`](services/mcp_gateway_v1/README.md)把上面的受控工具通过MCP（stdio）开放给外部客户端。模型能调用的只有7个工具：创建运行、三个只读工具、提议发布、执行已批准的调用、查询状态。**批准只能由操作者在本地CLI完成，模型侧没有审批工具**；执行时只认运行和调用句柄，不接受新的业务参数。
 
-https://github.com/user-attachments/assets/ddc14f6e-6d64-4cdd-90aa-211235262064
+https://github.com/user-attachments/assets/31c8b5e3-b2ae-4282-8b16-d7e6cce091ec
 
 **真实客户端（ChatGPT桌面版Codex）+ 真实模型（界面显示为GPT-6 Astra Ultra）+ 合成数据** · 2026-10-11单次录制，未剪辑，约3分钟 · 录制时仓库为main@`7e99156`
 

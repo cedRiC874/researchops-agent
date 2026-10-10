@@ -51,7 +51,7 @@ This diagram shows component relationships, not a sequence followed by all 16 ta
 
 [`services/mcp_gateway_v1`](services/mcp_gateway_v1/README.md) exposes the controlled tools above to external clients over MCP (stdio). The model can call only seven tools: create a run, three read-only tools, propose a publication, execute an approved call, and check status. **Only an operator can approve, using a local CLI; the model has no approval tool.** Execution accepts only the run and call handles, not new business arguments.
 
-https://github.com/user-attachments/assets/ddc14f6e-6d64-4cdd-90aa-211235262064
+https://github.com/user-attachments/assets/31c8b5e3-b2ae-4282-8b16-d7e6cce091ec
 
 **Real client (ChatGPT desktop app, Codex) + real model (shown in the app as GPT-6 Astra Ultra) + synthetic data** · single take recorded on 2026-10-11, unedited, about 3 minutes · repository at main@`7e99156` when recorded
 
