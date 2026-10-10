@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - ".gitattributes"
+      - ".github/ci/bridge_diagnostics.py"
       - "src/**"
       - "evals/**"
       - "services/agent_workflow_comparison_v1/**"
@@ -19,6 +20,7 @@ on:
     branches: [main]
     paths:
       - ".gitattributes"
+      - ".github/ci/bridge_diagnostics.py"
       - "src/**"
       - "evals/**"
       - "services/agent_workflow_comparison_v1/**"
@@ -152,11 +154,21 @@ jobs:
           if __name__=='__main__':sys.exit(main())
           '@ | python -B -X utf8 -
           exit $LASTEXITCODE
+      - name: Verify diagnostic projection with synthetic inputs
+        run: |
+          python -B -X utf8 -m unittest discover -s tests -p test_bridge_ci_diagnostics.py -t . -v
+          exit $LASTEXITCODE
       - name: Run only bridge and affected checks
+        env:
+          ITEM6_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/src;$env:GITHUB_WORKSPACE"
-          python -B -X utf8 -m tests.item6_experiment_fixture suite "CI-${{ github.run_id }}-${{ github.run_attempt }}"
-          exit $LASTEXITCODE
+          python -B -X utf8 .github/ci/bridge_diagnostics.py run "CI-${{ github.run_id }}-${{ github.run_attempt }}"
+          $bridgeExit = $LASTEXITCODE
+          python -B -X utf8 .github/ci/bridge_diagnostics.py record-exit "CI-${{ github.run_id }}-${{ github.run_attempt }}" "$bridgeExit"
+          $recordExit = $LASTEXITCODE
+          if ($bridgeExit -ne 0) { exit $bridgeExit }
+          exit $recordExit
       - name: Retain this isolated attempt
         if: always()
         uses: actions/upload-artifact@v4
@@ -165,5 +177,8 @@ jobs:
           path: |
             output/item6-bridge-validation/CI-${{ github.run_id }}-${{ github.run_attempt }}/public/
             output/item6-checkout-source/CI-${{ github.run_id }}-${{ github.run_attempt }}/
+            output/item6-bridge-diagnostics/CI-${{ github.run_id }}-${{ github.run_attempt }}/start.json
+            output/item6-bridge-diagnostics/CI-${{ github.run_id }}-${{ github.run_attempt }}/result.json
+            output/item6-bridge-diagnostics/CI-${{ github.run_id }}-${{ github.run_attempt }}/wrapper-exit.json
           overwrite: false
           if-no-files-found: warn
