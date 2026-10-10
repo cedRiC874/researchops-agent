@@ -6,15 +6,16 @@
 
 ## 变更边界
 
-MCP 实现新增 36 个文件，范围为 `services/mcp_gateway_v1/`、`evals/mcp_injection_v1/` 和 `.github/workflows/mcp-gateway-v1.yml`。旧桥接 CI 连续两次超时后，用户明确授权一项范围例外：修改既有 `.github/workflows/item6-experiment-bridge-offline.yml`，仅增加失败进度诊断。没有修改既有核心模块、根测试、根锁文件、STATUS、证据目录或冻结清单。原本位于其他工作区的未提交改动未被带入本分支。
+MCP 实现新增 36 个文件，范围为 `services/mcp_gateway_v1/`、`evals/mcp_injection_v1/` 和 `.github/workflows/mcp-gateway-v1.yml`。旧桥接 CI 连续超时后，用户先授权旧 bridge workflow 的失败进度诊断，再单独授权四个旧文件的测试总预算修订：`tests/item6_experiment_fixture.py`、当前项目 v3 manifest，以及 `.github/workflows/ci.yml` 和 bridge workflow。现为 36 个新增文件和 4 个经明确授权修改的旧文件。既有生产源码、测试断言与跳过规则、根锁文件、STATUS、证据目录、v1/v2 历史清单均未修改。原本位于其他工作区的未提交改动未被带入本分支。
 
-实现提交依次为：`61c840f`（A 网关）、`d61a2e6`（确定性测试首块）、`dca9dca`（B 代理及后四类攻击）、`ba0568b`（审查发现的安全边界修复）、`c5d0df8`（C2 模型运行器与预注册）、`647349e`（合法研究设计的评测判定修复）、`f943f2a`（文档及人工审批演示）、`711e5e4`（请求失败与业务状态的审计归因修复）、`6eab830`（业务状态保真）、`f43727e`（独立评测实现迁移，保持旧冻结源范围）、`df7c864`（SDK 提前拒绝的安全错误与审计）、`f3c0753`（Windows CI 临时路径夹具规范化）、`2ca9c79`（经授权的旧桥接失败诊断）。首次推送前已确认 df7c864 之后仅有 README 和验证报告修改；后续代码修改均在推送前重新运行了全部 51 项新测试。
+实现提交依次为：`61c840f`（A 网关）、`d61a2e6`（确定性测试首块）、`dca9dca`（B 代理及后四类攻击）、`ba0568b`（审查发现的安全边界修复）、`c5d0df8`（C2 模型运行器与预注册）、`647349e`（合法研究设计的评测判定修复）、`f943f2a`（文档及人工审批演示）、`711e5e4`（请求失败与业务状态的审计归因修复）、`6eab830`（业务状态保真）、`f43727e`（独立评测实现迁移，保持旧冻结源范围）、`df7c864`（SDK 提前拒绝的安全错误与审计）、`f3c0753`（Windows CI 临时路径夹具规范化）、`2ca9c79`（经授权的旧桥接失败诊断）、`05980bc`（经另行授权的测试总预算与 v3 承诺修订）。首次推送前已确认 df7c864 之后仅有 README 和验证报告修改；后续代码修改均在推送前重新运行了全部 51 项新测试。
 
 ## 实际测试结果
 
 | 范围 | 执行／完成 | 通过 | 失败记录 | 错误记录 | 跳过 | 退出码 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 新服务最终统一 unittest | 51 | 51 | 0 | 0 | 0 | 0 |
+| 预算修订后的旧 v3 源完整性模块 | 9 | 9 | 0 | 0 | 0 | 0 |
 | 既有根目录完整套件，固定基线 a877a5a | 2535 | 2432 | 17 | 131 | 6 | 1 |
 | 恢复环境代表用例，固定本次代码 f43727e | 1 | 1 | 0 | 0 | 0 | 0 |
 | 恢复环境定向分组 A，固定本次代码 f43727e | 30 | 30 | 0 | 0 | 0 | 0 |
@@ -35,12 +36,12 @@ MCP 实现新增 36 个文件，范围为 `services/mcp_gateway_v1/`、`evals/mc
 新增统一测试命令为 `python services/mcp_gateway_v1/scripts/run_tests.py`，实际尾部输出：
 
 ```text
-Ran 51 tests in 41.421s
+Ran 51 tests in 65.723s
 OK
 tests_run=51, passed=51, failures=0, errors=0, skipped=0, exit_code=0
 ```
 
-新增环境实际使用 Windows、Python 3.12.14、官方 `mcp==2.3.0`。51 项包含网关运行与 CLI、12 类攻击、真实 SDK 内存和 stdio、本地假上游、模型运行器、安全审查回归及分步审批演示。最新本地运行覆盖代码提交 `2ca9c79` 的实际内容。执行时阻断外部网络和 DNS，只有 Windows 标准库事件循环内部 IPC 例外。没有新增 skip、删除测试或放宽既有断言。
+新增环境实际使用 Windows、Python 3.12.14、官方 `mcp==2.3.0`。51 项包含网关运行与 CLI、12 类攻击、真实 SDK 内存和 stdio、本地假上游、模型运行器、安全审查回归及分步审批演示。最新本地运行覆盖代码提交 `05980bc` 的实际内容。执行时阻断外部网络和 DNS，只有 Windows 标准库事件循环内部 IPC 例外。没有新增 skip、删除测试或放宽既有断言。
 
 默认模型 dry-run 的实际汇总另列如下；其中“试验”不计入上表的 unittest 数量：
 
@@ -72,6 +73,18 @@ tests_run=51, passed=51, failures=0, errors=0, skipped=0, exit_code=0
 用户随后授权 `2ca9c79` 的单旧 workflow 诊断例外：原测试命令、455 用例、断言、跳过条件、6000 秒子进程及 120 分钟 job 预算均保留。只有失败且完整 `validation.json` 缺失时，才从有界私有日志提取静态白名单中的测试 ID／状态，核对同次运行的 head 与检出证明，扫描后写入 `progress-on-failure.json`；不上传原始日志或异常正文。该文件固定标记 `partial=true`、`full_suite_verified=false`、`failure_cause_verified=false`，不能据最后观察项认定超时根因。
 
 应用后的真实 workflow 已通过 YAML／Python 语法、嵌入代码一致性、20/20 合成检查，以及完整入口的合成目录端到端验证（退出码 0）。端到端只发布扫描通过的进度 JSON，原始日志未复制；全部 51 项新服务测试也再次通过。v3 实测仍为 499 文件、原承诺与 manifest 摘要不变。workflow 不属于该静态选集，其 SHA 在每次运行的新 freeze 中生成；已有 freeze 未重写。整个 job 硬超时或取消时，后续诊断步骤可能无法执行；超大、变化中或不安全的日志会拒绝导出。此诊断不是延长预算或性能修复，远端效果以新提交 CI 为准。
+
+### 经另行授权的测试总预算修订
+
+诊断提交 `4e1ac4b` 的 [bridge 运行](https://github.com/cedRiC874/researchops-agent/actions/runs/38037853407)于北京时间 2026-10-10 18:08 再次触发原 6000 秒上限，实际退出码 1。诊断与上传成功，同 run／attempt／head、checkout 原字节摘要及公开扫描均已核验。182 条不同测试 ID 的完成文本观察均为 `ok`，恰为固定 455 项顺序的前缀；其余 273 项没有完成观察，其中 33 项为 Item6、240 项为其他模块。最后观察到的归档测试没有完成标记，不能认定它是超时根因；没有完整 `validation.json`，也不能宣称套件通过或运行后输入稳定。
+
+用户随后明确批准：`suite_parent` 的测试总上限由 6000 秒改为 10800 秒（180 分钟），bridge job 上限由 120 分钟改为 210 分钟。共享该函数的 `suite` 和 `suite-remaining` 两个离线入口均受影响；本次 bridge 仍执行原 19 模块／455 项。用例顺序、断言、skip、failfast、900 秒单场景及全部生产运行时限制保持不变。该改动增加累计测试工作量的运行余量，未优化生产源验证；180 分钟仍可能超时，最终以实际 CI 为准。
+
+fixture 属于当前 v3 冻结选集，因此同步修订项目 v3 manifest 中唯一的 fixture 行和顶层承诺，并更新两个 CI workflow 的固定摘要。499 个文件路径保持不变；新的 source commitment 为 `ee54098241d108350aee1f55e067448c421e5bede48f6f5c07991609173af8fc`，manifest SHA-256 为 `aff2cfeb6ec7c627f8dd40bf23ffd28ea4d186174f3eaa0fd05ada86af44f923`。旧提交及其失败证据保留，v1/v2 历史清单和锚点未变，已有运行 freeze 未改写。
+
+应用后完整复跑新服务 51 项／12 类用例全部通过，零失败／错误／跳过、实际退出码 0，测试用时 65.723 秒。在隔离 Python 3.12.13 与 82 项原锁依赖下，`tests.test_internal_source_integrity_v3` 整个模块实际 9/9 通过，零失败／错误／跳过、退出码 0，用时 82.553 秒；测试前后真实 `source.verify_source` 均通过，499 文件、新摘要和输入稳定性一致。静态 AST 和字节比较确认 fixture 只改变共用总时限，四文件字节与获批预览一致。没有在本地重跑 455 项整套，完整桥接验收由新提交的 CI 执行。
+
+预算修订前，`4e1ac4b` 的 MCP PR／push 四个 Linux／Windows job 均实际 51/51、12 类用例全通过，失败／错误／跳过 0、退出码 0。该提交的旧 push 全量实际执行 2535 项、2524 通过、11 项既有跳过，无失败或错误，用时 7064.324 秒，原生步骤成功；11 个跳过 ID 和原因与 main 成功基线逐条一致。历史提交结果不能代替预算修订后的新提交验收。
 
 ## 既有全量与环境复核
 
@@ -114,7 +127,7 @@ tests_run=51, passed=51, failures=0, errors=0, skipped=0, exit_code=0
 
 旧 v2/v3 逻辑会自动扫描根 `evals` 中的 Python 和 JSON 文件。为保持既有冻结规则不变，3 个新增评测实现／清单文件已真实迁到 `services/mcp_gateway_v1/evals/`；根 `evals/mcp_injection_v1/` 仅保留 Markdown 入口及预注册，没有改扩展名隐藏实现，也没有修改旧选择器或冻结合同。迁移提交为 `f43727e`。
 
-在开发提交 `df7c864` 上调用实际旧选择器复核：v2 选中 430 项，v3 选中 499 项；与 a877a5a 相比，选中路径新增、缺失、Git blob／文件模式变化和工作树原始字节变化均为 0。当时两个单独绑定的旧 workflow 也完全一致，全部 1513 个原有跟踪文件逐字节匹配基线，82 项根依赖版本无差异；恢复运行时的 7 个关键文件逐字节匹配官方包。此后唯一经授权改变的旧文件为上述 bridge workflow；静态 v3 源承诺未变，每次新 freeze 按修改后的 workflow 字节绑定，不复用或改写旧 freeze。
+在开发提交 `df7c864` 上调用实际旧选择器复核：v2 选中 430 项，v3 选中 499 项；与 a877a5a 相比，选中路径新增、缺失、Git blob／文件模式变化和工作树原始字节变化均为 0。当时两个单独绑定的旧 workflow 也完全一致，全部 1513 个原有跟踪文件逐字节匹配基线，82 项根依赖版本无差异；恢复运行时的 7 个关键文件逐字节匹配官方包。后续旧文件修改仅限上述明确批准的诊断和测试预算范围；预算修订形成新的当前项目 v3 承诺，每次新 freeze 按当前源码及 workflow 字节绑定，不复用或改写旧 freeze。
 
 临时基线和已核对的补测副本有相同的 23 个非冻结文本文件发生 checkout 行尾转换，均仅为 CRLF/LF 差异，未手动修改，也不涉及旧 src、tests、根锁或上述冻结选集。该情况与开发工作树的旧文件原始字节零差异分开记录。原有完整套件已在固定基线上运行；f43727e 副本的异常用例及当前源／归档影响项已完成定向复核。其后的 SDK 适配修复不属于旧冻结选集，另由最终 51 项新增测试覆盖。
 
@@ -159,47 +172,50 @@ SDK 边界回归验证：提前拒绝的协议版本错误不再回显路径或�
 
 ## 完整变更文件及 diff stat
 
-下方为 `git diff --stat a877a5a HEAD` 的完整文件名输出：36 个新增文件，以及 1 个用户明确授权修改的旧 bridge workflow。
+下方为本次交付相对 `a877a5a` 的完整文件名 diff stat：36 个新增文件，以及 4 个用户明确授权修改的旧文件。
 
 <!-- DIFF_STAT_START -->
 ```text
- .github/workflows/item6-experiment-bridge-offline.yml              | 163 ++++++++++++++++++++++++
- .github/workflows/mcp-gateway-v1.yml                               |  38 ++++++
- evals/mcp_injection_v1/PREREGISTRATION.md                          |  46 +++++++
- evals/mcp_injection_v1/README.md                                   |  20 +++
- services/mcp_gateway_v1/.gitignore                                 |   6 +
- services/mcp_gateway_v1/README.md                                  | 198 +++++++++++++++++++++++++++++
- services/mcp_gateway_v1/VERIFICATION.md                            | 205 ++++++++++++++++++++++++++++++
- services/mcp_gateway_v1/evals/cases.json                           |  17 +++
- services/mcp_gateway_v1/evals/runner.py                            | 234 ++++++++++++++++++++++++++++++++++
- services/mcp_gateway_v1/evals/scenario.py                          | 286 ++++++++++++++++++++++++++++++++++++++++++
- services/mcp_gateway_v1/pyproject.toml                             |  26 ++++
- services/mcp_gateway_v1/requirements.lock                          |  47 +++++++
- services/mcp_gateway_v1/scripts/approval_demo.py                   | 107 ++++++++++++++++
- services/mcp_gateway_v1/scripts/run_tests.py                       |  66 ++++++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/__init__.py    |   3 +
- services/mcp_gateway_v1/src/researchops_mcp_gateway/__main__.py    |   4 +
- services/mcp_gateway_v1/src/researchops_mcp_gateway/bootstrap.py   |  16 +++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/cli.py         | 143 +++++++++++++++++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/gateway.py     | 444 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/manifest.py    | 151 ++++++++++++++++++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/proxy.py       | 301 ++++++++++++++++++++++++++++++++++++++++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/safety.py      | 165 ++++++++++++++++++++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/schemas.py     |  43 +++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/sdk_adapter.py | 226 +++++++++++++++++++++++++++++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/state.py       | 119 ++++++++++++++++++
- services/mcp_gateway_v1/src/researchops_mcp_gateway/upstream.py    | 148 ++++++++++++++++++++++
- services/mcp_gateway_v1/tests/__init__.py                          |   1 +
- services/mcp_gateway_v1/tests/offline.py                           |  25 ++++
- services/mcp_gateway_v1/tests/support.py                           |  79 ++++++++++++
- services/mcp_gateway_v1/tests/test_demo.py                         |  52 ++++++++
- services/mcp_gateway_v1/tests/test_gateway.py                      |  73 +++++++++++
- services/mcp_gateway_v1/tests/test_injection.py                    | 122 ++++++++++++++++++
- services/mcp_gateway_v1/tests/test_model_runner.py                 | 143 +++++++++++++++++++++
- services/mcp_gateway_v1/tests/test_proxy.py                        | 188 ++++++++++++++++++++++++++++
- services/mcp_gateway_v1/tests/test_sdk_adapter.py                  | 223 +++++++++++++++++++++++++++++++++
- services/mcp_gateway_v1/tests/test_security_regressions.py         | 200 +++++++++++++++++++++++++++++
- services/mcp_gateway_v1/tests/test_upstream.py                     | 118 ++++++++++++++++++
- 37 files changed, 4446 insertions(+)
+ .github/workflows/ci.yml                                             |   4 +-
+ .github/workflows/item6-experiment-bridge-offline.yml                | 169 ++++++++++++++++++++++++++++++++++++++-
+ .github/workflows/mcp-gateway-v1.yml                                 |  38 +++++++++
+ evals/mcp_injection_v1/PREREGISTRATION.md                            |  46 +++++++++++
+ evals/mcp_injection_v1/README.md                                     |  20 +++++
+ evals/provider_completion_internal_source_v3/source_manifest_v3.json |   2 +-
+ services/mcp_gateway_v1/.gitignore                                   |   6 ++
+ services/mcp_gateway_v1/README.md                                    | 198 ++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/VERIFICATION.md                              | 221 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/evals/cases.json                             |  17 ++++
+ services/mcp_gateway_v1/evals/runner.py                              | 234 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/evals/scenario.py                            | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/pyproject.toml                               |  26 ++++++
+ services/mcp_gateway_v1/requirements.lock                            |  47 +++++++++++
+ services/mcp_gateway_v1/scripts/approval_demo.py                     | 107 +++++++++++++++++++++++++
+ services/mcp_gateway_v1/scripts/run_tests.py                         |  66 ++++++++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/__init__.py      |   3 +
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/__main__.py      |   4 +
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/bootstrap.py     |  16 ++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/cli.py           | 143 +++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/gateway.py       | 444 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/manifest.py      | 151 +++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/proxy.py         | 301 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/safety.py        | 165 ++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/schemas.py       |  43 ++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/sdk_adapter.py   | 226 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/state.py         | 119 ++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/src/researchops_mcp_gateway/upstream.py      | 148 +++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/tests/__init__.py                            |   1 +
+ services/mcp_gateway_v1/tests/offline.py                             |  25 ++++++
+ services/mcp_gateway_v1/tests/support.py                             |  79 +++++++++++++++++++
+ services/mcp_gateway_v1/tests/test_demo.py                           |  52 ++++++++++++
+ services/mcp_gateway_v1/tests/test_gateway.py                        |  73 +++++++++++++++++
+ services/mcp_gateway_v1/tests/test_injection.py                      | 122 +++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/tests/test_model_runner.py                   | 143 +++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/tests/test_proxy.py                          | 188 ++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/tests/test_sdk_adapter.py                    | 223 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/tests/test_security_regressions.py           | 200 ++++++++++++++++++++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/tests/test_upstream.py                       | 118 ++++++++++++++++++++++++++++
+ tests/item6_experiment_fixture.py                                    |   2 +-
+ 40 files changed, 4469 insertions(+), 7 deletions(-)
 ```
 <!-- DIFF_STAT_END -->
