@@ -219,8 +219,8 @@ def safe_exception(exc, parent, run_id, parity_type):
             frames.append(tb.tb_frame.f_code)
             tb = tb.tb_next
         expected = [sys.executable, "-B", "-m", MODULE, "suite-child", run_id]
-        if type(exc.timeout) in (int, float) and exc.timeout == 6000 and type(exc.cmd) is list and exc.cmd == expected and parent.__code__ in frames:
-            result["scope"] = "original_suite_child_6000_seconds"
+        if type(exc.timeout) in (int, float) and exc.timeout == 10800 and type(exc.cmd) is list and exc.cmd == expected and parent.__code__ in frames:
+            result["scope"] = "original_suite_child_10800_seconds"
         else:
             result["scope"] = "other_or_unverified_timeout"
     return result
@@ -272,7 +272,7 @@ def run_attempt(root, run_id, load_parent, *, checkout=None):
     write_once(root, directory + "/start.json", {"schema": "bridge-ci-start/1", "run_id": run_id,
         "binding_sha256": before, "checkout": checkout, "planned_tests": None,
         "binding_scope": "diagnostic_inputs_and_static_test_modules_not_full_source_selector",
-        "diagnostic_only_not_validation": True, "original_suite_timeout_seconds": 6000})
+        "diagnostic_only_not_validation": True, "original_suite_timeout_seconds": 10800})
     record = {"schema": "bridge-ci-diagnostic/1", "run_id": run_id, "status": "not_started",
         "parent_return_code": None, "child_actual_exit_code": None, "process_tree_cleanup_proved": None,
         "exception": None, "original_receipts": None, "log_hints": None, "diagnostic_errors": [],

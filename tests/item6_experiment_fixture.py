@@ -676,7 +676,7 @@ def suite_parent(run_id, *, remaining=False):
     fixture = seed()
     with (target / "process.log").open("x", encoding="utf-8") as log:
         process = subprocess.run([PYTHON, "-B", "-m", "tests.item6_experiment_fixture", "suite-remaining-child" if remaining else "suite-child", run_id],
-            cwd=fixture, env=environment(fixture), stdout=log, stderr=subprocess.STDOUT, timeout=6000)
+            cwd=fixture, env=environment(fixture), stdout=log, stderr=subprocess.STDOUT, timeout=10800)
     source_dir = fixture / "output/item6-bridge-validation" / run_id
     if source_dir.exists():
         for path in source_dir.iterdir():

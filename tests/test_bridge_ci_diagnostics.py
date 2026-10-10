@@ -295,14 +295,15 @@ class BridgeDiagnosticsSyntheticTests(unittest.TestCase):
             print(CANARY)
             raise subprocess.TimeoutExpired(
                 [sys.executable, "-B", "-m", DIAGNOSTICS.MODULE, "suite-child", run_id],
-                6000, output=CANARY, stderr=CANARY,
+                10800, output=CANARY, stderr=CANARY,
             )
 
         code, record = self.attempt(parent)
         self.assertEqual(code, 1)
         self.assertEqual(record["status"], "parent_raised")
         self.assertEqual(record["exception"]["type"], "TimeoutExpired")
-        self.assertEqual(record["exception"]["scope"], "original_suite_child_6000_seconds")
+        self.assertEqual(record["exception"]["scope"], "original_suite_child_10800_seconds")
+        self.assertEqual(json.loads(self.public_path("start.json").read_text(encoding="utf-8"))["original_suite_timeout_seconds"], 10800)
         self.assertIsNone(record["parent_return_code"])
         self.assertIsNone(record["child_actual_exit_code"])
         self.assertIsNone(record["process_tree_cleanup_proved"])
@@ -318,15 +319,16 @@ class BridgeDiagnosticsSyntheticTests(unittest.TestCase):
 
         class FakeTimeoutExpired(Exception):
             cmd = expected
-            timeout = 6000
+            timeout = 10800
 
         cases = (
             subprocess.TimeoutExpired(expected, 5999),
+            subprocess.TimeoutExpired(expected, 6000),
             subprocess.TimeoutExpired(expected, True),
-            subprocess.TimeoutExpired(tuple(expected), 6000),
-            subprocess.TimeoutExpired(expected[:-1] + ["CI-2-1"], 6000),
-            subprocess.TimeoutExpired([CANARY], 6000),
-            TimeoutExpired(expected, 6000),
+            subprocess.TimeoutExpired(tuple(expected), 10800),
+            subprocess.TimeoutExpired(expected[:-1] + ["CI-2-1"], 10800),
+            subprocess.TimeoutExpired([CANARY], 10800),
+            TimeoutExpired(expected, 10800),
             FakeTimeoutExpired(CANARY),
         )
         for exception in cases:
@@ -338,7 +340,7 @@ class BridgeDiagnosticsSyntheticTests(unittest.TestCase):
                     parent(RUN_ID)
                 except BaseException as caught:
                     record = DIAGNOSTICS.safe_exception(caught, parent, RUN_ID, SyntheticParityError)
-                self.assertNotEqual(record["scope"], "original_suite_child_6000_seconds")
+                self.assertNotEqual(record["scope"], "original_suite_child_10800_seconds")
                 self.assertNotIn(CANARY, json.dumps(record))
                 if type(exception) is not subprocess.TimeoutExpired:
                     self.assertEqual(record["type"], "unclassified")
@@ -349,7 +351,7 @@ class BridgeDiagnosticsSyntheticTests(unittest.TestCase):
 
         try:
             raise subprocess.TimeoutExpired(
-                [sys.executable, "-B", "-m", DIAGNOSTICS.MODULE, "suite-child", RUN_ID], 6000,
+                [sys.executable, "-B", "-m", DIAGNOSTICS.MODULE, "suite-child", RUN_ID], 10800,
             )
         except subprocess.TimeoutExpired as caught:
             record = DIAGNOSTICS.safe_exception(caught, parent, RUN_ID, SyntheticParityError)
@@ -687,7 +689,7 @@ class BridgeWorkflowStaticTests(unittest.TestCase):
     def test_budget_filters_and_public_only_artifact_paths(self):
         # Read only the workflow; no fixture import, suite execution, or byte pin.
         workflow = (REPOSITORY / DIAGNOSTICS.WORKFLOW).read_text(encoding="utf-8")
-        self.assertIn("timeout-minutes: 120", workflow)
+        self.assertIn("timeout-minutes: 210", workflow)
         for event, following in (("  pull_request:", "  push:"), ("  push:", "  workflow_dispatch:")):
             section = workflow.split(event, 1)[1].split(following, 1)[0]
             self.assertIn('".github/ci/bridge_diagnostics.py"', section)

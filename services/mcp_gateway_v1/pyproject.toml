@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "researchops-mcp-gateway-v1"
+version = "0.1.0"
+description = "ResearchOps MCP 工具策略网关"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "mcp==2.3.0",
+  "jsonschema==4.26.0",
+  "pandas==3.0.5",
+  "scipy==1.18.0",
+  "statsmodels==0.14.6",
+  "matplotlib==3.11.1",
+]
+
+[project.scripts]
+researchops-mcp-gateway = "researchops_mcp_gateway.bootstrap:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
