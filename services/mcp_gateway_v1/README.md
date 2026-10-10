@@ -97,6 +97,12 @@ SDK 提前拒绝未知协议版本时，stdio 适配层把错误中的非日期�
 
 不符合 `^[A-Za-z_][A-Za-z0-9_]{0,63}$` 的列名会使用不冲突的 `col_N` 别名，相关引用同步处理，并附 `gateway_column_alias_applied` 告警。发布摘要的 `release_name` 不受列名别名改写。发布名称还经过模式检查，默认拒绝 `p001`、`subject-123` 等受试者标识形式；`--publish-pattern` 可重复指定运维拒绝正则。这些模式不覆盖所有可能的身份信息。
 
+`phase3` 证据包是 CRLF 来源的冻结夹具：记录的数据集 SHA-256 为 `db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c`；按 `.gitattributes` 干净检出的 LF 文件为 `7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00`。Phase 6 冻结评测绑定证据包文件哈希，测试固定引用其 evidence ID，因此不重新生成证据包。网关在 `read_aggregate_evidence` 成功后读取当前已登记数据集，计算原始字节及统一为 LF、CRLF 后的哈希：原始哈希一致时不加告警；仅换行转换后匹配时追加以下 `warnings` 条目；均不匹配时使用 `gateway_dataset_sha256_mismatch`、`relationship=mismatch`，保留两个哈希并说明三种计算均未匹配。核心工具输出和冻结产物不变。直接用 `Gateway`、临时状态目录读取本仓库 phase3 的告警为：
+
+```json
+{"code": "gateway_dataset_line_endings_only", "current_dataset_sha256": "7ae3c201ccb543b5c647c8c50b2a754294d1d62aaaa458d0f2fb4b0af990ca00", "evidence_dataset_sha256": "db7ce30ae0fdc9d455edfd6f107f974215aa7fc91209f73a7d1afdf208b9062c", "matching_line_ending": "CRLF", "message": "证据包数据集 SHA-256 与当前已登记文件不同；将当前文件的换行统一为 CRLF 后，SHA-256 与证据包记录一致。", "relationship": "line_endings_only"}
+```
+
 ## 人工审批与演示
 
 下文的 `researchops-mcp-gateway` 命令适用于已激活的服务虚拟环境。若沿用上面的 PowerShell 安装步骤、没有激活环境，将该命令前缀替换为 `& $gatewayPython -m researchops_mcp_gateway`；macOS / Linux 则替换为 `services/mcp_gateway_v1/.venv/bin/python -m researchops_mcp_gateway`。
@@ -110,6 +116,8 @@ researchops-mcp-gateway approvals reject CALL-... --approver 复核人
 ```
 
 `reject` 也要求操作者明确提供身份。审批人身份由 CLI 参数提供，已有账本保存其哈希；该参数不是身份认证系统。审批工具不会出现在 MCP 的 `tools/list`，消息中的“已批准”不能生成审批记录。
+
+`approvals list` 保留过期待审批条目并显式返回 `run_expired=true`（未过期为 `false`），便于本地操作者核对后用 `reject` 清理，拒绝后该条目退出待审批列表。`reject` 允许处理已过期运行；`approve` 和 `execute_approved` 仍返回 `gateway_run_expired`，不会恢复过期运行的执行权限。
 
 下面的演示脚本只复制仓库合成输入到本服务忽略目录，发布输出也限制在演示目录。**prepare / finish 均不会自动批准。** 在仓库根目录依次运行：
 

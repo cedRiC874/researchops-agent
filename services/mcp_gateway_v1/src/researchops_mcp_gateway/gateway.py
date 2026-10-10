@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import re
 import sqlite3
@@ -298,6 +299,34 @@ class Gateway:
         audit_meta = {"result_status": "error" if is_error else request_status, "decision": "denied" if is_error else request_decision}
         return {"content": [{"type": "text", "text": json.dumps(safe, ensure_ascii=False, sort_keys=True)}], "structuredContent": safe, "isError": is_error, "_meta": {_AUDIT_META_KEY: audit_meta}}
 
+    def _add_evidence_provenance_warning(self, payload: dict[str, Any]) -> None:
+        # phase3 对应核心登记的 synthetic_trial；不从证据内容接受文件路径。
+        path = (self.source_snapshot_root / "data" / "synthetic_trial.csv").resolve()
+        if not path.is_relative_to((self.source_snapshot_root / "data").resolve()) or not path.is_file():
+            raise ToolRuntimeError("tool_source_not_found", "已登记数据集不存在或不安全。")
+        current = path.read_bytes()
+        current_hash = hashlib.sha256(current).hexdigest()
+        evidence_hash = payload["dataset_sha256"]
+        if current_hash == evidence_hash:
+            return
+        lf = current.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        matching = next((ending for ending, content in (("LF", lf), ("CRLF", lf.replace(b"\n", b"\r\n")))
+                         if hashlib.sha256(content).hexdigest() == evidence_hash), None)
+        warning = {
+            "code": "gateway_dataset_line_endings_only" if matching else "gateway_dataset_sha256_mismatch",
+            "current_dataset_sha256": current_hash,
+            "evidence_dataset_sha256": evidence_hash,
+            "relationship": "line_endings_only" if matching else "mismatch",
+            "message": (
+                f"证据包数据集 SHA-256 与当前已登记文件不同；将当前文件的换行统一为 {matching} 后，SHA-256 与证据包记录一致。"
+                if matching else "当前文件原始字节、统一为 LF 或 CRLF 后的 SHA-256 均与证据包记录不同。"
+            ),
+        }
+        if matching:
+            warning["matching_line_ending"] = matching
+        warnings = payload.get("warnings")
+        payload["warnings"] = [*(warnings if isinstance(warnings, list) else []), warning]
+
     def list_pending_approvals(self) -> list[dict[str, Any]]:
         """供本地 CLI 读取；不注册为 MCP 工具。"""
         pending = []
@@ -311,6 +340,7 @@ class Gateway:
                         "run_id": run["run_id"], "call_id": call["call_id"], "tool_name": call["tool_name"],
                         "status": call["status"], "safe_arguments": call["safe_args"],
                         "run_expires_at_utc": run["expires_at_utc"],
+                        "run_expired": datetime.fromisoformat(run["expires_at_utc"]) <= self.store.now(),
                     })
         return [sanitize_result(item, column_names=self._column_names()) for item in pending]
 
@@ -323,7 +353,12 @@ class Gateway:
             raise ToolRuntimeError(exc.code, "找不到可审批调用。") from None
         if run["mode"] != "mcp_gateway" or call["tool_name"] in CONTROL_TOOLS:
             raise ToolRuntimeError("tool_policy_denied", "该调用不属于网关业务审批范围。")
-        self.store.check_run(str(call["run_id"]))
+        try:
+            self.store.check_run(str(call["run_id"]))
+        except ToolRuntimeError as exc:
+            # 拒绝只关闭待审批项；其余错误和批准操作仍受运行校验约束。
+            if decision != "reject" or exc.code != "gateway_run_expired":
+                raise
         if self.proxy is not None:
             self.proxy.before_call(str(call["tool_name"]), call["safe_args"])
         return self.executor.decide(call_id, decision=decision, approver=approver, expires_in_seconds=ttl).to_dict()
@@ -378,6 +413,8 @@ class Gateway:
                 payload = dict(outcome.result or {})
                 payload.setdefault("status", outcome.status)
                 payload.update({"run_id": run_id, "call_id": outcome.call_id, "tool_name": name})
+                if name == "read_aggregate_evidence" and outcome.status == "succeeded":
+                    self._add_evidence_provenance_warning(payload)
             result = self._wire(payload, gateway_metadata=gateway_metadata, request_status=outcome.status,
                                 request_decision="require_approval" if outcome.requires_approval else "allow")
             return result
