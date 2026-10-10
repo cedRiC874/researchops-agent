@@ -2,6 +2,7 @@ name: devcontainer-offline-demo
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -9,7 +10,69 @@ permissions:
   contents: read
 
 jobs:
+  change-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.route.outputs.mode }}
+      run_full: ${{ steps.route.outputs.run_full }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          set-safe-directory: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+      - name: Test the dependency-free routing rules
+        run: python -m unittest discover -s tests -p test_ci_document_routing.py -t . -v
+      - name: Classify the complete Git change set
+        id: route
+        env:
+          SCOPE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python .github/ci/document_scope.py route \
+            --event "$GITHUB_EVENT_PATH" --event-name "$GITHUB_EVENT_NAME" \
+            --head "$SCOPE_HEAD" --ref "$GITHUB_REF" \
+            --github-output "$GITHUB_OUTPUT" --report "$RUNNER_TEMP/document-scope.json"
+      - name: Preserve routing decision
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: devcontainer-scope-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/document-scope.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  presentation-docs:
+    needs: change-scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          set-safe-directory: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+      - name: Check presentation pages without installing project dependencies
+        run: python .github/ci/document_scope.py check-docs --report "$RUNNER_TEMP/document-checks.json"
+      - name: Preserve document checks
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: devcontainer-documents-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/document-checks.json
+          if-no-files-found: warn
+          retention-days: 14
+
   devcontainer-linux-x86-demo:
+    needs: change-scope
+    if: ${{ needs.change-scope.outputs.run_full == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -62,3 +125,33 @@ jobs:
             artifacts/ci_devcontainer_demo/eval_report.json
             artifacts/ci_devcontainer_demo/eval_manifest.json
             artifacts/ci_devcontainer_demo/eval_audit_index.json
+
+  devcontainer-validation-result:
+    if: ${{ always() }}
+    needs: [change-scope, presentation-docs, devcontainer-linux-x86-demo]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          set-safe-directory: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+      - name: Require every check selected by the routing decision
+        env:
+          CI_NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python .github/ci/document_scope.py check-results \
+            --full-job devcontainer-linux-x86-demo \
+            --report "$RUNNER_TEMP/validation-result.json"
+      - name: Preserve validation scope
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: devcontainer-validation-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/validation-result.json
+          if-no-files-found: warn
+          retention-days: 14
