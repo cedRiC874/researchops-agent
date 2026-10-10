@@ -6,9 +6,9 @@
 
 ## 变更边界
 
-相对基线的变更均为新增文件，范围仅为 `services/mcp_gateway_v1/`、`evals/mcp_injection_v1/` 和 `.github/workflows/mcp-gateway-v1.yml`。没有修改既有核心模块、根测试、根锁文件、STATUS、证据目录或既有评测合同。原本位于其他工作区的未提交改动未被带入本分支。
+MCP 实现新增 36 个文件，范围为 `services/mcp_gateway_v1/`、`evals/mcp_injection_v1/` 和 `.github/workflows/mcp-gateway-v1.yml`。旧桥接 CI 连续两次超时后，用户明确授权一项范围例外：修改既有 `.github/workflows/item6-experiment-bridge-offline.yml`，仅增加失败进度诊断。没有修改既有核心模块、根测试、根锁文件、STATUS、证据目录或冻结清单。原本位于其他工作区的未提交改动未被带入本分支。
 
-实现提交依次为：`61c840f`（A 网关）、`d61a2e6`（确定性测试首块）、`dca9dca`（B 代理及后四类攻击）、`ba0568b`（审查发现的安全边界修复）、`c5d0df8`（C2 模型运行器与预注册）、`647349e`（合法研究设计的评测判定修复）、`f943f2a`（文档及人工审批演示）、`711e5e4`（请求失败与业务状态的审计归因修复）、`6eab830`（业务状态保真）、`f43727e`（独立评测实现迁移，保持旧冻结源范围）、`df7c864`（SDK 提前拒绝的安全错误与审计）、`f3c0753`（Windows CI 临时路径夹具规范化）。首次推送前已确认 df7c864 之后仅有 README 和验证报告修改；出现 CI 夹具修复后，推送前重新运行了全部 51 项新测试。
+实现提交依次为：`61c840f`（A 网关）、`d61a2e6`（确定性测试首块）、`dca9dca`（B 代理及后四类攻击）、`ba0568b`（审查发现的安全边界修复）、`c5d0df8`（C2 模型运行器与预注册）、`647349e`（合法研究设计的评测判定修复）、`f943f2a`（文档及人工审批演示）、`711e5e4`（请求失败与业务状态的审计归因修复）、`6eab830`（业务状态保真）、`f43727e`（独立评测实现迁移，保持旧冻结源范围）、`df7c864`（SDK 提前拒绝的安全错误与审计）、`f3c0753`（Windows CI 临时路径夹具规范化）、`2ca9c79`（经授权的旧桥接失败诊断）。首次推送前已确认 df7c864 之后仅有 README 和验证报告修改；后续代码修改均在推送前重新运行了全部 51 项新测试。
 
 ## 实际测试结果
 
@@ -35,12 +35,12 @@
 新增统一测试命令为 `python services/mcp_gateway_v1/scripts/run_tests.py`，实际尾部输出：
 
 ```text
-Ran 51 tests in 43.402s
+Ran 51 tests in 41.421s
 OK
 tests_run=51, passed=51, failures=0, errors=0, skipped=0, exit_code=0
 ```
 
-新增环境实际使用 Windows、Python 3.12.14、官方 `mcp==2.3.0`。51 项包含网关运行与 CLI、12 类攻击、真实 SDK 内存和 stdio、本地假上游、模型运行器、安全审查回归及分步审批演示。最新本地运行覆盖代码提交 `f3c0753` 的实际内容。执行时阻断外部网络和 DNS，只有 Windows 标准库事件循环内部 IPC 例外。没有新增 skip、删除测试或放宽既有断言。
+新增环境实际使用 Windows、Python 3.12.14、官方 `mcp==2.3.0`。51 项包含网关运行与 CLI、12 类攻击、真实 SDK 内存和 stdio、本地假上游、模型运行器、安全审查回归及分步审批演示。最新本地运行覆盖代码提交 `2ca9c79` 的实际内容。执行时阻断外部网络和 DNS，只有 Windows 标准库事件循环内部 IPC 例外。没有新增 skip、删除测试或放宽既有断言。
 
 默认模型 dry-run 的实际汇总另列如下；其中“试验”不计入上表的 unittest 数量：
 
@@ -64,6 +64,14 @@ tests_run=51, passed=51, failures=0, errors=0, skipped=0, exit_code=0
 两次 Windows 失败均发生在同一项上游配置测试：临时目录使用 8.3 短路径，加载器按设计返回规范长路径，夹具期望值却未规范化。`f3c0753` 只在新增测试夹具创建后调用 `resolve(strict=True)`，保留原精确相等断言；没有更改加载器、旧测试或跳过条件。修复后本地 51/51 通过，见上表前的本地结果。初轮失败保留，修复的远端效果以 PR 当前提交 checks 为准。
 
 需等待全部 workflow：`offline-quality-gate`、`mcp-gateway-v1`、`item6-experiment-bridge-offline`、`devcontainer-offline-demo`，包括 GitHub 实际列出的 push 与 PR 两轮检查。本文不把本地成功替代远端验收。
+
+在 `4811d5d` 上，修复后的四个 MCP job 均 51/51 通过，零失败／错误／跳过、退出码 0。原有全量 PR job 实际执行 2539 项、2528 通过、11 跳过；push job 执行 2535 项、2524 通过、11 跳过，均无失败或错误，原生测试步骤成功。PR 检出的合并测试提交包含 main 新增的 4 项根测试，因此比直接检出分支的 push 多 4 项。11 个跳过 ID 和原因与 main 成功运行完全相同；其中 10 项由独立 Python 3.12.13 job 覆盖，另 1 项缺少可选原始工件。
+
+同提交唯一失败的旧 bridge job，两次均在 `tests.item6_experiment_fixture.suite_parent()` 的 6000 秒子进程上限处终止，未产生最终测试汇总；两次结果保留，不能声称桥接全绿。相同的 19 模块／455 用例曾在同环境完整通过，也都在上述全量中通过；这不替代独立 bridge 验收，也不证明具体性能原因。
+
+用户随后授权 `2ca9c79` 的单旧 workflow 诊断例外：原测试命令、455 用例、断言、跳过条件、6000 秒子进程及 120 分钟 job 预算均保留。只有失败且完整 `validation.json` 缺失时，才从有界私有日志提取静态白名单中的测试 ID／状态，核对同次运行的 head 与检出证明，扫描后写入 `progress-on-failure.json`；不上传原始日志或异常正文。该文件固定标记 `partial=true`、`full_suite_verified=false`、`failure_cause_verified=false`，不能据最后观察项认定超时根因。
+
+应用后的真实 workflow 已通过 YAML／Python 语法、嵌入代码一致性、20/20 合成检查，以及完整入口的合成目录端到端验证（退出码 0）。端到端只发布扫描通过的进度 JSON，原始日志未复制；全部 51 项新服务测试也再次通过。v3 实测仍为 499 文件、原承诺与 manifest 摘要不变。workflow 不属于该静态选集，其 SHA 在每次运行的新 freeze 中生成；已有 freeze 未重写。整个 job 硬超时或取消时，后续诊断步骤可能无法执行；超大、变化中或不安全的日志会拒绝导出。此诊断不是延长预算或性能修复，远端效果以新提交 CI 为准。
 
 ## 既有全量与环境复核
 
@@ -106,7 +114,7 @@ tests_run=51, passed=51, failures=0, errors=0, skipped=0, exit_code=0
 
 旧 v2/v3 逻辑会自动扫描根 `evals` 中的 Python 和 JSON 文件。为保持既有冻结规则不变，3 个新增评测实现／清单文件已真实迁到 `services/mcp_gateway_v1/evals/`；根 `evals/mcp_injection_v1/` 仅保留 Markdown 入口及预注册，没有改扩展名隐藏实现，也没有修改旧选择器或冻结合同。迁移提交为 `f43727e`。
 
-在开发提交 `df7c864` 上调用实际旧选择器复核：v2 选中 430 项，v3 选中 499 项；与 a877a5a 相比，选中路径新增、缺失、Git blob／文件模式变化和工作树原始字节变化均为 0。两个单独绑定的旧 workflow 也完全一致。开发工作树的全部 1513 个原有跟踪文件逐字节匹配基线，82 项根依赖版本无差异；恢复运行时的 7 个关键文件逐字节匹配官方包。
+在开发提交 `df7c864` 上调用实际旧选择器复核：v2 选中 430 项，v3 选中 499 项；与 a877a5a 相比，选中路径新增、缺失、Git blob／文件模式变化和工作树原始字节变化均为 0。当时两个单独绑定的旧 workflow 也完全一致，全部 1513 个原有跟踪文件逐字节匹配基线，82 项根依赖版本无差异；恢复运行时的 7 个关键文件逐字节匹配官方包。此后唯一经授权改变的旧文件为上述 bridge workflow；静态 v3 源承诺未变，每次新 freeze 按修改后的 workflow 字节绑定，不复用或改写旧 freeze。
 
 临时基线和已核对的补测副本有相同的 23 个非冻结文本文件发生 checkout 行尾转换，均仅为 CRLF/LF 差异，未手动修改，也不涉及旧 src、tests、根锁或上述冻结选集。该情况与开发工作树的旧文件原始字节零差异分开记录。原有完整套件已在固定基线上运行；f43727e 副本的异常用例及当前源／归档影响项已完成定向复核。其后的 SDK 适配修复不属于旧冻结选集，另由最终 51 项新增测试覆盖。
 
@@ -149,18 +157,19 @@ SDK 边界回归验证：提前拒绝的协议版本错误不再回显路径或�
 
 本报告保留本地基线全量和定向复核各自的真实结果；单次全量验收以 PR 当前提交的 CI 记录为准。全部 checks 通过后仍等待用户确认，再使用普通 merge commit 合并；不启用自动合并或 force push。真实模型评测仍需另行授权。
 
-## 完整新增文件及 diff stat
+## 完整变更文件及 diff stat
 
-下方为 `git diff --stat a877a5a HEAD` 的完整文件名输出；36 个文件均为新增。
+下方为 `git diff --stat a877a5a HEAD` 的完整文件名输出：36 个新增文件，以及 1 个用户明确授权修改的旧 bridge workflow。
 
 <!-- DIFF_STAT_START -->
 ```text
+ .github/workflows/item6-experiment-bridge-offline.yml              | 163 ++++++++++++++++++++++++
  .github/workflows/mcp-gateway-v1.yml                               |  38 ++++++
  evals/mcp_injection_v1/PREREGISTRATION.md                          |  46 +++++++
  evals/mcp_injection_v1/README.md                                   |  20 +++
  services/mcp_gateway_v1/.gitignore                                 |   6 +
  services/mcp_gateway_v1/README.md                                  | 198 +++++++++++++++++++++++++++++
- services/mcp_gateway_v1/VERIFICATION.md                            | 196 +++++++++++++++++++++++++++++
+ services/mcp_gateway_v1/VERIFICATION.md                            | 205 ++++++++++++++++++++++++++++++
  services/mcp_gateway_v1/evals/cases.json                           |  17 +++
  services/mcp_gateway_v1/evals/runner.py                            | 234 ++++++++++++++++++++++++++++++++++
  services/mcp_gateway_v1/evals/scenario.py                          | 286 ++++++++++++++++++++++++++++++++++++++++++
@@ -191,6 +200,6 @@ SDK 边界回归验证：提前拒绝的协议版本错误不再回显路径或�
  services/mcp_gateway_v1/tests/test_sdk_adapter.py                  | 223 +++++++++++++++++++++++++++++++++
  services/mcp_gateway_v1/tests/test_security_regressions.py         | 200 +++++++++++++++++++++++++++++
  services/mcp_gateway_v1/tests/test_upstream.py                     | 118 ++++++++++++++++++
- 36 files changed, 4274 insertions(+)
+ 37 files changed, 4446 insertions(+)
 ```
 <!-- DIFF_STAT_END -->
