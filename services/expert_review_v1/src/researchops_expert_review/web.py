@@ -37,6 +37,7 @@ def _public_result(record: dict[str, Any]) -> dict[str, Any]:
 def serve(review: ExpertReview, *, port: int = 8765) -> None:
     if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
         raise ExpertReviewError("web_port_invalid", "Web 端口必须在 1 到 65535 之间。")
+    review.preflight()
     handler = _build_handler(review, secrets.token_urlsafe(32), port)
     try:
         server = ThreadingHTTPServer(("127.0.0.1", port), handler)

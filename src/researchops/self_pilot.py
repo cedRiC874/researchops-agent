@@ -18,7 +18,10 @@ from .eval_v2_contracts import EvalV2ContractError
 from .eval_v2_inspect_backend import EvalV2InspectDatasetBackend
 from .eval_v2_provider_executor import EvalV2ProviderExecutor
 from . import eval_v2_provider_executor as _provider_executor_module
-from .eval_v2_interactive_telemetry import _prepare_interactive_case
+from .eval_v2_interactive_telemetry import (
+    InteractiveTelemetryError,
+    _prepare_interactive_case,
+)
 from .eval_v2_public import (
     EvalV2PublicTask,
     load_eval_v2_dataset_manifest,
@@ -331,16 +334,26 @@ def run_self_pilot_task(
     )
     owner = None
     if not offline_runner_authorized:
-        owner = _prepare_interactive_case(
-            root=Path(project_root).resolve(),
-            session_dir=session,
-            case_id="PILOT-" + sha256_json([
-                _session_identity(state)["session_instance_id"], selected_task_id
-            ])[:48],
-            provider=provider,
-            model_id=model_id,
-            max_turns=max_turns,
-        )
+        try:
+            owner = _prepare_interactive_case(
+                root=Path(project_root).resolve(),
+                session_dir=session,
+                case_id="PILOT-" + sha256_json([
+                    _session_identity(state)["session_instance_id"], selected_task_id
+                ])[:48],
+                provider=provider,
+                model_id=model_id,
+                max_turns=max_turns,
+            )
+        except InteractiveTelemetryError as exc:
+            if not exc.case_reserved:
+                raise
+            telemetry = exc.telemetry_summary
+            state["schema_version"] = _INTERACTIVE_SELF_PILOT_STATE_SCHEMA_VERSION
+            record["provider_run"] = _interactive_failure_record(provider, model_id)
+            record["provider_run"]["completion_telemetry"] = telemetry
+            _write_interactive_state(state_path, state)
+            return _interactive_failure_response(selected_task_id, provider, model_id, telemetry)
         state["schema_version"] = _INTERACTIVE_SELF_PILOT_STATE_SCHEMA_VERSION
         record["provider_run"] = _interactive_failure_record(provider, model_id)
     try:
@@ -349,7 +362,7 @@ def run_self_pilot_task(
             # An interrupted attempt must never turn into an implicit rerun.
             _atomic_write_json(state_path, state)
         if api_key is None:
-            api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+            api_key = os.environ.get(provider.api_key_env, "")
         executor_options = (
             {"completion_telemetry_session": owner.session}
             if owner is not None else {}
@@ -392,6 +405,7 @@ def run_self_pilot_task(
     )
     if telemetry is not None and (
         telemetry["closure_passed"] is not True
+        or telemetry.get("normal_result") is not True
         or result.completion_status != "complete"
     ):
         record["provider_run"]["completion_telemetry"] = telemetry

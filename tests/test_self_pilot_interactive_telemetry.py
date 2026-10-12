@@ -15,6 +15,7 @@ from unittest.mock import patch
 import researchops.cli as cli
 import researchops.eval_v2_interactive_telemetry as telemetry_module
 import researchops.self_pilot as pilot
+import researchops.self_pilot_web as web
 from researchops.audit import AuditError, AuditLedger
 from researchops.eval_v2_contracts import EvalV2ContractError
 from researchops.model_providers import DeepSeekProvider
@@ -34,12 +35,13 @@ FAKE_KEY = "sk-synthetic-self-pilot-interactive-canary"
 
 
 class _Environment(dict):
-    def __init__(self, on_key):
+    def __init__(self, on_key, *, key_name="DEEPSEEK_API_KEY"):
         super().__init__()
         self.on_key = on_key
+        self.key_name = key_name
 
     def get(self, name, default=None):
-        if name == "DEEPSEEK_API_KEY":
+        if name == self.key_name:
             self.on_key()
             return FAKE_KEY
         return default
@@ -234,6 +236,27 @@ class SelfPilotInteractiveTelemetryTests(unittest.TestCase):
         )
         self.assertNotIn(plaintext_key.encode(), raw)
 
+    def test_failed_owner_with_complete_sdk_result_is_not_displayed(self):
+        original = telemetry_module._InteractiveCase.finish
+
+        def finish_failed(owner, *, completion_status):
+            owner._failed = True
+            return original(owner, completion_status=completion_status)
+
+        with (
+            mock_responses_transport(payload=response_payload(text="PRIVATE-FAILED-OWNER-BODY")),
+            patch.object(telemetry_module._InteractiveCase, "finish", new=finish_failed),
+        ):
+            result = self._run()
+        self.assertEqual(result["status"], "controlled_failure")
+        self.assertEqual(result["agent_output"], "")
+        self.assertTrue(result["completion_telemetry"]["closure_passed"])
+        self.assertEqual(result["completion_telemetry"]["completion_status"], "complete")
+        self.assertFalse(result["completion_telemetry"]["normal_result"])
+        self.assertNotIn("PRIVATE-FAILED-OWNER-BODY", json.dumps(result))
+        with self.assertRaises(EvalV2ContractError):
+            self._run()
+
     def test_http_error_is_controlled_failure_without_retry(self):
         with mock_responses_transport(status_code=503, payload={"error": {"message": "synthetic failure", "type": "server_error"}}) as calls:
             result = self._run()
@@ -354,6 +377,195 @@ class SelfPilotInteractiveTelemetryTests(unittest.TestCase):
         ):
             self._run(confirm_online=False)
         self.assertEqual(caught.exception.code, "eval_v2_online_confirmation_required")
+        self.assertEqual(self.key_reads, 0)
+
+    def test_key_lookup_uses_provider_environment_name_after_committed_plan(self):
+        with (
+            patch.object(DeepSeekProvider, "api_key_env", "SYNTHETIC_PROVIDER_API_KEY"),
+            patch.object(pilot.os, "environ", _Environment(self._assert_plan_before_key, key_name="SYNTHETIC_PROVIDER_API_KEY")),
+            mock_responses_transport() as calls,
+        ):
+            result = self._run()
+        self.assertEqual(result["status"], "ran")
+        self.assertEqual(self.key_reads, 1)
+        self.assertEqual(len(calls), 1)
+
+    def _assert_reserved_failure_consumed_without_key(self, result):
+        self.assertEqual(result["status"], "controlled_failure")
+        self.assertEqual(result["agent_output"], "")
+        self.assertEqual(self.key_reads, 0)
+        self.assertFalse(result["completion_telemetry"]["closure_passed"])
+        self.assertFalse(result["completion_telemetry"]["all_terminal"])
+        self.assertIsNone(result["completion_telemetry"]["usage"]["total_tokens"])
+        state = json.loads((self.session / "pilot_state.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["schema_version"], "1.2")
+        record = state["records"][0]["provider_run"]
+        self.assertEqual(record["outcome"], "controlled_failure")
+        self.assertEqual(record["completion_telemetry"], result["completion_telemetry"])
+        with self.assertRaises(EvalV2ContractError) as rerun:
+            self._run()
+        self.assertEqual(rerun.exception.code, "self_pilot_task_already_run")
+
+    def test_plan_write_failure_after_ledger_reservation_consumes_question(self):
+        original = AuditLedger.append_event
+        canary = FAKE_KEY + " SYNTHETIC-RESERVATION-QUESTION " + str(self.session)
+
+        def append_event(ledger, run_id, event_type, payload, **kwargs):
+            if event_type == "interactive_plan_committed":
+                raise AuditError("synthetic_plan_write_failure", canary)
+            return original(ledger, run_id, event_type, payload, **kwargs)
+
+        output = io.StringIO()
+        with (
+            patch.object(AuditLedger, "append_event", new=append_event),
+            patch.object(DeepSeekProvider, "open_model", side_effect=AssertionError("must not open provider")) as opened,
+            redirect_stdout(output), redirect_stderr(output),
+        ):
+            result = self._run()
+        opened.assert_not_called()
+        self._assert_reserved_failure_consumed_without_key(result)
+        self.assertTrue(result["completion_telemetry"]["write_failed"])
+        raw = json.dumps(result).encode() + output.getvalue().encode() + b"".join(
+            path.read_bytes() for path in self.session.rglob("*") if path.is_file()
+        )
+        for value in (FAKE_KEY, "SYNTHETIC-RESERVATION-QUESTION", str(self.session)):
+            self.assertNotIn(value.encode(), raw)
+
+    def test_ledger_initialization_failure_after_reservation_consumes_question(self):
+        with (
+            patch.object(AuditLedger, "__init__", side_effect=AuditError("synthetic_open_failed", "合成账本初始化失败。")),
+            patch.object(DeepSeekProvider, "open_model", side_effect=AssertionError("must not open provider")) as opened,
+        ):
+            result = self._run()
+        opened.assert_not_called()
+        self._assert_reserved_failure_consumed_without_key(result)
+        self.assertTrue(result["completion_telemetry"]["write_failed"])
+
+    def test_existing_reserved_case_is_marked_consumed_in_state(self):
+        state = json.loads((self.session / "pilot_state.json").read_text(encoding="utf-8"))
+        case_id = "PILOT-" + pilot.sha256_json([
+            pilot._session_identity(state)["session_instance_id"], self.task_id
+        ])[:48]
+        owner = telemetry_module._prepare_interactive_case(
+            root=ROOT, session_dir=self.session, case_id=case_id,
+            provider=DeepSeekProvider(), model_id="deepseek-v4-flash", max_turns=2,
+        )
+        with patch.object(DeepSeekProvider, "open_model", side_effect=AssertionError("must not open provider")) as opened:
+            result = self._run()
+        opened.assert_not_called()
+        self._assert_reserved_failure_consumed_without_key(result)
+        self.assertEqual(result["completion_telemetry"]["run_id"], owner.run_id)
+        self.assertEqual(result["completion_telemetry"]["case_id"], case_id)
+
+    def test_pre_reservation_environment_failure_does_not_consume_question(self):
+        before = (self.session / "pilot_state.json").read_bytes()
+        with (
+            patch.object(telemetry_module, "_verify_loaded_sources", side_effect=telemetry_module.InteractiveTelemetryError("eval_v2_interactive_source_required", "必须从仓库 src 加载。")),
+            patch.object(DeepSeekProvider, "open_model", side_effect=AssertionError("must not open provider")) as opened,
+            self.assertRaises(telemetry_module.InteractiveTelemetryError) as caught,
+        ):
+            self._run()
+        self.assertFalse(caught.exception.case_reserved)
+        self.assertIsNone(caught.exception.telemetry_summary)
+        self.assertEqual((self.session / "pilot_state.json").read_bytes(), before)
+        self.assertFalse((self.session / "interactive-telemetry").exists())
+        self.assertEqual(self.key_reads, 0)
+        opened.assert_not_called()
+
+    def _web_cli_arguments(self):
+        return [
+            "self-pilot-web", "--session-dir", str(self.session),
+            "--registry", str(self.registry), "--tasks", str(TASKS),
+            "--datasets", str(DATASETS), "--translations", str(TRANSLATIONS),
+            "--confirm-online",
+        ]
+
+    def test_web_startup_denial_is_nonzero_before_server_and_key(self):
+        parsed = cli.build_parser().parse_args(self._web_cli_arguments())
+        output = io.StringIO()
+        before = (self.session / "pilot_state.json").read_bytes()
+        with (
+            patch.object(cli, "build_parser", return_value=SimpleNamespace(parse_args=lambda: parsed)),
+            patch.object(telemetry_module, "_verify_clean_commit", side_effect=telemetry_module.InteractiveTelemetryError("eval_v2_interactive_dirty_tree", "代码目录有未提交改动，请先提交。")),
+            patch.object(web, "_build_handler") as handler,
+            patch.object(web, "ThreadingHTTPServer") as server,
+            patch.object(DeepSeekProvider, "open_model", side_effect=AssertionError("must not open provider")) as opened,
+            redirect_stdout(output),
+        ):
+            exit_code = cli.main()
+        self.assertEqual(exit_code, 4)
+        payload = json.loads(output.getvalue())
+        self.assertEqual(payload["error_code"], "eval_v2_interactive_dirty_tree")
+        self.assertIn("提交", payload["message"])
+        handler.assert_not_called()
+        server.assert_not_called()
+        opened.assert_not_called()
+        self.assertEqual(self.key_reads, 0)
+        self.assertEqual((self.session / "pilot_state.json").read_bytes(), before)
+        self.assertFalse((self.session / "interactive-telemetry").exists())
+
+    def test_web_startup_default_preflight_is_readonly_before_server(self):
+        parsed = cli.build_parser().parse_args(self._web_cli_arguments())
+        order = []
+        original = web.preflight_interactive_environment
+
+        def preflight(**kwargs):
+            order.append("preflight")
+            self.assertEqual(kwargs["provider"].provider_id, "deepseek")
+            self.assertEqual(kwargs["model_id"], "deepseek-v4-flash")
+            return original(**kwargs)
+
+        def server_factory(*args, **kwargs):
+            order.append("server")
+            return SimpleNamespace(serve_forever=lambda **_: None, server_close=lambda: None)
+
+        before = (self.session / "pilot_state.json").read_bytes()
+        with (
+            patch.object(cli, "build_parser", return_value=SimpleNamespace(parse_args=lambda: parsed)),
+            patch.object(web, "preflight_interactive_environment", side_effect=preflight),
+            patch.object(web, "ThreadingHTTPServer", side_effect=server_factory),
+            patch.object(DeepSeekProvider, "open_model", side_effect=AssertionError("must not open provider")) as opened,
+            redirect_stdout(io.StringIO()),
+        ):
+            exit_code = cli.main()
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(order, ["preflight", "server"])
+        self.assertEqual(self.key_reads, 0)
+        opened.assert_not_called()
+        self.assertEqual((self.session / "pilot_state.json").read_bytes(), before)
+        self.assertFalse((self.session / "interactive-telemetry").exists())
+
+    def test_web_startup_uses_preconfigured_model(self):
+        controller = self._web_controller()
+        with (
+            patch.object(web, "preflight_interactive_environment", wraps=web.preflight_interactive_environment) as checked,
+            patch.object(web, "ThreadingHTTPServer"),
+            redirect_stdout(io.StringIO()),
+        ):
+            web.serve_self_pilot_web(controller)
+        self.assertIs(checked.call_args.kwargs["provider"], controller._provider)
+        self.assertEqual(checked.call_args.kwargs["model_id"], controller._model_id)
+        self.assertEqual(self.key_reads, 0)
+
+    def test_web_startup_uses_existing_session_model_before_configuration(self):
+        state_path = self.session / "pilot_state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["records"][0]["provider_run"] = {
+            "provider_id": "deepseek", "model_id": "deepseek-v4-pro",
+            "transport_id": "openai_compatible_responses",
+        }
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        parsed = cli.build_parser().parse_args(self._web_cli_arguments())
+        with (
+            patch.object(cli, "build_parser", return_value=SimpleNamespace(parse_args=lambda: parsed)),
+            patch.object(web, "preflight_interactive_environment", wraps=web.preflight_interactive_environment) as checked,
+            patch.object(web, "ThreadingHTTPServer"),
+            redirect_stdout(io.StringIO()),
+        ):
+            exit_code = cli.main()
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(checked.call_args.kwargs["provider"].provider_id, "deepseek")
+        self.assertEqual(checked.call_args.kwargs["model_id"], "deepseek-v4-pro")
         self.assertEqual(self.key_reads, 0)
 
 

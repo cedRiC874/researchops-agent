@@ -184,7 +184,9 @@ class InteractiveServiceTests(unittest.TestCase):
             ("_verify_loaded_sources", "eval_v2_interactive_source_required"),
             ("_verify_clean_commit", "eval_v2_interactive_dirty_tree"),
         )):
-            with self.subTest(code=code), patch.object(telemetry, function, side_effect=telemetry.InteractiveTelemetryError(code, "源码准入拒绝。")):
+            # The environment can change after the initial read-only preflight;
+            # private preparation must still repeat its original admission gate.
+            with self.subTest(code=code), patch.object(core, "preflight_interactive_environment", return_value={"git_commit": "a" * 40}), patch.object(telemetry, function, side_effect=telemetry.InteractiveTelemetryError(code, "源码准入拒绝。")):
                 with patch.object(core.os.environ, "get", side_effect=AssertionError("No key read")) as key:
                     with patch.object(DeepSeekProvider, "open_model") as opened:
                         record = self.review().ask(confirm_online=True, dataset_id=DATASET, question=QUESTION + str(index))

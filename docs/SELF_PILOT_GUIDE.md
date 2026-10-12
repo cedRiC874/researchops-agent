@@ -21,9 +21,17 @@ $env:PYTHONPATH = "src"
 $env:DEEPSEEK_API_KEY = "在本机终端填写"
 ```
 
-交互执行范围 `eval_v2_interactive_v1` 只允许 DeepSeek `deepseek-v4-flash`、`deepseek-v4-pro`，使用 Responses 受控适配器；OpenAI、Anthropic、Kimi 均不获准执行。CLI 在计划已写入账本、该题已标记运行之后才读取 `DEEPSEEK_API_KEY`。Web 沿用密码框配置和模型可用性预检，不要求环境变量。实际 Agent 运行会产生 Provider token 费用。
+交互执行范围 `eval_v2_interactive_v1` 只允许 DeepSeek `deepseek-v4-flash`、`deepseek-v4-pro`，使用 Responses 受控适配器；OpenAI、Anthropic、Kimi 均不获准执行。CLI 在计划已写入账本、该题已标记运行之后，才读取所选 Provider 声明的 Key 环境变量（DeepSeek 为 `DEEPSEEK_API_KEY`）。Web 沿用密码框配置和模型可用性预检，不要求环境变量。实际 Agent 运行会产生 Provider token 费用。
 
 这些记录仅供交互试用，不是评测证据，不授权 `campaign_runtime`，不关闭 T6-B/T7，也不影响 Depth-60。
+
+正式运行前，可执行不联网、不读 Key、不写文件的环境预检；输出中包含当前 Git 提交号：
+
+```powershell
+python -B -m researchops.eval_v2_interactive_telemetry preflight
+```
+
+同时使用现场提问时，在命令后加 `--expert-review` 并将其源码目录加入 `PYTHONPATH`。预检不创建账本、不签发绑定；每题运行时仍重复全部检查。
 
 ## 2. 准备三个公开数据集
 
@@ -73,6 +81,8 @@ Web 评测台继续使用同一个 session 目录，`session-01` 不代表第 1 
   --registry artifacts/self_pilot_data/run-01/logical_dataset_registry.json `
   --confirm-online
 ```
+
+服务器绑定端口前，会只读检查 Provider/模型、仓库模块来源和代码清洁度。已有配置或历史 session 绑定时使用该身份；尚未配置的新 session 先核对 DeepSeek `deepseek-v4-flash`。这个启动检查不读 Key、不联网、不创建 case 或账本；拒绝时输出中文原因并非零退出，服务器不会启动。页面中的 Key/模型目录可用性预检仍按原流程执行，每题开始时仍再次执行全部准入检查。
 
 终端显示地址后，在浏览器打开：
 
@@ -158,7 +168,8 @@ Web 保留原有配置目录及 `/models` 账户可见性核验；预检成功�
 - 在提交人工反馈前，CLI 不显示 machine pass/fail，避免影响主观判断。
 - 如果输出出现绝对路径、Key/Bearer、Parkinsons subject key 等敏感形态，终端正文会被替换为安全遮蔽标记，原文不持久化。
 - 每题只允许运行一次，防止挑选更满意的重跑结果。
-- 仅当遥测闭合且执行器 `completion_status=complete` 才显示正常回答；截断、取消、网络异常、账本写入失败等会记录为受控失败，隐藏正文，也不能重跑。
+- 仅当遥测闭合、遥测摘要允许正常结果且执行器 `completion_status=complete` 才显示正常回答；截断、取消、网络异常、账本写入失败等会记录为受控失败，隐藏正文，也不能重跑。
+- 准入前置检查失败不占用题目；账本文件一旦已为本题创建，即使随后计划写入或会话初始化失败，也会写入已运行的受控失败状态和遥测摘要，不能重跑。异常正文、问题原文和 Key 不写入这些失败记录。
 
 ### 离线核对完成遥测
 
@@ -169,7 +180,9 @@ Web 保留原有配置目录及 `/models` 账户可见性核验；预检成功�
   --session-dir artifacts/self_pilot/session-01
 ```
 
-命令不联网、不读 Key、不输出问题、回答正文或路径。逐题显示尝试次数、终态、usage（未知为 `null`）、是否全部终结、计划承诺哈希和提交号；有未闭合 case 或账本校验失败时非零退出。进程中途被杀后留下的未终结尝试也必须通过此命令核对，不能以重跑覆盖。
+命令不联网、不读 Key、不输出问题、回答正文或路径。逐题显示尝试次数、终态、usage（未知为 `null`）、是否全部终结、计划承诺哈希和提交号，并分别报告 `ledger_intact`（完整性校验全部通过）与 `case_closed`（遥测闭合且全部终结）。退出码 `0` 表示全部账本完整、闭合且题目成功；`1` 表示账本完整但有题未闭合或失败；`2` 表示无法读取或完整性校验失败。空目录或缺少收据也返回 `2`，因为无法证明账本未被截断。
+
+固定原因字段 `integrity_reason` 仅取 `ok`、`receipt_missing_unsealed`、`receipt_missing_sealed`、`chain_invalid`、`hash_mismatch`、`unreadable`、`other_integrity_failure`。前两个缺收据原因分别表示没有封存事件、已有封存事件；不会回显损坏账本内容。进程中途被杀后的未封存记录通常是 `receipt_missing_unsealed`，仍不可重跑覆盖。版本 `1.1` 的核对命令兼容 `1.0` 收据。
 
 审计账本只记录哈希、授权范围与版本、提交号、计划承诺和调用生命周期元数据；不记录问题原文、回答正文、Key 或本机路径。题目原文仍仅存在原有公开盲化题包中。`pilot_state.json` 的逐题遥测摘要含尝试次数、终态、usage、闭合及写入状态、承诺哈希、提交号和模块版本。这些是交互试用记录，不能充当正式评测证据。
 

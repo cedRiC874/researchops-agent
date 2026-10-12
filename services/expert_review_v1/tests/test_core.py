@@ -125,11 +125,14 @@ class ExpertReviewCoreTests(unittest.TestCase):
             session=None, finish=lambda **kwargs: {
                 "attempts": 0, "terminal_states": [],
                 "usage": {"input_tokens": None, "output_tokens": None, "total_tokens": None},
-                "all_terminal": True, "write_failed": False, "closure_passed": True,
+                "all_terminal": True, "write_failed": False, "closure_passed": True, "normal_result": True,
             },
         ))
         telemetry_patch.start()
         self.addCleanup(telemetry_patch.stop)
+        preflight_patch = patch.object(core, "preflight_interactive_environment", return_value={"git_commit": "a" * 40})
+        preflight_patch.start()
+        self.addCleanup(preflight_patch.stop)
 
     def _write_registry(self):
         prepared = self.root / "artifacts/prepared"

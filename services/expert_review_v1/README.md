@@ -6,7 +6,7 @@
 
 本服务为每题建立经过验证的完成遥测会话，然后交给 `EvalV2ProviderExecutor` 和 DeepSeek adapter。仅支持 `deepseek-v4-flash`、`deepseek-v4-pro` 的 `responses / openai_compatible_responses` 路径。在线运行要求代码已提交，`src`、`evals`、`services/expert_review_v1/src` 没有未提交改动或未跟踪文件；三个运行包必须从当前仓库的源码目录加载，旧安装副本会被拒绝。来源和 Git 检查没有跳过选项。
 
-`--confirm-online` 仍只是用户的数据发送确认。通过原有授权、格式检查和去重后，还必须完成专用 `eval_v2_interactive_v1` 绑定、单题计划承诺和审计账本写入，之后才读取进程密钥。只有遥测闭合且执行器报告 `complete` 才展示正常回答；截断、取消、请求失败和账本写入失败均为受控失败，不重试。
+`--confirm-online` 仍只是用户的数据发送确认。通过原有授权、格式检查和去重后，先执行只读环境预检，再占用问题。预检失败不写记录、不创建会话锁、不读取 Key，修正环境后仍可提交同一问题。占位后的准备流程会重复相同检查，完成专用 `eval_v2_interactive_v1` 绑定、单题计划承诺和审计账本写入后才读取进程密钥。只有遥测闭合、执行器报告 `complete` 且 case 未失败时才展示正常回答；截断、取消、请求失败和账本写入失败均为受控失败，不重试。
 
 这些是开发者本机交互试用记录，**不是评测证据**，不属于 `campaign_runtime`，不关闭 T6-B/T7，也不影响 Depth-60。此变更仅经过离线验证，尚未声称真实在线验证成功。
 
@@ -33,6 +33,14 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
 下文假设登记表已存在于 `artifacts/prepared/logical_dataset_registry.json`。也可以指向主仓库已有的准备产物登记表；本服务不下载或重新准备数据。示例命令中请替换为实际登记表位置。密钥仅在确认、授权检查、格式检查、去重、源码与干净提交检查、计划登记和账本创建成功之后，从进程环境的 `DEEPSEEK_API_KEY` 读取。无密钥参数、输入框或密钥文件加载功能。请由你自己的运行环境事先提供该变量，不要把密钥写入问题文件。先提交所需源码改动，或将不需要的改动恢复；不要通过忽略检查处理未提交文件。
 
 ## 创建会话
+
+先从仓库根目录进行只读预检；`--expert-review` 会同时检查现场提问包的来源：
+
+```powershell
+python -B -m researchops.eval_v2_interactive_telemetry preflight --expert-review
+```
+
+预检输出当前提交号，不联网、不读取 Key、不创建文件或账本。它不代替实际运行前的重复检查，也不签发执行授权。
 
 ```powershell
 python -m researchops_expert_review session-create --output-dir artifacts/expert-review/session-01
@@ -65,7 +73,7 @@ python -m researchops_expert_review ask --session-dir artifacts/expert-review/se
 
 本机输入检查限制为 2000 个字符，拦截身份证号、手机号、邮箱、文件路径、`sk-` 密钥和 `SUBJ-` 受试者编号的常见格式。**这只是格式匹配，不是完备检测**：可能误报，也可能漏报，请自行确认问题没有个人信息或敏感内容。命中时提示改写，只保存命中类型、规范化问题的 SHA-256 和运行元数据；不保存问题原文，也不读取密钥或发送请求。
 
-同一会话以问题的 `" ".join(question.split())` 的 UTF-8 SHA-256 去重，跨数据集、来源和进程生效；问题原文不写入会话 JSON。确认、数据集验证和格式检查后，先持久化题目占位，再进行遥测准入和计划登记，最后读取密钥。失败、拒绝、缺少密钥和中断都不提供重跑功能；每题 case ID 和账本 run_id 均不复用。并发提交由会话文件锁拒绝。进程被强制终止可能留下锁，会话会保持拒绝运行；未终结的调用可由只读核对命令发现。
+同一会话以问题的 `" ".join(question.split())` 的 UTF-8 SHA-256 去重，跨数据集、来源和进程生效；问题原文不写入会话 JSON。确认、数据集验证、格式与去重检查、只读环境预检之后，才持久化题目占位；锁内再次去重，准备阶段再次核对环境，再登记计划并读取密钥。占位前的环境拒绝不消耗题目；占位后的失败、拒绝、缺少密钥和中断不提供重跑功能。每题 case ID 和账本 run_id 均不复用。并发提交由会话文件锁拒绝。进程被强制终止可能留下锁，会话会保持拒绝运行；未终结的调用可由只读核对命令发现。
 
 ## 网页
 
@@ -73,7 +81,7 @@ python -m researchops_expert_review ask --session-dir artifacts/expert-review/se
 python -m researchops_expert_review web --session-dir artifacts/expert-review/session-01 --registry artifacts/prepared/logical_dataset_registry.json --provider deepseek --model deepseek-v4-flash --port 8765
 ```
 
-浏览器打开 `http://127.0.0.1:8765`。只监听 `127.0.0.1`；选择登记表数据集，然后选择该数据集的示例题或现场输入问题。必须勾选“我确认会把问题文本和汇总统计发送给 DeepSeek”；后端也独立检查确认值。运行时禁用按钮，下方展示本会话历史，不提供重跑按钮。网页不接收或展示密钥及本机路径。
+启动时会先执行相同只读环境预检；不通过时输出中文原因并非零退出，不构造或启动服务器。通过后浏览器打开 `http://127.0.0.1:8765`。只监听 `127.0.0.1`；选择登记表数据集，然后选择该数据集的示例题或现场输入问题。必须勾选“我确认会把问题文本和汇总统计发送给 DeepSeek”；后端也独立检查确认值。运行时禁用按钮，下方展示本会话历史，不提供重跑按钮。网页不接收或展示密钥及本机路径。
 
 ## 展示和记录
 
@@ -91,7 +99,11 @@ python -m researchops_expert_review web --session-dir artifacts/expert-review/se
 python -m researchops.eval_v2_interactive_telemetry verify --session-dir artifacts/expert-review/session-01
 ```
 
-此命令不联网、不读取密钥，self-pilot 会话目录也可使用。它重放账本闭合检查，逐题输出尝试次数、终态、用量、是否全部终结、承诺哈希和提交号，不输出回答正文、问题原文或路径。任何题目未闭合或账本校验失败时退出码非零；进程中途终止留下的未终结尝试也会失败。
+此命令不联网、不读取密钥，self-pilot 会话目录也可使用。它重放账本闭合检查，逐题输出尝试次数、终态、用量、是否全部终结、承诺哈希和提交号，不输出回答正文、问题原文或路径。`ledger_intact` 表示链、收据、文件哈希、封存事件、身份和持久化证据全部校验通过；`case_closed` 表示遥测闭合且全部终结，和题目是否成功分别报告。完整记录的截断响应仍是题目失败。
+
+退出码 `0` 表示全部账本完整、闭合且题目成功；`1` 表示账本都完整，但有题未闭合或失败；`2` 表示至少一个账本无法读取或完整性校验不通过（空目录也不能证明完整，返回 `2`）。进程中断而没有收据也返回 `2`：没有收据就无法证明账本没有被截断。
+
+`integrity_reason` 只输出固定值：`ok`、`receipt_missing_unsealed`（无封存事件且缺收据）、`receipt_missing_sealed`（有封存事件但缺收据）、`chain_invalid`、`hash_mismatch`、`unreadable`、`other_integrity_failure`。不会回显损坏账本中的任意文本。模块版本 `1.1` 仍可只读核对 `1.0` 收据。
 
 ## 离线验证
 

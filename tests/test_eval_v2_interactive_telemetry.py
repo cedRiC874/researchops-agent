@@ -132,7 +132,7 @@ class InteractiveTelemetryTests(unittest.TestCase):
                 database.execute("UPDATE audit_events SET safe_payload_json=? WHERE event_type='interactive_plan_committed'", (json.dumps(payload),))
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            self.assertEqual(telemetry.main(["verify", "--session-dir", str(self.directory)]), 1)
+            self.assertEqual(telemetry.main(["verify", "--session-dir", str(self.directory)]), 2)
         self.assertNotIn(canary, output.getvalue())
 
     def test_normal_cli_exit_is_zero(self):
@@ -150,13 +150,13 @@ class InteractiveTelemetryTests(unittest.TestCase):
                 raise AssertionError("no key access")
             return original(environment, name)
         with patch.object(os._Environ, "__getitem__", guarded), contextlib.redirect_stdout(output):
-            self.assertEqual(telemetry.main(["verify", "--session-dir", str(self.directory)]), 1)
+            self.assertEqual(telemetry.main(["verify", "--session-dir", str(self.directory)]), 2)
         self.assertNotIn(str(self.directory), output.getvalue())
         self.assertNotIn("Traceback", output.getvalue())
 
     def test_sources_are_resolved_and_old_install_is_rejected(self):
         telemetry._verify_loaded_sources(ROOT, expert_review=False)
-        with patch.object(telemetry.importlib, "import_module", return_value=SimpleNamespace(__file__=self.directory / "site-packages/researchops/__init__.py")):
+        with patch.dict("sys.modules", {"researchops": SimpleNamespace(__file__=self.directory / "site-packages/researchops/__init__.py")}):
             with self.assertRaises(telemetry.InteractiveTelemetryError) as raised:
                 telemetry._verify_loaded_sources(ROOT, expert_review=False)
         self.assertEqual(raised.exception.code, "eval_v2_interactive_source_required")
