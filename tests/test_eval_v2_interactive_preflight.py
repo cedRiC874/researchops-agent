@@ -136,6 +136,21 @@ class InteractivePreflightTests(unittest.TestCase):
         self.assertTrue(cases[0]["case_closed"])
         self.assertEqual(cases[0]["git_commit"], checked["git_commit"])
 
+    def test_receipt_summary_cannot_override_trusted_case_ordinal(self):
+        owner = self.prepare("PREFLIGHT-ORDINAL")
+        original = telemetry._summarize_rows
+        canary = "UNTRUSTED-RECEIPT-TEXT-CANARY"
+        def extra_field(*args, **kwargs):
+            return {**original(*args, **kwargs), "case_ordinal": canary}
+        # Model an extra persisted summary field with internally consistent
+        # event/receipt hashes; output must still use the reader's ordinal.
+        with patch.object(telemetry, "_summarize_rows", side_effect=extra_field):
+            self.assertTrue(self.complete(owner)["normal_result"])
+        cases, complete = telemetry.verify_session(self.directory)
+        self.assertTrue(complete)
+        self.assertEqual(cases[0]["case_ordinal"], 1)
+        self.assertNotIn(canary, json.dumps(cases))
+
     def test_setup_failures_after_reservation_have_readonly_safe_summary(self):
         for target in ("__init__", "start_run", "append_event"):
             case_id = "FAIL-" + target.strip("_")

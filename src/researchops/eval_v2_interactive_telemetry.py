@@ -476,6 +476,7 @@ def verify_session(session_dir) -> tuple[list[dict[str, Any]], bool]:
         except Exception:
             summary.update(verified=False, ledger_intact=False, integrity_reason=reason, case_closed=False, closure_passed=False, normal_result=False, error_code=INCOMPLETE_CODE)
         # Output only fixed identifiers and aggregate facts; no stored question/answer/path.
+        summary["case_ordinal"] = ordinal
         results.append(_verification_output(summary))
     return results, bool(results) and all(item.get("verified") is True for item in results)
 
