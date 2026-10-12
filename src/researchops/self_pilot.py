@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
 import secrets
 import statistics
@@ -12,9 +13,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from .audit import sha256_json
 from .eval_v2_contracts import EvalV2ContractError
 from .eval_v2_inspect_backend import EvalV2InspectDatasetBackend
 from .eval_v2_provider_executor import EvalV2ProviderExecutor
+from . import eval_v2_provider_executor as _provider_executor_module
+from .eval_v2_interactive_telemetry import (
+    InteractiveTelemetryError,
+    _prepare_interactive_case,
+)
 from .eval_v2_public import (
     EvalV2PublicTask,
     load_eval_v2_dataset_manifest,
@@ -28,7 +35,9 @@ from .model_providers import (
 
 
 SELF_PILOT_SCHEMA_VERSION = "1.1"
-_SUPPORTED_SELF_PILOT_SCHEMA_VERSIONS = frozenset({"1.0", "1.1"})
+_SUPPORTED_SELF_PILOT_SCHEMA_VERSIONS = frozenset({"1.0", "1.1", "1.2"})
+_INTERACTIVE_SELF_PILOT_STATE_SCHEMA_VERSION = "1.2"
+_INTERACTIVE_TELEMETRY_ERROR = "eval_v2_interactive_telemetry_incomplete"
 _SESSION_INSTANCE_ID = re.compile(r"^SELF-PILOT-RUN-[A-F0-9]{32}$")
 _PILOT_PACK_ID = re.compile(r"^PILOT-PACK-[A-F0-9]{12}$")
 DEFAULT_TASK_COUNT = 12
@@ -269,7 +278,7 @@ def run_self_pilot_task(
     registry_path: str | Path,
     provider: ProviderAdapter,
     model_id: str,
-    api_key: str,
+    api_key: str | None = None,
     task_id: str | None,
     confirm_online: bool,
     max_turns: int = 8,
@@ -278,6 +287,11 @@ def run_self_pilot_task(
     bilingual_output: bool = False,
     max_output_tokens: int = 2000,
 ) -> dict[str, Any]:
+    if not confirm_online:
+        raise EvalV2ContractError(
+            "eval_v2_online_confirmation_required",
+            "Self-pilot Provider 运行需要显式在线确认。",
+        )
     if provider.provider_id == "anthropic":
         raise EvalV2ContractError(
             ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
@@ -310,31 +324,99 @@ def run_self_pilot_task(
             "self_pilot_task_already_run", "该题已运行；self-pilot 不允许覆盖或重跑。"
         )
     backend = EvalV2InspectDatasetBackend.from_registry_path(registry_path)
-    executor = EvalV2ProviderExecutor(
-        provider=provider,
-        model_id=model_id,
-        api_key=api_key,
-        confirm_online=confirm_online,
-        sdk_runner=sdk_runner,
-        max_turns=max_turns,
-        run_timeout_seconds=run_timeout_seconds,
-        bilingual_output=bilingual_output,
-        max_output_tokens=max_output_tokens,
+    # Reuse the registry's existing exact-ID, path and byte/hash authorization
+    # before creating a telemetry claim or making the process Key available.
+    backend._registry.resolve(tasks_by_id[selected_task_id].dataset_id)
+    # Preserve the existing, test-patched resolver contract. The production
+    # resolver never authorizes a runner without verified interactive telemetry.
+    _, offline_runner_authorized = (
+        _provider_executor_module._resolve_eval_v2_sdk_runner(sdk_runner)
     )
-    capture = _CapturingExecutor(executor)
-    report = run_eval_v2_evaluation(
-        [tasks_by_id[selected_task_id]],
-        executor=capture,
-        inspect_backend=backend,
-        evaluation_mode="provider_online",
-        repetition_index=1,
-    )
-    result = capture.result
-    if result is None:
-        raise EvalV2ContractError(
-            "self_pilot_provider_result_missing", "Provider executor 未返回结果。"
+    owner = None
+    if not offline_runner_authorized:
+        try:
+            owner = _prepare_interactive_case(
+                root=Path(project_root).resolve(),
+                session_dir=session,
+                case_id="PILOT-" + sha256_json([
+                    _session_identity(state)["session_instance_id"], selected_task_id
+                ])[:48],
+                provider=provider,
+                model_id=model_id,
+                max_turns=max_turns,
+            )
+        except InteractiveTelemetryError as exc:
+            if not exc.case_reserved:
+                raise
+            telemetry = exc.telemetry_summary
+            state["schema_version"] = _INTERACTIVE_SELF_PILOT_STATE_SCHEMA_VERSION
+            record["provider_run"] = _interactive_failure_record(provider, model_id)
+            record["provider_run"]["completion_telemetry"] = telemetry
+            _write_interactive_state(state_path, state)
+            return _interactive_failure_response(selected_task_id, provider, model_id, telemetry)
+        state["schema_version"] = _INTERACTIVE_SELF_PILOT_STATE_SCHEMA_VERSION
+        record["provider_run"] = _interactive_failure_record(provider, model_id)
+    try:
+        if owner is not None:
+            # Persist the consumed question before reading the process Key.
+            # An interrupted attempt must never turn into an implicit rerun.
+            _atomic_write_json(state_path, state)
+        if api_key is None:
+            api_key = os.environ.get(provider.api_key_env, "")
+        executor_options = (
+            {"completion_telemetry_session": owner.session}
+            if owner is not None else {}
         )
+        executor = EvalV2ProviderExecutor(
+            provider=provider,
+            model_id=model_id,
+            api_key=api_key,
+            confirm_online=confirm_online,
+            sdk_runner=sdk_runner,
+            max_turns=max_turns,
+            run_timeout_seconds=run_timeout_seconds,
+            bilingual_output=bilingual_output,
+            max_output_tokens=max_output_tokens,
+            **executor_options,
+        )
+        capture = _CapturingExecutor(executor)
+        report = run_eval_v2_evaluation(
+            [tasks_by_id[selected_task_id]],
+            executor=capture,
+            inspect_backend=backend,
+            evaluation_mode="provider_online",
+            repetition_index=1,
+        )
+        result = capture.result
+        if result is None:
+            raise EvalV2ContractError(
+                "self_pilot_provider_result_missing", "Provider executor 未返回结果。"
+            )
+    except BaseException:
+        if owner is None:
+            raise
+        telemetry = owner.finish(completion_status="provider_failed")
+        record["provider_run"]["completion_telemetry"] = telemetry
+        _write_interactive_state(state_path, state)
+        return _interactive_failure_response(selected_task_id, provider, model_id, telemetry)
+    telemetry = (
+        owner.finish(completion_status=result.completion_status)
+        if owner is not None else None
+    )
+    if telemetry is not None and (
+        telemetry["closure_passed"] is not True
+        or telemetry.get("normal_result") is not True
+        or result.completion_status != "complete"
+    ):
+        record["provider_run"]["completion_telemetry"] = telemetry
+        record["provider_run"]["completion_status"] = result.completion_status
+        record["provider_run"]["latency_ms"] = report["p50_latency_ms"]
+        _write_interactive_state(state_path, state)
+        return _interactive_failure_response(selected_task_id, provider, model_id, telemetry)
     safe_output, output_redacted = _safe_display_output(result.final_output)
+    if api_key and api_key.strip() in result.final_output:
+        safe_output = "[OUTPUT_REDACTED_BY_SELF_PILOT_SAFETY_FILTER]"
+        output_redacted = True
     task_score = report["task_scores"][0]
     machine_pass = bool(task_score["passed"]) and not output_redacted
     record["provider_run"] = {
@@ -368,7 +450,12 @@ def run_self_pilot_task(
         ).hexdigest(),
         "output_redacted": output_redacted,
     }
-    _atomic_write_json(state_path, state)
+    if telemetry is not None:
+        record["provider_run"]["completion_status"] = result.completion_status
+        record["provider_run"]["completion_telemetry"] = telemetry
+        _write_interactive_state(state_path, state)
+    else:
+        _atomic_write_json(state_path, state)
     return {
         "status": "ran",
         "task_id": selected_task_id,
@@ -381,11 +468,68 @@ def run_self_pilot_task(
         },
         "output_redacted": output_redacted,
         "machine_score_hidden_until_feedback": True,
+        **({"completion_telemetry": telemetry} if telemetry is not None else {}),
         "next_command": (
             "python -m researchops.cli self-pilot-record "
             f"--session-dir {session.relative_to(Path(project_root).resolve()).as_posix()} "
             f"--task-id {selected_task_id} ..."
         ),
+    }
+
+
+def _interactive_failure_record(provider: ProviderAdapter, model_id: str) -> dict[str, Any]:
+    return {
+        "completed_at_utc": _now_utc(),
+        "provider_id": provider.provider_id,
+        "model_id": model_id,
+        "transport_id": provider.transport_id,
+        "outcome": "controlled_failure",
+        "error_code": _INTERACTIVE_TELEMETRY_ERROR,
+        "completion_status": "provider_failed",
+        "machine_pass": False,
+        "machine_failures": [_INTERACTIVE_TELEMETRY_ERROR],
+        "latency_ms": None,
+        "model_call_count": None,
+        "model_requested_tool_call_count": None,
+        "model_requested_tool_call_count_source": None,
+        "deduplicated_tool_call_count": None,
+        "gateway_dispatched_tool_call_count": None,
+        "backend_executed_tool_call_count": None,
+        "input_tokens": None,
+        "output_tokens": None,
+        "response_sha256": None,
+        "output_redacted": True,
+    }
+
+
+def _write_interactive_state(path: Path, state: Mapping[str, Any]) -> None:
+    try:
+        _atomic_write_json(path, state)
+    except Exception:
+        raise EvalV2ContractError(
+            _INTERACTIVE_TELEMETRY_ERROR,
+            "本题遥测或状态未完整保存；请离线核对账本，不得重跑。",
+        ) from None
+
+
+def _interactive_failure_response(
+    task_id: str, provider: ProviderAdapter, model_id: str, telemetry: Mapping[str, Any]
+) -> dict[str, Any]:
+    return {
+        "status": "controlled_failure",
+        "task_id": task_id,
+        "agent_output": "",
+        "outcome": "controlled_failure",
+        "error_code": _INTERACTIVE_TELEMETRY_ERROR,
+        "message": "本题未满足完成遥测要求，未展示回答；本题已运行，不能重跑。",
+        "provider": {
+            "provider_id": provider.provider_id,
+            "model_id": model_id,
+            "transport_id": provider.transport_id,
+        },
+        "output_redacted": True,
+        "machine_score_hidden_until_feedback": True,
+        "completion_telemetry": dict(telemetry),
     }
 
 
@@ -868,9 +1012,13 @@ def _load_session(
     state = _load_json(session / "pilot_state.json")
     blinded = _load_json(session / "pilot_tasks.json")
     schema_version = state.get("schema_version")
+    blinded_schema_version = blinded.get("schema_version")
     if (
         schema_version not in _SUPPORTED_SELF_PILOT_SCHEMA_VERSIONS
-        or blinded.get("schema_version") != schema_version
+        or (
+            blinded_schema_version != schema_version
+            and not (schema_version == "1.2" and blinded_schema_version in {"1.0", "1.1"})
+        )
         or state.get("session_type") != "internal_self_pilot"
         or state.get("external_pilot") is not False
         or not isinstance(state.get("selected_task_ids"), list)
@@ -882,7 +1030,7 @@ def _load_session(
         raise EvalV2ContractError(
             "self_pilot_session_invalid", "Self-pilot session 状态或 blinded hash 无效。"
         )
-    if schema_version == "1.1" and (
+    if schema_version in {"1.1", "1.2"} and blinded_schema_version != "1.0" and (
         not isinstance(state.get("session_instance_id"), str)
         or _SESSION_INSTANCE_ID.fullmatch(state["session_instance_id"]) is None
         or state.get("session_id") != state.get("session_instance_id")

@@ -271,8 +271,8 @@ jobs:
           }
           if ($currentInternal.status -ne "valid" -or
               $currentInternal.algorithm -ne "internal-current-tree-offline-source-v3" -or
-              $currentInternal.source_commitment_sha256 -ne "6271cb6d63f06e98fea378eacaeaf8d723b45a2867f1fe6e5f14aaab1d66dfc8" -or
-              $currentInternal.manifest_sha256 -ne "a861a363f2ecc1c4a888c3bd44dfc0f258c020a0516860c7d5cc31dd973b8f32" -or
+              $currentInternal.source_commitment_sha256 -ne "76a224ad262a678f181b2492f0cf7ad64c9104df41cb9ecdbb6e802db57648dc" -or
+              $currentInternal.manifest_sha256 -ne "72a8a25c85bf7eebad05913b7d05cbd73a8d70561d676968db967ab17944e882" -or
               $currentInternal.source_integrity_only -ne $true -or
               $currentInternal.online_execution_authorized -ne $false -or
               $currentInternal.runtime_admission_verified -ne $false -or
@@ -553,7 +553,25 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONPATH = "src"
-          python -m unittest discover -s tests -t . -v
+          python services/expert_review_v1/scripts/run_offline_tests.py root --report "$env:RUNNER_TEMP/interactive-root-tests.json"
+          exit $LASTEXITCODE
+
+      - name: Run expert review offline integration tests
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src;services/expert_review_v1/src"
+          python services/expert_review_v1/scripts/run_offline_tests.py service --report "$env:RUNNER_TEMP/interactive-service-tests.json"
+          exit $LASTEXITCODE
+
+      - name: Upload interactive offline test counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interactive-offline-test-counts
+          path: |
+            ${{ runner.temp }}/interactive-root-tests.json
+            ${{ runner.temp }}/interactive-service-tests.json
+          if-no-files-found: warn
 
       - name: Validate private-holdout custodian kit
         shell: pwsh

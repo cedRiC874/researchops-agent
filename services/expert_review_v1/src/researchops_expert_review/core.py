@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import inspect
 import json
@@ -18,10 +19,13 @@ from researchops.eval_v2_dataset_prep import EvalV2LogicalDatasetRegistry
 from researchops.eval_v2_inspect_backend import EvalV2InspectDatasetBackend
 from researchops.eval_v2_provider_executor import EvalV2ProviderExecutor
 from researchops.eval_v2_runner import EvalV2ToolGateway
+from researchops.eval_v2_interactive_telemetry import (
+    InteractiveTelemetryError, _prepare_interactive_case, preflight_interactive_environment,
+)
 
 
 FORMAT_NOTICE = "个人信息检查只是格式匹配，不是完备检测；请勿输入个人信息或敏感内容。"
-ONLINE_LIMITATION = "当前评测执行器尚未开放真实在线运行；确认不会绕过其限制。"
+ONLINE_LIMITATION = "未满足代码来源、干净提交和遥测准入时，尚未开放真实在线运行；通过检查后仅允许 DeepSeek 本机交互试用，记录不是评测证据。"
 _RUN_ID = re.compile(r"^EXPERT-[a-f0-9]{32}$")
 _HASH = re.compile(r"^[a-f0-9]{64}$")
 _PATTERNS = {
@@ -52,6 +56,21 @@ def _now() -> str:
 
 def question_sha256(question: str) -> str:
     return hashlib.sha256(" ".join(question.split()).encode("utf-8")).hexdigest()
+
+
+def completion_summary(record: dict[str, Any]) -> str:
+    telemetry = record.get("completion_telemetry")
+    if not isinstance(telemetry, dict):
+        return "模型调用摘要：尚无已登记的调用。"
+    usage = telemetry.get("usage") or {}
+    value = lambda name: "未知" if usage.get(name) is None else str(usage[name])
+    complete = (telemetry.get("closure_passed") is True
+                and telemetry.get("normal_result") is True
+                and record.get("completion_status") == "complete")
+    return (
+        f"模型调用次数：{telemetry['attempts']}；是否完整：{'是' if complete else '否'}；"
+        f"token 输入：{value('input_tokens')}，输出：{value('output_tokens')}，合计：{value('total_tokens')}。"
+    )
 
 
 def input_rejection_types(question: str) -> list[str]:
@@ -96,7 +115,7 @@ def create_session(*, project_root: str | Path, output_directory: str | Path) ->
     except FileExistsError:
         raise ExpertReviewError("session_exists", "会话目录已存在；不会覆盖。") from None
     payload = {
-        "schema_version": "expert-review/1.0",
+        "schema_version": "expert-review/1.1",
         "session_id": "EXPERT-SESSION-" + secrets.token_hex(16),
         "created_at_utc": _now(),
         "automatic_scoring": False,
@@ -153,7 +172,7 @@ class ExpertReview:
             if path.is_symlink():
                 raise ValueError
             payload = json.loads(path.read_text(encoding="utf-8"))
-            if payload["schema_version"] != "expert-review/1.0" or not isinstance(payload["records"], list):
+            if payload["schema_version"] not in {"expert-review/1.0", "expert-review/1.1"} or not isinstance(payload["records"], list):
                 raise ValueError
             return payload
         except Exception:
@@ -188,8 +207,11 @@ class ExpertReview:
             path.unlink(missing_ok=True)
 
     def _save(self, record: dict[str, Any]) -> None:
-        _write_json(self.session / (record["run_id"] + ".json"), record)
+        # Public example text may remain in the in-memory return value for callers;
+        # no submitted question text is persisted in the session.
+        _write_json(self.session / (record["run_id"] + ".json"), {**record, "question": None})
         index = self._load_index()
+        index["schema_version"] = "expert-review/1.1"
         index["records"] = [
             {name: row[name] for name in ("sequence", "run_id", "dataset_id", "status", "question_sha256")}
             for row in self._records()
@@ -232,6 +254,16 @@ class ExpertReview:
         except Exception:
             raise ExpertReviewError("dataset_not_authorized", "数据集不在登记表中或准备产物校验失败。") from None
 
+    def preflight(self) -> dict[str, Any]:
+        """Check the environment without reserving a question or reading a key."""
+        try:
+            return preflight_interactive_environment(
+                root=self.project_root, provider=self._provider,
+                model_id=self.model_id, expert_review=True,
+            )
+        except InteractiveTelemetryError as exc:
+            raise ExpertReviewError(exc.code, exc.message) from None
+
     def ask(
         self, *, confirm_online: bool, dataset_id: str | None = None,
         question: str | None = None, from_task: str | None = None,
@@ -254,7 +286,11 @@ class ExpertReview:
         self._authorize(dataset_id)
         digest = question_sha256(question)
         hits = input_rejection_types(question)
+        if any(record["question_sha256"] == digest for record in self._records()):
+            raise ExpertReviewError("question_already_run", "该问题已在本会话中提交；不允许覆盖或重跑。")
+        self.preflight()
         with self._lock():
+            # Recheck under the write lock after the read-only preflight.
             records = self._records()
             if any(record["question_sha256"] == digest for record in records):
                 raise ExpertReviewError("question_already_run", "该问题已在本会话中提交；不允许覆盖或重跑。")
@@ -263,7 +299,7 @@ class ExpertReview:
                 "sequence": len(records) + 1,
                 "created_at_utc": _now(), "completed_at_utc": None,
                 "dataset_id": dataset_id,
-                "question": None if hits else question,
+                "question": question if from_task is not None and not hits else None,
                 "question_sha256": digest,
                 "source": from_task if from_task is not None else "现场提问",
                 "provider": self.provider_id, "model": self.model_id,
@@ -272,6 +308,7 @@ class ExpertReview:
                 "answers": {"english": "", "chinese": "执行未完成或已中断；本题已占用，不能重跑。", "bilingual_complete": False},
                 "tool_call_count": 0, "elapsed_seconds": None,
                 "token_usage": {"input_tokens": None, "output_tokens": None},
+                "completion_status": None, "completion_telemetry": None,
                 "input_rejection_types": hits, "automatic_scoring": False,
                 "notice": "无自动评分", "error_code": None,
             }
@@ -292,12 +329,18 @@ class ExpertReview:
             gateway = EvalV2ToolGateway(task_scope, self._backend)
             public_input = {"task_id": task_scope.task_id, "prompt": question, "context": context}
             api_key = None
+            telemetry = None
             try:
+                defaults = inspect.signature(self_pilot.run_self_pilot_task).parameters
+                telemetry = _prepare_interactive_case(
+                    root=self.project_root, session_dir=self.session, case_id=record["run_id"],
+                    provider=self._provider, model_id=self.model_id,
+                    max_turns=defaults["max_turns"].default, expert_review=True,
+                )
                 api_key = os.environ.get(self._provider.api_key_env)
                 if not api_key or not api_key.strip():
                     raise ExpertReviewError("provider_key_missing", "当前进程未配置 DeepSeek 密钥；本题不能重跑。")
                 api_key = api_key.strip()
-                defaults = inspect.signature(self_pilot.run_self_pilot_task).parameters
                 executor = EvalV2ProviderExecutor(
                     provider=self._provider, model_id=self.model_id, api_key=api_key,
                     confirm_online=True, sdk_runner=self._sdk_runner,
@@ -305,8 +348,19 @@ class ExpertReview:
                     max_output_tokens=self_pilot_web.SELF_PILOT_WEB_MAX_OUTPUT_TOKENS,
                     max_turns=defaults["max_turns"].default,
                     run_timeout_seconds=defaults["run_timeout_seconds"].default,
+                    completion_telemetry_session=telemetry.session,
                 )
                 result = executor.execute(public_input, gateway)
+                record["completion_status"] = getattr(result, "completion_status", None)
+                record["completion_telemetry"] = telemetry.finish(completion_status=record["completion_status"])
+                telemetry = None
+                if (not record["completion_telemetry"]["closure_passed"]
+                        or record["completion_telemetry"].get("normal_result") is not True
+                        or record["completion_status"] != "complete"):
+                    raise ExpertReviewError(
+                        "eval_v2_interactive_telemetry_incomplete",
+                        "本题完成遥测未闭合或模型未完整完成；回答不展示，本题不能重跑。",
+                    )
                 safe_output, redacted = self_pilot._safe_display_output(result.final_output)
                 # Retain the inherited filter and additionally enforce this entry's
                 # path/subject formats at the display boundary, using the same
@@ -329,20 +383,27 @@ class ExpertReview:
                 policy = getattr(result, "preclassification", None)
                 if isinstance(policy, str) and re.fullmatch(r"[a-z_]{1,64}", policy):
                     record["preclassification"] = policy
-            except Exception as exc:
+            except (Exception, asyncio.CancelledError, KeyboardInterrupt) as exc:
                 code = getattr(exc, "code", None)
                 if code == "eval_v2_completion_telemetry_session_required":
                     record["error_code"] = code
                     message = ONLINE_LIMITATION
-                elif isinstance(exc, ExpertReviewError):
+                elif isinstance(exc, (ExpertReviewError, InteractiveTelemetryError)):
                     record["error_code"] = exc.code
                     message = exc.message
+                    if isinstance(exc, InteractiveTelemetryError) and exc.case_reserved:
+                        record["completion_telemetry"] = exc.telemetry_summary
+                        record["completion_status"] = "provider_failed"
                 else:
-                    record["error_code"] = "execution_failed"
+                    record["error_code"] = "eval_v2_interactive_telemetry_incomplete" if telemetry is not None else "execution_failed"
                     message = "执行失败；未保存底层错误正文，本题不能重跑。"
                 record["answers"] = {"english": "Execution did not complete. This question cannot be rerun in this session.", "chinese": message, "bilingual_complete": True}
             finally:
                 api_key = None
+                if telemetry is not None:
+                    record["completion_telemetry"] = telemetry.finish(
+                        completion_status=record["completion_status"] or "controlled_failure"
+                    )
                 record["tool_call_count"] = len(gateway.tool_calls)
                 record["elapsed_seconds"] = round(time.monotonic() - started, 6)
                 record["completed_at_utc"] = _now()

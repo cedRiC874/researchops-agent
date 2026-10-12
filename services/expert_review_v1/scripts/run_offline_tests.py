@@ -10,8 +10,8 @@ from pathlib import Path
 
 
 def _deny_external_sockets(event, args):
-    if event == "socket.connect":
-        address = args[1]
+    if event in {"socket.connect", "socket.sendto", "socket.sendmsg"}:
+        address = args[-1] if event == "socket.sendmsg" else args[1]
         if not isinstance(address, tuple) or address[0] not in {"127.0.0.1", "::1", "localhost"}:
             raise RuntimeError("Offline verification forbids external socket connections")
     if event == "socket.getaddrinfo" and args[0] not in {"127.0.0.1", "::1", "localhost", None}:
@@ -26,6 +26,8 @@ def main():
     sys.dont_write_bytecode = True
     sys.addaudithook(_deny_external_sockets)
     root = Path(__file__).resolve().parents[3]
+    # Service integration tests reuse the repository's mock HTTP fixture.
+    sys.path.insert(0, str(root))
     loader = unittest.TestLoader()
     if args.scope == "root":
         suite = loader.discover(str(root / "tests"), top_level_dir=str(root))

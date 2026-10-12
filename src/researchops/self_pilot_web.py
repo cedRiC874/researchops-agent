@@ -13,6 +13,7 @@ from typing import Any, Callable, Mapping
 from urllib.parse import urlsplit
 
 from .eval_v2_contracts import EvalV2ContractError
+from .eval_v2_interactive_telemetry import preflight_interactive_environment
 from .model_providers import (
     ANTHROPIC_GENERIC_ONLINE_DISABLED_CODE,
     ProviderAdapter,
@@ -670,6 +671,9 @@ class SelfPilotWebController:
                 "output_redacted": result["output_redacted"],
                 "machine_score_hidden_until_feedback": True,
                 "feedback_fields": list(feedback_field_order(result["outcome"])),
+                "controlled_failure": result.get("status") == "controlled_failure",
+                "message": result.get("message"),
+                "completion_telemetry": result.get("completion_telemetry"),
             }
             with self._lock:
                 self._answers[task_id] = answer
@@ -837,6 +841,15 @@ def serve_self_pilot_web(
         raise EvalV2ContractError(
             "self_pilot_web_port_invalid", "Web 端口必须在 1 到 65535 之间。"
         )
+    provider = controller._provider
+    model_id = controller._model_id
+    if provider is None:
+        binding = controller._session_binding
+        provider = get_provider(binding["provider_id"] if binding else "deepseek")
+        model_id = binding["model_id"] if binding else "deepseek-v4-flash"
+    preflight_interactive_environment(
+        root=controller._project_root, provider=provider, model_id=model_id
+    )
     csrf_token = secrets.token_urlsafe(32)
     handler = _build_handler(controller, csrf_token, port)
     try:
@@ -1508,6 +1521,15 @@ function renderRunningPanel() {
 function renderAnswer(state) {
   const answer = state.answer;
   workspace.append(renderPrompt(state.task));
+  if (answer.controlled_failure) {
+    const failure = document.createElement('section');
+    failure.className = 'card';
+    failure.textContent = answer.message;
+    workspace.append(failure);
+    setNotice('本题为受控失败，不能重跑。请完成反馈并核对账本。', true);
+    workspace.append(renderFeedbackForm(state.task_id, answer.feedback_fields));
+    return;
+  }
   const grid = document.createElement('section');
   grid.className = 'grid';
   grid.append(

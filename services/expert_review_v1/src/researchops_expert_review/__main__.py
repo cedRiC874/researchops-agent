@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .core import ExpertReview, ExpertReviewError, create_session, preview
+from .core import ExpertReview, ExpertReviewError, completion_summary, create_session, preview
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -62,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
         print("English\n" + record["answers"]["english"])
         print("中文\n" + record["answers"]["chinese"])
         print(f"工具调用次数：{record['tool_call_count']}")
+        print(completion_summary(record))
         print(record["notice"])
         return 1 if record["status"] in {"拒绝", "出错"} else 0
     except ExpertReviewError as exc:

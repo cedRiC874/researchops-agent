@@ -1,6 +1,6 @@
 # ResearchOps Agent 内部 Self-Pilot Web / CLI 指南
 
-> 历史流程说明，不是当前在线操作授权。下列旧命令不保证满足现行session、遥测和批准门禁；当前状态以[STATUS](../STATUS.md)为准。不要仅凭本页配置Key或启动Provider。
+> 本页说明开发者本机交互试用入口。实际运行仍需逐次显式在线确认，并通过来源、代码清洁度及完成遥测检查；本改动仅做离线验证，不能视为已经真实在线验证。当前项目状态见 [STATUS](../STATUS.md)。
 
 > 适用范围：项目创建者本人进行内部可用性与工作流 pilot。
 > 正确标签：`internal self-pilot`。
@@ -13,13 +13,25 @@ Set-Location '<repository-root>'
 $env:PYTHONPATH = "src"
 ```
 
+运行前须提交代码：`src/`、`evals/` 和 `services/expert_review_v1/src/` 不得存在未提交改动（包括未跟踪文件）。程序会记录当前 Git 提交号，发现改动就拒绝并提示相对文件名，没有跳过选项。`researchops` 和 `researchops_completion_telemetry` 必须从本仓库 `src/` 加载；旧的 site-packages 安装副本不能用于本入口。
+
 如果使用 CLI，可在你自己的 PowerShell 中设置 DeepSeek Key；不要把 Key 写进聊天、脚本、Markdown、日志或 Git：
 
 ```powershell
 $env:DEEPSEEK_API_KEY = "在本机终端填写"
 ```
 
-OpenAI CLI 使用 `OPENAI_API_KEY`。Web 流程不要求设置环境变量，而是在本机首页的密码输入框中临时输入 Key。当前项目历史上 OpenAI API 受 429/计费条件阻塞，建议先使用已有 DeepSeek 路径。实际 Agent 运行会产生 Provider token 费用。
+交互执行范围 `eval_v2_interactive_v1` 只允许 DeepSeek `deepseek-v4-flash`、`deepseek-v4-pro`，使用 Responses 受控适配器；OpenAI、Anthropic、Kimi 均不获准执行。CLI 在计划已写入账本、该题已标记运行之后，才读取所选 Provider 声明的 Key 环境变量（DeepSeek 为 `DEEPSEEK_API_KEY`）。Web 沿用密码框配置和模型可用性预检，不要求环境变量。实际 Agent 运行会产生 Provider token 费用。
+
+这些记录仅供交互试用，不是评测证据，不授权 `campaign_runtime`，不关闭 T6-B/T7，也不影响 Depth-60。
+
+正式运行前，可执行不联网、不读 Key、不写文件的环境预检；输出中包含当前 Git 提交号：
+
+```powershell
+python -B -m researchops.eval_v2_interactive_telemetry preflight
+```
+
+同时使用现场提问时，在命令后加 `--expert-review` 并将其源码目录加入 `PYTHONPATH`。预检不创建账本、不签发绑定；每题运行时仍重复全部检查。
 
 ## 2. 准备三个公开数据集
 
@@ -53,8 +65,9 @@ Session 目录同样必须尚不存在：
 - `pilot_tasks.json`：只含 task ID、prompt 和授权 context；不含 expected/golden。
 - `pilot_state.json`：Provider 运行与人工反馈状态；不保存模型正文。
 - `README.md`：session 类型和使用规则。
+- 首次交互运行后还会保存独立审计账本及预登记计划；每题有独立且不复用的 run ID。
 
-新建 session 使用 schema `1.1`，同时记录确定性的 `pilot_pack_id` 和每次创建都唯一的 128-bit `session_instance_id`。相同题包可以共享 pack ID，但不会再共享运行实例 ID。旧 schema `1.0` session 保持只读兼容，summary 会从旧 ID 与创建时间派生稳定的 legacy instance ID，不回写旧 state。
+新建空 session 和题包沿用 schema `1.1`，同时记录确定性的 `pilot_pack_id` 和每次创建都唯一的 128-bit `session_instance_id`。首次交互运行时 `pilot_state.json` 升为 `1.2` 并记录遥测摘要，已绑定的题包字节和哈希保持原样。相同题包可以共享 pack ID，但不会共享运行实例 ID。旧 schema `1.0`、`1.1` 均可读取；单纯读取、汇总不会回写旧 state。
 
 任务从 120 个 internal-ready public tasks 中确定性选择，覆盖三个数据集和检查、澄清、拒绝、越权、prompt injection、重复调用、审批等代表性场景。
 
@@ -68,6 +81,8 @@ Web 评测台继续使用同一个 session 目录，`session-01` 不代表第 1 
   --registry artifacts/self_pilot_data/run-01/logical_dataset_registry.json `
   --confirm-online
 ```
+
+服务器绑定端口前，会只读检查 Provider/模型、仓库模块来源和代码清洁度。已有配置或历史 session 绑定时使用该身份；尚未配置的新 session 先核对 DeepSeek `deepseek-v4-flash`。这个启动检查不读 Key、不联网、不创建 case 或账本；拒绝时输出中文原因并非零退出，服务器不会启动。页面中的 Key/模型目录可用性预检仍按原流程执行，每题开始时仍再次执行全部准入检查。
 
 终端显示地址后，在浏览器打开：
 
@@ -103,7 +118,7 @@ Web 的 `duration_seconds` 定义为“点击查看答案到提交人工评价�
 
 Web 双语运行单独把单题输出上限设为 10,000 tokens，避免双语回答超过普通 Eval v2 的 2,000-token 默认阈值。普通 Eval v2 runner 仍保持 2,000 默认值，因此这一调整不会悄悄改变既有评测基线；更高上限可能增加单题输出费用，应继续通过人工评价关注冗长回答。
 
-当前 Web 受控模型目录包括 OpenAI `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.4-mini`，以及 DeepSeek `deepseek-v4-flash`、`deepseek-v4-pro`。这是项目侧允许列表，不等于任意 Key 都有权限；提交配置时还必须通过该 Provider 的 `/models` 账户可见性核验。目录依据：[OpenAI model catalog](https://developers.openai.com/api/docs/models/all)、[DeepSeek Lists Models](https://api-docs.deepseek.com/api/list-models)。
+Web 保留原有配置目录及 `/models` 账户可见性核验；预检成功不等于获得执行授权。本交互入口最终只接受 DeepSeek `deepseek-v4-flash`、`deepseek-v4-pro`。
 
 ## 5. 备选：使用 CLI 查看下一题
 
@@ -153,6 +168,23 @@ Web 双语运行单独把单题输出上限设为 10,000 tokens，避免双语�
 - 在提交人工反馈前，CLI 不显示 machine pass/fail，避免影响主观判断。
 - 如果输出出现绝对路径、Key/Bearer、Parkinsons subject key 等敏感形态，终端正文会被替换为安全遮蔽标记，原文不持久化。
 - 每题只允许运行一次，防止挑选更满意的重跑结果。
+- 仅当遥测闭合、遥测摘要允许正常结果且执行器 `completion_status=complete` 才显示正常回答；截断、取消、网络异常、账本写入失败等会记录为受控失败，隐藏正文，也不能重跑。
+- 准入前置检查失败不占用题目；账本文件一旦已为本题创建，即使随后计划写入或会话初始化失败，也会写入已运行的受控失败状态和遥测摘要，不能重跑。异常正文、问题原文和 Key 不写入这些失败记录。
+
+### 离线核对完成遥测
+
+在 session 目录上运行同一个只读核对命令；现场提问目录也适用：
+
+```powershell
+.\.venv\Scripts\python.exe -m researchops.eval_v2_interactive_telemetry verify `
+  --session-dir artifacts/self_pilot/session-01
+```
+
+命令不联网、不读 Key、不输出问题、回答正文或路径。逐题显示尝试次数、终态、usage（未知为 `null`）、是否全部终结、计划承诺哈希和提交号，并分别报告 `ledger_intact`（完整性校验全部通过）与 `case_closed`（遥测闭合且全部终结）。退出码 `0` 表示全部账本完整、闭合且题目成功；`1` 表示账本完整但有题未闭合或失败；`2` 表示无法读取或完整性校验失败。空目录或缺少收据也返回 `2`，因为无法证明账本未被截断。
+
+固定原因字段 `integrity_reason` 仅取 `ok`、`receipt_missing_unsealed`、`receipt_missing_sealed`、`chain_invalid`、`hash_mismatch`、`unreadable`、`other_integrity_failure`。前两个缺收据原因分别表示没有封存事件、已有封存事件；不会回显损坏账本内容。进程中途被杀后的未封存记录通常是 `receipt_missing_unsealed`，仍不可重跑覆盖。版本 `1.1` 的核对命令兼容 `1.0` 收据。
+
+审计账本只记录哈希、授权范围与版本、提交号、计划承诺和调用生命周期元数据；不记录问题原文、回答正文、Key 或本机路径。题目原文仍仅存在原有公开盲化题包中。`pilot_state.json` 的逐题遥测摘要含尝试次数、终态、usage、闭合及写入状态、承诺哈希、提交号和模块版本。这些是交互试用记录，不能充当正式评测证据。
 
 ## 7. 使用 CLI 记录旧版 acceptance 反馈
 
