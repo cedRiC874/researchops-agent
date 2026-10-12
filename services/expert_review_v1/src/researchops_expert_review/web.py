@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from researchops import self_pilot
 
+from . import core
 from .core import ExpertReview, ExpertReviewError, FORMAT_NOTICE, ONLINE_LIMITATION, completion_summary
 
 _MAX_BODY_BYTES = 16 * 1024
@@ -31,6 +32,8 @@ def _public_result(record: dict[str, Any]) -> dict[str, Any]:
     }
     if "completion_telemetry" in record:
         result["completion_summary"] = completion_summary(record)
+    if record["output_redacted"] is True:
+        result["output_redaction_message"] = core.output_redaction_message(record)
     return result
 
 
@@ -257,7 +260,7 @@ $('ask-form').addEventListener('submit', async event => {
     $('notice').textContent = data.notice;
     $('english').textContent = data.answers.english;
     $('chinese').textContent = data.answers.chinese;
-    $('calls').textContent = '工具调用次数：' + data.tool_call_count + (data.output_redacted ? '；回答已被安全过滤器整段屏蔽。' : '');
+    $('calls').textContent = '工具调用次数：' + data.tool_call_count + (data.output_redacted ? '；' + (data.output_redaction_message || '回答已被安全过滤器整段屏蔽。') : '');
     $('completion').textContent = data.completion_summary || '模型调用摘要：尚无已登记的调用。';
     $('result').hidden = false;
     $('message').textContent = '本次运行已结束。无自动评分。';
