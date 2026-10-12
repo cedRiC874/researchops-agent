@@ -1,0 +1,38 @@
+{
+  "source": "github_actions",
+  "head_sha": "a45d1b6090f9d1d7979c206925a4bd3cafbb6881",
+  "run_url": "https://github.com/cedRiC874/researchops-agent/actions/runs/38244631776",
+  "job_url": "https://github.com/cedRiC874/researchops-agent/actions/runs/38244631776/job/114795467863",
+  "command": "python -m unittest discover -s tests -t . -v",
+  "tests_run": 2682,
+  "passed": 2671,
+  "skipped": 11,
+  "failures": 0,
+  "errors": 0,
+  "elapsed_seconds": 6983.728,
+  "successful": true,
+  "skip_details": [
+    "test_emit_is_canonical_and_verify_compares_every_value (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_emit_is_canonical_and_verify_compares_every_value) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_exact_five_locked_tasks_and_complete_traces_are_exercised (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_exact_five_locked_tasks_and_complete_traces_are_exercised) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_fresh_process_import_and_build_use_no_provider_or_model_runtime (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_fresh_process_import_and_build_use_no_provider_or_model_runtime) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_generator_has_zero_network_model_environment_or_key_access (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_generator_has_zero_network_model_environment_or_key_access) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_generator_is_deterministic_and_retracts_the_false_claims (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_generator_is_deterministic_and_retracts_the_false_claims) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_natural_and_letter_prefixed_witnesses_use_the_actual_scorer (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_natural_and_letter_prefixed_witnesses_use_the_actual_scorer) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_published_artifact_rejects_current_source_and_verifies_historical_binding (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_published_artifact_rejects_current_source_and_verifies_historical_binding) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_runtime_drift_fails_before_scorer_replay (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_runtime_drift_fails_before_scorer_replay) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_same_patch_different_build_string_replays_deterministically (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_same_patch_different_build_string_replays_deterministically) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_source_bytes_hashes_and_ast_lines_are_bound (tests.test_phase6_depth60_95pct_counterexample.Phase6Depth6095PercentCounterexampleTests.test_source_bytes_hashes_and_ast_lines_are_bound) ... skipped 'counterexample replay is covered by the canonical Python 3.12.13 CI job'",
+    "test_optional_locked_projection_recomputation_is_complete_and_canonical (tests.test_phase6_depth60_rejections.Phase6Depth60RejectionAnalysisTests.test_optional_locked_projection_recomputation_is_complete_and_canonical) ... skipped 'omitted SHA-matching raw artifact is not present in CI'"
+  ],
+  "canonical_replay": {
+    "tests_run": 11,
+    "passed": 11,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "elapsed_seconds": 2.341,
+    "job_url": "https://github.com/cedRiC874/researchops-agent/actions/runs/38244631776/job/114795468141"
+  },
+  "log_sha256": "891cbc27ebd09375b4301a9881db65c282ae028c364bc27a592534d5dfa580d3",
+  "existing_tests_or_skip_conditions_modified": false
+}
