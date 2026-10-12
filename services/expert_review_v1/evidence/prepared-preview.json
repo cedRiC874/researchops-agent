@@ -1,0 +1,10 @@
+{
+  "datasets_checked": [
+    "palmer_penguins_v0_1_0",
+    "uci_heart_disease_cleveland_45",
+    "uci_parkinsons_telemonitoring_189"
+  ],
+  "preview_matches_backend": true,
+  "external_network_denied": true,
+  "provider_calls": 0
+}
