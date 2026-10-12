@@ -88,7 +88,6 @@ python -m researchops_expert_review web --session-dir artifacts/expert-review/se
 ```powershell
 $env:PYTHONPATH = "src;services/expert_review_v1/src"
 $env:PYTHONDONTWRITEBYTECODE = "1"
-$env:PYTHONUTF8 = "1"
 $env:OPENBLAS_CORETYPE = "NEHALEM"
 $env:OPENBLAS_NUM_THREADS = "1"
 $env:OMP_NUM_THREADS = "1"
@@ -101,3 +100,19 @@ python services/expert_review_v1/scripts/verify_protected.py --report services/e
 保护核对使用开发前实际字节的逐文件 SHA-256 基线，覆盖冻结清单列出的每个文件、清单本身和 `evals/v2/` 全部文件；不是假定历史清单中的哈希等同于当前 main。核对脚本及报告位于本服务目录中，且 Git 变更范围应仅包含 `services/expert_review_v1/`。
 
 已知局限：现有预分类规则只认英文措辞；个人信息检查只是格式匹配；无自动评分；当前上游在线准入关闭；强制中断后的会话不能继续；模型未按双语格式回答时不自动重试。
+
+## 本次验证结果与文件清单
+
+实现提交 `a45d1b6090f9d1d7979c206925a4bd3cafbb6881` 的新增服务测试在主仓库 `.venv` 中 **37/37 通过**。三个已有准备数据集的 preview 均与原后端返回值完全一致。冻结清单列出 499 个文件，连同清单本身和全部 `evals/v2` 文件去重后，**508/508** 开发前后原始字节 SHA-256 一致。
+
+[GitHub Windows 全量测试](https://github.com/cedRiC874/researchops-agent/actions/runs/38244631776/job/114795467863)执行原命令 `python -m unittest discover -s tests -t . -v`：2682 项，2671 通过、11 跳过、0 失败、0 错误（6983.728 秒）。11 个跳过均来自仓库既有条件，未改测试或跳过规则；其中 10 项由既有的[标准版本重放任务](https://github.com/cedRiC874/researchops-agent/actions/runs/38244631776/job/114795468141)覆盖，该任务 11/11 通过，剩余 1 项因 CI 不提供对应原始产物而保持原跳过条件。准确数量、跳过原因和对应提交记录在 `evidence/ci-root-tests.json`。
+
+本机全量不能宣称通过：首轮退出且没有最终汇总，保留为未完成；第二轮在发现测试时，导入 pandas 卡在 Windows WMI 系统信息查询。独立诊断复现相同调用栈，WMI 查询也超时，已停止本服务启动的阻塞进程，未修改或重启系统服务。后续恢复本机 WMI 后才能重新完成本机全量。一次原样单模块复现 `tests.test_campaign_prerequisites_v5_full` 通过，不替代首轮未完成的全量结果。此限制与 CI 成功分别记录，不混称为本机成功。
+
+所有 18 个新增文件均位于 `services/expert_review_v1/`：
+
+- 源码：`src/researchops_expert_review/__init__.py`、`__main__.py`、`core.py`、`web.py`。
+- 测试：`tests/test_cli.py`、`test_core.py`、`test_web.py`。
+- 验证脚本：`scripts/run_offline_tests.py`、`verify_protected.py`。
+- 文档与本目录忽略规则：`README.md`、`.gitignore`。
+- 证据：`evidence/service-tests.json`、`prepared-preview.json`、`protected_baseline.json`、`protected-verification.json`、`ci-root-tests.json`、`root-tests-first-attempt.json`、`root-tests-local.json`。

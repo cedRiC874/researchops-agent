@@ -1,0 +1,17 @@
+{
+  "status": "blocked_during_discovery",
+  "complete": false,
+  "blocker": "Windows WMI query hangs while pandas imports platform.machine",
+  "evidence": "Independent discovery-only diagnostic stack: pandas.compat._constants -> platform.machine -> platform.uname -> platform.win32_ver -> platform._wmi_query; direct WMI queries time out.",
+  "diagnostic_log_sha256": "c677352c1b089e28217544a8aa0e4a1f0a2f0200b90c1d8e0c78df15f73adc10",
+  "owned_blocked_process_stopped": true,
+  "system_services_modified": false,
+  "first_attempt": "Incomplete without final summary; separately preserved in root-tests-first-attempt.json.",
+  "earlier_single_module_reproduction": {
+    "module": "tests.test_campaign_prerequisites_v5_full",
+    "tests_run": 1,
+    "passed": 1,
+    "elapsed_seconds": 215.778
+  },
+  "ci_results_are_not_claimed_as_local_results": true
+}
