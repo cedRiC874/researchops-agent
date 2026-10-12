@@ -1208,7 +1208,6 @@ def main() -> int:
                 )
             project_root = Path(__file__).resolve().parents[2]
             provider = get_provider(args.provider)
-            api_key = os.environ.get(provider.api_key_env, "")
             result = run_self_pilot_task(
                 project_root=project_root,
                 session_directory=args.session_dir,
@@ -1217,14 +1216,13 @@ def main() -> int:
                 registry_path=args.registry,
                 provider=provider,
                 model_id=args.model,
-                api_key=api_key,
                 task_id=args.task_id,
                 confirm_online=True,
                 max_turns=args.max_turns,
                 run_timeout_seconds=args.timeout_seconds,
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
-            return 0
+            return 4 if result.get("status") == "controlled_failure" else 0
         elif args.command == "self-pilot-record":
             project_root = Path(__file__).resolve().parents[2]
             clarification = (

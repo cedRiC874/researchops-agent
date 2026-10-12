@@ -670,6 +670,9 @@ class SelfPilotWebController:
                 "output_redacted": result["output_redacted"],
                 "machine_score_hidden_until_feedback": True,
                 "feedback_fields": list(feedback_field_order(result["outcome"])),
+                "controlled_failure": result.get("status") == "controlled_failure",
+                "message": result.get("message"),
+                "completion_telemetry": result.get("completion_telemetry"),
             }
             with self._lock:
                 self._answers[task_id] = answer
@@ -1508,6 +1511,15 @@ function renderRunningPanel() {
 function renderAnswer(state) {
   const answer = state.answer;
   workspace.append(renderPrompt(state.task));
+  if (answer.controlled_failure) {
+    const failure = document.createElement('section');
+    failure.className = 'card';
+    failure.textContent = answer.message;
+    workspace.append(failure);
+    setNotice('本题为受控失败，不能重跑。请完成反馈并核对账本。', true);
+    workspace.append(renderFeedbackForm(state.task_id, answer.feedback_fields));
+    return;
+  }
   const grid = document.createElement('section');
   grid.className = 'grid';
   grid.append(

@@ -778,6 +778,9 @@ def _validate_completion_session(
         if not exact_session_type and type(session).__module__ == "researchops_item6_experiment_v1.session":
             from researchops_item6_experiment_v1.session import ExperimentSession
             exact_session_type = provider_id == "deepseek" and type(session) is ExperimentSession
+        if not exact_session_type and type(session).__module__ == "researchops.eval_v2_interactive_telemetry":
+            from .eval_v2_interactive_telemetry import EvalV2InteractiveTelemetrySession
+            exact_session_type = provider_id == "deepseek" and type(session) is EvalV2InteractiveTelemetrySession
         if not exact_session_type:
             raise TypeError("live completion session must be an exact ledger bridge")
         session.assert_provider_telemetry_authority()

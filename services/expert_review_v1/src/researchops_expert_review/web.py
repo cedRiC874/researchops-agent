@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from researchops import self_pilot
 
-from .core import ExpertReview, ExpertReviewError, FORMAT_NOTICE, ONLINE_LIMITATION
+from .core import ExpertReview, ExpertReviewError, FORMAT_NOTICE, ONLINE_LIMITATION, completion_summary
 
 _MAX_BODY_BYTES = 16 * 1024
 
@@ -22,13 +22,16 @@ def _display(value: Any) -> str:
 
 def _public_result(record: dict[str, Any]) -> dict[str, Any]:
     """Never return persisted question text, provider payloads, or local metadata."""
-    return {
+    result = {
         "status": record["status"],
         "answers": {key: _display(record["answers"][key]) for key in ("english", "chinese")},
         "tool_call_count": record["tool_call_count"],
         "output_redacted": record["output_redacted"],
         "notice": _display(record.get("notice", "无自动评分")),
     }
+    if "completion_telemetry" in record:
+        result["completion_summary"] = completion_summary(record)
+    return result
 
 
 def serve(review: ExpertReview, *, port: int = 8765) -> None:
@@ -191,7 +194,7 @@ _HTML = """<!doctype html>
 <label class="confirmation"><input id="confirm" type="checkbox" required>我确认会把问题文本和汇总统计发送给 DeepSeek</label>
 <button id="run" type="submit">运行一次</button></fieldset></form>
 <p id="message" role="status" aria-live="polite">正在加载本机会话…</p>
-<section id="result" hidden><h2>本次结果</h2><p id="status"></p><p id="notice"></p><h3>English</h3><pre id="english"></pre><h3>中文</h3><pre id="chinese"></pre><p id="calls"></p></section>
+<section id="result" hidden><h2>本次结果</h2><p id="status"></p><p id="notice"></p><h3>English</h3><pre id="english"></pre><h3>中文</h3><pre id="chinese"></pre><p id="calls"></p><p id="completion"></p></section>
 <section><h2>本会话已运行的问题</h2><table><thead><tr><th scope="col">序号</th><th scope="col">数据集</th><th scope="col">状态</th></tr></thead><tbody id="history"></tbody></table></section>
 </main></body></html>"""
 
@@ -254,6 +257,7 @@ $('ask-form').addEventListener('submit', async event => {
     $('english').textContent = data.answers.english;
     $('chinese').textContent = data.answers.chinese;
     $('calls').textContent = '工具调用次数：' + data.tool_call_count + (data.output_redacted ? '；回答已被安全过滤器整段屏蔽。' : '');
+    $('completion').textContent = data.completion_summary || '模型调用摘要：尚无已登记的调用。';
     $('result').hidden = false;
     $('message').textContent = '本次运行已结束。无自动评分。';
   } catch (error) { $('message').textContent = error.message; }

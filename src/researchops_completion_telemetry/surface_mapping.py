@@ -602,7 +602,7 @@ class VerifiedRuntimeCompletionBinding:
         if (
             type(selection) is not VerifiedSurfaceSelection
             or getattr(selection, "_authority_token", None) is not _SELECTION_TOKEN
-            or selection.purpose not in {"runtime_binding", "first_live_validation", "internal_telemetry_validation", "item6_controlled_experiment_v1"}
+            or selection.purpose not in {"runtime_binding", "first_live_validation", "internal_telemetry_validation", "item6_controlled_experiment_v1", "eval_v2_interactive_v1"}
             or selection.runtime_binding_allowed is not True
         ):
             raise _error(
@@ -703,7 +703,7 @@ class VerifiedRuntimeCompletionBinding:
             type(self) is not VerifiedRuntimeCompletionBinding
             or getattr(self, "_authority_token", None) is not _RUNTIME_BINDING_TOKEN
             or getattr(self, "_authority_scope", None)
-            not in {"campaign_runtime", "first_live_validation", "internal_telemetry_validation", "item6_controlled_experiment_v1"}
+            not in {"campaign_runtime", "first_live_validation", "internal_telemetry_validation", "item6_controlled_experiment_v1", "eval_v2_interactive_v1"}
             or (
                 expected_scope is not None
                 and self._authority_scope != expected_scope

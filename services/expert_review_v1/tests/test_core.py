@@ -119,6 +119,17 @@ class ExpertReviewCoreTests(unittest.TestCase):
         provider_patch = patch.object(core.model_providers, "get_provider", return_value=self.provider)
         provider_patch.start()
         self.addCleanup(provider_patch.stop)
+        # Existing tests exercise their original offline executor capability.
+        # Real admission, ledger and adapter integration lives in test_telemetry.
+        telemetry_patch = patch.object(core, "_prepare_interactive_case", return_value=SimpleNamespace(
+            session=None, finish=lambda **kwargs: {
+                "attempts": 0, "terminal_states": [],
+                "usage": {"input_tokens": None, "output_tokens": None, "total_tokens": None},
+                "all_terminal": True, "write_failed": False, "closure_passed": True,
+            },
+        ))
+        telemetry_patch.start()
+        self.addCleanup(telemetry_patch.stop)
 
     def _write_registry(self):
         prepared = self.root / "artifacts/prepared"
@@ -360,7 +371,7 @@ class ExpertReviewCoreTests(unittest.TestCase):
         self.assertEqual(record["token_usage"], {"input_tokens": None, "output_tokens": None})
 
     def test_executor_returned_preclassification_is_recorded_when_available(self):
-        result = SimpleNamespace(final_output=BILINGUAL, outcome="completed", input_tokens=None, output_tokens=None, preclassification="normal")
+        result = SimpleNamespace(final_output=BILINGUAL, outcome="completed", completion_status="complete", input_tokens=None, output_tokens=None, preclassification="normal")
         with patch.object(core, "EvalV2ProviderExecutor") as executor, patch.object(core.os.environ, "get", return_value=FAKE_KEY):
             executor.return_value.execute.return_value = result
             record = self.review().ask(confirm_online=True, dataset_id=DATASETS[0], question="Summarize the dataset.")

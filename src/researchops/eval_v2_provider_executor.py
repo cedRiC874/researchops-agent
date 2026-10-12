@@ -91,6 +91,31 @@ def _resolve_eval_v2_sdk_runner(runner: Any | None) -> tuple[Any | None, bool]:
     return runner, False
 
 
+def _assert_interactive_completion_session(
+    provider: ProviderAdapter, model_id: str, session: Any
+) -> None:
+    try:
+        from .eval_v2_interactive_telemetry import EvalV2InteractiveTelemetrySession
+
+        if type(session) is not EvalV2InteractiveTelemetrySession:
+            raise TypeError("exact interactive telemetry session required")
+        session.assert_provider_telemetry_authority()
+        if not (
+            provider.provider_id == "deepseek"
+            and session.provider_id == provider.provider_id
+            and session.api_surface == provider.api_surface
+            and session.transport_id == provider.transport_id
+            and session.adapter_version == provider.adapter_version
+            and session.model_id == provider.validate_model(model_id)
+        ):
+            raise ValueError("interactive telemetry binding mismatch")
+    except Exception:
+        raise EvalV2ContractError(
+            "eval_v2_completion_telemetry_session_required",
+            "真实 Eval v2 Provider 路径需要有效且匹配的 verified runtime completion telemetry；运行被拒绝。",
+        ) from None
+
+
 @dataclass
 class _ProviderToolTelemetry:
     model_requested_tool_call_count: int = 0
@@ -174,6 +199,7 @@ class EvalV2ProviderExecutor:
         tracing_disabled: bool = True,
         bilingual_output: bool = False,
         max_output_tokens: int = _DEFAULT_MAX_OUTPUT_TOKENS,
+        completion_telemetry_session: Any | None = None,
     ) -> None:
         if provider.provider_id == "anthropic":
             raise EvalV2ContractError(
@@ -184,10 +210,11 @@ class EvalV2ProviderExecutor:
             sdk_runner
         )
         if not offline_runner_authorized:
-            raise EvalV2ContractError(
-                "eval_v2_completion_telemetry_session_required",
-                "真实 Eval v2 Provider 路径尚未绑定 verified runtime completion telemetry；运行被拒绝。",
+            _assert_interactive_completion_session(
+                provider, model_id, completion_telemetry_session
             )
+        self._offline_runner_authorized = offline_runner_authorized
+        self._completion_telemetry_session = completion_telemetry_session
         self._provider = provider
         self._model_id = provider.validate_model(model_id)
         if not isinstance(api_key, str) or not api_key.strip():
@@ -266,6 +293,10 @@ class EvalV2ProviderExecutor:
         public_input: Mapping[str, Any],
         gateway: EvalV2ToolGateway,
     ) -> EvalV2ExecutorResult:
+        if not self._offline_runner_authorized:
+            _assert_interactive_completion_session(
+                self._provider, self._model_id, self._completion_telemetry_session
+            )
         provider_id = self._provider.provider_id
         transport_id = self._provider.transport_id
         identity = {
@@ -278,12 +309,17 @@ class EvalV2ProviderExecutor:
             request_policy, self._max_output_tokens
         )
         tool_telemetry = _ProviderToolTelemetry()
+        session = self._completion_telemetry_session
         try:
             Agent, ModelSettings, RunConfig, Runner, function_tool = _load_agents_sdk()
+            telemetry_options = (
+                {"completion_telemetry_session": session} if session is not None else {}
+            )
             async with self._provider.open_model(
                 model_id=self._model_id,
                 api_key=self._api_key,
                 timeout_seconds=self._run_timeout_seconds,
+                **telemetry_options,
             ) as bound:
                 if (
                     bound.provider_id != provider_id
@@ -333,7 +369,11 @@ class EvalV2ProviderExecutor:
                     if inspect.isawaitable(result_or_awaitable)
                     else result_or_awaitable
                 )
-        except TimeoutError:
+                if session is not None:
+                    session._record_sdk_result(result)
+        except TimeoutError as exc:
+            if session is not None:
+                session._record_sdk_exception(exc)
             return EvalV2ExecutorResult(
                 outcome="controlled_failure",
                 final_output="",
@@ -347,11 +387,34 @@ class EvalV2ProviderExecutor:
                 ),
                 **identity,
             )
-        except EvalV2ContractError:
+        except EvalV2ContractError as exc:
+            if session is not None:
+                session._record_sdk_exception(exc)
             raise
         except ProviderConfigurationError as exc:
+            if session is not None:
+                session._record_sdk_exception(exc)
             raise EvalV2ContractError(exc.code, str(exc)) from exc
+        except asyncio.CancelledError as exc:
+            if session is None:
+                raise
+            session._record_sdk_exception(exc)
+            return EvalV2ExecutorResult(
+                outcome="controlled_failure",
+                final_output="",
+                error_code="provider_cancelled",
+                completion_status="provider_failed",
+                model_call_count=1,
+                **tool_telemetry.result_fields(
+                    requested_count=None,
+                    requested_count_source=None,
+                    backend_executed_count=gateway.backend_executed_tool_call_count,
+                ),
+                **identity,
+            )
         except Exception as exc:
+            if session is not None:
+                session._record_sdk_exception(exc)
             return EvalV2ExecutorResult(
                 outcome="controlled_failure",
                 final_output="",

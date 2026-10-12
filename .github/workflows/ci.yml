@@ -553,7 +553,25 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONPATH = "src"
-          python -m unittest discover -s tests -t . -v
+          python services/expert_review_v1/scripts/run_offline_tests.py root --report "$env:RUNNER_TEMP/interactive-root-tests.json"
+          exit $LASTEXITCODE
+
+      - name: Run expert review offline integration tests
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src;services/expert_review_v1/src"
+          python services/expert_review_v1/scripts/run_offline_tests.py service --report "$env:RUNNER_TEMP/interactive-service-tests.json"
+          exit $LASTEXITCODE
+
+      - name: Upload interactive offline test counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interactive-offline-test-counts
+          path: |
+            ${{ runner.temp }}/interactive-root-tests.json
+            ${{ runner.temp }}/interactive-service-tests.json
+          if-no-files-found: warn
 
       - name: Validate private-holdout custodian kit
         shell: pwsh
