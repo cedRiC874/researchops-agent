@@ -43,7 +43,8 @@ _PATTERNS = {
         + r"|(?<![A-Za-z0-9/])/" + _ASCII_PATH_PART + r"(?:/" + _ASCII_PATH_PART + r")+"
         + r"|" + _RELATIVE_PATH_START + r"(?:~[\\/]|\.{1,2}[\\/])"
         + r"|" + _RELATIVE_PATH_START
-        + r"(?ai:artifacts|data|evals|src|services|output|docs|tests|scripts|\.venv|\.git)[\\/]"
+        + r"(?:artifacts|data|evals|src|services|output|docs|tests|scripts)[\\/][\w.-]+[\\/]"
+        + r"|" + _RELATIVE_PATH_START + r"(?:\.venv|\.git)[\\/]"
         + r"|" + _RELATIVE_PATH_START + r"(?:[\w.-]+[\\/])+[\w.-]+\."
         + r"(?ai:csv|tsv|json|jsonl|parquet|sqlite|sqlite3|db|xlsx|xls|txt|md|py|ps1|yml|yaml|toml|log|zip|data)"
         + r"(?=$|[^\w./\\-]|\.(?=$|\s))"

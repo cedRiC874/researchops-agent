@@ -78,7 +78,8 @@ python -m researchops_expert_review ask --session-dir artifacts/expert-review/se
 - Windows 盘符路径（`C:\`、`C:/`）、UNC 路径（`\\server\share\`）和 `file://`。
 - 以 `/` 开头、至少包含两段 ASCII 路径名的绝对路径，如 `/home/example`、`/opt/private`、`/opt/data.csv`。开头斜杠前紧邻英文字母或数字时不按此规则匹配；前面是中文时仍可识别，例如“文件在/opt/data.csv”。
 - `~/` 或 `~\` 开头的家目录路径，以及 `./`、`../` 开头的相对路径。
-- `artifacts`、`data`、`evals`、`src`、`services`、`output`、`docs`、`tests`、`scripts`、`.venv`、`.git` 后接 `/` 或 `\` 的项目路径。
+- 小写的 `artifacts`、`data`、`evals`、`src`、`services`、`output`、`docs`、`tests`、`scripts` 后接 `/` 或 `\`，并且还包含一个后续路径分隔符，例如 `data/private/notes`。只有一个分隔符时需符合下述文件扩展名规则，例如 `data/file.csv`；`data/design`、`Data/Methods` 这类普通文字不按目录前缀拦截。
+- 小写的 `.venv`、`.git` 后接 `/` 或 `\`，仍按单段路径识别，例如 `.git/config`。
 - 包含路径分隔符、并以受控文件扩展名结尾的相对路径；扩展名限 `csv`、`tsv`、`json`、`jsonl`、`parquet`、`sqlite`、`sqlite3`、`db`、`xlsx`、`xls`、`txt`、`md`、`py`、`ps1`、`yml`、`yaml`、`toml`、`log`、`zip`、`data`。
 
 普通单位或组别中的斜杠不再仅因其形态被服务的路径规则判为路径，例如 `ml/kg/min` 和“治疗组/对照组/安慰剂组”。这一调整不代表内容已通过完整隐私审查，其余格式检查仍按原规则执行。

@@ -25,7 +25,17 @@ REAL_PATHS = (
     r"C:\private\data.csv", "C:/data/a.csv", r"\\server\share\x.csv", "file:///C:/x.csv",
     "/home/private/output.csv", "/opt/private", "/opt/data.csv", "路径：/opt/private",
     "文件在/home/user/a.csv", "~/data/x.csv", "./x.csv", "../data/x.csv",
-    "data/private", "data/file.csv", "artifacts/prepared/heart.csv", r"data\raw\heart.csv",
+    "data/private/notes", "data/file.csv", "artifacts/prepared/heart.csv", r"data\raw\heart.csv",
+)
+DIRECTORY_PROSE = (
+    "No statistical tests/models were run.", "Data/Methods", "the data/design limitations",
+    "raw data/records are never shown", "Summary of data/analysis plan",
+    "Tests/procedures used", "Output/Display rules",
+)
+REPOSITORY_PATHS = (
+    "data/private/notes", "data/raw/heart.csv", "artifacts/self_pilot_data/run-01",
+    "src/researchops/cli.py", "tests/test_core.py", "services/expert_review_v1/README.md",
+    ".venv/Scripts/python.exe", ".git/config",
 )
 REDACTION_ORDER = ["file_path", "api_key", "subject_id", "self_pilot_filter"]
 UNKNOWN_CANARY = "UNKNOWN-CATEGORY-PRIVATE-CANARY"
@@ -66,6 +76,36 @@ class _OfflineTestCase(unittest.TestCase):
 
 
 class PathFilterMatrixTests(_OfflineTestCase):
+    def test_directory_words_in_english_prose_pass_input_and_output_filters(self):
+        self.assertEqual(len(DIRECTORY_PROSE), 7)
+        for text in DIRECTORY_PROSE:
+            with self.subTest(text=text):
+                self.assertEqual(core.input_rejection_types(text), [])
+                self.assertEqual(core.filter_output(text), (text, []))
+
+    def test_repository_path_shapes_are_rejected_and_output_redacted(self):
+        self.assertEqual(len(REPOSITORY_PATHS), 8)
+        for text in REPOSITORY_PATHS:
+            with self.subTest(text=text):
+                self.assertIn("file_path", core.input_rejection_types(text))
+                safe, categories = core.filter_output(text)
+                self.assertIn("file_path", categories)
+                self.assertNotIn(text, safe)
+
+    def test_directory_prefixes_require_lowercase_and_a_second_separator(self):
+        directories = ("artifacts", "data", "evals", "src", "services", "output", "docs", "tests", "scripts")
+        for directory in directories:
+            for separator in ("/", "\\"):
+                for text in (directory + separator + "private", directory.title() + separator + "private" + separator + "notes"):
+                    with self.subTest(text=text):
+                        self.assertEqual(core.input_rejection_types(text), [])
+                        self.assertEqual(core.filter_output(text), (text, []))
+                # The separate file-extension rule keeps its original case handling.
+                text = directory.title() + separator + "summary.CSV"
+                with self.subTest(text=text):
+                    self.assertIn("file_path", core.input_rejection_types(text))
+                    self.assertIn("file_path", core.filter_output(text)[1])
+
     def test_all_18_normal_texts_pass_input_and_output_filters(self):
         self.assertEqual(len(NORMAL_TEXTS), 18)
         for text in NORMAL_TEXTS:
@@ -110,7 +150,8 @@ class PathFilterMatrixTests(_OfflineTestCase):
     def test_repository_prefixes_and_relative_file_extensions(self):
         directories = ("artifacts", "data", "evals", "src", "services", "output", "docs", "tests", "scripts", ".venv", ".git")
         extensions = ("csv", "tsv", "json", "jsonl", "parquet", "sqlite", "sqlite3", "db", "xlsx", "xls", "txt", "md", "py", "ps1", "yml", "yaml", "toml", "log", "zip", "data")
-        paths = [directory + separator + "private" for directory in directories for separator in ("/", "\\")]
+        paths = [directory + separator + "private" + separator + "notes" for directory in directories for separator in ("/", "\\")]
+        paths += [directory + separator + "config" for directory in (".venv", ".git") for separator in ("/", "\\")]
         paths += ["custom" + separator + "sample." + extension for extension in extensions for separator in ("/", "\\")]
         paths += [r"~\private", r"..\private", "custom/sample.CSV", "custom/数据.csv"]
         for text in paths:
