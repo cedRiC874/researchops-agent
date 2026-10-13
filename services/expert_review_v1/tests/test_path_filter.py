@@ -90,6 +90,15 @@ class PathFilterMatrixTests(_OfflineTestCase):
                 self.assertNotEqual(safe, text)
                 self.assertNotIn(text, safe)
 
+    def test_unc_paths_allow_unicode_server_and_share_segments(self):
+        for text in (r"\\服务器\共享", r"\\服\共\x.csv", r"\\server\共享", r"\\服务器\共享\x.csv"):
+            with self.subTest(text=text):
+                self.assertIsNotNone(core._PATTERNS["file_path"].match(text))
+                self.assertEqual(core.input_rejection_types(text), ["file_path"])
+                safe, categories = core.filter_output(text)
+                self.assertEqual(categories, ["file_path"])
+                self.assertNotIn(text, safe)
+
     def test_redaction_categories_have_fixed_order_and_no_duplicates(self):
         unsafe = r"C:\private\data.csv sk-synthetic-token SUBJ-SYNTHETIC Bearer synthetic-token"
         safe, categories = core.filter_output(unsafe, api_key="sk-synthetic-token")

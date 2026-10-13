@@ -36,7 +36,7 @@ _PATTERNS = {
     "email": re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}"),
     "file_path": re.compile(
         r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/]"
-        r"|\\\\" + _ASCII_PATH_PART + r"\\" + _ASCII_PATH_PART
+        r"|\\\\[^\s\\/]+\\[^\s\\/]+"
         + r"|(?ai:file://)"
         # ASCII segments and an ASCII lookbehind preserve units and Chinese prose.
         # A second slash in an HTTP URL is not the start of a local absolute path.
