@@ -10,7 +10,7 @@ The first question this project asks is: **when should you not use an Agent?** O
 
 **Offline, script-driven, no model calls** · A 40-second replay of actual offline records: read-only call → publication pending → CLI approval → execution → changed parameters rejected → expired approval rejected. A script invokes the CLI to approve; the two rejections are independent cases. No footage from real model runs is spliced in. [Storyboard and evidence](docs/DEMO.md)
 
-There is also a recording with a real client and a real model: [MCP gateway](#mcp-gateway-a-real-client-and-a-real-model).
+There are also two recordings with real models: [MCP gateway](#mcp-gateway-a-real-client-and-a-real-model) and [a comparison with the DeepSeek web app](#compared-with-using-the-deepseek-web-app-directly).
 
 ## Conclusion: start with a fixed workflow for well-defined tasks
 
@@ -65,6 +65,22 @@ The client also asks “Allow once” before every non-read-only tool call. That
 What this recording shows is limited: one model, one run and one fixed flow; it is not an evaluation. The gateway constrains only the tools that pass through it. Codex's own command execution is governed by client permissions, which were set to ask every time; the model did not request any commands during the recording. The gateway's 12 deterministic attack categories and 60 mock trials verify the control paths only; they do not show how a real model handles unknown attacks ([verification record](services/mcp_gateway_v1/VERIFICATION.md)).
 
 During the first trial recording, the model pointed out that the dataset hash recorded in the evidence bundle differed from the repository's data file, so it could not assume they were the same data. The cause was line endings: the CSV had CRLF line endings when the bundle was generated, while the repository checks it out with LF; the rows are identical. Frozen evaluations reference that bundle, so it stays unchanged; the gateway now computes and flags this relationship ([details](services/mcp_gateway_v1/README.md#工具运行与错误)).
+
+## Compared with using the DeepSeek web app directly
+
+The same data and questions, once handed straight to the official DeepSeek web app (whole CSV uploaded) and once through this project. The first two questions go through the [live question page](services/expert_review_v1/README.md), which also calls DeepSeek (API, `deepseek-v4-flash`); what is sent to the model is the question text, rule instructions and aggregate statistics, never raw data rows. For the third question, local code runs the statistical analysis from the study design twice, offline, without the model.
+
+https://github.com/user-attachments/assets/be76b0a1-c969-430a-bb12-c95f214fa51a
+
+**Official DeepSeek web app (settings unchanged: DeepThink off, Search on) vs this project + public and synthetic data** · recorded on 2026-10-13, edited to about 5 minutes; waiting and scrolling are sped up and labeled with the speed factor; answers are not cut · repository at main@`e3c52c6` when recorded
+
+| Question | DeepSeek web app | This project |
+| --- | --- | --- |
+| UCI heart disease data (Cleveland): summarize rows, columns and missing values | 303 rows, 14 columns; thalassemia missing 2, major_vessels missing 4; all correct | Also correct; the model received only aggregate statistics |
+| Same data: list every patient's age, sex, cholesterol and diagnosis, row by row | Complied, saying it listed all 303 records in their original order | Refused without calling any tool; the model never had row-level data |
+| Synthetic trial data: baseline-adjusted between-group difference (mmHg), same analysis twice | Asked once in each of two new chats: −4.2 (−6.5 to −1.9), P < 0.001; −4.05 (−6.78 to −1.32), P = 0.0037; both answers said multiple imputation was used | Computed twice offline, without the model: −5.61 (−7.94 to −3.28), P = 3.8×10⁻⁶ both times, with the same evidence ID; only the 212 participants with follow-up were analyzed, and the output states this is not a complete intention-to-treat analysis |
+
+What this recording shows is limited: one set of questions and one demonstration; it is not an evaluation. This project only runs an available-case analysis, while multiple imputation is the more common way to handle missing follow-up under intention-to-treat, so this does not show that its statistical method is better. What it does show is that the raw data stayed on the machine and the numbers are reproducible and traceable. Both DeepSeek answers said they used multiple imputation, but the web app shows no computation. The recheck inserted in the video is a one-off local check: 800 multiple-imputation runs (20 imputed datasets each, pooled with Rubin's rules) under the two imputation models DeepSeek described put the adjusted difference between −5.71 and −5.15, so neither number it reported falls in that range. The recheck is an independent implementation, not R's mice, and the script is not in the repository.
 
 ## Engineering work
 
