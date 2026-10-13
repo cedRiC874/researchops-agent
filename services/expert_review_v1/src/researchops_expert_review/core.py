@@ -28,16 +28,35 @@ FORMAT_NOTICE = "个人信息检查只是格式匹配，不是完备检测；请
 ONLINE_LIMITATION = "未满足代码来源、干净提交和遥测准入时，尚未开放真实在线运行；通过检查后仅允许 DeepSeek 本机交互试用，记录不是评测证据。"
 _RUN_ID = re.compile(r"^EXPERT-[a-f0-9]{32}$")
 _HASH = re.compile(r"^[a-f0-9]{64}$")
+_ASCII_PATH_PART = r"[A-Za-z0-9_.-]+"
+_RELATIVE_PATH_START = r"(?<![A-Za-z0-9_./\\-])"
 _PATTERNS = {
     "identity_number": re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)"),
     "phone_number": re.compile(r"(?<!\d)1\d{10}(?!\d)"),
     "email": re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}"),
     "file_path": re.compile(
-        r"[A-Za-z]:[\\/]|\\\\[^\s\\]+\\|(?<![A-Za-z0-9])(?:[~/]|\.\.?[\\/])[^\s]+"
-        r"|[\w.-]{2,}[\\/][\w.-]{2,}"
+        r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/]"
+        r"|\\\\[^\s\\/]+\\[^\s\\/]+"
+        + r"|(?ai:file://)"
+        # ASCII segments and an ASCII lookbehind preserve units and Chinese prose.
+        # A second slash in an HTTP URL is not the start of a local absolute path.
+        + r"|(?<![A-Za-z0-9/])/" + _ASCII_PATH_PART + r"(?:/" + _ASCII_PATH_PART + r")+"
+        + r"|" + _RELATIVE_PATH_START + r"(?:~[\\/]|\.{1,2}[\\/])"
+        + r"|" + _RELATIVE_PATH_START
+        + r"(?:artifacts|data|evals|src|services|output|docs|tests|scripts)[\\/][\w.-]+[\\/]"
+        + r"|" + _RELATIVE_PATH_START + r"(?:\.venv|\.git)[\\/]"
+        + r"|" + _RELATIVE_PATH_START + r"(?:[\w.-]+[\\/])+[\w.-]+\."
+        + r"(?ai:csv|tsv|json|jsonl|parquet|sqlite|sqlite3|db|xlsx|xls|txt|md|py|ps1|yml|yaml|toml|log|zip|data)"
+        + r"(?=$|[^\w./\\-]|\.(?=$|\s))"
     ),
     "api_key": re.compile(r"(?<![A-Za-z0-9_])sk-[A-Za-z0-9._-]+", re.IGNORECASE),
     "subject_id": re.compile(r"(?<![A-Za-z0-9_])SUBJ-[A-Za-z0-9_-]+", re.IGNORECASE),
+}
+_OUTPUT_REDACTION_LABELS = {
+    "file_path": "疑似本机路径",
+    "api_key": "疑似 API Key",
+    "subject_id": "疑似受试者编号",
+    "self_pilot_filter": "原 self-pilot 安全规则",
 }
 
 
@@ -80,6 +99,32 @@ def input_rejection_types(question: str) -> list[str]:
     if not question.strip():
         hits.append("empty_question")
     return hits
+
+
+def filter_output(output: str, *, api_key: str | None = None) -> tuple[str, list[str]]:
+    safe_output, inherited_redaction = self_pilot._safe_display_output(output)
+    hits = {
+        name for name in ("file_path", "api_key", "subject_id")
+        if _PATTERNS[name].search(output)
+    }
+    if api_key and api_key in output:
+        hits.add("api_key")
+    if inherited_redaction:
+        hits.add("self_pilot_filter")
+    if hits:
+        safe_output = "[OUTPUT_REDACTED_BY_SELF_PILOT_SAFETY_FILTER]"
+    return safe_output, [name for name in _OUTPUT_REDACTION_LABELS if name in hits]
+
+
+def output_redaction_message(record: dict[str, Any]) -> str:
+    if record.get("output_redacted") is not True:
+        return ""
+    types = record.get("output_redaction_types", [])
+    if not isinstance(types, list):
+        types = []
+    labels = [label for name, label in _OUTPUT_REDACTION_LABELS.items() if name in types]
+    message = "回答被安全过滤器整段屏蔽"
+    return message + ("（命中：" + "、".join(labels) + "）" if labels else "。")
 
 
 def _resolve(root: Path, value: str | Path) -> Path:
@@ -304,7 +349,7 @@ class ExpertReview:
                 "source": from_task if from_task is not None else "现场提问",
                 "provider": self.provider_id, "model": self.model_id,
                 "preclassification": None, "outcome": "controlled_failure", "status": "出错",
-                "output_redacted": False,
+                "output_redacted": False, "output_redaction_types": [],
                 "answers": {"english": "", "chinese": "执行未完成或已中断；本题已占用，不能重跑。", "bilingual_complete": False},
                 "tool_call_count": 0, "elapsed_seconds": None,
                 "token_usage": {"input_tokens": None, "output_tokens": None},
@@ -361,20 +406,11 @@ class ExpertReview:
                         "eval_v2_interactive_telemetry_incomplete",
                         "本题完成遥测未闭合或模型未完整完成；回答不展示，本题不能重跑。",
                     )
-                safe_output, redacted = self_pilot._safe_display_output(result.final_output)
-                # Retain the inherited filter and additionally enforce this entry's
-                # path/subject formats at the display boundary, using the same
-                # local format matchers as the input check (no executor rule changes).
-                if api_key in safe_output or any(
-                    _PATTERNS[name].search(result.final_output)
-                    for name in ("file_path", "api_key", "subject_id")
-                ):
-                    safe_output = "[OUTPUT_REDACTED_BY_SELF_PILOT_SAFETY_FILTER]"
-                    redacted = True
+                safe_output, redaction_types = filter_output(result.final_output, api_key=api_key)
                 record.update(
                     outcome=result.outcome,
                     status={"completed": "完成", "clarification_required": "先提问澄清", "refused": "拒绝", "waiting_approval": "完成"}.get(result.outcome, "出错"),
-                    output_redacted=redacted,
+                    output_redacted=bool(redaction_types), output_redaction_types=redaction_types,
                     answers=self_pilot_web.split_bilingual_output(safe_output),
                     token_usage={"input_tokens": result.input_tokens, "output_tokens": result.output_tokens},
                 )

@@ -207,7 +207,7 @@ class ExpertReviewCoreTests(unittest.TestCase):
             ("subject_id", "编号SUBJ-ABC123"),
             ("api_key", "密钥sk-demo-secret"),
             ("file_path", "路径：/opt/private"),
-            ("file_path", "data/private"),
+            ("file_path", "data/private/notes"),
         )
         review = self.review()
         with patch.object(core.os.environ, "get", side_effect=AssertionError("No key access")) as key, patch.object(core, "EvalV2ProviderExecutor") as executor:
